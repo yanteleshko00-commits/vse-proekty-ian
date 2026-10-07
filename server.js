@@ -681,17 +681,20 @@ app.post("/api/generate-project", async (req, res) => {
 
     const zipBuffer = await createZip(files);
 
-    files.push({
-      name: `${baseName}_Весь_проект.zip`,
-      buffer: zipBuffer,
-      mime: "application/zip"
-    });
+files.push({
+  name: "Весь_проект.zip",
+  buffer: zipBuffer,
+  mime: "application/zip"
+});
 
-    const filesForBrowser = files.map(file => ({
-      name: file.name,
-      mime: file.mime,
-      data: file.buffer.toString("base64")
-    }));
+    const filesForBrowser = {};
+
+for (const file of files) {
+  filesForBrowser[file.name] = {
+    base64: file.buffer.toString("base64"),
+    mime: file.mime
+  };
+}
 
     res.json({
       ok: true,
