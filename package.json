@@ -1,6 +1,6 @@
 {
   "name": "vse-proekty-ian",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "scripts": { "start": "node server.js" },
@@ -9,7 +9,9 @@
     "docx": "^9.5.1",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
+    "mammoth": "^1.9.0",
     "openai": "^6.0.0",
+    "pdf-parse": "^1.1.1",
     "pdfkit": "^0.17.2"
   }
 }
