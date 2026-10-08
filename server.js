@@ -7,18 +7,17 @@ import archiver from 'archiver';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import crypto from 'crypto';
-import pdfParse from 'pdf-parse';
-import mammoth from 'mammoth';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna';
+const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
+const MAX_AI_IMAGES = 4;
 
 const publicDir = path.join(process.cwd(), 'public');
 const fontPath = path.join(process.cwd(), 'assets', 'DejaVuSans.ttf');
 
-app.use(express.json({ limit: '12mb' }));
+app.use(express.json({ limit: '2mb' }));
 app.use(express.static(publicDir));
 
 const client = process.env.OPENAI_API_KEY
@@ -43,23 +42,18 @@ function clean(value, fallback = '') {
 
 function normalizeSlides(slides, count) {
   const source = Array.isArray(slides) ? slides : [];
-  const fallbackTitles = [
-    'Введение и актуальность', 'Цель и задачи', 'Основные понятия', 'Теоретическая часть',
-    'Методы и ход работы', 'Практическая часть', 'Результаты', 'Проектный продукт',
-    'Практическая ценность', 'Выводы', 'Источники', 'Спасибо за внимание'
-  ];
   const result = source.slice(0, count).map((s, i) => ({
     number: i + 1,
-    title: clean(s?.title, fallbackTitles[i] || `Итоги проекта — часть ${i + 1}`),
+    title: clean(s?.title, `Слайд ${i + 1}`),
     subtitle: clean(s?.subtitle),
     bullets: Array.isArray(s?.bullets)
-      ? s.bullets.map(x => clean(x)).filter(Boolean).slice(0, 5)
+      ? s.bullets.map(x => clean(x)).filter(Boolean).slice(0, 6)
       : [],
-    visualType: clean(s?.visualType, 'image'),
+    visualType: clean(s?.visualType, 'none'),
     visualTitle: clean(s?.visualTitle),
     visualData: s?.visualData ?? null,
     imagePrompt: clean(s?.imagePrompt),
-    layout: clean(s?.layout, i === 0 ? 'cover' : 'split'),
+    imagePath: null,
     note: clean(s?.note)
   }));
 
@@ -67,88 +61,18 @@ function normalizeSlides(slides, count) {
     const n = result.length + 1;
     result.push({
       number: n,
-      title: fallbackTitles[n - 1] || `Итоги проекта — часть ${n}`,
-      subtitle: 'Содержание сформировано по теме проекта.',
-      bullets: ['Ключевой тезис проекта.', 'Связь с целью и задачами.', 'Практическая значимость.'],
-      visualType: n % 3 === 0 ? 'process' : 'image',
-      visualTitle: 'Ключевая идея',
-      visualData: n % 3 === 0 ? ['Изучение', 'Анализ', 'Практика', 'Вывод'] : null,
+      title: `Слайд ${n}`,
+      subtitle: '',
+      bullets: ['Материал по теме проекта.'],
+      visualType: 'none',
+      visualTitle: '',
+      visualData: null,
       imagePrompt: '',
-      layout: n % 2 ? 'cards' : 'split',
+      imagePath: null,
       note: ''
     });
   }
   return result;
-}
-
-async function extractSchoolRequirements(dataUrl, fileName='') {
-  if (!dataUrl) return '';
-  const m = String(dataUrl).match(/^data:[^;]+;base64,(.+)$/s);
-  if (!m) return '';
-  const buffer = Buffer.from(m[1], 'base64');
-  if (buffer.length > 6 * 1024 * 1024) throw new Error('Файл требований слишком большой. Максимум 6 МБ.');
-  const ext = path.extname(fileName).toLowerCase();
-  try {
-    if (ext === '.pdf') {
-      const parsed = await pdfParse(buffer);
-      return clean(parsed.text).slice(0, 30000);
-    }
-    if (ext === '.docx') {
-      const parsed = await mammoth.extractRawText({ buffer });
-      return clean(parsed.value).slice(0, 30000);
-    }
-    if (ext === '.doc') return 'Файл .doc загружен. Для точного чтения лучше сохранить его как .docx или PDF.';
-  } catch (err) {
-    console.warn('Не удалось прочитать требования школы:', err?.message || err);
-    return `Файл требований загружен (${fileName}), но текст автоматически прочитать не удалось. Учитывай только дополнительные требования из формы.`;
-  }
-  return '';
-}
-
-function themeFromProject(theme = {}) {
-  const palettes = {
-    green: { primary:'#18A66A', dark:'#087546', light:'#E8F7EF', pale:'#F5FBF7', text:'#17231D' },
-    blue: { primary:'#2878D8', dark:'#164A8A', light:'#EAF3FF', pale:'#F6FAFF', text:'#142235' },
-    purple: { primary:'#7C5CFC', dark:'#4A35A8', light:'#F0ECFF', pale:'#FAF9FF', text:'#201A35' },
-    orange: { primary:'#F28B30', dark:'#A9550C', light:'#FFF0DF', pale:'#FFF9F2', text:'#2D2118' },
-    teal: { primary:'#0E9F9A', dark:'#08706D', light:'#E4F7F6', pale:'#F4FCFC', text:'#172827' }
-  };
-  return palettes[clean(theme.palette,'green')] || palettes.green;
-}
-
-function hexToRgb(hex){
-  const h=hex.replace('#','');
-  return {r:parseInt(h.slice(0,2),16),g:parseInt(h.slice(2,4),16),b:parseInt(h.slice(4,6),16)};
-}
-function mixHex(a,b,t){
-  const A=hexToRgb(a),B=hexToRgb(b);
-  const f=n=>Math.round(A[n]*(1-t)+B[n]*t).toString(16).padStart(2,'0');
-  return `#${f('r')}${f('g')}${f('b')}`;
-}
-
-function imageFileName(prompt, index){
-  return path.join(os.tmpdir(), `vse-img-${index}-${crypto.createHash('sha1').update(prompt).digest('hex').slice(0,10)}.png`);
-}
-
-async function generateSlideImages(slides, topic, dir, theme){
-  if (!client || typeof client.images?.generate !== 'function') return;
-  const candidates = slides
-    .map((s,i)=>({s,i}))
-    .filter(({s})=>s.imagePrompt && s.visualType !== 'none')
-    .slice(0, 6);
-  for (const {s,i} of candidates){
-    try{
-      const prompt = `Create a clean school-project illustration for a presentation about "${topic}". ${s.imagePrompt}. Style: ${theme?.imageStyle || 'modern educational editorial illustration'}, no text, no logos, no watermark, landscape composition, clear focal subject, suitable for a 16:9 slide, visually rich but not photorealistic unless the topic requires it.`;
-      const result = await client.images.generate({ model: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1', prompt, size:'1536x1024', quality:'medium' });
-      const b64 = result?.data?.[0]?.b64_json;
-      if (!b64) continue;
-      const file = path.join(dir, `slide-${i+1}.png`);
-      fs.writeFileSync(file, Buffer.from(b64,'base64'));
-      s.imagePath = file;
-    }catch(err){
-      console.warn(`Image generation failed for slide ${i+1}:`, err?.message || err);
-    }
-  }
 }
 
 function wrapText(doc, text, x, y, width, options = {}) {
@@ -244,83 +168,168 @@ function drawProcess(doc, data, x, y, w, h) {
   return true;
 }
 
-function drawImageCover(doc, file, x, y, w, h, radius=18){
-  try{
-    doc.save();
-    doc.roundedRect(x,y,w,h,radius).clip();
-    doc.image(file,x,y,{fit:[w,h],align:'center',valign:'center'});
-    doc.restore();
-    return true;
-  }catch{return false;}
-}
-
-function drawVisual(doc, slide, x, y, w, h, theme) {
-  if (slide.imagePath && drawImageCover(doc, slide.imagePath, x, y, w, h, 20)) {
-    doc.save();
-    doc.roundedRect(x,y,w,h,20).lineWidth(1).stroke(theme.light);
-    doc.restore();
-    if (slide.visualTitle) {
-      doc.roundedRect(x+14,y+14,Math.min(w-28,250),32,16).fill('#FFFFFF').fillOpacity(0.88);
-      doc.font('ProjectFont').fontSize(13).fillColor(theme.dark).text(slide.visualTitle,x+26,y+23,{width:Math.min(w-52,230)});
-    }
-    return;
-  }
+function drawVisual(doc, slide, x, y, w, h) {
   drawRoundedCard(doc, x, y, w, h);
-  if (slide.visualTitle) doc.font('ProjectFont').fontSize(15).fillColor(theme.dark).text(slide.visualTitle, x + 18, y + 16, { width: w - 36 });
-  const type = slide.visualType, data = slide.visualData;
+  if (slide.visualTitle) {
+    doc.fontSize(15).fillColor('#087546').text(slide.visualTitle, x + 18, y + 16, { width: w - 36 });
+  }
+
+  const type = slide.visualType;
+  const data = slide.visualData;
+  const imageY = slide.visualTitle ? y + 52 : y + 18;
+  const imageH = slide.visualTitle ? h - 68 : h - 36;
+
+  if (type === 'image' && slide.imagePath && fs.existsSync(slide.imagePath)) {
+    try {
+      doc.image(slide.imagePath, x + 14, imageY, {
+        fit: [w - 28, imageH],
+        align: 'center',
+        valign: 'center'
+      });
+      return;
+    } catch (_) {}
+  }
+
   if (type === 'bar' && drawBarChart(doc, data, x + 18, y + 55, w - 36, h - 75)) return;
   if (type === 'table' && drawTable(doc, data, x + 18, y + 50, w - 36, h - 68)) return;
   if (type === 'process' && drawProcess(doc, data, x + 18, y + 65, w - 36, h - 90)) return;
-  if (type === 'quote') { doc.font('ProjectFont').fontSize(22).fillColor(theme.text).text(`“${clean(data)}”`, x+28,y+85,{width:w-56,align:'center',lineGap:6}); return; }
-  if (type === 'formula') { doc.font('ProjectFont').fontSize(28).fillColor(theme.dark).text(clean(data),x+20,y+h/2-20,{width:w-40,align:'center'}); return; }
-  // Rich fallback illustration made from vector shapes, never an empty card.
-  const cx=x+w/2, cy=y+h/2;
-  doc.circle(cx,cy-15,72).fill(theme.light);
-  doc.circle(cx,cy-15,48).fill(theme.primary);
-  doc.font('ProjectFont').fontSize(30).fillColor('#FFFFFF').text('✦',cx-18,cy-36,{width:36,align:'center'});
-  doc.roundedRect(x+35,y+h-80,w-70,42,21).fill(theme.pale).stroke(theme.light);
-  doc.font('ProjectFont').fontSize(12).fillColor(theme.dark).text('Визуальный блок по теме',x+55,y+h-67,{width:w-110,align:'center'});
+
+  if (type === 'quote') {
+    doc.fontSize(23).fillColor('#17231D').text(`“${clean(data)}”`, x + 28, y + 80, {
+      width: w - 56,
+      align: 'center',
+      lineGap: 6
+    });
+    return;
+  }
+
+  if (type === 'formula') {
+    doc.fontSize(28).fillColor('#087546').text(clean(data), x + 20, y + h / 2 - 20, {
+      width: w - 40,
+      align: 'center'
+    });
+    return;
+  }
+
+  doc.circle(x + w / 2, y + h / 2 - 8, 44).fill('#18A66A');
+  doc.fontSize(34).fillColor('#FFFFFF').text('✓', x + w / 2 - 16, y + h / 2 - 29, { width: 32, align: 'center' });
+  doc.fontSize(14).fillColor('#68756E').text('Ключевая идея проекта', x + 20, y + h / 2 + 50, {
+    width: w - 40,
+    align: 'center'
+  });
 }
 
-function renderPresentationPdf(slides, topic, outputPath, themeData={}) {
+async function generateSlideImages(slides, topic, dir) {
+  if (!client) return;
+  const candidates = slides.filter(s => s.visualType === 'image').slice(0, MAX_AI_IMAGES);
+  if (!candidates.length) return;
+
+  let generated = 0;
+  for (const slide of candidates) {
+    const prompt = slide.imagePrompt || `Educational illustration for a school presentation about ${topic}. Topic of this slide: ${slide.title}. Clean modern academic style, realistic or polished editorial illustration, no text, no labels, landscape composition, suitable for a presentation.`;
+    try {
+      const result = await client.images.generate({
+        model: IMAGE_MODEL,
+        prompt,
+        size: '1536x1024',
+        quality: 'low'
+      });
+      const item = result?.data?.[0];
+      if (!item?.b64_json) continue;
+      const filePath = path.join(dir, `slide-image-${generated + 1}.png`);
+      fs.writeFileSync(filePath, Buffer.from(item.b64_json, 'base64'));
+      slide.imagePath = filePath;
+      generated += 1;
+    } catch (error) {
+      console.warn('Не удалось создать изображение для слайда:', error?.message || error);
+    }
+  }
+
+  // Если картинок меньше, чем image-слайдов, переиспользуем уже созданные.
+  const available = slides.filter(s => s.imagePath);
+  if (available.length) {
+    let cursor = 0;
+    for (const slide of slides) {
+      if (slide.visualType === 'image' && !slide.imagePath) {
+        slide.imagePath = available[cursor % available.length].imagePath;
+        cursor += 1;
+      }
+    }
+  }
+}
+
+function renderPresentationPdf(slides, topic, outputPath) {
   return new Promise((resolve, reject) => {
-    const theme = themeFromProject(themeData);
-    const doc = new PDFDocument({ size:[960,540], margins:{top:0,left:0,right:0,bottom:0}, autoFirstPage:false, info:{Title:`Презентация — ${topic}`,Author:'Все проекты #Ian'} });
-    const out=fs.createWriteStream(outputPath); doc.pipe(out);
-    if(fs.existsSync(fontPath)) doc.registerFont('ProjectFont',fontPath);
-    slides.forEach((slide,index)=>{
-      doc.addPage(); const W=960,H=540;
-      const alt=mixHex(theme.primary,'#FFFFFF',0.78);
-      doc.rect(0,0,W,H).fill(theme.pale);
-      doc.rect(0,0,W,10).fill(theme.primary);
-      doc.circle(875,75,130).fill(alt); doc.circle(900,110,75).fill(theme.light);
-      if(index===0 || slide.layout==='cover'){
-        if(slide.imagePath) drawImageCover(doc,slide.imagePath,560,55,350,400,28);
-        else { doc.roundedRect(570,75,310,350,28).fill(theme.light); doc.circle(725,235,82).fill(theme.primary); doc.font('ProjectFont').fontSize(46).fillColor('#FFFFFF').text('✦',695,205,{width:60,align:'center'}); }
-        doc.font('ProjectFont').fontSize(40).fillColor(theme.text).text(slide.title,55,105,{width:455,lineGap:7});
-        if(slide.subtitle) doc.font('ProjectFont').fontSize(18).fillColor('#617068').text(slide.subtitle,58,265,{width:430,lineGap:5});
-        if(slide.bullets?.length) drawBulletList(doc,slide.bullets.slice(0,3),60,325,430,3);
-        doc.font('ProjectFont').fontSize(12).fillColor(theme.dark).text('Индивидуальный проект • Все проекты #Ian',60,490,{width:400});
-      } else {
-        const layout=slide.layout || (slide.imagePath?'split':'cards');
-        doc.font('ProjectFont').fontSize(28).fillColor(theme.text).text(slide.title,48,36,{width:760,lineGap:4});
-        doc.font('ProjectFont').fontSize(10).fillColor('#708078').text(`${topic}  •  ${String(slide.number).padStart(2,'0')}`,50,82,{width:700});
-        if(layout==='full-image' && slide.imagePath){
-          drawImageCover(doc,slide.imagePath,48,110,864,340,24);
-          if(slide.bullets?.length){doc.save();doc.roundedRect(70,390,820,52,18).fill('#FFFFFF').fillOpacity(0.92);doc.restore();doc.font('ProjectFont').fontSize(12).fillColor(theme.text).text(slide.bullets.slice(0,2).join('  •  '),90,408,{width:780,align:'center'});}
-        } else if(layout==='cards') {
-          const bullets=slide.bullets?.slice(0,4)||[]; const cols=bullets.length<=2?2:2; const gap=18, cardW=(864-gap)/cols;
-          bullets.forEach((b,i)=>{const col=i%2,row=Math.floor(i/2),xx=48+col*(cardW+gap),yy=118+row*150;doc.roundedRect(xx,yy,cardW,128,22).fill(i%2?theme.light:'#FFFFFF').stroke(theme.light);doc.circle(xx+28,yy+30,10).fill(theme.primary);doc.font('ProjectFont').fontSize(15).fillColor(theme.text).text(b,xx+50,yy+22,{width:cardW-70,lineGap:4});});
-          if(slide.imagePath) drawImageCover(doc,slide.imagePath,48,425,864,70,18);
-        } else {
-          drawBulletList(doc,slide.bullets,52,120,420,5);
-          drawVisual(doc,slide,520,112,392,325,theme);
-        }
-        if(slide.subtitle) doc.font('ProjectFont').fontSize(11).fillColor(theme.dark).text(slide.subtitle,52,485,{width:850});
-        doc.font('ProjectFont').fontSize(9).fillColor('#89958F').text('Все проекты #Ian',50,518,{width:180});
+    const doc = new PDFDocument({
+      size: [960, 540],
+      margins: { top: 0, left: 0, right: 0, bottom: 0 },
+      autoFirstPage: false,
+      info: {
+        Title: `Презентация — ${topic}`,
+        Author: 'Все проекты #Ian'
       }
     });
-    doc.end(); out.on('finish',resolve); out.on('error',reject);
+
+    const out = fs.createWriteStream(outputPath);
+    doc.pipe(out);
+
+    if (fs.existsSync(fontPath)) doc.registerFont('ProjectFont', fontPath);
+
+    slides.forEach((slide, index) => {
+      doc.addPage();
+      const W = 960, H = 540;
+
+      doc.rect(0, 0, W, H).fill('#FFFFFF');
+      doc.rect(0, 0, 960, 12).fill('#18A66A');
+
+      if (index === 0) {
+        doc.circle(820, 100, 115).fill('#E5F6ED');
+        doc.circle(820, 100, 72).fill('#CBEEDB');
+        doc.circle(820, 100, 35).fill('#18A66A');
+
+        doc.font('ProjectFont').fontSize(38).fillColor('#17231D')
+          .text(slide.title, 60, 120, { width: 650, lineGap: 7 });
+
+        if (slide.subtitle) {
+          doc.fontSize(20).fillColor('#68756E')
+            .text(slide.subtitle, 60, 250, { width: 620, lineGap: 5 });
+        }
+
+        doc.fontSize(13).fillColor('#087546')
+          .text('Индивидуальный проект', 60, 430, { width: 300 });
+      } else {
+        doc.font('ProjectFont').fontSize(28).fillColor('#17231D')
+          .text(slide.title, 50, 42, { width: 860, lineGap: 4 });
+
+        doc.fontSize(11).fillColor('#68756E')
+          .text(`${topic}  •  ${slide.number}`, 50, 90, { width: 860 });
+
+        const hasVisual = slide.visualType && slide.visualType !== 'none';
+        if (hasVisual) {
+          drawBulletList(doc, slide.bullets, 55, 130, 430, 5);
+          drawVisual(doc, slide, 520, 125, 385, 335);
+        } else {
+          drawRoundedCard(doc, 55, 125, 850, 335);
+          drawBulletList(doc, slide.bullets, 80, 155, 800, 6);
+        }
+
+        if (slide.subtitle) {
+          doc.fontSize(12).fillColor('#087546')
+            .text(slide.subtitle, 55, 478, { width: 850, align: 'left' });
+        }
+      }
+
+      // Брендинг показываем только на первом слайде,
+      // чтобы он не повторялся на каждом слайде.
+      if (index === 0) {
+        doc.fontSize(10).fillColor('#8A978F')
+          .text('Все проекты #Ian', 50, 515, { width: 200 });
+      }
+    });
+
+    doc.end();
+    out.on('finish', resolve);
+    out.on('error', reject);
   });
 }
 
@@ -383,7 +392,7 @@ async function makeDocx(project, outputPath) {
   fs.writeFileSync(outputPath, buffer);
 }
 
-async function generateWithAI({ firstName, lastName, className, school, topic, slidesCount, extraRequirements, schoolRequirements }) {
+async function generateWithAI({ firstName, lastName, className, school, topic, slidesCount, extraRequirements }) {
   if (!client) throw new Error('OPENAI_API_KEY не настроен на сервере.');
 
   const prompt = `
@@ -396,7 +405,6 @@ async function generateWithAI({ firstName, lastName, className, school, topic, s
 Тема: ${topic}
 Количество слайдов: ${slidesCount}
 Дополнительные требования: ${extraRequirements || 'нет'}
-Требования школы из файла: ${schoolRequirements || 'файл не загружен'}
 
 Верни ТОЛЬКО JSON.
 
@@ -418,17 +426,15 @@ presentation — это готовое содержимое каждого сл�
     "description":"...",
     "steps":["..."]
   },
-  "theme":{"palette":"green|blue|purple|orange|teal","imageStyle":"...","reason":"..."},
   "presentation": [
     {
       "title":"...",
       "subtitle":"...",
       "bullets":["..."],
-      "visualType":"image|bar|table|process|quote|formula|none",
+      "visualType":"none|image|bar|table|process|quote|formula",
       "visualTitle":"...",
       "visualData":[],
-      "imagePrompt":"Короткий конкретный промпт для тематической иллюстрации без текста",
-      "layout":"cover|split|cards|full-image",
+      "imagePrompt":"...",
       "note":"..."
     }
   ],
@@ -443,19 +449,16 @@ presentation — это готовое содержимое каждого сл�
 }
 
 Правила презентации:
-- ровно ${slidesCount} содержательных слайдов;
-- не оставляй пустых слайдов и не используй заглушки;
+- ровно ${slidesCount} слайдов;
 - 1-й слайд: тема, ученик/класс при необходимости;
 - далее: актуальность, цель, задачи, теория, методы, практическая часть, результат, продукт, выводы, источники — адаптируй к теме;
 - не пиши "на слайде будет изображение", "можно добавить график", "здесь будет..." и подобные описания;
 - bullets должны быть готовыми короткими тезисами;
+- используй visualType=image на 4–6 содержательных слайдах, где уместна иллюстрация; для каждого такого слайда обязательно заполняй imagePrompt коротким описанием нужной картинки;
+- imagePrompt должен описывать именно тему слайда, без текста внутри изображения;
 - если нужен график, используй visualType=bar и visualData как массив объектов {"label":"...","value":число};
 - если нужна таблица, visualType=table и visualData как массив строк-массивов;
 - если нужен процесс, visualType=process и visualData как массив коротких шагов;
-- для большинства содержательных слайдов используй visualType=image и imagePrompt;
-- imagePrompt должен описывать конкретную тематическую сцену, предмет, эксперимент или инфографический объект без текста;
-- выбирай layout так, чтобы не оставалось больших пустых областей;
-- theme должен подходить к теме проекта и задавать палитру и стиль иллюстраций;
 - не выдумывай измерения, опросы и результаты. Если реальных данных нет, используй качественные выводы или явно обозначай примерные/иллюстративные данные;
 - не придумывай точные URL источников, если не уверен;
 - презентация должна быть пригодна для школьной защиты.
@@ -474,8 +477,7 @@ app.get('/api/health', (_req, res) => {
     ok: true,
     aiConfigured: Boolean(client),
     model: MODEL,
-    fontConfigured: fs.existsSync(fontPath),
-    imageModel: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1'
+    fontConfigured: fs.existsSync(fontPath)
   });
 });
 
@@ -488,19 +490,15 @@ app.post('/api/generate-project', async (req, res) => {
     const topic = clean(req.body.topic);
     const slidesCount = Math.min(Math.max(Number(req.body.slides) || 12, 5), 30);
     const extraRequirements = clean(req.body.extraRequirements);
-    const schoolRequirements = clean(req.body.schoolRequirements);
-    const schoolRequirementsName = clean(req.body.schoolRequirementsName);
 
     if (!topic) return res.status(400).json({ error: 'Введите тему проекта.' });
     if (!fs.existsSync(fontPath)) {
       return res.status(500).json({ error: 'На сервере отсутствует шрифт assets/DejaVuSans.ttf.' });
     }
 
-    const schoolRequirementsText = await extractSchoolRequirements(schoolRequirements, schoolRequirementsName);
-
     const raw = await generateWithAI({
       firstName, lastName, className, school, topic,
-      slidesCount, extraRequirements, schoolRequirements: schoolRequirementsText
+      slidesCount, extraRequirements
     });
 
     const project = {
@@ -518,13 +516,12 @@ app.post('/api/generate-project', async (req, res) => {
 
     await makeDocx(project, docxPath);
 
-    await generateSlideImages(project.presentation, topic, dir, project.theme || {});
+    await generateSlideImages(project.presentation, topic, dir);
 
     await renderPresentationPdf(
       project.presentation,
       topic,
-      presentationPath,
-      project.theme || {}
+      presentationPath
     );
 
     const defenseSections = Array.isArray(project.defense?.sections)
