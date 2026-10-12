@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -6,375 +7,806 @@
 <meta name="theme-color" content="#155eef">
 <title>Все проекты #Ian</title>
 <style>
-:root{--g:#18a66a;--gd:#087546;--gl:#e8f7ef;--d:#17231d;--m:#69766f;--bg:#f5f7f6;--w:#fff;--b:#dfe7e2}
-*{box-sizing:border-box}html{overflow-x:hidden;scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--d);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;line-height:1.5;overflow-x:hidden;-webkit-text-size-adjust:100%}
-button{font:inherit;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}.container{width:calc(100% - 30px);max-width:1100px;margin:auto}
-header{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid #e5ebe7}.hi{min-height:70px;display:flex;align-items:center;justify-content:space-between;gap:15px}.logo{display:flex;align-items:center;gap:10px;font-weight:800}.logo i{width:42px;height:42px;display:grid;place-items:center;background:#4eaa75;border-radius:13px;font-style:normal;font-size:23px}.nav{display:flex;gap:4px}.nav button{padding:10px 12px;border-radius:10px;background:transparent;font-weight:600}.nav button:hover{background:#eef7f2}.mobile-menu{display:none;padding:11px 15px;border-radius:12px;background:#edf7f1;color:var(--gd);font-weight:800}
-.hero{padding:70px 0 60px;background:radial-gradient(circle at 90% 10%,#d8f5e7,transparent 38%),#fff}.hero-content{max-width:780px}.badge{display:inline-block;margin-bottom:18px;padding:8px 14px;border-radius:30px;background:var(--gl);color:var(--gd);font-size:14px;font-weight:800}h1{margin:0 0 20px;font-size:clamp(38px,7vw,68px);line-height:1.04;letter-spacing:-2px}.green{color:var(--g)}.hero p{max-width:680px;margin:0 0 28px;color:var(--m);font-size:19px}.main-btn,.create-btn{display:inline-flex;align-items:center;justify-content:center;min-height:54px;padding:15px 24px;border-radius:14px;background:var(--g);color:#fff;font-weight:900}.free-note{margin-top:12px;color:var(--m);font-size:14px}
-section{padding:65px 0}.section-title{margin:0 0 10px;font-size:32px;line-height:1.15}.section-subtitle{margin:0 0 30px;color:var(--m);font-size:17px}
-.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px}.step{padding:22px;background:#fff;border:1px solid var(--b);border-radius:18px}.step-number{width:40px;height:40px;display:grid;place-items:center;margin-bottom:15px;border-radius:12px;background:var(--gl);color:var(--gd);font-weight:900}.step h3{margin:0 0 7px}.step p{margin:0;color:var(--m);font-size:14px}
-.generator{background:var(--d);color:#fff}.generator .section-subtitle{color:#b9c6bf}.form{max-width:850px;padding:22px;background:#fff;color:var(--d);border-radius:22px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.field{min-width:0;display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1/-1}.field label{font-size:14px;font-weight:800}
-.field input,.field textarea,.field select{display:block;width:100%;max-width:100%;min-height:52px;padding:14px;border:1px solid #dfe7e2;border-radius:13px;outline:none;background:#fff!important;color:#17231d!important;-webkit-text-fill-color:#17231d!important;caret-color:#18a66a;font:500 17px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;line-height:1.4;-webkit-appearance:none;appearance:none;user-select:text;-webkit-user-select:text;opacity:1}.field textarea{min-height:120px;resize:vertical}.field input::placeholder,.field textarea::placeholder{color:#87938d!important;-webkit-text-fill-color:#87938d!important;opacity:1}.field input:focus,.field textarea:focus,.field select:focus{border:2px solid var(--g);outline:none}.create-btn{width:100%;margin-top:18px;padding:15px}.create-btn:disabled{opacity:.65}
-.progress-box{display:none;margin-top:20px;padding:22px;background:#fff;color:var(--d);border-radius:20px}.progress-top{display:flex;justify-content:space-between;margin-bottom:10px;font-weight:900}.progress{height:12px;overflow:hidden;background:#e7eee9;border-radius:20px}.progress-bar{width:0;height:100%;background:var(--g);border-radius:20px;transition:width .15s}.progress-status{margin-top:14px;color:var(--m)}
-.project-result{display:none;margin-top:20px}.ready{padding:17px;background:#e8f7ef;border:1px solid #cceedd;border-radius:17px}.ready-title{color:var(--gd);font-size:20px;font-weight:900}.project-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}.meta{padding:11px;background:#f5f8f6;border:1px solid var(--b);border-radius:11px;overflow-wrap:anywhere}.meta b{display:block;margin-bottom:3px;color:#718078;font-size:12px}.files{margin-top:12px}.file{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;margin-top:10px;background:#f5f8f6;border-radius:13px}.file>div{min-width:0;overflow-wrap:anywhere}.file small{color:#718078}.file button{flex:0 0 auto;padding:9px 13px;border-radius:9px;background:var(--g);color:#fff;font-weight:700}.download{width:100%;margin-top:12px;padding:14px;border-radius:12px;background:var(--d);color:#fff;font-weight:900}
-.tariffs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.tariff{position:relative;padding:25px;background:#fff;border:1px solid #e0e7e3;border-radius:20px}.tariff.pro{border:2px solid var(--g);transform:translateY(-7px)}.popular-badge{position:absolute;top:0;left:0;right:0;padding:7px;background:var(--g);color:#fff;text-align:center;font-size:12px;font-weight:900}.tariff.pro h3{margin-top:25px}.tariff h3{font-size:25px}.price{margin:10px 0;font-size:35px;font-weight:900}.tariff ul{margin:18px 0;padding:0;list-style:none}.tariff li{margin:9px 0;color:#637169}.tariff li::before{content:"✓ ";color:#4eaa75;font-weight:900}
-.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.check{padding:17px;background:#fff;border:1px solid #e1e8e3;border-radius:15px}.check span{color:var(--g);font-weight:900}.bottom{padding:20px 0 35px}.support{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:25px;background:var(--g);color:#fff;border-radius:20px}.support p{margin:3px 0 0}.support button{padding:11px 15px;border-radius:10px;background:#fff;color:var(--gd);font-weight:900}.phone-tile{margin-top:12px;padding:18px;background:#fff;border:1px solid var(--b);border-radius:17px;text-align:center;font-weight:900}
-.modal{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:10px;background:rgba(0,0,0,.45)}.modal-content{position:relative;width:100%;max-width:600px;max-height:90vh;overflow:auto;padding:25px;background:#fff;border-radius:22px}.close{position:absolute;top:15px;right:15px;width:36px;height:36px;border-radius:10px;background:#eef2ef;font-size:22px}.modal h2{padding-right:45px}.modal-item{padding:15px 0;border-bottom:1px solid #e7ece9}.modal-item p{color:var(--m)}.menu-btn{width:100%;margin-top:10px;padding:14px;border-radius:12px;background:var(--g);color:#fff;font-weight:900}
-@media(max-width:750px){.container{width:calc(100% - 22px)}.hi{min-height:62px}.logo{max-width:calc(100% - 100px);font-size:14px}.logo span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.logo i{width:38px;height:38px}.nav{display:none}.mobile-menu{display:block}.hero{padding:48px 0 42px}h1{font-size:clamp(37px,11vw,55px);letter-spacing:-1px}.hero p{font-size:16px}.main-btn{width:100%}section{padding:45px 0}.steps,.tariffs,.checks{grid-template-columns:1fr}.tariff.pro{transform:none;order:2}.tariff:first-child{order:1}.tariff:last-child{order:3}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.form{padding:16px}.project-meta{grid-template-columns:1fr}.file{flex-direction:column;align-items:stretch}.file button{width:100%}.support{flex-direction:column;align-items:stretch}.support button{width:100%}.modal{align-items:flex-end;padding:0}.modal-content{max-height:90vh;border-radius:22px 22px 0 0;padding:22px}}
-@media(max-width:380px){.container{width:calc(100% - 16px)}.form{padding:13px}.mobile-menu{padding:9px 11px;font-size:14px}}
-
-/* Mobile: prevent accidental zoom on repeated/double taps */
-html, body {
-  touch-action: manipulation;
-  overscroll-behavior-x: none;
+:root {
+  --g:#2878f0;
+  --gd:#123a80;
+  --gl:#e6f2ff;
+  --d:#0b1b3a;
+  --m:#526783;
+  --bg:#f2f7ff;
+  --b:#d4e2f4;
 }
-
-button, a, input, select, textarea, label {
-  touch-action: manipulation;
+*{box-sizing:border-box}
+html{overflow-x:hidden;scroll-behavior:smooth;touch-action:manipulation}
+body{
+  margin:0;background:var(--bg);color:var(--d);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+  line-height:1.5;overflow-x:hidden;-webkit-text-size-adjust:100%;
 }
+button{font:inherit;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.container{width:calc(100% - 30px);max-width:1100px;margin:auto}
+header{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid var(--b)}
+.hi{min-height:70px;display:flex;align-items:center;justify-content:space-between;gap:15px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800}
+.logo i{width:42px;height:42px;display:grid;place-items:center;background:var(--g);border-radius:13px;font-style:normal;font-size:23px}
+.nav{display:flex;gap:4px}
+.nav button{padding:10px 12px;border-radius:10px;background:transparent;font-weight:600}
+.nav button:hover{background:var(--gl)}
+.mobile-menu{display:none;padding:11px 15px;border-radius:12px;background:var(--gl);color:var(--gd);font-weight:800}
 
+.hero{padding:70px 0 60px;background:radial-gradient(circle at 90% 10%,#cbe6ff,transparent 38%),linear-gradient(135deg,#fff,#f2f8ff)}
+.hero-content{max-width:780px}
+.badge{display:inline-block;margin-bottom:18px;padding:8px 14px;border-radius:30px;background:var(--gl);color:var(--gd);font-size:14px;font-weight:800}
+h1{margin:0 0 20px;font-size:clamp(38px,7vw,68px);line-height:1.04;letter-spacing:-2px}
+.green{color:var(--g)}
+.hero p{max-width:680px;margin:0 0 28px;color:var(--m);font-size:19px}
+.main-btn,.create-btn{display:inline-flex;align-items:center;justify-content:center;min-height:54px;padding:15px 24px;border-radius:14px;background:var(--g);color:#fff;font-weight:900}
+.free-note{margin-top:12px;color:var(--m);font-size:14px}
+section{padding:65px 0}
+.section-title{margin:0 0 10px;font-size:32px;line-height:1.15}
+.section-subtitle{margin:0 0 30px;color:var(--m);font-size:17px}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px}
+.step{padding:22px;background:#fff;border:1px solid var(--b);border-radius:18px}
+.step-number{width:40px;height:40px;display:grid;place-items:center;margin-bottom:15px;border-radius:12px;background:var(--gl);color:var(--gd);font-weight:900}
+.step h3{margin:0 0 7px}
+.step p{margin:0;color:var(--m);font-size:14px}
+
+.generator{background:linear-gradient(135deg,#0b1b3a,#123a80);color:#fff}
+.generator .section-subtitle{color:#b9c6bf}
+.form{max-width:850px;padding:22px;background:#fff;color:var(--d);border-radius:22px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.field{min-width:0;display:flex;flex-direction:column;gap:7px}
+.field.full{grid-column:1/-1}
+.field label{font-size:14px;font-weight:800}
+.field input,.field textarea,.field select{
+  display:block;width:100%;max-width:100%;min-height:52px;padding:14px;
+  border:1px solid var(--b);border-radius:13px;outline:none;background:#fff!important;
+  color:var(--d)!important;-webkit-text-fill-color:var(--d)!important;
+  caret-color:var(--g);font:500 17px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+  line-height:1.4;-webkit-appearance:none;appearance:none;user-select:text;-webkit-user-select:text;opacity:1
+}
+.field textarea{min-height:120px;resize:vertical}
+.field input::placeholder,.field textarea::placeholder{color:#8793a0!important;-webkit-text-fill-color:#8793a0!important;opacity:1}
+.field input:focus,.field textarea:focus,.field select:focus{border:2px solid var(--g)}
+.create-btn{width:100%;margin-top:18px;padding:15px}
+.create-btn:disabled{opacity:.65}
+
+.progress-box{display:none;margin-top:20px;padding:22px;background:#fff;color:var(--d);border-radius:20px}
+.progress-top{display:flex;justify-content:space-between;margin-bottom:10px;font-weight:900}
+.progress{height:12px;overflow:hidden;background:#dce9fb;border-radius:20px}
+.progress-bar{width:0;height:100%;background:var(--g);border-radius:20px;transition:width .2s}
+.progress-status{margin-top:14px;color:var(--m)}
+.project-result{display:none;margin-top:20px}
+.ready{padding:17px;background:var(--gl);border:1px solid #c4dcff;border-radius:17px}
+.ready-title{color:var(--gd);font-size:20px;font-weight:900}
+.project-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}
+.meta{padding:11px;background:var(--bg);border:1px solid var(--b);border-radius:11px;overflow-wrap:anywhere}
+.meta b{display:block;margin-bottom:3px;color:#718078;font-size:12px}
+.files{margin-top:12px}
+.file{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;margin-top:10px;background:var(--bg);border-radius:13px}
+.file>div{min-width:0;overflow-wrap:anywhere}
+.file small{color:#718078}
+.file button{flex:0 0 auto;padding:9px 13px;border-radius:9px;background:var(--g);color:#fff;font-weight:700}
+.download{width:100%;margin-top:12px;padding:14px;border-radius:12px;background:var(--d);color:#fff;font-weight:900}
+
+.tariffs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.tariff{position:relative;padding:25px;background:#fff;border:1px solid var(--b);border-radius:20px}
+.tariff.pro{border:2px solid var(--g);transform:translateY(-7px)}
+.popular-badge{position:absolute;top:0;left:0;right:0;padding:7px;background:var(--g);color:#fff;text-align:center;font-size:12px;font-weight:900}
+.tariff.pro h3{margin-top:25px}
+.tariff h3{font-size:25px}
+.price{margin:10px 0;font-size:35px;font-weight:900}
+.tariff ul{margin:18px 0;padding:0;list-style:none}
+.tariff li{margin:9px 0;color:#637169}
+.tariff li:before{content:"✓ ";color:var(--g);font-weight:900}
+.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.check{padding:17px;background:#fff;border:1px solid var(--b);border-radius:15px}
+.check span{color:var(--g);font-weight:900}
+.bottom{padding:20px 0 35px}
+.support{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:25px;background:linear-gradient(110deg,#2878f0,#123a80);color:#fff;border-radius:20px}
+.support p{margin:3px 0 0}
+.support button{padding:11px 15px;border-radius:10px;background:#fff;color:var(--gd);font-weight:900}
+.phone-tile{margin-top:12px;padding:18px;background:#fff;border:1px solid var(--b);border-radius:17px;text-align:center;font-weight:900;cursor:pointer}
+
+.modal{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:10px;background:rgba(0,0,0,.45)}
+.modal-content{position:relative;width:100%;max-width:600px;max-height:90vh;overflow:auto;padding:25px;background:#fff;border-radius:22px}
+.close{position:absolute;top:15px;right:15px;width:36px;height:36px;border-radius:10px;background:var(--gl);color:var(--gd);font-size:22px}
+.modal h2{padding-right:45px}
+.modal-item{padding:15px 0;border-bottom:1px solid #e7ece9}
+.modal-item p{color:var(--m)}
+.menu-btn{width:100%;margin-top:10px;padding:14px;border-radius:12px;background:var(--g);color:#fff;font-weight:900}
+
+.quick-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 20px}
+.tool-tile{display:flex;align-items:center;gap:13px;text-align:left;min-width:0;padding:17px;border:1px solid #cfe0f6;border-radius:16px;background:linear-gradient(135deg,#fff,#eaf4ff);color:var(--d);box-shadow:0 5px 18px rgba(18,58,128,.07)}
+.tool-icon{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;border-radius:13px;background:var(--g);color:#fff;font-size:23px}
+.tool-tile b{display:block;font-size:16px}
+.tool-tile small{display:block;margin-top:3px;color:var(--m);font-size:13px;line-height:1.35}
+.tool-tile:active{transform:scale(.99)}
+.tool-form{display:flex;flex-direction:column;gap:12px;margin-top:15px}
+.tool-form textarea,.tool-form input{width:100%;padding:13px;border:1px solid var(--b);border-radius:12px;font:inherit;color:var(--d);background:#fff}
+.tool-form textarea{min-height:115px;resize:vertical}
+.tool-output{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:14px;padding:15px;border-radius:13px;background:var(--bg);border:1px solid var(--b);display:none}
+.tool-output img{display:block;width:100%;height:auto;border-radius:10px;margin-top:10px}
+
+/* Анимация поиска изображения */
+.image-loading{display:none;min-height:190px;margin-top:14px;padding:24px;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;border:1px solid var(--b);border-radius:16px;background:radial-gradient(circle,var(--gl),#fff 75%)}
+.image-loading.active{display:flex;animation:loadingAppear .35s ease}
+.loading-orb{position:relative;width:72px;height:72px;border-radius:50%;background:conic-gradient(#2878f0,#9bceff,#8b83ff,#2878f0);box-shadow:0 0 30px #2878f044;animation:orbRotate 2.5s linear infinite}
+.loading-orb:after{content:"";position:absolute;inset:7px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#9bcaff 40%,#2878f0);animation:orbPulse 1.5s ease-in-out infinite alternate}
+.loading-title{color:var(--gd);font-weight:800}
+.loading-subtitle{color:var(--m);font-size:13px}
+.loading-dots:after{content:"...";animation:dots 1.2s steps(4,end) infinite}
+@keyframes orbRotate{to{transform:rotate(360deg)}}
+@keyframes orbPulse{from{transform:scale(.92)}to{transform:scale(1.04)}}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%,100%{content:"..."}}
+@keyframes loadingAppear{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.loading-orb,.loading-orb:after,.loading-dots:after{animation:none}}
+
+@media(max-width:750px){
+.container{width:calc(100% - 22px)}
+.hi{min-height:62px}
+.logo{max-width:calc(100% - 100px);font-size:14px}
+.logo span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logo i{width:38px;height:38px}
+.nav{display:none}
+.mobile-menu{display:block}
+.hero{padding:48px 0 42px}
+h1{font-size:clamp(37px,11vw,55px);letter-spacing:-1px}
+.hero p{font-size:16px}
+.main-btn{width:100%}
+section{padding:45px 0}
+.steps,.tariffs,.checks{grid-template-columns:1fr}
+.tariff.pro{transform:none;order:2}
+.tariff:first-child{order:1}
+.tariff:last-child{order:3}
+.grid{grid-template-columns:1fr}
+.field.full{grid-column:auto}
+.form{padding:16px}
+.project-meta{grid-template-columns:1fr}
+.file{flex-direction:column;align-items:stretch}
+.file button{width:100%}
+.support{flex-direction:column;align-items:stretch}
+.support button{width:100%}
+.modal{align-items:flex-end;padding:0}
+.modal-content{max-height:90vh;border-radius:22px 22px 0 0;padding:22px}
+.quick-tools{grid-template-columns:1fr}
+.tool-tile{padding:14px}
+}
+@media(max-width:380px){
+.container{width:calc(100% - 16px)}
+.form{padding:13px}
+.mobile-menu{padding:9px 11px;font-size:14px}
+}
 </style>
-
-<style id="mobile-no-zoom">
-html, body {
-  touch-action: manipulation;
-  overscroll-behavior-x: none;
-}
-
-button, a, input, select, textarea {
-  touch-action: manipulation;
-}
-</style>
-
-
-<style id="blue-theme-override">
-:root{--g:#2878f0;--gd:#123a80;--gl:#e6f2ff;--d:#0b1b3a;--m:#526783;--bg:#f2f7ff;--w:#fff;--b:#d4e2f4}
-header{border-bottom-color:#d7e5f8}.logo i{background:#2878f0}.nav button:hover{background:#e8f2ff}.mobile-menu{background:#e6f2ff;color:#123a80}
-.hero{background:radial-gradient(circle at 90% 10%,#cbe6ff,transparent 38%),linear-gradient(135deg,#fff,#f2f8ff)}.badge,.step-number{background:#e6f2ff;color:#123a80}
-.generator{background:linear-gradient(135deg,#0b1b3a,#123a80);color:#fff}.field input,.field textarea,.field select{border-color:#d4e2f4;color:#0b1b3a!important;-webkit-text-fill-color:#0b1b3a!important;caret-color:#2878f0}.field input:focus,.field textarea:focus,.field select:focus{border-color:#2878f0}
-.progress{background:#dce9fb}.progress-bar{background:#2878f0}.ready{background:#e6f2ff;border-color:#c4dcff}.ready-title{color:#123a80}.meta,.file{background:#f2f7ff;border-color:#d4e2f4}.file button,.create-btn,.main-btn,.menu-btn{background:#2878f0}.download{background:#0b1b3a}.tariff{border-color:#d4e2f4}.tariff.pro{border-color:#2878f0}.popular-badge{background:#2878f0}.tariff li::before,.checks .check span{color:#2878f0}.check{border-color:#d4e2f4}.support{background:linear-gradient(110deg,#2878f0,#123a80)}.support button{color:#123a80}.phone-tile{border-color:#d4e2f4}.modal-item{border-bottom-color:#dce7f5}.close{background:#e6f2ff;color:#123a80}
-.quick-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 20px}.tool-tile{display:flex;align-items:center;gap:13px;text-align:left;min-width:0;padding:17px;border:1px solid #cfe0f6;border-radius:16px;background:linear-gradient(135deg,#fff,#eaf4ff);color:#0b1b3a;box-shadow:0 5px 18px rgba(18,58,128,.07)}.tool-icon{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;border-radius:13px;background:#2878f0;color:white;font-size:23px}.tool-tile b{display:block;font-size:16px}.tool-tile small{display:block;margin-top:3px;color:#526783;font-size:13px;line-height:1.35}.tool-tile:active{transform:scale(.99)}.tool-form{display:flex;flex-direction:column;gap:12px;margin-top:15px}.tool-form textarea,.tool-form input{width:100%;padding:13px;border:1px solid #d4e2f4;border-radius:12px;font:inherit;color:#0b1b3a;background:#fff}.tool-form textarea{min-height:115px;resize:vertical}.tool-output{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:14px;padding:15px;border-radius:13px;background:#f2f7ff;border:1px solid #d4e2f4;display:none}.tool-output img{display:block;width:100%;height:auto;border-radius:10px;margin-top:10px}
-@media(max-width:600px){.quick-tools{grid-template-columns:1fr}.tool-tile{padding:14px}}
-</style>
-
 </head>
 <body>
 
-<header><div class="container hi">
-<div class="logo"><i>💡</i><span>Все проекты #Ian</span></div>
-<nav class="nav">
-<button onclick="go('how')">Как это работает</button>
-<button onclick="go('tariffs')">Тарифы</button>
-<button onclick="openModal('info')">ⓘ Информация</button>
-<button onclick="go('generator')">Создать проект</button>
-</nav>
-<button class="mobile-menu" onclick="openModal('menu')">☰ Меню</button>
-</div></header>
+<header>
+  <div class="container hi">
+    <div class="logo"><i>💡</i><span>Все проекты #Ian</span></div>
+    <nav class="nav">
+      <button onclick="scrollToId('how')">Как это работает</button>
+      <button onclick="scrollToId('tariffs')">Тарифы</button>
+      <button onclick="openModal('infoModal')">ⓘ Информация</button>
+    </nav>
+    <button class="mobile-menu" onclick="openModal('menuModal')">☰ Меню</button>
+  </div>
+</header>
 
-<section class="hero"><div class="container"><div class="hero-content">
-<div class="badge">🎁 Первая генерация — бесплатно</div>
-<h1>Создай свой <span class="green">индивидуальный проект</span></h1>
-<p>Текст + проектный продукт + презентация + защита — всё в одном готовом проекте.</p>
-<button class="main-btn" onclick="go('generator')">✨ СОЗДАТЬ ПРОЕКТ БЕСПЛАТНО</button>
-<div class="free-note">Ты вводишь тему один раз — сайт собирает весь проект целиком.</div>
-</div></div></section>
+<main>
+  <section class="hero">
+    <div class="container hero-content">
+      <div class="badge">✨ Создание школьных проектов с ИИ</div>
+      <h1>Твой проект.<br><span class="green">Без лишней рутины.</span></h1>
+      <p>Создавай индивидуальные проекты, письменные работы и презентации для школы в одном месте.</p>
+      <button class="main-btn" onclick="scrollToId('generator')">Создать проект →</button>
+      <div class="free-note">Первая генерация бесплатно. Проверь результат перед использованием.</div>
+    </div>
+  </section>
 
-<section id="how"><div class="container">
-<h2 class="section-title">Как это работает?</h2><p class="section-subtitle">Всего несколько шагов до готового проекта.</p>
-<div class="steps">
-<div class="step"><div class="step-number">1</div><h3>Вводишь тему</h3><p>Указываешь тему и данные ученика.</p></div>
-<div class="step"><div class="step-number">2</div><h3>ИИ анализирует</h3><p>Система автоматически подбирает лучшие модели.</p></div>
-<div class="step"><div class="step-number">3</div><h3>Создаём материалы</h3><p>Текст, продукт, презентация и защита.</p></div>
-<div class="step"><div class="step-number">4</div><h3>Получаешь файлы</h3><p>Всё собирается в готовый комплект.</p></div>
-</div></div></section>
+  <section id="how">
+    <div class="container">
+      <h2 class="section-title">Как это работает</h2>
+      <p class="section-subtitle">Четыре простых шага до готового проекта.</p>
+      <div class="steps">
+        <article class="step"><div class="step-number">1</div><h3>Заполни форму</h3><p>Укажи тему, класс и требования к работе.</p></article>
+        <article class="step"><div class="step-number">2</div><h3>Создай проект</h3><p>Система подготовит материалы по твоей теме.</p></article>
+        <article class="step"><div class="step-number">3</div><h3>Проверь результат</h3><p>Прочитай текст и проверь источники и факты.</p></article>
+        <article class="step"><div class="step-number">4</div><h3>Скачай файлы</h3><p>Сохрани подготовленные документы на устройство.</p></article>
+      </div>
+    </div>
+  </section>
 
-<section class="generator" id="generator"><div class="container">
-<h2 class="section-title">✨ Создать проект</h2><p class="section-subtitle">Файлы создаются прямо в браузере.</p>
-<div class="form">
-<div class="grid">
-<div class="field"><label for="firstName">Имя</label><input id="firstName" type="text" autocomplete="given-name" placeholder="Иван"></div>
-<div class="field"><label for="lastName">Фамилия</label><input id="lastName" type="text" autocomplete="family-name" placeholder="Иванов"></div>
-<div class="field"><label for="className">Класс</label><input id="className" type="text" placeholder="9А"></div>
-<div class="field"><label for="school">Школа</label><input id="school" type="text" placeholder="Необязательно"></div>
-<div class="field full"><label for="topic">Тема проекта</label><input id="topic" type="text" placeholder="Например: Снижение расхода электроэнергии"></div>
-<div class="field"><label for="slides">Количество слайдов</label><select id="slides"><option>8</option><option selected>12</option><option>15</option><option>20</option></select></div>
-<div class="field"><label for="requirementsFile">Требования школы</label><input id="requirementsFile" type="file" accept=".pdf,.doc,.docx"></div>
-<div class="field full"><label for="requirements">Дополнительные требования</label><textarea id="requirements" placeholder="Например: добавить практическую часть, таблицу, расчёты..."></textarea></div>
+  <section class="generator" id="generator">
+    <div class="container">
+      <h2 class="section-title">Создать индивидуальный проект</h2>
+      <p class="section-subtitle">Заполни поля — и подготовь материалы для школьной работы.</p>
+
+      <div class="quick-tools">
+        <button class="tool-tile" onclick="openModal('chatTool')">
+          <span class="tool-icon">💬</span>
+          <span><b>Чат с ИИ</b><small>Задавай вопросы и получай объяснения</small></span>
+        </button>
+        <button class="tool-tile" onclick="openModal('imageTool')">
+          <span class="tool-icon">🖼️</span>
+          <span><b>Поиск изображений</b><small>Подбери картинки по описанию</small></span>
+        </button>
+      </div>
+
+      <form class="form" id="projectForm" onsubmit="createProject(event)">
+        <div class="grid">
+          <div class="field">
+            <label for="firstName">Имя</label>
+            <input id="firstName" name="firstName" autocomplete="given-name" placeholder="Например, Ян" required>
+          </div>
+          <div class="field">
+            <label for="lastName">Фамилия</label>
+            <input id="lastName" name="lastName" autocomplete="family-name" placeholder="Твоя фамилия" required>
+          </div>
+          <div class="field">
+            <label for="className">Класс</label>
+            <input id="className" name="className" placeholder="Например, 9А">
+          </div>
+          <div class="field">
+            <label for="schoolName">Школа</label>
+            <input id="schoolName" name="schoolName" placeholder="Название школы">
+          </div>
+          <div class="field full">
+            <label for="topic">Тема проекта</label>
+            <textarea id="topic" name="topic" placeholder="Напиши тему и кратко объясни, о чём должен быть проект" required></textarea>
+          </div>
+          <div class="field">
+            <label for="slideCount">Количество слайдов</label>
+            <select id="slideCount" name="slideCount">
+              <option value="5">5 слайдов</option>
+              <option value="7" selected>7 слайдов</option>
+              <option value="10">10 слайдов</option>
+              <option value="12">12 слайдов</option>
+              <option value="15">15 слайдов</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="projectType">Тип работы</label>
+            <select id="projectType" name="projectType">
+              <option value="Полный индивидуальный проект">Полный проект</option>
+              <option value="Письменная работа">Только письменная работа</option>
+              <option value="Презентация">Только презентация</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label for="requirements">Дополнительные требования</label>
+            <textarea id="requirements" name="requirements" placeholder="Например: введение, цель, задачи, практическая часть, заключение и список источников"></textarea>
+          </div>
+        </div>
+        <button type="submit" class="create-btn" id="createBtn">✨ Создать проект</button>
+        <p class="free-note">Используй результат как основу: проверь содержание и адаптируй его под требования учителя.</p>
+      </form>
+
+      <div class="progress-box" id="progressBox">
+        <div class="progress-top"><span>Создаём проект</span><span id="progressPercent">0%</span></div>
+        <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="progress-status" id="progressStatus">Подготавливаем запрос...</div>
+      </div>
+
+      <div class="project-result" id="projectResult">
+        <div class="ready">
+          <div class="ready-title">✅ Результат готов</div>
+          <div id="resultSummary">Файлы проекта подготовлены.</div>
+          <div class="project-meta" id="projectMeta"></div>
+          <div class="files" id="projectFiles"></div>
+          <button class="download" id="downloadAllBtn" onclick="downloadAllFiles()">⬇️ Скачать все файлы</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tariffs">
+    <div class="container">
+      <h2 class="section-title">Тарифы</h2>
+      <p class="section-subtitle">Выбери подходящий вариант.</p>
+      <div class="tariffs">
+        <article class="tariff">
+          <h3>Mini</h3><div class="price">200 ₽</div>
+          <p>Для небольших школьных работ.</p>
+          <ul><li>3 правки проекта</li><li>Изображения из интернета</li><li>Файлы для скачивания</li></ul>
+          <button class="create-btn" onclick="selectTariff('Mini')">Выбрать Mini</button>
+        </article>
+        <article class="tariff pro">
+          <div class="popular-badge">ПОПУЛЯРНЫЙ</div>
+          <h3>Pro</h3><div class="price">500 ₽</div>
+          <p>Для более подробного проекта.</p>
+          <ul><li>5 правок проекта</li><li>50% изображений из интернета</li><li>50% сгенерированных изображений</li></ul>
+          <button class="create-btn" onclick="selectTariff('Pro')">Выбрать Pro</button>
+        </article>
+        <article class="tariff">
+          <h3>Max</h3><div class="price">1000 ₽</div>
+          <p>Расширенный вариант оформления.</p>
+          <ul><li>10 правок проекта</li><li>Все изображения сгенерированы</li><li>Файлы для скачивания</li></ul>
+          <button class="create-btn" onclick="selectTariff('Max')">Выбрать Max</button>
+        </article>
+      </div>
+      <p class="free-note">Оплата пока не подключена. Кнопки тарифов показывают выбранный вариант и не списывают деньги.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <h2 class="section-title">Перед сдачей проекта</h2>
+      <p class="section-subtitle">Несколько полезных проверок.</p>
+      <div class="checks">
+        <div class="check"><span>✓</span> Цель и задачи соответствуют теме.</div>
+        <div class="check"><span>✓</span> Практическая часть действительно выполнена.</div>
+        <div class="check"><span>✓</span> Источники существуют и подтверждают факты.</div>
+        <div class="check"><span>✓</span> Презентация совпадает с письменной работой.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="bottom">
+  <div class="container">
+    <div class="support">
+      <div><b>Все проекты #Ian</b><p>Есть вопрос или предложение?</p></div>
+      <button onclick="openSupport()">Связаться с нами</button>
+    </div>
+    <div class="phone-tile" onclick="openModal('phoneModal')">📱 Как добавить сайт на телефон?</div>
+    <p style="text-align:center;color:var(--m);font-size:13px;margin-top:22px">Материалы, созданные ИИ, необходимо проверять перед использованием.</p>
+  </div>
+</footer>
+
+<!-- Меню -->
+<div class="modal" id="menuModal">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal('menuModal')">×</button>
+    <h2>Меню</h2>
+    <button class="menu-btn" onclick="closeModal('menuModal');scrollToId('how')">Как это работает</button>
+    <button class="menu-btn" onclick="closeModal('menuModal');scrollToId('generator')">Создать проект</button>
+    <button class="menu-btn" onclick="closeModal('menuModal');scrollToId('tariffs')">Тарифы</button>
+    <button class="menu-btn" onclick="closeModal('menuModal');openModal('infoModal')">Информация</button>
+  </div>
 </div>
 
-<button class="create-btn" id="createButton" onclick="createProject()">✨ СОЗДАТЬ ПРОЕКТ БЕСПЛАТНО</button>
-<div class="quick-tools" aria-label="Дополнительные инструменты">
-<button class="tool-tile" onclick="openModal('chatTool')"><span class="tool-icon">💬</span><span><b>Спросить у ChatGPT</b><small>Задать вопрос и получить объяснение</small></span></button>
-<button class="tool-tile" onclick="openModal('imageTool')"><span class="tool-icon">🎨</span><span><b>Сгенерировать картинку</b><small>Создать изображение по описанию</small></span></button>
+<!-- Информация -->
+<div class="modal" id="infoModal">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal('infoModal')">×</button>
+    <h2>ⓘ Информация</h2>
+    <div class="modal-item"><b>Что делает сайт?</b><p>Помогает подготовить материалы для индивидуального школьного проекта.</p></div>
+    <div class="modal-item"><b>Как использовать результат?</b><p>Проверь факты, источники и требования учителя. Не сдавай непроверенный текст как собственное исследование.</p></div>
+    <div class="modal-item"><b>Создание файлов</b><p>Доступность Word, PDF и презентации зависит от ответа сервера.</p></div>
+    <div class="modal-item"><b>Оплата</b><p>Цены на странице информационные. Пока платёжная система не подключена, деньги не списываются.</p></div>
+    <button class="menu-btn" onclick="closeModal('infoModal')">Понятно</button>
+  </div>
 </div>
 
-<div class="progress-box" id="progressBox">
-<div class="progress-top"><span>Создание проекта</span><span id="percent">0%</span></div>
-<div class="progress"><div class="progress-bar" id="progressBar"></div></div>
-<div class="progress-status" id="status">🔎 Анализируем тему...</div>
-
-<div class="project-result" id="projectResult">
-<div class="ready"><div class="ready-title">✅ Проект готов — 100%</div><div id="readyTopic"></div></div>
-<div class="project-meta">
-<div class="meta"><b>Ученик</b><span id="resultName">—</span></div>
-<div class="meta"><b>Класс</b><span id="resultClass">—</span></div>
-<div class="meta"><b>Школа</b><span id="resultSchool">—</span></div>
-<div class="meta"><b>Количество слайдов</b><span id="resultSlides">—</span></div>
+<!-- Инструмент: чат -->
+<div class="modal" id="chatTool">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal('chatTool')">×</button>
+    <h2>💬 Чат с ИИ</h2>
+    <p style="color:var(--m)">Задай вопрос по учёбе или своему проекту.</p>
+    <div class="tool-form">
+      <textarea id="chatPrompt" placeholder="Например: помоги сформулировать цель проекта"></textarea>
+      <button class="create-btn" id="chatSend" onclick="askChatGPT()">Отправить вопрос</button>
+    </div>
+    <div class="tool-output" id="chatAnswer"></div>
+  </div>
 </div>
-<p style="margin-top:15px;color:#68756e;font-size:14px">Файлы созданы прямо в браузере. Их можно открыть или скачать.</p>
 
-<div class="files">
-<div class="file"><div><b>📄 Индивидуальный_проект.docx</b><br><small>Настоящий документ Word</small></div><button onclick="downloadFile('Индивидуальный_проект.docx')">Скачать</button></div>
-<div class="file"><div><b>📊 Презентация_проекта.pdf</b><br><small>Готовая презентация в PDF</small></div><button onclick="downloadFile('Презентация_проекта.pdf')">Скачать</button></div>
-<div class="file"><div><b>🎙️ Текст_защиты.pdf</b><br><small>Готовый текст защиты</small></div><button onclick="downloadFile('Текст_защиты.pdf')">Скачать</button></div>
-<div class="file"><div><b>📘 Буклет.pdf</b><br><small>Готовый проектный продукт</small></div><button onclick="downloadFile('Буклет.pdf')">Скачать</button></div>
-<button class="download" onclick="downloadAll()">📦 Скачать весь проект</button>
+<!-- Инструмент: поиск изображений -->
+<div class="modal" id="imageTool">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal('imageTool')">×</button>
+    <h2>🖼️ Поиск изображений</h2>
+    <p style="color:var(--m)">Опиши, какая картинка нужна для проекта.</p>
+    <div class="tool-form">
+      <textarea id="imagePrompt" placeholder="Например: горный пейзаж на рассвете"></textarea>
+      <button class="create-btn" id="imageSend" onclick="generatePicture()">Найти изображение</button>
+    </div>
+    <div class="image-loading" id="imageLoading" aria-live="polite">
+      <div class="loading-orb"></div>
+      <div class="loading-title">Ищем подходящие изображения<span class="loading-dots"></span></div>
+      <div class="loading-subtitle" id="imageLoadingStatus">Подбираем картинки по твоему описанию</div>
+    </div>
+    <div class="tool-output" id="imageAnswer"></div>
+  </div>
 </div>
+
+<!-- Инструкция для телефона -->
+<div class="modal" id="phoneModal">
+  <div class="modal-content">
+    <button class="close" onclick="closeModal('phoneModal')">×</button>
+    <h2>📱 Добавить сайт на телефон</h2>
+    <div class="modal-item"><b>iPhone (Safari)</b><p>1. Открой сайт в Safari.<br>2. Нажми кнопку «Поделиться».<br>3. Выбери «На экран Домой».<br>4. Нажми «Добавить».</p></div>
+    <div class="modal-item"><b>Android (Chrome)</b><p>1. Открой сайт в Chrome.<br>2. Нажми меню ⋮.<br>3. Выбери «Добавить на главный экран».</p></div>
+    <button class="menu-btn" onclick="closeModal('phoneModal')">Понятно</button>
+  </div>
 </div>
-</div>
-</div></div></section>
 
-<section><div class="container">
-<h2 class="section-title">🇷🇺 Российские требования</h2><p class="section-subtitle">Основные элементы проекта учитываются в структуре.</p>
-<div class="checks">
-<div class="check"><span>✓</span> Структура проекта</div><div class="check"><span>✓</span> Цель и задачи</div><div class="check"><span>✓</span> Презентация</div><div class="check"><span>✓</span> Текст защиты</div><div class="check"><span>✓</span> Источники и литература</div><div class="check"><span>✓</span> Связь продукта с темой</div>
-</div>
-<p style="margin-top:20px;color:#69766f;font-size:14px">⚠️ Требования конкретной школы рекомендуется проверить отдельно.</p>
-</div></section>
-
-<section id="tariffs"><div class="container">
-<h2 class="section-title">Тарифы</h2><p class="section-subtitle">Выбери подходящий вариант.</p>
-<div class="tariffs">
-<div class="tariff"><h3>Mini</h3><div class="price">200 ₽</div><ul><li>Текст проекта</li><li>Презентация</li><li>Проектный продукт</li><li>Текст защиты</li><li>3 правки</li></ul><button class="create-btn" onclick="go('generator')">Выбрать</button></div>
-<div class="tariff pro"><div class="popular-badge">🔥 Популярный</div><h3>Pro</h3><div class="price">500 ₽</div><ul><li>Текст проекта</li><li>Презентация</li><li>Проектный продукт</li><li>Текст защиты</li><li>5 правок</li></ul><button class="create-btn" onclick="go('generator')">Выбрать</button></div>
-<div class="tariff"><h3>Max</h3><div class="price">1 000 ₽</div><ul><li>Текст проекта</li><li>Презентация</li><li>Проектный продукт</li><li>Текст защиты</li><li>10 правок</li></ul><button class="create-btn" onclick="go('generator')">Выбрать</button></div>
-</div></div></section>
-
-<div class="bottom"><div class="container">
-<div class="support"><div><h3>Нужна помощь?</h3><p>Напишите нам в Telegram 💬</p></div><button onclick="window.open('https://t.me/vseproekty_bot','_blank')">Поддержка → Telegram</button></div>
-<div class="phone-tile" onclick="openModal('phone')">📱 Как добавить сайт на телефон?</div>
-</div></div>
-
-<div class="modal" id="info"><div class="modal-content"><button class="close" onclick="closeModal('info')">×</button><h2>Из чего состоит индивидуальный проект?</h2>
-<div class="modal-item"><b>1. 📄 Текстовая часть</b><p>Введение, теоретическая часть, практическая часть, заключение и источники.</p></div>
-<div class="modal-item"><b>2. 🎯 Проектный продукт</b><p>Буклет, памятка, инструкция, чек-лист, анкета, карточки и другие варианты.</p></div>
-<div class="modal-item"><b>3. 📊 Презентация</b><p>Актуальность, цель, задачи, основные идеи, практика, продукт и выводы.</p></div>
-<div class="modal-item"><b>4. 🎙️ Защита</b><p>Готовый текст выступления и ответы на возможные вопросы.</p></div>
-</div></div>
-
-<div class="modal" id="phone"><div class="modal-content"><button class="close" onclick="closeModal('phone')">×</button><h2>📱 Добавить сайт на телефон</h2>
-<div class="modal-item"><b>🍎 iPhone</b><p>1. Открой сайт в Safari.<br>2. Нажми «Поделиться».<br>3. Выбери «На экран Домой».<br>4. Нажми «Добавить».</p></div>
-<div class="modal-item"><b>🤖 Android</b><p>1. Открой сайт в Chrome.<br>2. Нажми «⋮».<br>3. Выбери «Добавить на главный экран».<br>4. Подтверди.</p></div>
-</div></div>
-
-<div class="modal" id="menu"><div class="modal-content"><button class="close" onclick="closeModal('menu')">×</button><h2>Меню</h2>
-<button class="menu-btn" onclick="closeModal('menu');go('generator')">✨ Создать проект</button>
-<button class="menu-btn" onclick="closeModal('menu');go('tariffs')">💳 Тарифы</button>
-<button class="menu-btn" onclick="closeModal('menu');openModal('info')">ⓘ Информация</button>
-</div></div>
-
-<div class="modal" id="chatTool"><div class="modal-content"><button class="close" onclick="closeModal('chatTool')">×</button><h2>💬 Спросить у ChatGPT</h2><p style="color:var(--m)">Задай вопрос — ответ появится здесь.</p><div class="tool-form"><textarea id="chatQuestion" placeholder="Например: объясни фотосинтез простыми словами..."></textarea><button class="create-btn" id="chatSend" onclick="askChatGPT()">Отправить вопрос</button></div><div class="tool-output" id="chatAnswer"></div></div></div>
-<div class="modal" id="imageTool"><div class="modal-content"><button class="close" onclick="closeModal('imageTool')">×</button><h2>🎨 Сгенерировать картинку</h2><p style="color:var(--m)">Опиши изображение, которое хочешь создать.</p><div class="tool-form"><textarea id="imagePrompt" placeholder="Например: реалистичный горный пейзаж на рассвете, без текста..."></textarea><button class="create-btn" id="imageSend" onclick="generatePicture()">Создать изображение</button></div><div class="tool-output" id="imageAnswer"></div></div></div>
 
 <script>
-let projectData=null;
-let progressTimer=null;
-let progressStarted=0;
+"use strict";
 
-function go(id){document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"});}
-function openModal(id){document.getElementById(id).style.display="flex";document.body.style.overflow="hidden";}
-function closeModal(id){document.getElementById(id).style.display="none";if(![...document.querySelectorAll(".modal")].some(x=>x.style.display==="flex"))document.body.style.overflow="";}
-document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)closeModal(m.id)}));
+const $ = id => document.getElementById(id);
 
-function val(id){return String(document.getElementById(id)?.value||"").trim();}
-function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
-
-function saveProjectState(){
-  if(!projectData)return;
-  try{
-    const state={...projectData};
-    // Файлы могут быть большими — сохраняем их отдельно в IndexedDB.
-    const withoutFiles={...state};delete withoutFiles.files;
-    sessionStorage.setItem("vseProektyProject",JSON.stringify(withoutFiles));
-    if(state.files) saveFilesToIDB(state.files);
-  }catch(e){console.warn("Не удалось сохранить проект",e);}
+function scrollToId(id) {
+  const el = $(id);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function restoreProjectState(){
-  try{
-    const raw=sessionStorage.getItem("vseProektyProject");
-    if(!raw)return;
-    projectData=JSON.parse(raw);
-    restoreFilesFromIDB().then(files=>{
-      if(files){projectData.files=files;showRestoredProject();}
-    });
-    showRestoredProject();
-  }catch(e){console.warn("Не удалось восстановить проект",e);}
+function openModal(id) {
+  const modal = $(id);
+  if (modal) modal.style.display = "flex";
 }
 
-function openProjectDB(){
-  return new Promise((resolve,reject)=>{
-    const req=indexedDB.open("vseProektyDB",1);
-    req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains("files"))req.result.createObjectStore("files");};
-    req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error);
+function closeModal(id) {
+  const modal = $(id);
+  if (modal) modal.style.display = "none";
+}
+
+document.querySelectorAll(".modal").forEach(modal => {
+  modal.addEventListener("click", event => {
+    if (event.target === modal) modal.style.display = "none";
   });
-}
-
-async function saveFilesToIDB(files){
-  try{
-    const db=await openProjectDB();
-    const tx=db.transaction("files","readwrite");
-    tx.objectStore("files").put(files,"latest");
-    tx.oncomplete=()=>db.close();
-  }catch(e){console.warn("IndexedDB unavailable",e);}
-}
-
-async function restoreFilesFromIDB(){
-  try{
-    const db=await openProjectDB();
-    return await new Promise((resolve,reject)=>{
-      const tx=db.transaction("files","readonly");
-      const req=tx.objectStore("files").get("latest");
-      req.onsuccess=()=>{db.close();resolve(req.result||null);};
-      req.onerror=()=>{db.close();reject(req.error);};
-    });
-  }catch(e){return null;}
-}
-
-function showRestoredProject(){
-  if(!projectData?.ai)return;
-  const result=document.getElementById("projectResult");
-  document.getElementById("progressBox").style.display="block";
-  document.getElementById("progressBar").style.width="100%";
-  document.getElementById("percent").textContent="100%";
-  document.getElementById("status").textContent="✅ Проект готов!";
-  document.getElementById("readyTopic").textContent="«"+projectData.topic+"»";
-  document.getElementById("resultName").textContent=([projectData.firstName,projectData.lastName].filter(Boolean).join(" ")||"Не указано");
-  document.getElementById("resultClass").textContent=projectData.className||"Не указан";
-  document.getElementById("resultSchool").textContent=projectData.school||"Не указана";
-  document.getElementById("resultSlides").textContent=projectData.slides+" слайдов";
-  result.style.display="block";
-}
-
-function animateProgress(){
-  const bar=document.getElementById("progressBar");
-  const pct=document.getElementById("percent");
-  const status=document.getElementById("status");
-  const start=performance.now();
-  progressStarted=start;
-  const stages=[[15,"🔎 Анализируем тему..."],[35,"📝 Создаём текст..."],[55,"🎯 Формируем проектный продукт..."],[75,"📊 Делаем презентацию..."],[90,"🎙️ Готовим защиту..."],[95,"⚙️ Собираем готовые файлы..."]];
-  function frame(now){
-    if(!progressTimer)return;
-    const elapsed=(now-start)/1000;
-    // Плавно идём к 95%, но никогда не зависаем на 92%.
-    const p=Math.min(95,3+92*(1-Math.exp(-elapsed/13)));
-    bar.style.width=p.toFixed(1)+"%";
-    pct.textContent=Math.floor(p)+"%";
-    let text=stages[0][1];
-    for(const stage of stages){if(p>=stage[0])text=stage[1];}
-    status.textContent=text;
-    progressTimer=requestAnimationFrame(frame);
-  }
-  progressTimer=requestAnimationFrame(frame);
-}
-
-function stopProgress(){
-  if(progressTimer){cancelAnimationFrame(progressTimer);progressTimer=null;}
-}
-
-async function askChatGPT(){
-  const question=val("chatQuestion");const out=document.getElementById("chatAnswer");const btn=document.getElementById("chatSend");
-  if(!question){out.style.display="block";out.textContent="Сначала напиши вопрос.";return;}
-  btn.disabled=true;btn.textContent="Думаю...";out.style.display="block";out.textContent="Готовлю ответ...";
-  try{const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Не удалось получить ответ.");out.textContent=d.answer||"Ответ не получен.";}catch(e){out.textContent="Ошибка: "+e.message;}finally{btn.disabled=false;btn.textContent="Отправить вопрос";}
-}
-async function generatePicture(){
-  const prompt=val("imagePrompt");const out=document.getElementById("imageAnswer");const btn=document.getElementById("imageSend");
-  if(!prompt){out.style.display="block";out.textContent="Сначала опиши картинку.";return;}
-  btn.disabled=true;btn.textContent="Создаю изображение...";out.style.display="block";out.textContent="Генерирую картинку. Это может занять до минуты...";
-  try{const r=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Не удалось создать изображение.");out.textContent="Готово!";if(d.image){const img=document.createElement("img");img.alt="Созданное изображение";img.src="data:"+(d.mime||"image/png")+";base64,"+d.image;out.appendChild(img);const a=document.createElement("a");a.href=img.src;a.download="Моя_картинка.png";a.textContent="Скачать изображение";a.style.display="inline-block";a.style.marginTop="12px";a.style.fontWeight="800";a.style.color="#123a80";out.appendChild(a);}}catch(e){out.textContent="Ошибка: "+e.message;}finally{btn.disabled=false;btn.textContent="Создать изображение";}
-}
-
-async function createProject(){
-stopProgress();
-const topic=val("topic");
-if(!topic){alert("Введите тему проекта.");document.getElementById("topic").focus();return;}
-
-projectData={
- firstName:val("firstName"),lastName:val("lastName"),className:val("className"),
- school:val("school"),topic,slides:Math.max(1,Math.min(30,Number(val("slides"))||12)),
- requirements:val("requirements"),ai:null,files:null
-};
-
-const box=document.getElementById("progressBox"),bar=document.getElementById("progressBar"),pct=document.getElementById("percent"),status=document.getElementById("status"),result=document.getElementById("projectResult"),btn=document.getElementById("createButton");
-box.style.display="block";result.style.display="none";btn.disabled=true;btn.textContent="⏳ ИИ создаёт проект...";
-bar.style.width="3%";pct.textContent="3%";status.textContent="🔎 Анализируем тему...";
-animateProgress();
-
-try{
-  const response=await fetch("/api/generate-project",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      firstName:projectData.firstName,lastName:projectData.lastName,className:projectData.className,
-      school:projectData.school,topic:projectData.topic,slides:projectData.slides,
-      extraRequirements:projectData.requirements
-    })
-  });
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok) throw new Error(data.error||"Не удалось подключиться к ИИ.");
-  if(!data.project) throw new Error("ИИ не вернул проект.");
-
-  projectData.ai=data.project;
-  projectData.files=data.files||{};
-  saveProjectState();
-  stopProgress();
-  bar.style.transition="width .7s ease";bar.style.width="100%";pct.textContent="100%";status.textContent="✅ Проект готов!";
-  document.getElementById("readyTopic").textContent="«"+projectData.topic+"»";
-  document.getElementById("resultName").textContent=([projectData.firstName,projectData.lastName].filter(Boolean).join(" ")||"Не указано");
-  document.getElementById("resultClass").textContent=projectData.className||"Не указан";
-  document.getElementById("resultSchool").textContent=projectData.school||"Не указана";
-  document.getElementById("resultSlides").textContent=projectData.slides+" слайдов";
-  result.style.display="block";btn.disabled=false;btn.textContent="🔄 СОЗДАТЬ ЕЩЁ РАЗ";
-  result.scrollIntoView({behavior:"smooth",block:"nearest"});
-}catch(error){
-  stopProgress();
-  bar.style.width="0%";pct.textContent="0%";status.textContent="❌ Не удалось создать проект";
-  btn.disabled=false;btn.textContent="✨ СОЗДАТЬ ПРОЕКТ";
-  alert(error.message||"Ошибка при создании проекта.");
-}
-}
-
-function base64ToBlob(base64,mime){
-  const binary=atob(base64);const bytes=new Uint8Array(binary.length);
-  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-  return new Blob([bytes],{type:mime});
-}
-function downloadBlob(blob,name){
-  const url=URL.createObjectURL(blob);const a=document.createElement("a");
-  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),3000);
-}
-async function downloadFile(name){
-  if(!projectData?.files){
-    const files=await restoreFilesFromIDB();
-    if(files&&projectData){projectData.files=files;}
-  }
-  const f=projectData?.files?.[name];
-  if(!f){alert("Файл ещё не готов. Сначала создай проект.");return;}
-  downloadBlob(base64ToBlob(f.base64,f.mime),name);
-}
-function downloadAll(){downloadFile("Весь_проект.zip");}
-
-window.addEventListener("pageshow",()=>{restoreProjectState();});
-window.addEventListener("popstate",()=>{restoreProjectState();});
-
-document.addEventListener("DOMContentLoaded",()=>{
- document.querySelectorAll("input,textarea,select").forEach(el=>{
-  el.disabled=false;el.readOnly=false;el.style.color="#17231d";el.style.webkitTextFillColor="#17231d";
- });
- restoreProjectState();
 });
+
+function openSupport() {
+  window.open("https://t.me/vseproekty_bot", "_blank", "noopener");
+}
+
+function selectTariff(name) {
+  alert("Выбран тариф " + name + ". Оплата пока не подключена.");
+}
+
+let progressTimer = null;
+let currentFiles = [];
+
+function setProgress(value, status) {
+  const percent = Math.max(0, Math.min(100, Math.round(value)));
+  $("progressPercent").textContent = percent + "%";
+  $("progressBar").style.width = percent + "%";
+  $("progressStatus").textContent = status;
+}
+
+function startProgress() {
+  $("progressBox").style.display = "block";
+  $("projectResult").style.display = "none";
+
+  const steps = [
+    "Подготавливаем запрос...",
+    "Создаём содержание проекта...",
+    "Готовим письменную часть...",
+    "Подготавливаем презентацию...",
+    "Формируем файлы..."
+  ];
+
+  let progress = 0;
+  let step = 0;
+  setProgress(3, steps[0]);
+
+  clearInterval(progressTimer);
+  progressTimer = setInterval(() => {
+    if (progress < 88) {
+      progress += Math.max(1, (88 - progress) * 0.045);
+      step = Math.min(steps.length - 1, Math.floor(progress / 20));
+      setProgress(progress, steps[step]);
+    }
+  }, 700);
+}
+
+function stopProgress(success, message) {
+  clearInterval(progressTimer);
+  progressTimer = null;
+  setProgress(success ? 100 : parseInt($("progressPercent").textContent, 10) || 0,
+    message || (success ? "Готово!" : "Не удалось завершить генерацию."));
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[ch]);
+}
+
+function getDownloadUrl(file) {
+  return file.url || file.downloadUrl || file.download_url || file.href || "";
+}
+
+function renderFiles(files) {
+  const box = $("projectFiles");
+  box.replaceChildren();
+  currentFiles = Array.isArray(files) ? files : [];
+
+  if (!currentFiles.length) {
+    box.textContent = "Сервер не вернул ссылки на скачивание файлов.";
+    $("downloadAllBtn").style.display = "none";
+    return;
+  }
+
+  currentFiles.forEach((file, index) => {
+    const row = document.createElement("div");
+    row.className = "file";
+
+    const info = document.createElement("div");
+    const name = document.createElement("b");
+    name.textContent = file.name || file.filename || file.title || ("Файл " + (index + 1));
+    const details = document.createElement("small");
+    details.textContent = file.description || file.type || "Файл проекта";
+    info.append(name, document.createElement("br"), details);
+
+    const url = getDownloadUrl(file);
+    const button = document.createElement("button");
+    button.textContent = "Скачать";
+    button.disabled = !url;
+
+    if (url) {
+      button.addEventListener("click", () => {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name || file.filename || "";
+        a.target = "_blank";
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+    }
+
+    row.append(info, button);
+    box.appendChild(row);
+  });
+
+  $("downloadAllBtn").style.display = currentFiles.some(getDownloadUrl) ? "block" : "none";
+}
+
+function downloadAllFiles() {
+  const files = currentFiles.filter(getDownloadUrl);
+  if (!files.length) {
+    alert("Ссылки на файлы не получены от сервера.");
+    return;
+  }
+
+  files.forEach((file, index) => {
+    setTimeout(() => {
+      const a = document.createElement("a");
+      a.href = getDownloadUrl(file);
+      a.download = file.name || file.filename || "";
+      a.target = "_blank";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }, index * 500);
+  });
+}
+
+async function createProject(event) {
+  if (event) event.preventDefault();
+
+  const btn = $("createBtn");
+  const payload = {
+    firstName: $("firstName").value.trim(),
+    lastName: $("lastName").value.trim(),
+    className: $("className").value.trim(),
+    schoolName: $("schoolName").value.trim(),
+    topic: $("topic").value.trim(),
+    slideCount: Number($("slideCount").value),
+    projectType: $("projectType").value,
+    requirements: $("requirements").value.trim()
+  };
+
+  if (!payload.firstName || !payload.lastName || !payload.topic) {
+    alert("Заполни имя, фамилию и тему проекта.");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Создаём проект...";
+  startProgress();
+
+  try {
+    const response = await fetch("/api/generate-project", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || data.message || "Ошибка сервера: " + response.status);
+    }
+
+    stopProgress(true, "Проект подготовлен.");
+
+    $("projectResult").style.display = "block";
+    $("resultSummary").textContent =
+      data.message || data.summary || "Сервер вернул результат проекта.";
+
+    const meta = $("projectMeta");
+    meta.replaceChildren();
+
+    [
+      ["Тема", payload.topic],
+      ["Ученик", payload.firstName + " " + payload.lastName],
+      ["Класс", payload.className || "Не указан"],
+      ["Школа", payload.schoolName || "Не указана"]
+    ].forEach(([label, value]) => {
+      const item = document.createElement("div");
+      item.className = "meta";
+      const b = document.createElement("b");
+      b.textContent = label;
+      const span = document.createElement("span");
+      span.textContent = value;
+      item.append(b, span);
+      meta.appendChild(item);
+    });
+
+    renderFiles(data.files || data.downloads || data.artifacts || []);
+
+    $("projectResult").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    stopProgress(false, "Возникла ошибка.");
+    $("projectResult").style.display = "block";
+    $("resultSummary").textContent = "Не удалось создать проект: " + error.message;
+    $("projectMeta").replaceChildren();
+    $("projectFiles").replaceChildren();
+    $("downloadAllBtn").style.display = "none";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "✨ Создать проект";
+  }
+}
+
+async function askChatGPT() {
+  const prompt = $("chatPrompt").value.trim();
+  const output = $("chatAnswer");
+  const btn = $("chatSend");
+
+  if (!prompt) {
+    output.style.display = "block";
+    output.textContent = "Сначала напиши вопрос.";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Думаю...";
+  output.style.display = "block";
+  output.textContent = "Отправляем вопрос...";
+
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: prompt, prompt })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Ошибка сервера.");
+
+    output.textContent =
+      data.answer || data.response || data.message || JSON.stringify(data, null, 2);
+  } catch (error) {
+    output.textContent = "Ошибка: " + error.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Отправить вопрос";
+  }
+}
+
+let imageStatusTimer = null;
+
+async function generatePicture() {
+  const prompt = $("imagePrompt").value.trim();
+  const output = $("imageAnswer");
+  const loading = $("imageLoading");
+  const status = $("imageLoadingStatus");
+  const btn = $("imageSend");
+
+  if (!prompt) {
+    output.style.display = "block";
+    output.textContent = "Сначала опиши нужное изображение.";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Ищем...";
+  output.style.display = "none";
+  output.replaceChildren();
+  loading.classList.add("active");
+  status.textContent = "Подбираем картинки по описанию";
+
+  const messages = [
+    "Подбираем картинки по описанию",
+    "Ищем подходящие изображения",
+    "Проверяем доступность изображений",
+    "Подготавливаем результат"
+  ];
+  let messageIndex = 0;
+
+  clearInterval(imageStatusTimer);
+  imageStatusTimer = setInterval(() => {
+    messageIndex = (messageIndex + 1) % messages.length;
+    status.textContent = messages[messageIndex];
+  }, 1800);
+
+  try {
+    const response = await fetch("/api/generate-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Не удалось найти изображение.");
+
+    output.style.display = "block";
+    output.replaceChildren();
+
+    // Сервер может вернуть одну картинку в base64.
+    if (data.image) {
+      const img = document.createElement("img");
+      img.alt = "Изображение по запросу";
+      img.src = "data:" + (data.mime || "image/jpeg") + ";base64," + data.image;
+      output.appendChild(img);
+
+      const a = document.createElement("a");
+      a.href = img.src;
+      a.download = "Изображение.jpg";
+      a.textContent = "Скачать изображение";
+      a.style.display = "inline-block";
+      a.style.marginTop = "12px";
+      a.style.fontWeight = "800";
+      a.style.color = "var(--gd)";
+      output.appendChild(a);
+    } else if (Array.isArray(data.images) && data.images.length) {
+      // Сервер может вернуть массив ссылок на изображения.
+      data.images.forEach((item, index) => {
+        const url = typeof item === "string" ? item : (item.url || item.src);
+        if (!url) return;
+
+        const img = document.createElement("img");
+        img.alt = item.title || ("Изображение " + (index + 1));
+        img.src = url;
+        img.loading = "lazy";
+        output.appendChild(img);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = "Открыть изображение " + (index + 1);
+        a.style.display = "inline-block";
+        a.style.marginTop = "8px";
+        output.appendChild(a);
+      });
+    } else if (data.url || data.imageUrl) {
+      const url = data.url || data.imageUrl;
+      const img = document.createElement("img");
+      img.alt = "Изображение по запросу";
+      img.src = url;
+      img.loading = "lazy";
+      output.appendChild(img);
+    } else {
+      output.textContent = data.message || "Подходящие изображения не найдены.";
+    }
+  } catch (error) {
+    output.style.display = "block";
+    output.textContent = "Ошибка: " + error.message;
+  } finally {
+    clearInterval(imageStatusTimer);
+    imageStatusTimer = null;
+    loading.classList.remove("active");
+    btn.disabled = false;
+    btn.textContent = "Найти изображение";
+  }
+}
 </script>
+</body>
+</html>
+
+
 </body>
 </html>
