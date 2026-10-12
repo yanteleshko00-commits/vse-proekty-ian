@@ -230,7 +230,74 @@ function drawVisual(doc, slide, x, y, w, h) {
   });
 }
 
+
 async function generateSlideImages(slides, topic, dir) {
+  const candidates = slides
+    .filter(s => s.visualType === 'image')
+    .slice(0, MAX_AI_IMAGES);
+
+  let downloaded = 0;
+
+  for (const slide of candidates) {
+    const searchText = [
+      slide.imagePrompt,
+      slide.title,
+      topic
+    ].filter(Boolean).join(' ');
+
+    try {
+      const params = new URLSearchParams({
+        action: 'query',
+        format: 'json',
+        generator: 'search',
+        gsrsearch: searchText.slice(0, 200),
+        gsrnamespace: '6',
+        gsrlimit: '8',
+        prop: 'imageinfo',
+        iiprop: 'url',
+        iiurlwidth: '1200'
+      });
+
+      const response = await fetch(
+        `https://commons.wikimedia.org/w/api.php?${params}`,
+        { headers: { 'User-Agent': 'VseProektyIan/1.0' } }
+      );
+
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const pages = Object.values(data.query?.pages || {});
+
+      // Ищем доступное изображение.
+      for (const page of pages) {
+        const info = page.imageinfo?.[0];
+        const imageUrl = info?.thumburl || info?.url;
+
+        if (!imageUrl || !/^https:\/\//i.test(imageUrl)) continue;
+
+        const imageResponse = await fetch(imageUrl);
+        if (!imageResponse.ok) continue;
+
+        const contentType = imageResponse.headers.get('content-type') || '';
+        if (!contentType.startsWith('image/')) continue;
+
+        const buffer = Buffer.from(await imageResponse.arrayBuffer());
+        if (buffer.length < 1000 || buffer.length > 12 * 1024 * 1024) continue;
+
+        const filePath = path.join(dir, `slide-image-${downloaded + 1}.jpg`);
+        fs.writeFileSync(filePath, buffer);
+        slide.imagePath = filePath;
+        downloaded += 1;
+        break;
+      }
+    } catch (error) {
+      console.warn('Не удалось найти изображение:', error?.message || error);
+    }
+  }
+
+  console.log(`Найдено изображений: ${downloaded}`);
+}
+
   if (!client) return;
   const candidates = slides.filter(s => s.visualType === 'image').slice(0, MAX_AI_IMAGES);
   if (!candidates.length) return;
