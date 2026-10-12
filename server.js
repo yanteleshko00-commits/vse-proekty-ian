@@ -222,98 +222,49 @@ function drawVisual(doc, slide, x, y, w, h) {
     return;
   }
 
-  // Never substitute a generic checkmark for a missing illustration.
-  // Show a quiet, topic-neutral placeholder instead; failed image slides are
-  // normally converted to text-only slides after image generation.
-  doc.fontSize(14).fillColor(activeTheme.muted).text(
-    'Иллюстрация не создана', x + 20, y + h / 2 - 8,
-    { width: w - 40, align: 'center' }
-  );
-}
-
-async function findInternetImage(query, dir, fileIndex) {
-  // Wikimedia Commons provides reusable images through its public API.
-  // Keep the source URL and title for traceability; only download raster images.
-  const api = new URL('https://commons.wikimedia.org/w/api.php');
-  api.searchParams.set('action', 'query');
-  api.searchParams.set('format', 'json');
-  api.searchParams.set('generator', 'search');
-  api.searchParams.set('gsrsearch', `filetype:bitmap ${query}`);
-  api.searchParams.set('gsrnamespace', '6');
-  api.searchParams.set('gsrlimit', '8');
-  api.searchParams.set('prop', 'imageinfo');
-  api.searchParams.set('iiprop', 'url|mime');
-  api.searchParams.set('iiurlwidth', '1600');
-
-  try {
-    const response = await fetch(api, {
-      headers: { 'User-Agent': 'VseProektyIan/1.0 (school presentation image retrieval)' },
-      signal: AbortSignal.timeout(12000)
-    });
-    if (!response.ok) return null;
-    const json = await response.json();
-    const pages = Object.values(json?.query?.pages || {});
-    for (const page of pages) {
-      const info = page?.imageinfo?.[0];
-      const imageUrl = info?.thumburl || info?.url;
-      const mime = info?.thumbmime || info?.mime || '';
-      if (!imageUrl || !/^image\/(png|jpeg|jpg|webp)$/i.test(mime)) continue;
-      const imageResponse = await fetch(imageUrl, { signal: AbortSignal.timeout(15000) });
-      if (!imageResponse.ok) continue;
-      const contentType = (imageResponse.headers.get('content-type') || '').toLowerCase();
-      if (!contentType.startsWith('image/')) continue;
-      const bytes = Buffer.from(await imageResponse.arrayBuffer());
-      if (bytes.length < 4000 || bytes.length > 12 * 1024 * 1024) continue;
-      const ext = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
-      const filePath = path.join(dir, `internet-slide-image-${fileIndex}.${ext}`);
-      fs.writeFileSync(filePath, bytes);
-      return { filePath, title: page.title || '', sourceUrl: info.descriptionurl || info.url || imageUrl };
-    }
-  } catch (error) {
-    console.warn('Не удалось найти картинку в интернете:', error?.message || error);
-  }
-  return null;
+  doc.circle(x + w / 2, y + h / 2 - 8, 44).fill(activeTheme.primary);
+  doc.fontSize(34).fillColor('#FFFFFF').text('✓', x + w / 2 - 16, y + h / 2 - 29, { width: 32, align: 'center' });
+  doc.fontSize(14).fillColor(activeTheme.muted).text('Ключевая идея проекта', x + 20, y + h / 2 + 50, {
+    width: w - 40,
+    align: 'center'
+  });
 }
 
 async function generateSlideImages(slides, topic, dir) {
+  if (!client) return;
   const candidates = slides.filter(s => s.visualType === 'image').slice(0, MAX_AI_IMAGES);
   if (!candidates.length) return;
 
   let generated = 0;
   for (const slide of candidates) {
-    const prompt = slide.imagePrompt || `Educational illustration for a school presentation about ${topic}. Topic of this slide: ${slide.title}. Clean modern academic style, no text, landscape composition.`;
-    if (client) {
-      try {
-        const result = await client.images.generate({
-          model: IMAGE_MODEL,
-          prompt,
-          size: '1536x1024',
-          quality: 'low'
-        });
-        const item = result?.data?.[0];
-        if (item?.b64_json) {
-          const filePath = path.join(dir, `slide-image-${generated + 1}.png`);
-          fs.writeFileSync(filePath, Buffer.from(item.b64_json, 'base64'));
-          slide.imagePath = filePath;
-          generated += 1;
-          continue;
-        }
-      } catch (error) {
-        console.warn('Не удалось создать изображение ИИ, ищем в интернете:', error?.message || error);
-      }
-    }
-
-    // If AI image generation is unavailable or fails, use a topic-specific
-    // raster image from Wikimedia Commons instead of repeating another slide's image.
-    const searchQuery = `${topic} ${slide.title} ${slide.imagePrompt || ''}`.slice(0, 350);
-    const internetImage = await findInternetImage(searchQuery, dir, generated + candidates.indexOf(slide) + 1);
-    if (internetImage) {
-      slide.imagePath = internetImage.filePath;
-      slide.imageSource = internetImage.sourceUrl;
+    const prompt = slide.imagePrompt || `Educational illustration for a school presentation about ${topic}. Topic of this slide: ${slide.title}. Clean modern academic style, realistic or polished editorial illustration, no text, no labels, landscape composition, suitable for a presentation.`;
+    try {
+      const result = await client.images.generate({
+        model: IMAGE_MODEL,
+        prompt,
+        size: '1536x1024',
+        quality: 'low'
+      });
+      const item = result?.data?.[0];
+      if (!item?.b64_json) continue;
+      const filePath = path.join(dir, `slide-image-${generated + 1}.png`);
+      fs.writeFileSync(filePath, Buffer.from(item.b64_json, 'base64'));
+      slide.imagePath = filePath;
       generated += 1;
-    } else {
-      // Do not render a fake checkmark or a broken-image placeholder.
-      slide.visualType = 'none';
+    } catch (error) {
+      console.warn('Не удалось создать изображение для слайда:', error?.message || error);
+    }
+  }
+
+  // Если картинок меньше, чем image-слайдов, переиспользуем уже созданные.
+  const available = slides.filter(s => s.imagePath);
+  if (available.length) {
+    let cursor = 0;
+    for (const slide of slides) {
+      if (slide.visualType === 'image' && !slide.imagePath) {
+        slide.imagePath = available[cursor % available.length].imagePath;
+        cursor += 1;
+      }
     }
   }
 }
@@ -383,16 +334,9 @@ function renderPresentationPdf(slides, topic, outputPath, design = {}) {
           .text(`${topic}  •  ${slide.number}`, 50, 90, { width: 860 });
 
         const hasVisual = slide.visualType && slide.visualType !== 'none';
-        // Vary the composition from slide to slide, while respecting the AI's
-        // chosen overall direction. This avoids one repeated split layout.
-        const layoutCycle = ['split', 'editorial', 'visual-first', 'cards', 'minimal'];
-        let layoutForSlide = activeLayout;
-        if (index > 1) {
-          const offset = Math.max(0, layoutCycle.indexOf(activeLayout));
-          layoutForSlide = layoutCycle[(offset + index - 1) % layoutCycle.length];
-        }
-        if (layoutForSlide === 'cards' && index % 2 === 0) layoutForSlide = 'split';
-        if (layoutForSlide === 'visual-first' && !hasVisual) layoutForSlide = 'minimal';
+        const layoutForSlide = activeLayout === 'cards' && index % 2 === 0
+          ? 'split'
+          : activeLayout === 'minimal' && !hasVisual ? 'minimal' : activeLayout;
         if (hasVisual && layoutForSlide === 'visual-first') {
           drawVisual(doc, slide, 55, 120, 500, 345);
           drawBulletList(doc, slide.bullets, 585, 140, 315, 5);
@@ -564,8 +508,8 @@ presentation — это готовое содержимое каждого сл�
 - используй visualType=image на 4–6 содержательных слайдах, где уместна иллюстрация; для каждого такого слайда обязательно заполняй imagePrompt коротким описанием нужной картинки;
 - не делай все слайды одинаковыми: чередуй фото/иллюстрацию, короткие тезисы, таблицу, график, цитату, формулу и последовательность шагов там, где это подходит теме;
 - избегай повторяющейся композиции: выбирай visualType и плотность текста по смыслу каждого слайда; не вставляй декоративную схему без пользы;
-- imagePrompt должен каждый раз описывать конкретный уникальный объект/сцену именно для этого слайда; не повторяй объект, ракурс или сцену на других слайдах;
-- для разных тем выбирай соответствующую визуальную подачу: научная — чистая инфографика/лабораторные фото, история — архивная/музейная атмосфера, география — карты/ландшафты, литература — книжная/редакционная, экология — природная фотография, технологии — современная предметная съёмка; меняй композицию, а не только цвет;
+- imagePrompt должен каждый раз описывать конкретный уникальный объект/сцену для этого слайда, а не общую картинку по теме;
+- для разных тем выбирай соответствующую визуальную подачу: научная — чистая инфографика/лабораторные фото, история — архивная/музейная атмосфера, география — карты/ландшафты, литература — книжная/редакционная, экология — природная фотография, технологии — современная предметная съёмка;
 - imagePrompt должен описывать именно тему слайда, без текста внутри изображения;
 - если нужен график, используй visualType=bar и visualData как массив объектов {"label":"...","value":число};
 - если нужна таблица, visualType=table и visualData как массив строк-массивов;
@@ -582,6 +526,44 @@ presentation — это готовое содержимое каждого сл�
 
   return safeJson(response.output_text);
 }
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    if (!client) return res.status(503).json({ error: 'OPENAI_API_KEY не настроен на сервере.' });
+    const question = clean(req.body.question);
+    if (!question) return res.status(400).json({ error: 'Напиши вопрос.' });
+    if (question.length > 6000) return res.status(400).json({ error: 'Вопрос слишком длинный (максимум 6000 символов).' });
+    const response = await client.responses.create({
+      model: MODEL,
+      input: `Ты полезный русскоязычный помощник. Отвечай понятно, точно и по делу. Для школьных вопросов объясняй простыми словами. Не выдумывай источники и факты.\n\nВопрос пользователя: ${question}`
+    });
+    res.json({ ok: true, answer: response.output_text || 'Не удалось получить текст ответа.' });
+  } catch (error) {
+    console.error('Ошибка /api/chat:', error?.message || error);
+    res.status(500).json({ error: error?.message || 'Не удалось получить ответ.' });
+  }
+});
+
+app.post('/api/generate-image', async (req, res) => {
+  try {
+    if (!client) return res.status(503).json({ error: 'OPENAI_API_KEY не настроен на сервере.' });
+    const prompt = clean(req.body.prompt);
+    if (!prompt) return res.status(400).json({ error: 'Опиши изображение.' });
+    if (prompt.length > 3000) return res.status(400).json({ error: 'Описание слишком длинное (максимум 3000 символов).' });
+    const result = await client.images.generate({
+      model: IMAGE_MODEL,
+      prompt: `Create one high-quality image based on this description. Do not add text, letters, logos or watermarks unless explicitly requested. Description: ${prompt}`,
+      size: '1024x1024',
+      quality: 'low'
+    });
+    const item = result?.data?.[0];
+    if (!item?.b64_json) throw new Error('Модель не вернула файл изображения. Проверь доступность модели изображений и лимиты API.');
+    res.json({ ok: true, image: item.b64_json, mime: 'image/png' });
+  } catch (error) {
+    console.error('Ошибка /api/generate-image:', error?.message || error);
+    res.status(500).json({ error: error?.message || 'Не удалось создать изображение.' });
+  }
+});
 
 app.get('/api/health', (_req, res) => {
   res.json({
