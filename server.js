@@ -564,54 +564,213 @@ app.post('/api/generate-image', async (req, res) => {
     res.status(500).json({ error: error?.message || 'Не удалось создать изображение.' });
   }
 });
-// Редактирование уже созданного проекта с помощью ИИ
-app.post("/api/edit-project", async (req, res) => {
+// Редактирование проекта и повторная сборка всех файлов
+app.post('/api/edit-project', async (req, res) => {
+  let dir;
+
   try {
-    const { project, instruction } = req.body || {};
-    if (!project || typeof project !== "object") {
-      return res.status(400).json({
+    if (!client) {
+      return res.status(503).json({
         ok: false,
-        error: "Не передан проект"
+        error: 'OPENAI_API_KEY не настроен на сервере.'
       });
     }
+
+    if (!fs.existsSync(fontPath)) {
+      return res.status(500).json({
+        ok: false,
+        error: 'На сервере отсутствует шрифт assets/DejaVuSans.ttf.'
+      });
+    }
+
+    const { project, instruction } = req.body || {};
+
+    if (!project || typeof project !== 'object' || Array.isArray(project)) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Не передан проект.'
+      });
+    }
+
     if (
-      typeof instruction !== "string" ||
+      typeof instruction !== 'string' ||
       !instruction.trim() ||
       instruction.length > 3000
     ) {
       return res.status(400).json({
         ok: false,
-        error: "Напиши, что нужно изменить (до 3000 символов)"
+        error: 'Опиши изменения (до 3000 символов).'
       });
     }
+
     const response = await client.responses.create({
       model: MODEL,
       instructions:
-        "Ты редактор школьных индивидуальных проектов. " +
-        "Измени переданный JSON проекта согласно просьбе пользователя. " +
-        "Сохрани его структуру, необходимые разделы и русский язык. " +
-        "Не выдумывай источники и факты. Верни только обновлённый JSON.",
+        'Ты редактируешь существующий школьный индивидуальный проект. ' +
+        'Внеси запрошенные изменения, сохрани остальные важные разделы. ' +
+        'Верни полный обновлённый проект в формате JSON. ' +
+        'Структура: writtenProject, product, design, presentation, defense, sources. ' +
+        'presentation должен быть массивом готовых слайдов. ' +
+        'Не выдумывай реальные результаты исследований и источники.',
       input: JSON.stringify({
         project,
         requestedChanges: instruction.trim()
       }),
       text: {
-        format: {
-          type: "json_object"
-        }
+        format: { type: 'json_object' }
       }
     });
-    const updatedProject = JSON.parse(response.output_text);
+
+    const raw = safeJson(response.output_text);
+
+    const slideCount = Math.min(
+      Math.max(
+        Array.isArray(project.presentation)
+          ? project.presentation.length
+          : 12,
+        5
+      ),
+      30
+    );
+
+    const updatedProject = {
+      ...raw,
+      design:
+        raw.design && typeof raw.design === 'object'
+          ? raw.design
+          : {},
+      presentation: normalizeSlides(raw.presentation, slideCount)
+    };
+
+    const topic = clean(
+      updatedProject.writtenProject?.title ||
+      project.writtenProject?.title,
+      'Индивидуальный проект'
+    );
+
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'vse-proekty-edit-')
+    );
+
+    const docxPath = path.join(dir, 'Индивидуальный_проект.docx');
+    const presentationPath = path.join(dir, 'Презентация_проекта.pdf');
+    const defensePath = path.join(dir, 'Текст_защиты.pdf');
+    const bookletPath = path.join(dir, 'Буклет.pdf');
+    const zipPath = path.join(dir, 'Весь_проект.zip');
+
+    await makeDocx(updatedProject, docxPath);
+
+    await generateSlideImages(updatedProject.presentation, topic, dir);
+
+    await renderPresentationPdf(
+      updatedProject.presentation,
+      topic,
+      presentationPath,
+      updatedProject.design
+    );
+
+    const defenseSections = Array.isArray(
+      updatedProject.defense?.sections
+    )
+      ? updatedProject.defense.sections
+      : [{
+          title: 'Защита',
+          text: updatedProject.defense?.text || ''
+        }];
+
+    await renderTextPdf(
+      updatedProject.defense?.title || 'Текст защиты',
+      defenseSections,
+      defensePath
+    );
+
+    await renderTextPdf(
+      updatedProject.product?.title || 'Буклет проекта',
+      [
+        {
+          title: 'Описание продукта',
+          text: updatedProject.product?.description || ''
+        },
+        {
+          title: 'Шаги выполнения',
+          text: Array.isArray(updatedProject.product?.steps)
+            ? updatedProject.product.steps.join('\n')
+            : ''
+        }
+      ],
+      bookletPath
+    );
+
+    await new Promise((resolve, reject) => {
+      const output = fs.createWriteStream(zipPath);
+      const archive = archiver('zip', {
+        zlib: { level: 9 }
+      });
+
+      output.on('close', resolve);
+      output.on('error', reject);
+      archive.on('error', reject);
+
+      archive.pipe(output);
+      archive.file(docxPath, {
+        name: 'Индивидуальный_проект.docx'
+      });
+      archive.file(presentationPath, {
+        name: 'Презентация_проекта.pdf'
+      });
+      archive.file(defensePath, {
+        name: 'Текст_защиты.pdf'
+      });
+      archive.file(bookletPath, {
+        name: 'Буклет.pdf'
+      });
+
+      archive.finalize();
+    });
+
+    const fileNames = [
+      'Индивидуальный_проект.docx',
+      'Презентация_проекта.pdf',
+      'Текст_защиты.pdf',
+      'Буклет.pdf',
+      'Весь_проект.zip'
+    ];
+
+    const files = {};
+
+    for (const name of fileNames) {
+      const filePath = path.join(dir, name);
+
+      files[name] = {
+        base64: fs.readFileSync(filePath).toString('base64'),
+        mime: name.endsWith('.docx')
+          ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          : name.endsWith('.zip')
+            ? 'application/zip'
+            : 'application/pdf'
+      };
+    }
+
     return res.json({
       ok: true,
-      project: updatedProject
+      project: updatedProject,
+      files
     });
   } catch (error) {
-    console.error("Ошибка редактирования проекта:", error);
+    console.error('Ошибка /api/edit-project:', error?.message || error);
+
     return res.status(500).json({
       ok: false,
-      error: "Не удалось изменить проект. Попробуй ещё раз."
+      error: error?.message || 'Не удалось изменить проект.'
     });
+  } finally {
+    if (dir) {
+      fs.rm(dir, { recursive: true, force: true }, error => {
+        if (error) {
+          console.warn('Не удалось удалить временные файлы:', error.message);
+        }
+      });
+    }
   }
 });
 app.get('/api/health', (_req, res) => {
