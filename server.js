@@ -564,7 +564,56 @@ app.post('/api/generate-image', async (req, res) => {
     res.status(500).json({ error: error?.message || 'Не удалось создать изображение.' });
   }
 });
-
+// Редактирование уже созданного проекта с помощью ИИ
+app.post("/api/edit-project", async (req, res) => {
+  try {
+    const { project, instruction } = req.body || {};
+    if (!project || typeof project !== "object") {
+      return res.status(400).json({
+        ok: false,
+        error: "Не передан проект"
+      });
+    }
+    if (
+      typeof instruction !== "string" ||
+      !instruction.trim() ||
+      instruction.length > 3000
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: "Напиши, что нужно изменить (до 3000 символов)"
+      });
+    }
+    const response = await client.responses.create({
+      model: MODEL,
+      instructions:
+        "Ты редактор школьных индивидуальных проектов. " +
+        "Измени переданный JSON проекта согласно просьбе пользователя. " +
+        "Сохрани его структуру, необходимые разделы и русский язык. " +
+        "Не выдумывай источники и факты. Верни только обновлённый JSON.",
+      input: JSON.stringify({
+        project,
+        requestedChanges: instruction.trim()
+      }),
+      text: {
+        format: {
+          type: "json_object"
+        }
+      }
+    });
+    const updatedProject = JSON.parse(response.output_text);
+    return res.json({
+      ok: true,
+      project: updatedProject
+    });
+  } catch (error) {
+    console.error("Ошибка редактирования проекта:", error);
+    return res.status(500).json({
+      ok: false,
+      error: "Не удалось изменить проект. Попробуй ещё раз."
+    });
+  }
+});
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
