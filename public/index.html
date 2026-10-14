@@ -122,6 +122,13 @@ header{border-bottom-color:#d7e5f8}.logo i{background:#2878f0}.nav button:hover{
 <div class="meta"><b>Количество слайдов</b><span id="resultSlides">—</span></div>
 </div>
 <p style="margin-top:15px;color:#68756e;font-size:14px">Файлы созданы прямо в браузере. Их можно открыть или скачать.</p>
+<div class="edit-project" style="margin:20px 0;padding:16px;border:1px solid #dce8df;border-radius:14px">
+  <h3>✏️ Редактировать проект</h3>
+  <p>Напиши, что нужно изменить. Например: «Добавь больше информации в практическую часть».</p>
+  <textarea id="editInstruction" rows="4" placeholder="Что изменить в проекте?" style="width:100%;box-sizing:border-box;padding:12px;border:1px solid #ccd8cf;border-radius:10px"></textarea>
+  <button type="button" id="editProjectButton" class="create-btn" onclick="editProject()">Применить изменения</button>
+  <p id="editStatus" role="status"></p>
+</div>
 
 <div class="files">
 <div class="file"><div><b>📄 Индивидуальный_проект.docx</b><br><small>Настоящий документ Word</small></div><button onclick="downloadFile('Индивидуальный_проект.docx')">Скачать</button></div>
@@ -346,6 +353,84 @@ try{
   alert(error.message||"Ошибка при создании проекта.");
 }
 }
+  extraRequirements:projectData.requirements
+    })
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok) throw new Error(data.error||"Не удалось подключиться к ИИ.");
+  if(!data.project) throw new Error("ИИ не вернул проект.");
+
+  projectData.ai=data.project;
+  projectData.files=data.files||{};
+  saveProjectState();
+  stopProgress();
+  bar.style.transition="width .7s ease";bar.style.width="100%";pct.textContent="100%";status.textContent="✅ Проект готов!";
+  document.getElementById("readyTopic").textContent="«"+projectData.topic+"»";
+  document.getElementById("resultName").textContent=([projectData.firstName,projectData.lastName].filter(Boolean).join(" ")||"Не указано");
+  document.getElementById("resultClass").textContent=projectData.className||"Не указан";
+  document.getElementById("resultSchool").textContent=projectData.school||"Не указана";
+  document.getElementById("resultSlides").textContent=projectData.slides+" слайдов";
+  result.style.display="block";btn.disabled=false;btn.textContent="🔄 СОЗДАТЬ ЕЩЁ РАЗ";
+  result.scrollIntoView({behavior:"smooth",block:"nearest"});
+}catch(error){
+  stopProgress();
+  bar.style.width="0%";pct.textContent="0%";status.textContent="❌ Не удалось создать проект";
+  btn.disabled=false;btn.textContent="✨ СОЗДАТЬ ПРОЕКТ";
+  alert(error.message||"Ошибка при создании проекта.");
+}
+}
+async function editProject(){
+  const instruction=document.getElementById("editInstruction").value.trim();
+  const status=document.getElementById("editStatus");
+  const button=document.getElementById("editProjectButton");
+
+  if(!instruction){
+    status.textContent="Напиши, что нужно изменить.";
+    return;
+  }
+  if(!projectData?.ai){
+    status.textContent="Сначала создай проект.";
+    return;
+  }
+
+  button.disabled=true;
+  status.textContent="⏳ Вношу изменения и пересоздаю файлы...";
+
+  try{
+    const response=await fetch("/api/edit-project",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        project:projectData.ai,
+        instruction:instruction
+      })
+    });
+
+    const data=await response.json().catch(()=>({}));
+
+    if(!response.ok) throw new Error(data.error||"Не удалось изменить проект.");
+    if(!data.project) throw new Error("Сервер не вернул обновлённый проект.");
+    if(!data.files) throw new Error("Сервер не вернул обновлённые файлы.");
+
+    projectData.ai=data.project;
+    projectData.files=data.files;
+
+    await saveFilesToIDB(data.files);
+    saveProjectState();
+
+    document.getElementById("editInstruction").value="";
+    status.textContent="✅ Проект обновлён! Новые файлы готовы к скачиванию.";
+
+    document.getElementById("readyTopic").textContent="«"+projectData.topic+"»";
+    document.getElementById("resultSlides").textContent=
+      (data.project.presentation?.length||projectData.slides)+" слайдов";
+
+  }catch(error){
+    status.textContent="❌ "+(error.message||"Ошибка редактирования.");
+  }finally{
+    button.disabled=false;
+  }
+}
 
 function base64ToBlob(base64,mime){
   const binary=atob(base64);const bytes=new Uint8Array(binary.length);
@@ -380,3 +465,5 @@ document.addEventListener("DOMContentLoaded",()=>{
 </script>
 </body>
 </html>
+
+
