@@ -353,32 +353,6 @@ try{
   alert(error.message||"Ошибка при создании проекта.");
 }
 }
-  extraRequirements:projectData.requirements
-    })
-  });
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok) throw new Error(data.error||"Не удалось подключиться к ИИ.");
-  if(!data.project) throw new Error("ИИ не вернул проект.");
-
-  projectData.ai=data.project;
-  projectData.files=data.files||{};
-  saveProjectState();
-  stopProgress();
-  bar.style.transition="width .7s ease";bar.style.width="100%";pct.textContent="100%";status.textContent="✅ Проект готов!";
-  document.getElementById("readyTopic").textContent="«"+projectData.topic+"»";
-  document.getElementById("resultName").textContent=([projectData.firstName,projectData.lastName].filter(Boolean).join(" ")||"Не указано");
-  document.getElementById("resultClass").textContent=projectData.className||"Не указан";
-  document.getElementById("resultSchool").textContent=projectData.school||"Не указана";
-  document.getElementById("resultSlides").textContent=projectData.slides+" слайдов";
-  result.style.display="block";btn.disabled=false;btn.textContent="🔄 СОЗДАТЬ ЕЩЁ РАЗ";
-  result.scrollIntoView({behavior:"smooth",block:"nearest"});
-}catch(error){
-  stopProgress();
-  bar.style.width="0%";pct.textContent="0%";status.textContent="❌ Не удалось создать проект";
-  btn.disabled=false;btn.textContent="✨ СОЗДАТЬ ПРОЕКТ";
-  alert(error.message||"Ошибка при создании проекта.");
-}
-}
 
 async function editProject() {
   const instruction = document.getElementById("editInstruction").value.trim();
