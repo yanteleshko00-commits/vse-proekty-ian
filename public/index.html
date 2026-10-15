@@ -379,58 +379,67 @@ try{
   alert(error.message||"Ошибка при создании проекта.");
 }
 }
-async function editProject(){
-  const instruction=document.getElementById("editInstruction").value.trim();
-  const status=document.getElementById("editStatus");
-  const button=document.getElementById("editProjectButton");
 
-  if(!instruction){
-    status.textContent="Напиши, что нужно изменить.";
-    return;
-  }
-  if(!projectData?.ai){
-    status.textContent="Сначала создай проект.";
+async function editProject() {
+  const instruction = document.getElementById("editInstruction").value.trim();
+  const status = document.getElementById("editStatus");
+  const button = document.getElementById("editProjectButton");
+
+  if (!instruction) {
+    status.textContent = "Напиши, что нужно изменить.";
     return;
   }
 
-  button.disabled=true;
-  status.textContent="⏳ Вношу изменения и пересоздаю файлы...";
+  if (!projectData?.ai) {
+    status.textContent = "Сначала создай проект.";
+    return;
+  }
 
-  try{
-    const response=await fetch("/api/edit-project",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        project:projectData.ai,
-        instruction:instruction
+  button.disabled = true;
+  status.textContent = "⏳ Вношу изменения и пересоздаю файлы...";
+
+  try {
+    const response = await fetch("/api/edit-project", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project: projectData.ai,
+        instruction: instruction
       })
     });
 
-    const data=await response.json().catch(()=>({}));
+    const data = await response.json().catch(() => ({}));
 
-    if(!response.ok) throw new Error(data.error||"Не удалось изменить проект.");
-    if(!data.project) throw new Error("Сервер не вернул обновлённый проект.");
-    if(!data.files) throw new Error("Сервер не вернул обновлённые файлы.");
+    if (!response.ok) {
+      throw new Error(data.error || "Не удалось изменить проект.");
+    }
+    if (!data.project) {
+      throw new Error("Сервер не вернул обновлённый проект.");
+    }
+    if (!data.files) {
+      throw new Error("Сервер не вернул обновлённые файлы.");
+    }
 
-    projectData.ai=data.project;
-    projectData.files=data.files;
+    projectData.ai = data.project;
+    projectData.files = data.files;
 
     await saveFilesToIDB(data.files);
     saveProjectState();
 
-    document.getElementById("editInstruction").value="";
-    status.textContent="✅ Проект обновлён! Новые файлы готовы к скачиванию.";
+    document.getElementById("editInstruction").value = "";
+    status.textContent = "✅ Проект обновлён! Новые файлы готовы к скачиванию.";
 
-    document.getElementById("readyTopic").textContent="«"+projectData.topic+"»";
-    document.getElementById("resultSlides").textContent=
-      (data.project.presentation?.length||projectData.slides)+" слайдов";
+    document.getElementById("readyTopic").textContent = "«" + projectData.topic + "»";
+    document.getElementById("resultSlides").textContent =
+      (data.project.presentation?.length || projectData.slides) + " слайдов";
 
-  }catch(error){
-    status.textContent="❌ "+(error.message||"Ошибка редактирования.");
-  }finally{
-    button.disabled=false;
+  } catch (error) {
+    status.textContent = "❌ " + (error.message || "Ошибка редактирования.");
+  } finally {
+    button.disabled = false;
   }
 }
+
 
 function base64ToBlob(base64,mime){
   const binary=atob(base64);const bytes=new Uint8Array(binary.length);
