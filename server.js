@@ -612,13 +612,16 @@ app.post('/api/edit-project', async (req, res) => {
         'Структура: writtenProject, product, design, presentation, defense, sources. ' +
         'presentation должен быть массивом готовых слайдов. ' +
         'Не выдумывай реальные результаты исследований и источники.',
-      input: JSON.stringify({
-        project,
-        requestedChanges: instruction.trim()
-      }),
-      text: {
-        format: { type: 'json_object' }
-      }
+
+input: JSON.stringify({
+  task: 'Return the result as JSON.',
+  project,
+  requestedChanges: instruction.trim()
+}),
+text: {
+  format: { type: 'json_object' }
+}
+
     });
 
     const raw = safeJson(response.output_text);
