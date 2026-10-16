@@ -332,11 +332,14 @@ function renderPresentationPdf(slides, topic, outputPath, design = {}) {
 
         doc.fontSize(11).fillColor(activeTheme.muted)
           .text(`${topic}  •  ${slide.number}`, 50, 90, { width: 860 });
+ 
+const hasVisual = slide.visualType && slide.visualType !== 'none';
 
-        const hasVisual = slide.visualType && slide.visualType !== 'none';
-        const layoutForSlide = activeLayout === 'cards' && index % 2 === 0
-          ? 'split'
-          : activeLayout === 'minimal' && !hasVisual ? 'minimal' : activeLayout;
+const layoutCycle = ['split', 'editorial', 'visual-first', 'cards', 'minimal'];
+const layoutForSlide = index === 0
+  ? 'cards'
+  : layoutCycle[(index - 1 + layoutCycle.indexOf(activeLayout)) % layoutCycle.length];
+
         if (hasVisual && layoutForSlide === 'visual-first') {
           drawVisual(doc, slide, 55, 120, 500, 345);
           drawBulletList(doc, slide.bullets, 585, 140, 315, 5);
@@ -517,6 +520,14 @@ presentation — это готовое содержимое каждого сл�
 - не выдумывай измерения, опросы и результаты. Если реальных данных нет, используй качественные выводы или явно обозначай примерные/иллюстративные данные;
 - не придумывай точные URL источников, если не уверен;
 - презентация должна быть пригодна для школьной защиты.
+- Каждый слайд должен иметь собственную композицию, соответствующую его смыслу.
+- Чередуй визуальные и текстовые слайды, не повторяй одинаковый тип визуализации подряд без необходимости.
+- Используй короткие тезисы, конкретные примеры и наглядные данные, если они доступны.
+- Выбирай спокойные, согласованные цвета; не используй больше трёх основных цветов на одном слайде.
+- Не добавляй декоративные элементы, если они мешают содержанию.
+- Не выдумывай статистику, цитаты, результаты исследований или факты ради оформления.
+- Сохраняй цель, задачи, факты и выводы проекта без изменений ради дизайна.
+
 `;
 
   const response = await client.responses.create({
