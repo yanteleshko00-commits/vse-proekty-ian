@@ -389,7 +389,6 @@ const layoutForSlide = layoutCycle.includes(slide.layout)
               });
           }
         } else if (hasVisual && layoutForSlide === 'visual-first') {
-        if (hasVisual && layoutForSlide === 'visual-first') {
           drawVisual(doc, slide, 55, 120, 500, 345);
           drawBulletList(doc, slide.bullets, 585, 140, 315, 5);
         } else if (hasVisual && layoutForSlide === 'editorial') {
