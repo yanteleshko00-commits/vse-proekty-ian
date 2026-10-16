@@ -364,7 +364,31 @@ const layoutForSlide = layoutCycle.includes(slide.layout)
       (Math.max(0, layoutCycle.indexOf(activeLayout)) + index - 1 + layoutCycle.length)
       % layoutCycle.length
     ];
+        if (layoutForSlide === 'statement') {
+          const mainText = slide.headline || slide.title;
+          doc.roundedRect(55, 125, 850, 315, 22).fill(activeTheme.soft);
+          doc.rect(55, 125, 9, 315).fill(slideAccent);
 
+          doc.font('ProjectFont')
+            .fontSize(32)
+            .fillColor(slide.background === 'dark' ? '#FFFFFF' : activeTheme.dark)
+            .text(mainText, 90, 165, {
+              width: 760,
+              height: 170,
+              lineGap: 7,
+              ellipsis: true
+            });
+
+          if (slide.emphasis) {
+            doc.fontSize(19)
+              .fillColor(slideAccent)
+              .text(slide.emphasis, 90, 355, {
+                width: 760,
+                height: 55,
+                ellipsis: true
+              });
+          }
+        } else if (hasVisual && layoutForSlide === 'visual-first') {
         if (hasVisual && layoutForSlide === 'visual-first') {
           drawVisual(doc, slide, 55, 120, 500, 345);
           drawBulletList(doc, slide.bullets, 585, 140, 315, 5);
@@ -414,7 +438,7 @@ async function renderTextPdf(title, sections, outputPath) {
     const out = fs.createWriteStream(outputPath);
     doc.pipe(out);
 
-    if (fs.existsSync(fontPath)) doc.registerFont('ProjectFont', fontPath);
+   (fs.existsSync(fontPath)) doc.registerFont('ProjectFont', fontPath);
     doc.font('ProjectFont').fontSize(22).fillColor(activeTheme.primary).text(title);
     doc.moveDown(0.7);
 
