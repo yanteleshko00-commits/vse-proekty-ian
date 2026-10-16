@@ -356,11 +356,14 @@ activeLayout = allowedLayouts.includes(design.layout)
  
 const hasVisual = slide.visualType && slide.visualType !== 'none';
 
-const layoutCycle = ['split', 'editorial', 'visual-first', 'cards', 'minimal'];
-const startLayout = Math.max(0, layoutCycle.indexOf(activeLayout));
-const layoutForSlide = layoutCycle[
-  (startLayout + index - 1 + layoutCycle.length) % layoutCycle.length
-];
+const layoutCycle = ['split', 'editorial', 'visual-first', 'cards', 'minimal', 'statement'];
+
+const layoutForSlide = layoutCycle.includes(slide.layout)
+  ? slide.layout
+  : layoutCycle[
+      (Math.max(0, layoutCycle.indexOf(activeLayout)) + index - 1 + layoutCycle.length)
+      % layoutCycle.length
+    ];
 
         if (hasVisual && layoutForSlide === 'visual-first') {
           drawVisual(doc, slide, 55, 120, 500, 345);
