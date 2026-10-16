@@ -71,6 +71,11 @@ function normalizeSlides(slides, count) {
     imagePrompt: clean(s?.imagePrompt),
     imagePath: null,
     note: clean(s?.note)
+  layout: clean(s?.layout, 'split'),
+background: clean(s?.background, 'light'),
+accent: clean(s?.accent, '#18865B'),
+headline: clean(s?.headline),
+emphasis: clean(s?.emphasis),
   }));
 
   while (result.length < count) {
