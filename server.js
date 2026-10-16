@@ -283,8 +283,10 @@ function renderPresentationPdf(slides, topic, outputPath, design = {}) {
   // AI selects a visual direction for each project; fallback is randomized.
   const requestedTheme = clean(design.palette).toLowerCase();
   activeTheme = THEMES.find(t => t.name === requestedTheme) || THEMES[Math.floor(Math.random() * THEMES.length)];
-  const allowedLayouts = ['split', 'editorial', 'visual-first', 'cards', 'minimal'];
-  activeLayout = allowedLayouts.includes(design.layout) ? design.layout : allowedLayouts[Math.floor(Math.random() * allowedLayouts.length)];
+const allowedLayouts = ['split', 'editorial', 'visual-first', 'cards', 'minimal', 'statement'];
+activeLayout = allowedLayouts.includes(design.layout)
+  ? design.layout
+  : allowedLayouts[Math.floor(Math.random() * allowedLayouts.length)];
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: [960, 540],
@@ -304,9 +306,18 @@ function renderPresentationPdf(slides, topic, outputPath, design = {}) {
     slides.forEach((slide, index) => {
       doc.addPage();
       const W = 960, H = 540;
+            const slideBackground = slide.background === 'dark'
+        ? '#172033'
+        : slide.background === 'soft'
+          ? (activeTheme.soft || '#F1F5F2')
+          : '#FFFFFF';
 
-      doc.rect(0, 0, W, H).fill('#FFFFFF');
-      doc.rect(0, 0, 960, 12).fill(activeTheme.primary);
+      const slideAccent = /^#[0-9A-Fa-f]{6}$/.test(slide.accent || '')
+        ? slide.accent
+        : activeTheme.primary;
+
+      doc.rect(0, 0, W, H).fill(slideBackground);
+      doc.rect(0, 0, W, 12).fill(slideAccent);
 
       if (index === 0) {
         if (activeTheme.cover === 'wave') {
