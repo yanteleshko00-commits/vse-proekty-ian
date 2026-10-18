@@ -563,23 +563,23 @@ presentation — это готовое содержимое каждого сл�
     "steps":["..."]
   },
   "design": {"palette":"botanical|ocean|editorial|violet|midnight|citrus", "layout":"split|editorial|visual-first|cards|minimal", "visualConcept":"краткое описание уникального художественного направления презентации"},
-  "presentation": [
-    {
-      "title":"...",
-      "subtitle":"...",
-      "bullets":["..."],
-      "visualType":"none|image|bar|table|process|quote|formula",
-      "visualTitle":"...",
-      "visualData":[],
-      "imagePrompt":"...",
-      "note":"..."
-      "layout":"split|editorial|visual-first|cards|minimal|statement",
-"background":"light|soft|dark",
-"accent":"#18865B",
-"headline":"Главная мысль слайда",
-"emphasis":"Ключевой вывод"
-    }
-  ],
+"presentation": [
+  {
+    "title": "...",
+    "subtitle": "...",
+    "bullets": ["..."],
+    "visualType": "none|image|bar|table|process|quote|formula",
+    "visualTitle": "...",
+    "visualData": [],
+    "imagePrompt": "...",
+    "note": "...",
+    "layout": "split|editorial|visual-first|cards|minimal|statement",
+    "background": "light|soft|dark",
+    "accent": "#18865B",
+    "headline": "Главная мысль слайда",
+    "emphasis": "Ключевой вывод"
+  }
+],
   "defense": {
     "title":"...",
     "sections":[
