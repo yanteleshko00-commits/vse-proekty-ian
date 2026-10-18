@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-const app = express();
+funcapp = express();
 const PORT = process.env.PORT || 3000;
 const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna';
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
@@ -54,17 +54,17 @@ function clean(value, fallback = '') {
 function normalizeSlides(slides, count) {
   const source = Array.isArray(slides) ? slides : [];
   const result = source.slice(0, count).map((s, i) => ({
-    number: i + 1,
+       number: i + 1,
     title: clean(s?.title, `Слайд ${i + 1}`),
     subtitle: clean(s?.subtitle),
     bullets: Array.isArray(s?.bullets)
-          layout: clean(s?.layout, 'split'),
-    background: clean(s?.background, 'light'),
-    accent: clean(s?.accent),
-    headline: clean(s?.headline),
-    emphasis: clean(s?.emphasis),
       ? s.bullets.map(x => clean(x)).filter(Boolean).slice(0, 6)
       : [],
+    layout: clean(s?.layout, 'split'),
+    background: clean(s?.background, 'light'),
+    accent: clean(s?.accent, '#18865B'),
+    headline: clean(s?.headline),
+    emphasis: clean(s?.emphasis),
     visualType: clean(s?.visualType, 'none'),
     visualTitle: clean(s?.visualTitle),
     visualData: s?.visualData ?? null,
