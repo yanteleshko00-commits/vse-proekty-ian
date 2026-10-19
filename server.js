@@ -426,20 +426,33 @@ const layoutForSlide = layoutCycle.includes(slide.layout)
                 ellipsis: true
               });
           }
+               } else if (hasVisual && layoutForSlide === 'editorial') {
+          drawVisual(doc, slide, 55, 130, 385, 325);
+          doc.rect(465, 130, 3, 325).fill(slideAccent);
+          drawBulletList(doc, slide.bullets, 495, 140, 400, 5);
         } else if (hasVisual && layoutForSlide === 'visual-first') {
           drawVisual(doc, slide, 55, 120, 500, 345);
           drawBulletList(doc, slide.bullets, 585, 140, 315, 5);
-        } else if (hasVisual && layoutForSlide === 'editorial') {
-          drawVisual(doc, slide, 55, 130, 385, 325);
-          doc.rect(465, 130, 3, 325).fill(activeTheme.accent);
-          drawBulletList(doc, slide.bullets, 495, 140, 400, 5);
+        } else if (layoutForSlide === 'minimal') {
+          doc.rect(55, 135, 8, 290).fill(slideAccent);
+          drawBulletList(doc, slide.bullets, 90, 150, 790, 6);
+        } else if (layoutForSlide === 'editorial') {
+          doc.rect(55, 130, 260, 330).fill(activeTheme.soft);
+          doc.font('ProjectFont')
+            .fontSize(21)
+            .fillColor(activeTheme.primary)
+            .text(slide.subtitle || 'Ключевые тезисы', 75, 155, {
+              width: 220,
+              lineGap: 5
+            });
+          drawBulletList(doc, slide.bullets, 350, 140, 540, 6);
         } else if (hasVisual) {
           drawBulletList(doc, slide.bullets, 55, 130, 430, 5);
           drawVisual(doc, slide, 520, 125, 385, 335);
-        } else if (layoutForSlide === 'minimal') {
-          doc.rect(55, 135, 8, 290).fill(activeTheme.primary);
-          drawBulletList(doc, slide.bullets, 90, 150, 790, 6);
-        } else if (layoutForSlide === 'editorial') {
+        } else {
+          drawRoundedCard(doc, 55, 125, 850, 335);
+          drawBulletList(doc, slide.bullets, 80, 155, 800, 6);
+        }
           doc.rect(55, 130, 260, 330).fill(activeTheme.soft);
           doc.font('ProjectFont').fontSize(21).fillColor(activeTheme.primary)
             .text(slide.subtitle || 'Ключевые тезисы', 75, 155, { width: 220, lineGap: 5 });
