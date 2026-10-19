@@ -354,17 +354,17 @@ activeLayout = allowedLayouts.includes(design.layout)
         doc.fontSize(11).fillColor(activeTheme.muted)
           .text(`${topic}  •  ${slide.number}`, 50, 90, { width: 860 });
  
-const hasVisual = slide.visualType && slide.visualType !== 'none';
+        const hasVisual = slide.visualType && slide.visualType !== 'none';
 
-const layoutCycle = ['split', 'editorial', 'visual-first', 'cards', 'minimal', 'statement'];
+        const layoutCycle = ['split', 'editorial', 'visual-first', 'cards', 'minimal', 'statement'];
+        const layoutForSlide = layoutCycle.includes(slide.layout)
+          ? slide.layout
+          : layoutCycle[
+              (Math.max(0, layoutCycle.indexOf(activeLayout)) + index - 1 + layoutCycle.length)
+              % layoutCycle.length
+            ];
 
-const layoutForSlide = layoutCycle.includes(slide.layout)
-  ? slide.layout
-  : layoutCycle[
-      (Math.max(0, layoutCycle.indexOf(activeLayout)) + index - 1 + layoutCycle.length)
-      % layoutCycle.length
-    ];
-                    if (layoutForSlide === 'statement') {
+        if (layoutForSlide === 'statement') {
           const mainText = slide.headline || slide.title;
 
           doc.roundedRect(55, 125, 850, 315, 22).fill(activeTheme.soft);
@@ -416,50 +416,6 @@ const layoutForSlide = layoutCycle.includes(slide.layout)
           drawRoundedCard(doc, 55, 125, 850, 335);
           drawBulletList(doc, slide.bullets, 80, 155, 800, 6);
         }
-          if (slide.emphasis) {
-            doc.fontSize(19)
-              .fillColor(slideAccent)
-              .text(slide.emphasis, 90, 355, {
-                width: 760,
-                height: 55,
-                ellipsis: true
-              });
-          }
-               } else if (hasVisual && layoutForSlide === 'editorial') {
-          drawVisual(doc, slide, 55, 130, 385, 325);
-          doc.rect(465, 130, 3, 325).fill(slideAccent);
-          drawBulletList(doc, slide.bullets, 495, 140, 400, 5);
-        } else if (hasVisual && layoutForSlide === 'visual-first') {
-          drawVisual(doc, slide, 55, 120, 500, 345);
-          drawBulletList(doc, slide.bullets, 585, 140, 315, 5);
-        } else if (layoutForSlide === 'minimal') {
-          doc.rect(55, 135, 8, 290).fill(slideAccent);
-          drawBulletList(doc, slide.bullets, 90, 150, 790, 6);
-        } else if (layoutForSlide === 'editorial') {
-          doc.rect(55, 130, 260, 330).fill(activeTheme.soft);
-          doc.font('ProjectFont')
-            .fontSize(21)
-            .fillColor(activeTheme.primary)
-            .text(slide.subtitle || 'Ключевые тезисы', 75, 155, {
-              width: 220,
-              lineGap: 5
-            });
-          drawBulletList(doc, slide.bullets, 350, 140, 540, 6);
-        } else if (hasVisual) {
-          drawBulletList(doc, slide.bullets, 55, 130, 430, 5);
-          drawVisual(doc, slide, 520, 125, 385, 335);
-        } else {
-          drawRoundedCard(doc, 55, 125, 850, 335);
-          drawBulletList(doc, slide.bullets, 80, 155, 800, 6);
-        }
-          doc.rect(55, 130, 260, 330).fill(activeTheme.soft);
-          doc.font('ProjectFont').fontSize(21).fillColor(activeTheme.primary)
-            .text(slide.subtitle || 'Ключевые тезисы', 75, 155, { width: 220, lineGap: 5 });
-          drawBulletList(doc, slide.bullets, 350, 140, 540, 6);
-        } else {
-          drawRoundedCard(doc, 55, 125, 850, 335);
-          drawBulletList(doc, slide.bullets, 80, 155, 800, 6);
-        }
 
         if (slide.subtitle) {
           doc.fontSize(12).fillColor(activeTheme.primary)
@@ -487,7 +443,7 @@ async function renderTextPdf(title, sections, outputPath) {
     const out = fs.createWriteStream(outputPath);
     doc.pipe(out);
 
-   (fs.existsSync(fontPath)) doc.registerFont('ProjectFont', fontPath);
+    if (fs.existsSync(fontPath)) doc.registerFont('ProjectFont', fontPath);
     doc.font('ProjectFont').fontSize(22).fillColor(activeTheme.primary).text(title);
     doc.moveDown(0.7);
 
