@@ -364,7 +364,7 @@ const layoutForSlide = layoutCycle.includes(slide.layout)
       (Math.max(0, layoutCycle.indexOf(activeLayout)) + index - 1 + layoutCycle.length)
       % layoutCycle.length
     ];
-             if (layoutForSlide === 'statement') {
+                    if (layoutForSlide === 'statement') {
           const mainText = slide.headline || slide.title;
 
           doc.roundedRect(55, 125, 850, 315, 22).fill(activeTheme.soft);
@@ -389,6 +389,13 @@ const layoutForSlide = layoutCycle.includes(slide.layout)
                 ellipsis: true
               });
           }
+        } else if (hasVisual && layoutForSlide === 'editorial') {
+          drawVisual(doc, slide, 55, 130, 385, 325);
+          doc.rect(465, 130, 3, 325).fill(slideAccent);
+          drawBulletList(doc, slide.bullets, 495, 140, 400, 5);
+        } else if (hasVisual && layoutForSlide === 'visual-first') {
+          drawVisual(doc, slide, 55, 120, 500, 345);
+          drawBulletList(doc, slide.bullets, 585, 140, 315, 5);
         } else if (layoutForSlide === 'minimal') {
           doc.rect(55, 135, 8, 290).fill(slideAccent);
           drawBulletList(doc, slide.bullets, 90, 150, 790, 6);
@@ -402,13 +409,6 @@ const layoutForSlide = layoutCycle.includes(slide.layout)
               lineGap: 5
             });
           drawBulletList(doc, slide.bullets, 350, 140, 540, 6);
-        } else if (hasVisual && layoutForSlide === 'visual-first') {
-          drawVisual(doc, slide, 55, 120, 500, 345);
-          drawBulletList(doc, slide.bullets, 585, 140, 315, 5);
-        } else if (hasVisual && layoutForSlide === 'editorial') {
-          drawVisual(doc, slide, 55, 130, 385, 325);
-          doc.rect(465, 130, 3, 325).fill(slideAccent);
-          drawBulletList(doc, slide.bullets, 495, 140, 400, 5);
         } else if (hasVisual) {
           drawBulletList(doc, slide.bullets, 55, 130, 430, 5);
           drawVisual(doc, slide, 520, 125, 385, 335);
@@ -416,7 +416,6 @@ const layoutForSlide = layoutCycle.includes(slide.layout)
           drawRoundedCard(doc, 55, 125, 850, 335);
           drawBulletList(doc, slide.bullets, 80, 155, 800, 6);
         }
-
           if (slide.emphasis) {
             doc.fontSize(19)
               .fillColor(slideAccent)
