@@ -788,7 +788,7 @@ text: {
 
     await generateSlideImages(updatedProject.presentation, topic, dir);
 
-    await renderPresentationPdf(
+    await derPresentationPdf(
       updatedProject.presentation,
       topic,
       presentationPath,
