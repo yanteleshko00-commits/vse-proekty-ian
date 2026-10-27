@@ -1,3 +1,4 @@
+import pptxgen from 'pptxgenjs';
 import 'dotenv/config';
 import express from 'express';
 import OpenAI from 'openai';
