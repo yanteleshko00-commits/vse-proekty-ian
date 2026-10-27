@@ -749,6 +749,7 @@ text: {
 
     const docxPath = path.join(dir, 'Индивидуальный_проект.docx');
     const presentationPath = path.join(dir, 'Презентация_проекта.pdf');
+    const pptxPath = path.join(dir, 'Презентация_проекта.pptx');
     const defensePath = path.join(dir, 'Текст_защиты.pdf');
     const bookletPath = path.join(dir, 'Буклет.pdf');
     const zipPath = path.join(dir, 'Весь_проект.zip');
@@ -763,6 +764,12 @@ text: {
       presentationPath,
       updatedProject.design
     );
+    await renderPresentationPptx(
+  updatedProject.presentation,
+  topic,
+  pptxPath,
+  updatedProject.design
+);
 
     const defenseSections = Array.isArray(
       updatedProject.defense?.sections
@@ -901,6 +908,7 @@ app.post('/api/generate-project', async (req, res) => {
     const project = {
       ...raw,
       design: raw.design && typeof raw.design === 'object' ? raw.design : {},
+      const pptxPath = path.join(dir, 'Презентация_проекта.pptx');
       presentation: normalizeSlides(raw.presentation, slidesCount)
     };
 
@@ -915,6 +923,12 @@ app.post('/api/generate-project', async (req, res) => {
     await makeDocx(project, docxPath);
 
     await generateSlideImages(project.presentation, topic, dir);
+    await renderPresentationPptx(
+  project.presentation,
+  topic,
+  pptxPath,
+  project.design
+);
 
     await renderPresentationPdf(
       project.presentation,
