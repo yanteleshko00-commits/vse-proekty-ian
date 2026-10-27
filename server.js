@@ -1,3 +1,4 @@
+import pptxgen from 'pptxgenjs';
 import 'dotenv/config';
 import express from 'express';
 import OpenAI from 'openai';
@@ -54,7 +55,7 @@ function clean(value, fallback = '') {
 function normalizeSlides(slides, count) {
   const source = Array.isArray(slides) ? slides : [];
   const result = source.slice(0, count).map((s, i) => ({
-       number: i + 1,
+    number: i + 1,
     title: clean(s?.title, `Слайд ${i + 1}`),
     subtitle: clean(s?.subtitle),
     bullets: Array.isArray(s?.bullets)
@@ -78,7 +79,7 @@ function normalizeSlides(slides, count) {
     result.push({
       number: n,
       title: `Слайд ${n}`,
-            subtitle: '',
+      subtitle: '',
       bullets: ['Материал по теме проекта.'],
       layout: 'split',
       background: 'light',
@@ -283,10 +284,10 @@ function renderPresentationPdf(slides, topic, outputPath, design = {}) {
   // AI selects a visual direction for each project; fallback is randomized.
   const requestedTheme = clean(design.palette).toLowerCase();
   activeTheme = THEMES.find(t => t.name === requestedTheme) || THEMES[Math.floor(Math.random() * THEMES.length)];
-const allowedLayouts = ['split', 'editorial', 'visual-first', 'cards', 'minimal', 'statement'];
-activeLayout = allowedLayouts.includes(design.layout)
-  ? design.layout
-  : allowedLayouts[Math.floor(Math.random() * allowedLayouts.length)];
+  const allowedLayouts = ['split', 'editorial', 'visual-first', 'cards', 'minimal', 'statement'];
+  activeLayout = allowedLayouts.includes(design.layout)
+    ? design.layout
+    : allowedLayouts[Math.floor(Math.random() * allowedLayouts.length)];
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: [960, 540],
@@ -306,7 +307,7 @@ activeLayout = allowedLayouts.includes(design.layout)
     slides.forEach((slide, index) => {
       doc.addPage();
       const W = 960, H = 540;
-            const slideBackground = slide.background === 'dark'
+      const slideBackground = slide.background === 'dark'
         ? '#172033'
         : slide.background === 'soft'
           ? (activeTheme.soft || '#F1F5F2')
@@ -353,7 +354,7 @@ activeLayout = allowedLayouts.includes(design.layout)
 
         doc.fontSize(11).fillColor(activeTheme.muted)
           .text(`${topic}  •  ${slide.number}`, 50, 90, { width: 860 });
- 
+
         const hasVisual = slide.visualType && slide.visualType !== 'none';
 
         const layoutCycle = ['split', 'editorial', 'visual-first', 'cards', 'minimal', 'statement'];
@@ -423,8 +424,6 @@ activeLayout = allowedLayouts.includes(design.layout)
         }
       }
 
-      // Брендинг показываем только на первом слайде,
-      // чтобы он не повторялся на каждом слайде.
       if (index === 0) {
         doc.fontSize(10).fillColor(activeTheme.muted)
           .text('Все проекты #Ian', 50, 515, { width: 200 });
@@ -435,6 +434,58 @@ activeLayout = allowedLayouts.includes(design.layout)
     out.on('finish', resolve);
     out.on('error', reject);
   });
+}
+async function renderPresentationPptx(slides, topic, outputPath, design = {}) {
+  const pptx = new pptxgen();
+  pptx.layout = 'LAYOUT_WIDE';
+  pptx.author = 'Все проекты #Ian';
+  pptx.subject = topic;
+  pptx.title = `Презентация — ${topic}`;
+  pptx.company = 'Все проекты #Ian';
+  pptx.lang = 'ru-RU';
+
+  const theme = THEMES.find(t => t.name === clean(design.palette).toLowerCase()) || THEMES[0];
+  pptx.theme = {
+    headFontFace: 'Aptos Display',
+    bodyFontFace: 'Aptos',
+    lang: 'ru-RU'
+  };
+  const hex = value => String(value || '').replace('#', '');
+  const safeColor = value => /^#[0-9A-Fa-f]{6}$/.test(value || '') ? hex(value) : hex(theme.primary);
+
+  for (let i = 0; i < slides.length; i++) {
+    const slideData = slides[i];
+    const slide = pptx.addSlide();
+    const bg = slideData.background === 'dark' ? '172033' : slideData.background === 'soft' ? hex(theme.soft) : 'FFFFFF';
+    const accent = safeColor(slideData.accent || theme.primary);
+    slide.background = { color: bg };
+    slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 0.12, line: { color: accent, transparency: 100 }, fill: { color: accent } });
+    const darkText = slideData.background === 'dark' ? 'FFFFFF' : hex(theme.dark);
+    const title = clean(slideData.title, `Слайд ${i + 1}`);
+
+    if (i === 0) {
+      slide.addShape(pptx.ShapeType.ellipse, { x: 9.0, y: 0.8, w: 2.5, h: 2.5, line: { color: hex(theme.soft), transparency: 100 }, fill: { color: hex(theme.soft) } });
+      slide.addText(title, { x: 0.7, y: 1.15, w: 7.8, h: 1.6, fontFace: 'Aptos Display', fontSize: 30, bold: true, color: darkText, breakLine: false, fit: 'shrink', margin: 0.04, valign: 'mid' });
+      if (slideData.subtitle) slide.addText(slideData.subtitle, { x: 0.75, y: 3.0, w: 7.7, h: 0.9, fontSize: 18, color: hex(theme.muted), fit: 'shrink', margin: 0.04, valign: 'top' });
+      slide.addText('Индивидуальный проект', { x: 0.75, y: 6.45, w: 4.8, h: 0.35, fontSize: 12, color: accent, margin: 0 });
+    } else {
+      slide.addText(title, { x: 0.55, y: 0.35, w: 12.1, h: 0.65, fontFace: 'Aptos Display', fontSize: 25, bold: true, color: darkText, fit: 'shrink', margin: 0.03, valign: 'mid' });
+      slide.addText(`${topic}  •  ${slideData.number || i + 1}`, { x: 0.58, y: 1.02, w: 12.0, h: 0.25, fontSize: 9, color: hex(theme.muted), margin: 0 });
+      const hasImage = slideData.visualType === 'image' && slideData.imagePath && fs.existsSync(slideData.imagePath);
+      const bullets = (slideData.bullets || []).filter(Boolean).slice(0, 5);
+      if (hasImage) {
+        try { slide.addImage({ path: slideData.imagePath, x: 7.15, y: 1.55, w: 5.55, h: 4.8, sizingContain: true }); } catch (_) {}
+      }
+      const textW = hasImage ? 6.15 : 12.0;
+      const bulletText = bullets.map(b => ({ text: String(b), options: { bullet: { indent: 16 }, hanging: 4, breakLine: true } }));
+      if (bulletText.length) slide.addText(bulletText, { x: 0.75, y: 1.55, w: textW, h: 4.85, fontSize: bullets.length > 4 ? 17 : 19, color: darkText, breakLine: false, paraSpaceAfterPt: 13, valign: 'mid', fit: 'shrink', margin: 0.08 });
+      else if (slideData.subtitle) slide.addText(slideData.subtitle, { x: 0.75, y: 1.65, w: textW, h: 3.8, fontSize: 20, color: darkText, fit: 'shrink', valign: 'mid', margin: 0.08 });
+      if (slideData.headline) slide.addText(slideData.headline, { x: 0.75, y: 6.25, w: 8.5, h: 0.4, fontSize: 13, bold: true, color: accent, fit: 'shrink', margin: 0 });
+      if (slideData.emphasis) slide.addText(slideData.emphasis, { x: 9.1, y: 6.25, w: 3.5, h: 0.4, fontSize: 12, bold: true, color: accent, align: 'right', fit: 'shrink', margin: 0 });
+    }
+    slide.addText('Все проекты #Ian', { x: 10.1, y: 7.15, w: 2.6, h: 0.18, fontSize: 7, color: hex(theme.muted), align: 'right', margin: 0 });
+  }
+  await pptx.writeFile({ fileName: outputPath });
 }
 
 async function renderTextPdf(title, sections, outputPath) {
@@ -606,8 +657,6 @@ presentation — это готовое содержимое каждого сл�
 - Обложка должна быть выразительной; выводы — краткими и хорошо заметными.
 - Все элементы должны помещаться в границы слайда, а текст должен оставаться читаемым.
 - Сохраняй фактическую точность и смысл школьного проекта.
-
-
 `;
 
   const response = await client.responses.create({
@@ -655,6 +704,7 @@ app.post('/api/generate-image', async (req, res) => {
     res.status(500).json({ error: error?.message || 'Не удалось создать изображение.' });
   }
 });
+
 // Редактирование проекта и повторная сборка всех файлов
 app.post('/api/edit-project', async (req, res) => {
   let dir;
@@ -703,16 +753,14 @@ app.post('/api/edit-project', async (req, res) => {
         'Структура: writtenProject, product, design, presentation, defense, sources. ' +
         'presentation должен быть массивом готовых слайдов. ' +
         'Не выдумывай реальные результаты исследований и источники.',
-
-input: JSON.stringify({
-  task: 'Return the result as JSON.',
-  project,
-  requestedChanges: instruction.trim()
-}),
-text: {
-  format: { type: 'json_object' }
-}
-
+      input: JSON.stringify({
+        task: 'Return the result as JSON.',
+        project,
+        requestedChanges: instruction.trim()
+      }),
+      text: {
+        format: { type: 'json_object' }
+      }
     });
 
     const raw = safeJson(response.output_text);
@@ -745,9 +793,9 @@ text: {
     dir = fs.mkdtempSync(
       path.join(os.tmpdir(), 'vse-proekty-edit-')
     );
-
-    const docxPath = path.join(dir, 'Индивидуальный_проект.docx');
+        const docxPath = path.join(dir, 'Индивидуальный_проект.docx');
     const presentationPath = path.join(dir, 'Презентация_проекта.pdf');
+    const pptxPath = path.join(dir, 'Презентация_проекта.pptx');
     const defensePath = path.join(dir, 'Текст_защиты.pdf');
     const bookletPath = path.join(dir, 'Буклет.pdf');
     const zipPath = path.join(dir, 'Весь_проект.zip');
@@ -761,6 +809,10 @@ text: {
       topic,
       presentationPath,
       updatedProject.design
+    );
+
+    await renderPresentationPptx(
+      updatedProject.presentation, topic, pptxPath, updatedProject.design
     );
 
     const defenseSections = Array.isArray(
@@ -812,6 +864,9 @@ text: {
       archive.file(presentationPath, {
         name: 'Презентация_проекта.pdf'
       });
+      archive.file(pptxPath, {
+        name: 'Презентация_проекта.pptx'
+      });
       archive.file(defensePath, {
         name: 'Текст_защиты.pdf'
       });
@@ -825,6 +880,7 @@ text: {
     const fileNames = [
       'Индивидуальный_проект.docx',
       'Презентация_проекта.pdf',
+      'Презентация_проекта.pptx',
       'Текст_защиты.pdf',
       'Буклет.pdf',
       'Весь_проект.zip'
@@ -839,9 +895,11 @@ text: {
         base64: fs.readFileSync(filePath).toString('base64'),
         mime: name.endsWith('.docx')
           ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-          : name.endsWith('.zip')
-            ? 'application/zip'
-            : 'application/pdf'
+          : name.endsWith('.pptx')
+            ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+            : name.endsWith('.zip')
+              ? 'application/zip'
+              : 'application/pdf'
       };
     }
 
@@ -867,6 +925,7 @@ text: {
     }
   }
 });
+
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
@@ -878,35 +937,56 @@ app.get('/api/health', (_req, res) => {
 
 app.post('/api/generate-project', async (req, res) => {
   let dir;
+
   try {
     const firstName = clean(req.body.firstName);
     const lastName = clean(req.body.lastName);
     const className = clean(req.body.className);
     const school = clean(req.body.school);
     const topic = clean(req.body.topic);
-    const slidesCount = Math.min(Math.max(Number(req.body.slides) || 12, 5), 30);
+    const slidesCount = Math.min(
+      Math.max(Number(req.body.slides) || 12, 5),
+      30
+    );
     const extraRequirements = clean(req.body.extraRequirements);
 
-    if (!topic) return res.status(400).json({ error: 'Введите тему проекта.' });
+    if (!topic) {
+      return res.status(400).json({
+        error: 'Введите тему проекта.'
+      });
+    }
+
     if (!fs.existsSync(fontPath)) {
-      return res.status(500).json({ error: 'На сервере отсутствует шрифт assets/DejaVuSans.ttf.' });
+      return res.status(500).json({
+        error: 'На сервере отсутствует шрифт assets/DejaVuSans.ttf.'
+      });
     }
 
     const raw = await generateWithAI({
-      firstName, lastName, className, school, topic,
-      slidesCount, extraRequirements
+      firstName,
+      lastName,
+      className,
+      school,
+      topic,
+      slidesCount,
+      extraRequirements
     });
 
     const project = {
       ...raw,
-      design: raw.design && typeof raw.design === 'object' ? raw.design : {},
+      design: raw.design && typeof raw.design === 'object'
+        ? raw.design
+        : {},
       presentation: normalizeSlides(raw.presentation, slidesCount)
     };
 
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vse-proekty-'));
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'vse-proekty-')
+    );
 
     const docxPath = path.join(dir, 'Индивидуальный_проект.docx');
     const presentationPath = path.join(dir, 'Презентация_проекта.pdf');
+    const pptxPath = path.join(dir, 'Презентация_проекта.pptx');
     const defensePath = path.join(dir, 'Текст_защиты.pdf');
     const bookletPath = path.join(dir, 'Буклет.pdf');
     const zipPath = path.join(dir, 'Весь_проект.zip');
@@ -922,9 +1002,19 @@ app.post('/api/generate-project', async (req, res) => {
       project.design
     );
 
+    await renderPresentationPptx(
+      project.presentation,
+      topic,
+      pptxPath,
+      project.design
+    );
+
     const defenseSections = Array.isArray(project.defense?.sections)
       ? project.defense.sections
-      : [{ title: 'Защита', text: project.defense?.text || '' }];
+      : [{
+          title: 'Защита',
+          text: project.defense?.text || ''
+        }];
 
     await renderTextPdf(
       project.defense?.title || 'Текст защиты',
@@ -935,44 +1025,73 @@ app.post('/api/generate-project', async (req, res) => {
     await renderTextPdf(
       project.product?.title || 'Буклет проекта',
       [
-        { title: 'Описание продукта', text: project.product?.description || '' },
-        { title: 'Шаги выполнения', text: Array.isArray(project.product?.steps) ? project.product.steps.join('\n') : '' }
+        {
+          title: 'Описание продукта',
+          text: project.product?.description || ''
+        },
+        {
+          title: 'Шаги выполнения',
+          text: Array.isArray(project.product?.steps)
+            ? project.product.steps.join('\n')
+            : ''
+        }
       ],
       bookletPath
     );
 
     await new Promise((resolve, reject) => {
       const output = fs.createWriteStream(zipPath);
-      const archive = archiver('zip', { zlib: { level: 9 } });
+      const archive = archiver('zip', {
+        zlib: { level: 9 }
+      });
+
       output.on('close', resolve);
       output.on('error', reject);
       archive.on('error', reject);
+
       archive.pipe(output);
-      archive.file(docxPath, { name: 'Индивидуальный_проект.docx' });
-      archive.file(presentationPath, { name: 'Презентация_проекта.pdf' });
-      archive.file(defensePath, { name: 'Текст_защиты.pdf' });
-      archive.file(bookletPath, { name: 'Буклет.pdf' });
+      archive.file(docxPath, {
+        name: 'Индивидуальный_проект.docx'
+      });
+      archive.file(presentationPath, {
+        name: 'Презентация_проекта.pdf'
+      });
+      archive.file(pptxPath, {
+        name: 'Презентация_проекта.pptx'
+      });
+      archive.file(defensePath, {
+        name: 'Текст_защиты.pdf'
+      });
+      archive.file(bookletPath, {
+        name: 'Буклет.pdf'
+      });
+
       archive.finalize();
     });
 
     const fileNames = [
       'Индивидуальный_проект.docx',
       'Презентация_проекта.pdf',
+      'Презентация_проекта.pptx',
       'Текст_защиты.pdf',
       'Буклет.pdf',
       'Весь_проект.zip'
     ];
 
     const files = {};
+
     for (const name of fileNames) {
       const p = path.join(dir, name);
+
       files[name] = {
         base64: fs.readFileSync(p).toString('base64'),
         mime: name.endsWith('.docx')
           ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-          : name.endsWith('.zip')
-            ? 'application/zip'
-            : 'application/pdf'
+          : name.endsWith('.pptx')
+            ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+            : name.endsWith('.zip')
+              ? 'application/zip'
+              : 'application/pdf'
       };
     }
 
@@ -983,6 +1102,7 @@ app.post('/api/generate-project', async (req, res) => {
     });
   } catch (error) {
     console.error(error);
+
     res.status(500).json({
       error: error?.message || 'Не удалось создать проект.'
     });
@@ -993,8 +1113,12 @@ app.post('/api/generate-project', async (req, res) => {
 
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ ok: false, error: 'Маршрут не найден.' });
+    return res.status(404).json({
+      ok: false,
+      error: 'Маршрут не найден.'
+    });
   }
+
   res.sendFile(path.join(publicDir, 'index.html'));
 });
 
