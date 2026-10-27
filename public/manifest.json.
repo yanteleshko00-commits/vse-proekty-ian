@@ -1,0 +1,16 @@
+{
+  "name": "Все проекты #Ian",
+  "short_name": "Все проекты",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#155eef",
+  "theme_color": "#155eef",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
