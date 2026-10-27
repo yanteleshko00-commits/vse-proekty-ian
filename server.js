@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-funcapp = express();
+const app = express();
 const PORT = process.env.PORT || 3000;
 const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna';
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
@@ -756,7 +756,7 @@ text: {
 
     await generateSlideImages(updatedProject.presentation, topic, dir);
 
-    await derPresentationPdf(
+    await renderPresentationPdf(
       updatedProject.presentation,
       topic,
       presentationPath,
@@ -877,6 +877,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.post('/api/generate-project', async (req, res) => {
+  let dir;
   try {
     const firstName = clean(req.body.firstName);
     const lastName = clean(req.body.lastName);
@@ -902,7 +903,7 @@ app.post('/api/generate-project', async (req, res) => {
       presentation: normalizeSlides(raw.presentation, slidesCount)
     };
 
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vse-proekty-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vse-proekty-'));
 
     const docxPath = path.join(dir, 'Индивидуальный_проект.docx');
     const presentationPath = path.join(dir, 'Презентация_проекта.pdf');
@@ -985,10 +986,15 @@ app.post('/api/generate-project', async (req, res) => {
     res.status(500).json({
       error: error?.message || 'Не удалось создать проект.'
     });
+  } finally {
+    if (dir) fs.rm(dir, { recursive: true, force: true }, () => {});
   }
 });
 
-app.use((_req, res) => {
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ ok: false, error: 'Маршрут не найден.' });
+  }
   res.sendFile(path.join(publicDir, 'index.html'));
 });
 
