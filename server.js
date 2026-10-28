@@ -344,7 +344,7 @@ function drawVisual(doc, slide, x, y, w, h) {
     });
 }
 
-async function searchWikimediaPhotos(query, limit = 10) {
+async function searchWikimediaPhotos(query, limit = 20) {
   try {
     const api = new URL('https://commons.wikimedia.org/w/api.php');
     api.searchParams.set('action', 'query');
@@ -434,9 +434,15 @@ async function chooseBestPhoto(candidates, topic, slideTitle, query) {
   )[0] || null;
 }
 
-async function downloadWikimediaPhoto(query, outputPath, topic, slideTitle) {
-  const candidates = await searchWikimediaPhotos(query, 10);
-  const chosen = await chooseBestPhoto(candidates, topic, slideTitle, query);
+async function downloadWikimediaPhoto(query, outputPath, topic, slideTitle, usedPhotos = new Set()) {
+  const candidates = await searchWikimediaPhotos(query, 20);
+  // Не допускаем повтор той же страницы Wikimedia или того же оригинального файла.
+  const freshCandidates = candidates.filter(candidate => {
+    const titleKey = clean(candidate.title).toLocaleLowerCase('ru');
+    const urlKey = clean(candidate.originalUrl || candidate.url).split('?')[0];
+    return !usedPhotos.has(`title:${titleKey}`) && !usedPhotos.has(`url:${urlKey}`);
+  });
+  const chosen = await chooseBestPhoto(freshCandidates, topic, slideTitle, query);
   if (!chosen) return null;
   try {
     const imageResponse = await fetch(chosen.url, {
@@ -449,7 +455,14 @@ async function downloadWikimediaPhoto(query, outputPath, topic, slideTitle) {
     const pathname = new URL(chosen.url).pathname.toLowerCase();
     const ext = pathname.endsWith('.png') ? '.png' : pathname.endsWith('.webp') ? '.webp' : '.jpg';
     const finalPath = outputPath.replace(/\.jpg$/i, ext);
+    // Хеш байтов не даёт повторно вставить одно и то же изображение под другим URL.
+    const crypto = await import('node:crypto');
+    const digest = crypto.createHash('sha256').update(bytes).digest('hex');
+    if (usedPhotos.has(`hash:${digest}`)) return null;
     fs.writeFileSync(finalPath, bytes);
+    usedPhotos.add(`title:${clean(chosen.title).toLocaleLowerCase('ru')}`);
+    usedPhotos.add(`url:${clean(chosen.originalUrl || chosen.url).split('?')[0]}`);
+    usedPhotos.add(`hash:${digest}`);
     return {
       path: finalPath,
       credit: [chosen.artist, chosen.license, 'Wikimedia Commons'].filter(Boolean).join(' · '),
@@ -461,22 +474,37 @@ async function downloadWikimediaPhoto(query, outputPath, topic, slideTitle) {
 }
 
 async function generateSlideImages(slides, topic, dir) {
-  // Обязательное фото на каждом слайде. По каждому слайду делаем несколько разных поисков,
-  // а vision-модель проверяет содержание и визуальное качество найденных кандидатов.
+  // У каждого слайда должно быть собственное фото. Повторно использовать уже выбранное фото запрещено.
+  const usedPhotos = new Set();
   let downloaded = 0;
   for (let index = 0; index < slides.length; index++) {
     const slide = slides[index];
     const filePath = path.join(dir, `slide-image-${index + 1}.jpg`);
     const title = clean(slide.title, `слайд ${index + 1}`);
+    const custom = clean(slide.imagePrompt);
+    // Сначала конкретная тема слайда, затем тематические запросы. Это снижает шанс получить одну и ту же общую фотографию.
     const queries = index === 0
-      ? [`${topic} ${title} high quality photo`, `${topic} real photograph`, `${topic} photography`]
-      : [`${title} photograph`, `${topic} ${title} real photo`, `${title} real life photo`, `${topic} photography`];
+      ? [
+          `${topic} ${title} high quality real photograph`,
+          `${topic} editorial photography`,
+          `${topic} professional photography`,
+          `${topic} close up photo`
+        ]
+      : [
+          `${title} ${topic} real photograph`,
+          `${title} detailed photography`,
+          `${topic} ${title} photo`,
+          `${title} in real life photograph`,
+          `${topic} editorial photo`,
+          `${topic} close up photograph`,
+          ...(custom ? [custom] : [])
+        ];
     const seenQueries = new Set();
     for (const query of queries) {
       const q = query.trim();
       if (!q || seenQueries.has(q)) continue;
       seenQueries.add(q);
-      const photo = await downloadWikimediaPhoto(q, filePath, topic, title);
+      const photo = await downloadWikimediaPhoto(q, filePath, topic, title, usedPhotos);
       if (photo) {
         slide.imagePath = photo.path;
         slide.imageCredit = photo.credit;
@@ -486,25 +514,10 @@ async function generateSlideImages(slides, topic, dir) {
       }
     }
     if (!slide.imagePath) {
-      console.warn(`Не найдено идеальное фото для слайда ${index + 1}: ${title}`);
+      console.warn(`Не найдено уникальное фото для слайда ${index + 1}: ${title}. Повтор фото запрещён.`);
     }
   }
-
-  // Гарантируем наличие картинки в итоговом файле: если для отдельного слайда поиск не нашёл
-  // подходящего кадра, используем фото по той же теме как последний резерв, вместо пустого блока.
-  const found = slides.filter(s => s.imagePath && fs.existsSync(s.imagePath));
-  if (found.length) {
-    for (const slide of slides) {
-      if (!slide.imagePath || !fs.existsSync(slide.imagePath)) {
-        const fallback = found.find(s => s !== slide) || found[0];
-        slide.imagePath = fallback.imagePath;
-        slide.imageCredit = fallback.imageCredit;
-        slide.imageSourceTitle = fallback.imageSourceTitle;
-        slide.imageFallback = true;
-      }
-    }
-  }
-  console.log(`Подобрано уникальных интернет-фото: ${downloaded} из ${slides.length} слайдов.`);
+  console.log(`Подобрано уникальных интернет-фото: ${downloaded} из ${slides.length} слайдов; повторное использование отключено.`);
 }
 
 function renderPresentationPdf(slides, topic, outputPath, design = {}) {
