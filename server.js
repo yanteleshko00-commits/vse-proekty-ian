@@ -12,9 +12,8 @@ import os from 'os';
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna';
-// Только интернет-фото; отдельная мультимодальная модель проверяет соответствие и визуальное качество.
-const VISION_MODEL = process.env.OPENAI_VISION_MODEL || 'gpt-4.1-mini';
-const IMAGE_SEARCH_TIMEOUT_MS = 15000;
+// Для презентаций используем только фотографии из интернета; генерация изображений ИИ отключена.
+const IMAGE_SEARCH_TIMEOUT_MS = 10000;
 
 const THEMES = [
   { name: 'botanical', primary: '#18865B', dark: '#12372B', soft: '#E8F5EE', card: '#F3FAF6', line: '#C9E5D5', muted: '#64756B', accent: '#D5A23D', cover: 'circle' },
@@ -344,7 +343,7 @@ function drawVisual(doc, slide, x, y, w, h) {
     });
 }
 
-async function searchWikimediaPhotos(query, limit = 20) {
+async function searchWikimediaPhotos(query, limit = 10) {
   try {
     const api = new URL('https://commons.wikimedia.org/w/api.php');
     api.searchParams.set('action', 'query');
@@ -399,21 +398,21 @@ async function chooseBestPhoto(candidates, topic, slideTitle, query) {
   if (!candidates.length) return null;
   // Ask the vision model to judge relevance and visual quality; it selects an existing
   // web photo only and never generates or edits an image.
-  if (client && candidates.length > 0) {
+  if (client && candidates.length > 1) {
     try {
       const sample = candidates.slice(0, 6);
       const content = [{
         type: 'text',
-        text: `Выбери ЛУЧШУЮ реальную фотографию для школьного слайда. Тема проекта: "${topic}". Заголовок слайда: "${slideTitle}". Поисковый запрос: "${query}". Оцени каждое фото по шкале 0–10: соответствие конкретному слайду, эстетика/композиция, резкость, пригодность для крупного показа. Отклоняй скриншоты сайтов/Википедии, интерфейсы ноутбуков, случайные предметы, логотипы, водяные знаки, коллажи с текстом и низкокачественные кадры. Выбирай только если оценка не ниже 7/10 и фото действительно иллюстрирует слайд. Если ни одно не подходит, верни suitable false, чтобы сервер выполнил новый поиск. JSON: {"index":0,"suitable":true,"score":8,"reason":"коротко"}. Индексы начинаются с 0.`
+        text: `Выбери ЛУЧШУЮ реальную фотографию для школьного слайда. Тема проекта: "${topic}". Заголовок слайда: "${slideTitle}". Поисковый запрос: "${query}". Оцени каждое фото по соответствию теме (главное), качеству композиции, чёткости, современному виду и пригодности для красивой презентации. Отклоняй скриншоты сайтов/Википедии, интерфейсы ноутбуков, случайные нерелевантные предметы, логотипы, водяные знаки и изображения с большим количеством текста. Если все варианты плохие или нерелевантные, верни index 0 и suitable false. Верни только JSON: {"index":0,"suitable":true,"reason":"коротко"}. Индексы вариантов начинаются с 0.`
       }];
       for (let i = 0; i < sample.length; i++) {
         content.push({ type: 'text', text: `Вариант ${i}. Имя файла: ${sample[i].title}` });
-        content.push({ type: 'image_url', image_url: { url: sample[i].url, detail: 'high' } });
+        content.push({ type: 'image_url', image_url: { url: sample[i].url, detail: 'low' } });
       }
       const response = await client.chat.completions.create({
-        model: VISION_MODEL,
+        model: MODEL,
         messages: [
-          { role: 'system', content: 'Ты строгий арт-директор учебных презентаций и эксперт по визуальному качеству фотографий. Оценивай реальные изображения, которые приложены к сообщению. Не придумывай изображения. Отвечай только JSON.' },
+          { role: 'system', content: 'Ты эксперт по визуальному качеству изображений. Оценивай только предоставленные фотографии. Не придумывай новые изображения. Отвечай только JSON.' },
           { role: 'user', content }
         ],
         max_tokens: 120
@@ -434,15 +433,9 @@ async function chooseBestPhoto(candidates, topic, slideTitle, query) {
   )[0] || null;
 }
 
-async function downloadWikimediaPhoto(query, outputPath, topic, slideTitle, usedPhotos = new Set()) {
-  const candidates = await searchWikimediaPhotos(query, 20);
-  // Не допускаем повтор той же страницы Wikimedia или того же оригинального файла.
-  const freshCandidates = candidates.filter(candidate => {
-    const titleKey = clean(candidate.title).toLocaleLowerCase('ru');
-    const urlKey = clean(candidate.originalUrl || candidate.url).split('?')[0];
-    return !usedPhotos.has(`title:${titleKey}`) && !usedPhotos.has(`url:${urlKey}`);
-  });
-  const chosen = await chooseBestPhoto(freshCandidates, topic, slideTitle, query);
+async function downloadWikimediaPhoto(query, outputPath, topic, slideTitle) {
+  const candidates = await searchWikimediaPhotos(query, 10);
+  const chosen = await chooseBestPhoto(candidates, topic, slideTitle, query);
   if (!chosen) return null;
   try {
     const imageResponse = await fetch(chosen.url, {
@@ -455,14 +448,7 @@ async function downloadWikimediaPhoto(query, outputPath, topic, slideTitle, used
     const pathname = new URL(chosen.url).pathname.toLowerCase();
     const ext = pathname.endsWith('.png') ? '.png' : pathname.endsWith('.webp') ? '.webp' : '.jpg';
     const finalPath = outputPath.replace(/\.jpg$/i, ext);
-    // Хеш байтов не даёт повторно вставить одно и то же изображение под другим URL.
-    const crypto = await import('node:crypto');
-    const digest = crypto.createHash('sha256').update(bytes).digest('hex');
-    if (usedPhotos.has(`hash:${digest}`)) return null;
     fs.writeFileSync(finalPath, bytes);
-    usedPhotos.add(`title:${clean(chosen.title).toLocaleLowerCase('ru')}`);
-    usedPhotos.add(`url:${clean(chosen.originalUrl || chosen.url).split('?')[0]}`);
-    usedPhotos.add(`hash:${digest}`);
     return {
       path: finalPath,
       credit: [chosen.artist, chosen.license, 'Wikimedia Commons'].filter(Boolean).join(' · '),
@@ -474,37 +460,22 @@ async function downloadWikimediaPhoto(query, outputPath, topic, slideTitle, used
 }
 
 async function generateSlideImages(slides, topic, dir) {
-  // У каждого слайда должно быть собственное фото. Повторно использовать уже выбранное фото запрещено.
-  const usedPhotos = new Set();
+  // Aim for photos on nearly every slide. For each slide, search multiple query variants
+  // and use vision analysis to reject visually weak or irrelevant results.
   let downloaded = 0;
   for (let index = 0; index < slides.length; index++) {
     const slide = slides[index];
     const filePath = path.join(dir, `slide-image-${index + 1}.jpg`);
-    const title = clean(slide.title, `слайд ${index + 1}`);
-    const custom = clean(slide.imagePrompt);
-    // Сначала конкретная тема слайда, затем тематические запросы. Это снижает шанс получить одну и ту же общую фотографию.
+    const specific = clean(slide.imagePrompt) || `${topic} ${slide.title}`;
     const queries = index === 0
-      ? [
-          `${topic} ${title} high quality real photograph`,
-          `${topic} editorial photography`,
-          `${topic} professional photography`,
-          `${topic} close up photo`
-        ]
-      : [
-          `${title} ${topic} real photograph`,
-          `${title} detailed photography`,
-          `${topic} ${title} photo`,
-          `${title} in real life photograph`,
-          `${topic} editorial photo`,
-          `${topic} close up photograph`,
-          ...(custom ? [custom] : [])
-        ];
+      ? [`${topic} ${slide.title} photograph`, `${topic} real photo`, `${topic} photography`]
+      : [`${specific} photo`, `${topic} ${slide.title} photograph`, `${slide.title} real photo`, `${topic} photography`];
     const seenQueries = new Set();
     for (const query of queries) {
       const q = query.trim();
       if (!q || seenQueries.has(q)) continue;
       seenQueries.add(q);
-      const photo = await downloadWikimediaPhoto(q, filePath, topic, title, usedPhotos);
+      const photo = await downloadWikimediaPhoto(q, filePath, topic, slide.title);
       if (photo) {
         slide.imagePath = photo.path;
         slide.imageCredit = photo.credit;
@@ -514,10 +485,19 @@ async function generateSlideImages(slides, topic, dir) {
       }
     }
     if (!slide.imagePath) {
-      console.warn(`Не найдено уникальное фото для слайда ${index + 1}: ${title}. Повтор фото запрещён.`);
+      console.warn(`Не найдено подходящее интернет-фото для слайда ${index + 1}: ${slide.title}`);
     }
   }
-  console.log(`Подобрано уникальных интернет-фото: ${downloaded} из ${slides.length} слайдов; повторное использование отключено.`);
+  // Reuse only for the cover as a last resort; never silently fill the whole deck with duplicates.
+  if (slides[0] && !slides[0].imagePath) {
+    const other = slides.slice(1).find(s => s.imagePath);
+    if (other) {
+      slides[0].imagePath = other.imagePath;
+      slides[0].imageCredit = other.imageCredit;
+      slides[0].imageSourceTitle = other.imageSourceTitle;
+    }
+  }
+  console.log(`Подобрано интернет-фото: ${downloaded} из ${slides.length} слайдов.`);
 }
 
 function renderPresentationPdf(slides, topic, outputPath, design = {}) {
@@ -1254,12 +1234,13 @@ async function buildProjectFiles(project, topic, dir) {
     slides[0].layout = 'visual-first';
     slides[0].imagePrompt = `${topic} ${slides[0].title} real high-quality landscape photograph, visually striking, suitable as a presentation cover; no screenshots, no logos, no text overlays`;
   }
-  // Фото обязательно на каждом слайде. Для остальных слайдов используем компоновки,
-  // которые реально отображают фото рядом с тезисами; не оставляем statement/minimal без фото.
+  // Make the downloaded photos visible in the actual layouts. Keep meaningful charts,
+  // tables, processes and quotes, but turn most otherwise text-only slides into photo slides.
   slides.forEach((slide, index) => {
-    slide.visualType = 'image';
-    slide.visualTitle = '';
-    if (index > 0 && ['statement', 'minimal', ''].includes(String(slide.layout || '').toLowerCase())) slide.layout = 'split';
+    if (index > 0 && index % 5 !== 4 && (!slide.visualType || slide.visualType === 'none')) {
+      slide.visualType = 'image';
+      if (!slide.layout || slide.layout === 'minimal') slide.layout = 'split';
+    }
   });
 
   await generateSlideImages(slides, topic, dir);
