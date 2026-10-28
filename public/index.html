@@ -144,10 +144,10 @@ header{border-bottom-color:#d7e5f8}.logo i{background:#2878f0}.nav button:hover{
 </div>
 
 <div class="files">
-<div class="file"><div><b>📄 Индивидуальный_проект.docx</b><br><small>Настоящий документ Word</small></div><button onclick="downloadFile('Индивидуальный_проект.docx')">Скачать</button></div>
-<div class="file"><div><b>📊 Презентация_проекта.pdf</b><br><small>Готовая презентация в PDF</small></div><button onclick="downloadFile('Презентация_проекта.pdf')">Скачать</button></div>
-<div class="file"><div><b>🎙️ Текст_защиты.pdf</b><br><small>Готовый текст защиты</small></div><button onclick="downloadFile('Текст_защиты.pdf')">Скачать</button></div>
-<div class="file"><div><b>📘 Буклет.pdf</b><br><small>Готовый проектный продукт</small></div><button onclick="downloadFile('Буклет.pdf')">Скачать</button></div>
+<div class="file"><div><b>📊 Презентация_проекта.pptx</b><br><small>Редактируемая презентация PowerPoint</small></div><button onclick="downloadFile('Презентация_проекта.pptx')">Скачать</button></div>
+<div class="file"><div><b>📄 Презентация_проекта.pdf</b><br><small>Презентация для просмотра и печати</small></div><button onclick="downloadFile('Презентация_проекта.pdf')">Скачать</button></div>
+<div class="file"><div><b>📝 Индивидуальный_проект.docx</b><br><small>Редактируемый документ Word</small></div><button onclick="downloadFile('Индивидуальный_проект.docx')">Скачать</button></div>
+<div class="file"><div><b>📘 Проект_текст.pdf</b><br><small>Текстовая версия проекта</small></div><button onclick="downloadFile('Проект_текст.pdf')">Скачать</button></div>
 <button class="download" onclick="downloadAll()">📦 Скачать весь проект</button>
 </div>
 </div>
@@ -158,6 +158,7 @@ header{border-bottom-color:#d7e5f8}.logo i{background:#2878f0}.nav button:hover{
 <h2 class="section-title">🇷🇺 Российские требования</h2><p class="section-subtitle">Основные элементы проекта учитываются в структуре.</p>
 <div class="checks">
 <div class="check"><span>✓</span> Структура проекта</div><div class="check"><span>✓</span> Цель и задачи</div><div class="check"><span>✓</span> Презентация</div><div class="check"><span>✓</span> Текст защиты</div><div class="check"><span>✓</span> Источники и литература</div><div class="check"><span>✓</span> Связь продукта с темой</div>
+</div></div></section>
 </div>
 <p style="margin-top:20px;color:#69766f;font-size:14px">⚠️ Требования конкретной школы рекомендуется проверить отдельно.</p>
 </div></section>
@@ -317,8 +318,7 @@ async function generatePicture(){
   btn.disabled=true;btn.textContent="Создаю изображение...";out.style.display="block";out.textContent="Генерирую картинку. Это может занять до минуты...";
   try{const r=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Не удалось создать изображение.");out.textContent="Готово!";if(d.image){const img=document.createElement("img");img.alt="Созданное изображение";img.src="data:"+(d.mime||"image/png")+";base64,"+d.image;out.appendChild(img);const a=document.createElement("a");a.href=img.src;a.download="Моя_картинка.png";a.textContent="Скачать изображение";a.style.display="inline-block";a.style.marginTop="12px";a.style.fontWeight="800";a.style.color="#123a80";out.appendChild(a);}}catch(e){out.textContent="Ошибка: "+e.message;}finally{btn.disabled=false;btn.textContent="Создать изображение";}
 }
-
-async function createProject(){
+  async function createProject(){
 stopProgress();
 const topic=val("topic");
 if(!topic){alert("Введите тему проекта.");document.getElementById("topic").focus();return;}
@@ -339,7 +339,7 @@ try{
     method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
       firstName:projectData.firstName,lastName:projectData.lastName,className:projectData.className,
-      school:projectData.school,topic:projectData.topic,slides:projectData.slides,
+      school:projectData.school,topic:projectData.topic,slidesCount:projectData.slides,
       extraRequirements:projectData.requirements
     })
   });
@@ -461,5 +461,3 @@ document.addEventListener("DOMContentLoaded",()=>{
 </script>
 </body>
 </html>
-
-
