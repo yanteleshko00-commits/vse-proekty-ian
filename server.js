@@ -157,6 +157,7 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   return extractJson(result.output_text);
 }
 const PLANNER_INSTRUCTIONS = `
+Формат ответа: json. Верни один валидный объект json без Markdown и пояснений.
 Ты опытный автор и дизайнер презентаций. Верни ТОЛЬКО JSON-объект.
 Создай презентацию на русском языке с точным количеством слайдов, указанным в запросе.
 Каждый слайд должен иметь один type из: cover,cards,comparison,stat,process,quote,image,table,conclusion,sources.
