@@ -12,8 +12,8 @@ import os from 'os';
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna';
-const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
-const MAX_AI_IMAGES = 6;
+// Для презентаций используем только фотографии из интернета; генерация изображений ИИ отключена.
+const IMAGE_SEARCH_TIMEOUT_MS = 10000;
 
 const THEMES = [
   { name: 'botanical', primary: '#18865B', dark: '#12372B', soft: '#E8F5EE', card: '#F3FAF6', line: '#C9E5D5', muted: '#64756B', accent: '#D5A23D', cover: 'circle' },
@@ -384,71 +384,51 @@ async function downloadWikimediaPhoto(query, outputPath) {
 }
 
 async function generateSlideImages(slides, topic, dir) {
-  if (!client) return;
+  // Частые фотографии: обложка и примерно 2 из каждых 3 слайдов.
+  // Слайды с визуальным типом image также включаются независимо от позиции.
+  const candidates = slides.filter((slide, index) =>
+    index === 0 || slide.visualType === 'image' || index % 3 !== 2
+  );
 
-  const candidates = slides
-    .filter((s, index) => index === 0 || s.visualType === 'image')
-    .slice(0, MAX_AI_IMAGES);
+  let downloaded = 0;
+  for (const slide of candidates) {
+    const index = slides.indexOf(slide);
+    const filePath = path.join(dir, `slide-image-${index + 1}.jpg`);
+    const queries = index === 0
+      ? [`${topic} ${slide.title}`, topic]
+      : [`${topic} ${slide.title}`, slide.title, topic];
 
-  if (slides[0] && !slides[0].imagePrompt) {
-    slides[0].imagePrompt = `Premium cinematic full-bleed photographic background for a school presentation about ${topic}. Topic: ${slides[0].title}. High-quality realistic editorial photography, wide landscape 16:9 composition, clear darker area on the left for white title text, no text, no letters, no logos, no watermark.`;
-  }
-
-  if (!candidates.length) return;
-
-  let generated = 0;
-
-  for (let index = 0; index < candidates.length; index++) {
-    const slide = candidates[index];
-    const filePath = path.join(dir, `slide-image-${generated + 1}.jpg`);
-    // Mix licensed internet photography with generated illustrations. If web retrieval fails,
-    // use image generation as a graceful fallback.
-    if (index % 2 === 0) {
-      const photo = await downloadWikimediaPhoto(`${topic} ${slide.title}`, filePath);
+    for (const query of queries) {
+      const photo = await downloadWikimediaPhoto(query, filePath);
       if (photo) {
         slide.imagePath = photo.path;
         slide.imageCredit = photo.credit;
-        generated++;
-        continue;
+        downloaded++;
+        break;
       }
     }
 
-    const prompt = slide.imagePrompt ||
-      `Premium editorial educational visual about ${topic}. Slide subject: ${slide.title}. Realistic photographic style when appropriate, wide landscape composition, no text, no letters, no logos, no watermark.`;
-
-    try {
-      const result = await client.images.generate({
-        model: IMAGE_MODEL,
-        prompt,
-        size: '1536x1024',
-        quality: 'low'
-      });
-      const item = result?.data?.[0];
-      if (!item?.b64_json) continue;
-      const aiPath = path.join(dir, `slide-image-${generated + 1}.png`);
-      fs.writeFileSync(aiPath, Buffer.from(item.b64_json, 'base64'));
-      slide.imagePath = aiPath;
-      slide.imageCredit = 'Изображение создано ИИ';
-      generated++;
-    } catch (error) {
-      console.warn('Не удалось создать изображение для слайда:', error?.message || error);
+    if (!slide.imagePath) {
+      console.warn(`Не удалось найти интернет-фото для слайда ${index + 1}: ${slide.title}`);
     }
   }
 
-  const available = slides.filter(s => s.imagePath);
-
+  // Если на отдельных слайдах фото не нашлось, повторно используем найденные
+  // фотографии, чтобы сохранить визуальное оформление. При этом генерация ИИ не вызывается.
+  const available = slides.filter(slide => slide.imagePath);
   if (available.length) {
     let cursor = 0;
-
     for (const slide of slides) {
-      if (slide.visualType === 'image' && !slide.imagePath) {
-        slide.imagePath = available[cursor % available.length].imagePath;
+      if ((slide.visualType === 'image' || slides.indexOf(slide) === 0) && !slide.imagePath) {
+        const source = available[cursor % available.length];
+        slide.imagePath = source.imagePath;
+        slide.imageCredit = source.imageCredit;
         cursor++;
       }
     }
   }
+  console.log(`Интернет-фото для презентации: ${downloaded} из ${candidates.length} попыток.`);
 }
-
 function renderPresentationPdf(slides, topic, outputPath, design = {}) {
   const requestedTheme = clean(design.palette).toLowerCase();
 
@@ -1058,7 +1038,7 @@ async function generateWithAI({
     "text": "Описание буклета, памятки, гайда или другого полезного продукта"
   },
   "design": {
-    "palette": "botanical",
+    "palette": "ocean",
     "layout": "editorial"
   },
   "slides": [
@@ -1123,7 +1103,7 @@ async function generateWithAI({
     title: 'Практический продукт',
     text: 'Практический материал по теме проекта.'
   };
-  data.design = data.design || { palette: 'botanical', layout: 'split' };
+  data.design = data.design || { palette: 'ocean', layout: 'editorial' };
 
   return data;
 }
