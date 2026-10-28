@@ -1,39 +1,53 @@
 import 'dotenv/config';
 import express from 'express';
 import OpenAI from 'openai';
-import { Document, Packer, Paragraph, HeadingLevel, TextRun, ImageRun } from 'docx';
+import { Document, Packer, Paragraph, HeadingLevel, TextRun } from 'docx';
 import PDFDocument from 'pdfkit';
 import PptxGenJS from 'pptxgenjs';
 import archiver from 'archiver';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 
 const app = express();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3000);
 const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna';
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
 const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 120000);
+// Общий лимит на весь запрос = ИИ + картинки + сборка файлов.
+// Раньше он был равен лимиту одного вызова ИИ и обрывал генерацию слишком рано.
+const TOTAL_TIMEOUT_MS = REQUEST_TIMEOUT_MS + 120000;
 const MAX_SLIDES = 20;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const IMAGE_CONCURRENCY = 4;
+const USER_AGENT = 'IanProjectPresentation/1.0 (presentation generator)';
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: REQUEST_TIMEOUT_MS, maxRetries: 1 })
   : null;
 
 app.disable('x-powered-by');
+app.set('trust proxy', 1); // Render стоит за прокси — нужно для корректного req.ip
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
+// card — фон карточек/таблиц, onAccent2 — цвет текста на фоне accent2.
+// Раньше в тёмной теме IT текст был светлым на белых карточках и на бирюзовом фоне — не читался.
 const COLORS = {
-  blue: { bg: 'F3F6FC', ink: '18243A', muted: '63718A', accent: '315EDB', accent2: 'AFC5FF' },
-  business: { bg: 'F3F5F8', ink: '172033', muted: '637083', accent: '244B83', accent2: 'A8BDD4' },
-  it: { bg: '10172A', ink: 'F3F7FF', muted: 'B8C4DA', accent: '6D5DFB', accent2: '28D7C5' },
-  eco: { bg: 'F2F7F0', ink: '20382B', muted: '617667', accent: '26734B', accent2: 'B9D9A8' },
-  education: { bg: 'F7F3FF', ink: '28223A', muted: '736A83', accent: '7452C8', accent2: 'D6C9FA' },
-  science: { bg: 'F1F7FA', ink: '18313E', muted: '5B7682', accent: '167D9A', accent2: 'A8DCE8' }
+  blue: { bg: 'F3F6FC', card: 'FFFFFF', ink: '18243A', muted: '63718A', accent: '315EDB', accent2: 'AFC5FF', onAccent2: '18243A' },
+  business: { bg: 'F3F5F8', card: 'FFFFFF', ink: '172033', muted: '637083', accent: '244B83', accent2: 'A8BDD4', onAccent2: '172033' },
+  it: { bg: '10172A', card: '1B2540', ink: 'F3F7FF', muted: 'B8C4DA', accent: '6D5DFB', accent2: '28D7C5', onAccent2: '10172A' },
+  eco: { bg: 'F2F7F0', card: 'FFFFFF', ink: '20382B', muted: '617667', accent: '26734B', accent2: 'B9D9A8', onAccent2: '20382B' },
+  education: { bg: 'F7F3FF', card: 'FFFFFF', ink: '28223A', muted: '736A83', accent: '7452C8', accent2: 'D6C9FA', onAccent2: '28223A' },
+  science: { bg: 'F1F7FA', card: 'FFFFFF', ink: '18313E', muted: '5B7682', accent: '167D9A', accent2: 'A8DCE8', onAccent2: '18313E' }
 };
 
+function httpError(status, message) {
+  const e = new Error(message);
+  e.status = status;
+  e.expose = true;
+  return e;
+}
 function cleanText(value, max = 1500) {
   return String(value ?? '').replace(/\u0000/g, '').replace(/[ \t]+\n/g, '\n').trim().slice(0, max);
 }
@@ -54,7 +68,8 @@ function normalizeText(text, max = 240) {
 function inferTheme(topic, requested = '') {
   const t = `${topic} ${requested}`.toLowerCase();
   if (/эколог|природ|климат|переработ|зелён|зелен|биолог|растен/.test(t)) return COLORS.eco;
-  if (/it\b|айти|программ|нейросет|искусственн.*интеллект|робот|цифров|кибер/.test(t)) return COLORS.it;
+  // \bit\b — раньше "it\b" срабатывало на слова вроде "credit" или "habit".
+  if (/\bit\b|айти|программ|нейросет|искусственн.*интеллект|робот|цифров|кибер/.test(t)) return COLORS.it;
   if (/бизнес|эконом|финанс|маркетинг|предприним|менеджмент/.test(t)) return COLORS.business;
   if (/физик|хими|космос|астроном|наук|технолог/.test(t)) return COLORS.science;
   if (/образован|школ|обучен|истори|литератур|общество/.test(t)) return COLORS.education;
@@ -64,40 +79,56 @@ function extractJson(outputText) {
   const text = String(outputText || '').trim();
   try { return JSON.parse(text); } catch {}
   const match = text.match(/\{[\s\S]*\}/);
-  if (match) return JSON.parse(match[0]);
+  if (match) {
+    try { return JSON.parse(match[0]); } catch {}
+  }
   throw new Error('ИИ вернул ответ не в формате JSON.');
 }
 function normalizeSlideType(type, index) {
   const allowed = ['cover', 'cards', 'comparison', 'stat', 'process', 'quote', 'image', 'table', 'conclusion', 'sources'];
   return allowed.includes(type) ? type : (index === 0 ? 'cover' : 'cards');
 }
-function normalizePlan(raw, topic, requestedCount, theme) {
-  const inputSlides = Array.isArray(raw.slides) ? raw.slides : [];
-  const slides = inputSlides.slice(0, requestedCount).map((s, i) => ({
-    type: normalizeSlideType(s.type, i),
-    title: normalizeText(s.title || (i === 0 ? topic : `Раздел ${i + 1}`), 90),
-    subtitle: normalizeText(s.subtitle || '', 140),
-    body: normalizeText(s.body || '', 300),
-    bullets: (Array.isArray(s.bullets) ? s.bullets : []).slice(0, 4).map(x => normalizeText(x, 100)).filter(Boolean),
-    cards: (Array.isArray(s.cards) ? s.cards : []).slice(0, 4).map(c => ({
+function normalizeSources(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter(Boolean)
+    .slice(0, 10)
+    .map(s => typeof s === 'string' ? { title: normalizeText(s, 160), url: '' } : {
+      title: normalizeText(s.title || s.name || 'Источник', 160),
+      url: cleanText(s.url || '', 500)
+    });
+}
+function normalizePlan(rawInput, topic, requestedCount, theme) {
+  const raw = rawInput && typeof rawInput === 'object' ? rawInput : {};
+  const isObj = x => x && typeof x === 'object';
+  const inputSlides = (Array.isArray(raw.slides) ? raw.slides : []).filter(isObj);
+  const slides = inputSlides.slice(0, requestedCount).map((s, i) => {
+    const cards = (Array.isArray(s.cards) ? s.cards : []).filter(isObj).slice(0, 4).map(c => ({
       title: normalizeText(c.title || 'Ключевая идея', 55),
       text: normalizeText(c.text || '', 110),
       value: normalizeText(c.value || '', 25)
-    })),
-    leftTitle: normalizeText(s.leftTitle || 'Преимущества', 55),
-    rightTitle: normalizeText(s.rightTitle || 'Ограничения', 55),
-    leftItems: (Array.isArray(s.leftItems) ? s.leftItems : []).slice(0, 4).map(x => normalizeText(x, 100)),
-    rightItems: (Array.isArray(s.rightItems) ? s.rightItems : []).slice(0, 4).map(x => normalizeText(x, 100)),
-    steps: (Array.isArray(s.steps) ? s.steps : []).slice(0, 5).map(x => normalizeText(x, 100)),
-    quote: normalizeText(s.quote || s.body || '', 230),
-    statistic: normalizeText(s.statistic || '', 35),
-    statisticLabel: normalizeText(s.statisticLabel || '', 110),
-    table: Array.isArray(s.table) ? s.table.slice(0, 6).map(r => Array.isArray(r) ? r.slice(0, 4).map(x => normalizeText(x, 70)) : []) : [],
-    imageQuery: normalizeText(s.imageQuery || `${topic} ${s.title || ''}`, 180),
-    imageUrl: '',
-    imageCredit: '',
-    notes: normalizeText(s.notes || '', 300)
-  }));
+    }));
+    return {
+      type: normalizeSlideType(s.type, i),
+      title: normalizeText(s.title || (i === 0 ? topic : `Раздел ${i + 1}`), 90),
+      subtitle: normalizeText(s.subtitle || '', 140),
+      body: normalizeText(s.body || '', 300),
+      bullets: (Array.isArray(s.bullets) ? s.bullets : []).slice(0, 4).map(x => normalizeText(x, 100)).filter(Boolean),
+      cards,
+      leftTitle: normalizeText(s.leftTitle || 'Преимущества', 55),
+      rightTitle: normalizeText(s.rightTitle || 'Ограничения', 55),
+      leftItems: (Array.isArray(s.leftItems) ? s.leftItems : []).slice(0, 4).map(x => normalizeText(x, 100)).filter(Boolean),
+      rightItems: (Array.isArray(s.rightItems) ? s.rightItems : []).slice(0, 4).map(x => normalizeText(x, 100)).filter(Boolean),
+      steps: (Array.isArray(s.steps) ? s.steps : []).slice(0, 5).map(x => normalizeText(x, 100)).filter(Boolean),
+      quote: normalizeText(s.quote || s.body || '', 230),
+      statistic: normalizeText(s.statistic || '', 35),
+      statisticLabel: normalizeText(s.statisticLabel || '', 110),
+      table: Array.isArray(s.table) ? s.table.slice(0, 6).map(r => Array.isArray(r) ? r.slice(0, 4).map(x => normalizeText(x, 70)) : []) : [],
+      imageQuery: normalizeText(s.imageQuery || `${topic} ${s.title || ''}`, 180),
+      imageUrl: '',
+      imageCredit: '',
+      notes: normalizeText(s.notes || '', 300)
+    };
+  });
   // Keep requested count exact. Fill missing slots with meaningful, distinct section layouts.
   const fallbackTypes = ['cover', 'cards', 'comparison', 'stat', 'process', 'image', 'quote', 'conclusion', 'table', 'sources'];
   while (slides.length < requestedCount) {
@@ -118,21 +149,19 @@ function normalizePlan(raw, topic, requestedCount, theme) {
   // Enforce a logical start/end even if the model ignored the requested structure.
   if (slides.length) slides[0].type = 'cover';
   if (slides.length > 1 && !['conclusion', 'sources', 'quote'].includes(slides.at(-1).type)) {
-    slides.at(-1).type = 'conclusion';
-    slides.at(-1).title = 'Выводы';
+    const last = slides.at(-1);
+    last.type = 'conclusion';
+    // Заголовок от ИИ больше не затирается; если у слайда были только карточки — переносим их в пункты.
+    if (!last.bullets.length && last.cards.length) {
+      last.bullets = last.cards.map(c => normalizeText(`${c.title}: ${c.text}`, 100));
+    }
   }
-  const sources = (Array.isArray(raw.sources) ? raw.sources : [])
-    .slice(0, 10)
-    .map(s => typeof s === 'string' ? { title: normalizeText(s, 160), url: '' } : {
-      title: normalizeText(s.title || s.name || 'Источник', 160),
-      url: cleanText(s.url || '', 500)
-    });
   return {
     title: normalizeText(raw.title || topic, 140),
     theme: theme,
     summary: normalizeText(raw.summary || '', 500),
     slides,
-    sources,
+    sources: normalizeSources(raw.sources),
     practicalPart: normalizeText(raw.practicalPart || '', 1200),
     defense: normalizeText(raw.defense || '', 1800)
   };
@@ -142,12 +171,12 @@ async function withTimeout(promise, ms, label = 'Операция') {
   try {
     return await Promise.race([
       promise,
-      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label}: превышено время ожидания.`)), ms); })
+      new Promise((_, reject) => { timer = setTimeout(() => reject(httpError(504, `${label}: превышено время ожидания.`)), ms); })
     ]);
   } finally { clearTimeout(timer); }
 }
 async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
-  if (!openai) throw new Error('На сервере не задан OPENAI_API_KEY.');
+  if (!openai) throw httpError(503, 'На сервере не задан OPENAI_API_KEY.');
   const result = await withTimeout(openai.responses.create({
     model: MODEL,
     // The Responses API requires the word 'json' in the input messages
@@ -171,15 +200,22 @@ const PLANNER_INSTRUCTIONS = `
 Для cards заполни cards [{title,text,value}]; для comparison заполни leftTitle,rightTitle,leftItems,rightItems; для stat заполни statistic,statisticLabel; для process заполни steps; для quote — quote; для table — table как массив строк, первая строка заголовки; для conclusion/sources — краткие итоги/источники.
 Верни поля: title, summary, practicalPart, defense, sources [{title,url}], slides [{type,title,subtitle,body,bullets,cards,leftTitle,rightTitle,leftItems,rightItems,steps,quote,statistic,statisticLabel,table,imageQuery,notes}].
 `;
+
+function isWikimediaUrl(value) {
+  try {
+    const u = new URL(String(value));
+    return u.protocol === 'https:' && u.hostname === 'upload.wikimedia.org';
+  } catch { return false; }
+}
 async function commonsImage(query, used) {
   const url = new URL('https://commons.wikimedia.org/w/api.php');
   url.search = new URLSearchParams({
     action: 'query', generator: 'search', gsrsearch: `${query} filetype:bitmap`,
-    gsrnamespace: '6', gsrlimit: '8', prop: 'imageinfo', iiprop: 'url|extmetadata',
+    gsrnamespace: '6', gsrlimit: '8', prop: 'imageinfo', iiprop: 'url|extmetadata|mime',
     iiurlwidth: '1400', format: 'json', origin: '*'
   }).toString();
   const res = await withTimeout(fetch(url, {
-    headers: { 'User-Agent': 'IanProjectPresentation/1.0 (presentation generator)' },
+    headers: { 'User-Agent': USER_AGENT },
     signal: AbortSignal.timeout(12000)
   }), 14000, 'Поиск изображения');
   if (!res.ok) return null;
@@ -188,7 +224,7 @@ async function commonsImage(query, used) {
   for (const page of pages) {
     const info = page.imageinfo?.[0];
     const candidate = info?.thumburl || info?.url;
-    if (!candidate || !/^https:\/\/upload\.wikimedia\.org\//i.test(candidate)) continue;
+    if (!candidate || !isWikimediaUrl(candidate)) continue;
     if (used.has(candidate)) continue;
     const mime = info?.mime || '';
     if (!mime.startsWith('image/')) continue;
@@ -200,7 +236,11 @@ async function commonsImage(query, used) {
   return null;
 }
 async function downloadImage(url) {
-  const response = await withTimeout(fetch(url, { signal: AbortSignal.timeout(12000) }), 14000, 'Загрузка изображения');
+  // Wikimedia требует осмысленный User-Agent и при загрузке файла, иначе может отдать 403.
+  const response = await withTimeout(fetch(url, {
+    headers: { 'User-Agent': USER_AGENT },
+    signal: AbortSignal.timeout(12000)
+  }), 14000, 'Загрузка изображения');
   if (!response.ok) throw new Error(`Изображение вернуло HTTP ${response.status}`);
   const mime = (response.headers.get('content-type') || '').split(';')[0].trim();
   // Не переименовываем WebP в PNG: это повреждает файл при встраивании в PPTX.
@@ -220,12 +260,41 @@ async function generateImageBuffer(prompt) {
   const b64 = result.data?.[0]?.b64_json;
   return b64 ? { bytes: Buffer.from(b64, 'base64'), mime: 'image/png' } : null;
 }
+async function runPool(items, limit, worker) {
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const item = items[next++];
+      await worker(item);
+    }
+  }));
+}
 async function attachImages(plan) {
   const used = new Set();
-  // Параллельный поиск не даёт 10–20 слайдам ждать изображения строго по очереди.
-  // Проверка и резервирование URL выполняются синхронно после ответа каждого поиска.
-  await Promise.all(plan.slides.map(async (slide) => {
+  // Резервируем уже известные (из прошлой версии проекта) картинки заранее,
+  // чтобы параллельный поиск не выбрал их для других слайдов.
+  for (const slide of plan.slides) {
+    if (slide.imageUrl && isWikimediaUrl(slide.imageUrl) && !used.has(slide.imageUrl)) used.add(slide.imageUrl);
+    else slide.imageUrl = '';
+  }
+  // Не больше IMAGE_CONCURRENCY одновременных запросов: 20 запросов разом Wikimedia режет ответом 429.
+  await runPool(plan.slides, IMAGE_CONCURRENCY, async (slide) => {
     try {
+      // Редактирование проекта: раньше «повторное использование» картинок только копировало URL,
+      // а сами файлы всё равно искались заново. Теперь старая картинка реально скачивается.
+      // Адрес проверяется — иначе клиент мог бы подсунуть любой URL (SSRF).
+      if (slide.imageUrl) {
+        try {
+          const image = await downloadImage(slide.imageUrl);
+          slide.imageMime = image.mime;
+          slide.imageBytes = image.bytes;
+          return;
+        } catch (err) {
+          console.warn('Reused image failed:', err.message);
+          slide.imageUrl = '';
+          slide.imageCredit = '';
+        }
+      }
       const found = await commonsImage(slide.imageQuery || `${plan.title} ${slide.title}`, used);
       if (!found) return;
       const image = await downloadImage(found.url);
@@ -236,7 +305,7 @@ async function attachImages(plan) {
     } catch (err) {
       console.warn('Image lookup failed:', err.message);
     }
-  }));
+  });
   // AI-картинки включаются только настройкой в Render; лимит защищает время и стоимость.
   if (process.env.ENABLE_AI_IMAGE_GENERATION === 'true') {
     let generatedCount = 0;
@@ -268,12 +337,16 @@ function addImageOrPlaceholder(slide, s, x, y, w, h, theme) {
   slide.addShape('roundRect', { x, y, w, h, rectRadius: 0.12, fill: { color: theme.accent2 }, line: { color: theme.accent2, transparency: 100 } });
   if (s.imageBytes) {
     try {
-      slide.addImage({ data: `data:${s.imageMime};base64,${s.imageBytes.toString('base64')}`, x, y, w, h, sizingCrop: true });
+      // sizingCrop в pptxgenjs не существует — картинка растягивалась. Правильно: sizing.type = 'cover'.
+      slide.addImage({
+        data: `data:${s.imageMime};base64,${s.imageBytes.toString('base64')}`,
+        x, y, w, h, sizing: { type: 'cover', w, h }
+      });
       return;
     } catch (e) { console.warn('PPTX image embed failed:', e.message); }
   }
   addText(slide, 'Иллюстрация по теме', x + 0.15, y + h / 2 - 0.2, w - 0.3, 0.4, {
-    fontSize: 14, bold: true, color: theme.ink, align: 'center'
+    fontSize: 14, bold: true, color: theme.onAccent2, align: 'center'
   });
 }
 function addBullets(slide, items, x, y, w, theme, max = 4) {
@@ -320,7 +393,7 @@ function buildPptx(plan) {
       cards.forEach((c, j) => {
         const col = j % cols, row = Math.floor(j / cols);
         const x = 0.7 + col * cw, y = 1.5 + row * 2.25;
-        slide.addShape('roundRect', { x, y, w: cw - 0.2, h: 1.9, rectRadius: 0.12, fill: { color: 'FFFFFF' }, line: { color: theme.accent2, transparency: 45 } });
+        slide.addShape('roundRect', { x, y, w: cw - 0.2, h: 1.9, rectRadius: 0.12, fill: { color: theme.card }, line: { color: theme.accent2, transparency: 45 } });
         if (c.value) addText(slide, c.value, x + 0.22, y + 0.18, cw - 0.65, 0.45, { fontSize: 23, bold: true, color: theme.accent });
         addText(slide, c.title, x + 0.22, y + (c.value ? 0.7 : 0.22), cw - 0.65, 0.4, { fontSize: 17, bold: true, color: theme.ink });
         addText(slide, c.text, x + 0.22, y + 1.15, cw - 0.65, 0.55, { fontSize: 13, color: theme.muted, valign: 'top' });
@@ -329,7 +402,7 @@ function buildPptx(plan) {
       addText(slide, title, 0.7, 0.45, 11.7, 0.65, { fontSize: 27, bold: true, color: theme.ink });
       [s.leftTitle, s.rightTitle].forEach((t, j) => {
         const x = 0.75 + j * 6.0;
-        slide.addShape('roundRect', { x, y: 1.45, w: 5.65, h: 4.9, rectRadius: 0.12, fill: { color: 'FFFFFF' }, line: { color: theme.accent2, transparency: 40 } });
+        slide.addShape('roundRect', { x, y: 1.45, w: 5.65, h: 4.9, rectRadius: 0.12, fill: { color: theme.card }, line: { color: theme.accent2, transparency: 40 } });
         addText(slide, t, x + 0.25, 1.7, 5.1, 0.5, { fontSize: 20, bold: true, color: theme.accent });
         addBullets(slide, j ? s.rightItems : s.leftItems, x + 0.3, 2.45, 5.0, theme);
       });
@@ -340,7 +413,7 @@ function buildPptx(plan) {
       addImageOrPlaceholder(slide, s, 7.4, 1.6, 4.7, 4.4, theme);
     } else if (type === 'process') {
       addText(slide, title, 0.7, 0.45, 11.7, 0.65, { fontSize: 27, bold: true, color: theme.ink });
-      const steps = (s.steps?.length ? s.steps : s.bullets).slice(0, 5);
+      const steps = (s.steps?.length ? s.steps : (s.bullets || [])).slice(0, 5);
       steps.forEach((step, j) => {
         const x = 0.75 + j * (11.8 / Math.max(steps.length, 1));
         slide.addShape('ellipse', { x, y: 2.0, w: 0.65, h: 0.65, fill: { color: theme.accent }, line: { color: theme.accent } });
@@ -351,16 +424,16 @@ function buildPptx(plan) {
       addText(slide, s.body, 0.8, 5.25, 11.5, 0.75, { fontSize: 15, color: theme.muted });
     } else if (type === 'quote') {
       slide.background = { color: theme.accent2 };
-      addText(slide, 'КЛЮЧЕВАЯ МЫСЛЬ', 0.9, 0.8, 10.8, 0.35, { fontSize: 11, bold: true, color: theme.ink, charSpacing: 2 });
-      addText(slide, `“${s.quote || s.body || title}”`, 0.9, 1.65, 10.9, 3.5, { fontSize: 29, bold: true, color: theme.ink, valign: 'mid' });
-      addText(slide, s.subtitle, 0.95, 5.6, 10.5, 0.45, { fontSize: 15, color: theme.ink });
+      addText(slide, 'КЛЮЧЕВАЯ МЫСЛЬ', 0.9, 0.8, 10.8, 0.35, { fontSize: 11, bold: true, color: theme.onAccent2, charSpacing: 2 });
+      addText(slide, `“${s.quote || s.body || title}”`, 0.9, 1.65, 10.9, 3.5, { fontSize: 29, bold: true, color: theme.onAccent2, valign: 'mid' });
+      addText(slide, s.subtitle, 0.95, 5.6, 10.5, 0.45, { fontSize: 15, color: theme.onAccent2 });
     } else if (type === 'table') {
       addText(slide, title, 0.7, 0.45, 11.7, 0.65, { fontSize: 27, bold: true, color: theme.ink });
-      const rows = s.table?.length ? s.table : [['Параметр', 'Описание'], ['Основная идея', s.body || 'Требуется уточнение']];
+      const rows = s.table?.some(r => r.length) ? s.table : [['Параметр', 'Описание'], ['Основная идея', s.body || 'Требуется уточнение']];
       const colW = 11.7 / Math.max(1, ...rows.map(r => r.length));
       rows.slice(0, 6).forEach((row, ri) => row.slice(0, 4).forEach((cell, ci) => {
         const x = 0.7 + ci * colW, y = 1.45 + ri * 0.72;
-        slide.addShape('rect', { x, y, w: colW, h: 0.7, fill: { color: ri === 0 ? theme.accent : 'FFFFFF' }, line: { color: theme.accent2, width: 0.6 } });
+        slide.addShape('rect', { x, y, w: colW, h: 0.7, fill: { color: ri === 0 ? theme.accent : theme.card }, line: { color: theme.accent2, width: 0.6 } });
         addText(slide, cell, x + 0.08, y + 0.06, colW - 0.16, 0.58, { fontSize: ri === 0 ? 13 : 12, bold: ri === 0, color: ri === 0 ? 'FFFFFF' : theme.ink });
       }));
     } else if (type === 'image') {
@@ -406,6 +479,23 @@ async function createDocxBuffer(plan) {
   for (const src of plan.sources) children.push(new Paragraph(src.url ? `${src.title}: ${src.url}` : src.title));
   return Packer.toBuffer(new Document({ sections: [{ children }] }));
 }
+
+// Стандартный шрифт PDFKit (Helvetica) НЕ поддерживает кириллицу — русский текст в PDF превращался в «кракозябры».
+// Нужен TTF-шрифт с кириллицей. Ищем: папка fonts/ рядом с server.js, npm-пакет dejavu-fonts-ttf, системные шрифты.
+const FONT_DIRS = [
+  path.join(__dirname, 'fonts'),
+  path.join(__dirname, 'node_modules', 'dejavu-fonts-ttf', 'ttf'),
+  '/usr/share/fonts/truetype/dejavu',
+  '/usr/share/fonts/dejavu',
+  '/usr/share/fonts/TTF'
+];
+function findFont(file) {
+  for (const dir of FONT_DIRS) {
+    const p = path.join(dir, file);
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
 function createPdfBuffer(plan) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 48, autoFirstPage: true, info: { Title: plan.title, Author: 'Генератор презентаций' } });
@@ -413,26 +503,46 @@ function createPdfBuffer(plan) {
     doc.on('data', c => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
-    doc.fontSize(24).fillColor('#244B83').text(plan.title);
-    doc.moveDown().fontSize(11).fillColor('#222222').text(plan.summary || '');
+
+    const regularPath = findFont('DejaVuSans.ttf');
+    const boldPath = findFont('DejaVuSans-Bold.ttf') || regularPath;
+    let bodyFont = 'Helvetica', boldFont = 'Helvetica-Bold';
+    if (regularPath) {
+      doc.registerFont('Body', regularPath);
+      doc.registerFont('Bold', boldPath);
+      bodyFont = 'Body'; boldFont = 'Bold';
+    } else {
+      console.warn('PDF: шрифт с кириллицей не найден (fonts/DejaVuSans.ttf). Русский текст в PDF будет отображаться неверно.');
+    }
+    const H = size => doc.font(boldFont).fontSize(size).fillColor('#244B83');
+    const P = (size, color = '#222222') => doc.font(bodyFont).fontSize(size).fillColor(color);
+
+    H(24).text(plan.title);
+    doc.moveDown();
+    P(11).text(plan.summary || '');
     plan.slides.forEach((s, i) => {
       doc.addPage();
-      doc.fontSize(10).fillColor('#63718A').text(`СЛАЙД ${i + 1} / ${plan.slides.length}`);
-      doc.moveDown(0.5).fontSize(22).fillColor('#244B83').text(s.title);
-      doc.moveDown().fontSize(12).fillColor('#222222').text(s.body || '');
-      for (const b of s.bullets || []) doc.moveDown(0.4).fontSize(11).text(`• ${b}`);
+      P(10, '#63718A').text(`СЛАЙД ${i + 1} / ${plan.slides.length}`);
+      doc.moveDown(0.5);
+      H(22).text(s.title);
+      doc.moveDown();
+      P(12).text(s.body || '');
+      for (const b of s.bullets || []) { doc.moveDown(0.4); P(11).text(`• ${b}`); }
       if (s.cards?.length) {
         doc.moveDown();
-        for (const c of s.cards) doc.fontSize(11).text(`${c.title}: ${c.text}`);
+        for (const c of s.cards) P(11).text(`${c.title}: ${c.text}`);
       }
-      if (s.imageCredit) doc.moveDown().fontSize(8).fillColor('#666666').text(`Иллюстрация: ${s.imageCredit}`);
+      if (s.imageCredit) { doc.moveDown(); P(8, '#666666').text(`Иллюстрация: ${s.imageCredit}`); }
     });
     if (plan.practicalPart) {
-      doc.addPage().fontSize(22).fillColor('#244B83').text('Практическая часть');
-      doc.moveDown().fontSize(12).fillColor('#222222').text(plan.practicalPart);
+      doc.addPage();
+      H(22).text('Практическая часть');
+      doc.moveDown();
+      P(12).text(plan.practicalPart);
     }
-    doc.addPage().fontSize(22).fillColor('#244B83').text('Источники');
-    plan.sources.forEach(s => doc.moveDown().fontSize(10).fillColor('#222222').text(s.url ? `${s.title}: ${s.url}` : s.title));
+    doc.addPage();
+    H(22).text('Источники');
+    plan.sources.forEach(s => { doc.moveDown(); P(10).text(s.url ? `${s.title}: ${s.url}` : s.title); });
     doc.end();
   });
 }
@@ -444,7 +554,7 @@ async function createZip(files) {
     archive.on('error', reject);
     archive.on('end', () => resolve(Buffer.concat(output)));
     for (const f of files) archive.append(f.buffer, { name: f.name });
-    archive.finalize();
+    archive.finalize().catch(reject);
   });
 }
 function toFile(name, mime, buffer) {
@@ -478,10 +588,7 @@ function publicProject(plan) {
 }
 async function generateProject(body) {
   const topic = cleanText(body.topic, 180);
-  if (!topic) {
-    const e = new Error('Укажи тему проекта или презентации.');
-    e.status = 400; throw e;
-  }
+  if (!topic) throw httpError(400, 'Укажи тему проекта или презентации.');
   const count = clampInt(body.slidesCount ?? body.slides ?? body.presentationSlides, 4, MAX_SLIDES, 8);
   const theme = inferTheme(topic, body.style || '');
   const raw = await aiJson(PLANNER_INSTRUCTIONS, {
@@ -507,47 +614,88 @@ function asyncRoute(handler) {
   return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 }
 
+// Простой лимитер запросов по IP: без него любой может сжечь баланс OpenAI через открытые /api/* маршруты.
+function rateLimit(max, windowMs = 10 * 60 * 1000) {
+  const hits = new Map();
+  setInterval(() => {
+    const now = Date.now();
+    for (const [k, v] of hits) if (v.reset <= now) hits.delete(k);
+  }, windowMs).unref();
+  return (req, res, next) => {
+    const now = Date.now();
+    let entry = hits.get(req.ip);
+    if (!entry || entry.reset <= now) {
+      entry = { count: 0, reset: now + windowMs };
+      hits.set(req.ip, entry);
+    }
+    if (++entry.count > max) {
+      res.set('Retry-After', String(Math.ceil((entry.reset - now) / 1000)));
+      return res.status(429).json({ error: 'Слишком много запросов. Подожди несколько минут и попробуй снова.' });
+    }
+    next();
+  };
+}
+
 app.get('/api/health', (_req, res) => res.json({
   ok: true, service: 'presentation-generator', model: MODEL,
   imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true'
 }));
 
-app.post('/api/generate-project', asyncRoute(async (req, res) => {
-  const result = await withTimeout(generateProject(req.body || {}), REQUEST_TIMEOUT_MS, 'Создание проекта');
+app.post('/api/generate-project', rateLimit(15), asyncRoute(async (req, res) => {
+  const result = await withTimeout(generateProject(req.body || {}), TOTAL_TIMEOUT_MS, 'Создание проекта');
   res.json(result);
 }));
 
-app.post('/api/edit-project', asyncRoute(async (req, res) => {
+app.post('/api/edit-project', rateLimit(30), asyncRoute(async (req, res) => {
   const body = req.body || {};
   const project = body.project;
   const instruction = cleanText(body.instruction, 1500);
-  if (!project || !Array.isArray(project.presentation || project.slides) || !instruction) {
+  const oldSlides = (Array.isArray(project?.presentation) ? project.presentation : Array.isArray(project?.slides) ? project.slides : [])
+    .filter(s => s && typeof s === 'object');
+  if (!project || !oldSlides.length || !instruction) {
     return res.status(400).json({ error: 'Нужны project с массивом слайдов и instruction.' });
   }
-  const oldSlides = project.presentation || project.slides;
-  const count = clampInt(oldSlides.length, 4, MAX_SLIDES, 8);
-  const raw = await aiJson(PLANNER_INSTRUCTIONS + '\nРедактируй переданный проект с учётом инструкции. Сохрани тему и точное количество слайдов.', {
-    topic: cleanText(project.title, 180) || 'Презентация',
-    requestedSlides: count,
-    currentProject: project,
-    instruction,
-    outputRules: `Верни ровно ${count} слайдов. Не теряй практическую часть и источники.`
-  });
-  const plan = normalizePlan(raw, cleanText(project.title, 180) || 'Презентация', count, inferTheme(project.title || '', ''));
-  // Reuse prior image URLs only when unique; missing images will be searched again.
-  const prior = new Set();
-  oldSlides.forEach((s, i) => {
-    if (plan.slides[i] && s.imageUrl && !prior.has(s.imageUrl)) {
-      plan.slides[i].imageUrl = s.imageUrl;
-      prior.add(s.imageUrl);
-    }
-  });
-  await attachImages(plan);
-  const files = await withTimeout(buildFiles(plan), 60000, 'Сборка файлов');
-  res.json({ project: publicProject(plan), files });
+  const result = await withTimeout((async () => {
+    const count = clampInt(oldSlides.length, 4, MAX_SLIDES, 8);
+    const title = cleanText(project.title, 180) || 'Презентация';
+    const raw = await aiJson(PLANNER_INSTRUCTIONS + '\nРедактируй переданный проект с учётом инструкции. Сохрани тему и точное количество слайдов.', {
+      topic: title,
+      requestedSlides: count,
+      // Не отправляем в ИИ служебные поля картинок — они только раздувают запрос.
+      currentProject: {
+        title: project.title,
+        summary: project.summary,
+        practicalPart: project.practicalPart,
+        defense: project.defense,
+        sources: project.sources,
+        slides: oldSlides.slice(0, MAX_SLIDES).map(({ imageUrl, imageCredit, imageBytes, imageMime, imageData, ...s }) => s)
+      },
+      instruction,
+      outputRules: `Верни ровно ${count} слайдов. Не теряй практическую часть и источники.`
+    });
+    const plan = normalizePlan(raw, title, count, inferTheme(title, ''));
+    // Если ИИ потерял практическую часть/защиту/источники — берём прежние.
+    if (!plan.practicalPart) plan.practicalPart = normalizeText(project.practicalPart || '', 1200);
+    if (!plan.defense) plan.defense = normalizeText(project.defense || '', 1800);
+    if (!plan.sources.length) plan.sources = normalizeSources(project.sources);
+    // Прежние картинки переиспользуются только если URL уникален и ведёт на Wikimedia (проверка — в attachImages).
+    const prior = new Set();
+    oldSlides.forEach((s, i) => {
+      const url = typeof s.imageUrl === 'string' ? s.imageUrl : '';
+      if (plan.slides[i] && url && isWikimediaUrl(url) && !prior.has(url)) {
+        plan.slides[i].imageUrl = url;
+        plan.slides[i].imageCredit = cleanText(s.imageCredit || '', 200);
+        prior.add(url);
+      }
+    });
+    await attachImages(plan);
+    const files = await withTimeout(buildFiles(plan), 60000, 'Сборка файлов');
+    return { project: publicProject(plan), files };
+  })(), TOTAL_TIMEOUT_MS, 'Редактирование проекта');
+  res.json(result);
 }));
 
-app.post('/api/chat', asyncRoute(async (req, res) => {
+app.post('/api/chat', rateLimit(60), asyncRoute(async (req, res) => {
   const question = cleanText(req.body?.question, 2000);
   if (!question) return res.status(400).json({ error: 'Напиши вопрос.' });
   if (!openai) return res.status(503).json({ error: 'На сервере не задан OPENAI_API_KEY.' });
@@ -559,7 +707,7 @@ app.post('/api/chat', asyncRoute(async (req, res) => {
   res.json({ answer: response.output_text || 'Не удалось сформировать ответ.' });
 }));
 
-app.post('/api/generate-image', asyncRoute(async (req, res) => {
+app.post('/api/generate-image', rateLimit(15), asyncRoute(async (req, res) => {
   const prompt = cleanText(req.body?.prompt, 800);
   if (!prompt) return res.status(400).json({ error: 'Укажи описание изображения.' });
   if (!openai) return res.status(503).json({ error: 'На сервере не задан OPENAI_API_KEY.' });
@@ -574,12 +722,17 @@ app.post('/api/generate-image', asyncRoute(async (req, res) => {
   res.json({ image, mime: 'image/png' });
 }));
 
+// Неизвестные /api-маршруты — JSON, а не HTML-страница, чтобы фронтенд не падал на разборе ответа.
+app.use('/api', (_req, res) => res.status(404).json({ error: 'Маршрут не найден.' }));
+
 // Static site support for the existing Render deployment.
-const publicDir = path.resolve(process.cwd(), 'public');
+// index.html ищется и в public/, и рядом с server.js (в корне проекта).
+// Раздаётся только public/ — корень не раздаётся целиком, чтобы не отдать наружу server.js и .env.
+const publicDir = path.join(__dirname, 'public');
 if (fs.existsSync(publicDir)) app.use(express.static(publicDir));
-app.get('/', (_req, res, next) => {
-  const indexPath = path.join(publicDir, 'index.html');
-  if (fs.existsSync(indexPath)) return res.sendFile(indexPath);
+app.get('/', (_req, res) => {
+  const indexPath = [path.join(publicDir, 'index.html'), path.join(__dirname, 'index.html')].find(p => fs.existsSync(p));
+  if (indexPath) return res.sendFile(indexPath);
   res.status(200).send('Сервер генератора презентаций запущен. API: /api/health');
 });
 
@@ -587,14 +740,28 @@ app.get('/', (_req, res, next) => {
 app.use((err, req, res, _next) => {
   console.error(`[${req.method} ${req.path}]`, err?.stack || err);
   if (res.headersSent) return;
-  const status = Number(err?.status) || (err?.name === 'APIError' ? 502 : 500);
+  let status = 500;
+  let message = 'Не удалось завершить генерацию. Попробуй ещё раз.';
+  if (err instanceof OpenAI.APIError) {
+    // Текст ошибок OpenAI (неверный ключ, нет модели и т.п.) наружу не отдаём — он может содержать часть ключа.
+    status = err.status === 429 ? 429 : 502;
+    message = status === 429
+      ? 'ИИ-сервис перегружен или исчерпан лимит. Попробуй позже.'
+      : 'Ошибка ИИ-сервиса. Попробуй ещё раз.';
+  } else if (err?.expose && Number(err.status) >= 400 && Number(err.status) < 600) {
+    status = Number(err.status);
+    message = cleanText(err.message, 500);
+  }
   res.status(status).json({
-    error: status === 500 ? 'Не удалось завершить генерацию. Попробуй ещё раз.' : cleanText(err.message, 500),
-    details: process.env.NODE_ENV === 'development' ? cleanText(err.message, 1000) : undefined
+    error: message,
+    details: process.env.NODE_ENV === 'development' ? cleanText(err?.message, 1000) : undefined
   });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Presentation server listening on port ${PORT}`);
   if (!process.env.OPENAI_API_KEY) console.warn('OPENAI_API_KEY is not configured.');
 });
+// Рекомендация Render: keep-alive дольше, чем у их прокси, иначе иногда бывают случайные 502.
+server.keepAliveTimeout = 120000;
+server.headersTimeout = 125000;
