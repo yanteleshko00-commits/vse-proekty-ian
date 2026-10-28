@@ -14,7 +14,7 @@ const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna';
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
-const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 120000);
+const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 180000);
 const MAX_SLIDES = 20;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const openai = process.env.OPENAI_API_KEY
@@ -568,30 +568,67 @@ function toFile(name, mime, buffer) {
   return { name, mime, base64: buffer.toString('base64') };
 }
 async function buildFiles(plan) {
-  // Имена здесь совпадают с карточками скачивания в index.html.
-  // Старый вариант возвращал имена из темы и только массив объектов, из-за чего
-  // кнопка искала несуществующий ключ и показывала «Файл ещё не готов».
-  const [pptx, presentationPdf, docx, textPdf] = await Promise.all([
-    createPptxBuffer(plan),
-    createPresentationPdfBuffer(plan),
-    createDocxBuffer(plan),
-    createPdfBuffer(plan)
-  ]);
-
-  const downloadable = [
-    toFile('Презентация_проекта.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', pptx),
-    toFile('Презентация_проекта.pdf', 'application/pdf', presentationPdf),
-    toFile('Индивидуальный_проект.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', docx),
-    toFile('Проект_текст.pdf', 'application/pdf', textPdf)
+  const specs = [
+    {
+      name: 'Презентация_проекта.pptx',
+      mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      create: createPptxBuffer
+    },
+    {
+      name: 'Презентация_проекта.pdf',
+      mime: 'application/pdf',
+      create: createPresentationPdfBuffer
+    },
+    {
+      name: 'Индивидуальный_проект.docx',
+      mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      create: createDocxBuffer
+    },
+    {
+      name: 'Проект_текст.pdf',
+      mime: 'application/pdf',
+      create: createPdfBuffer
+    }
   ];
 
-  const zipParts = downloadable.map(file => ({
-    name: file.name,
-    buffer: Buffer.from(file.base64, 'base64')
-  }));
-  const zip = await createZip(zipParts);
-  downloadable.push(toFile('Весь_проект.zip', 'application/zip', zip));
-  return downloadable;
+  const results = await Promise.allSettled(specs.map(async (spec) => ({
+    ...spec,
+    buffer: await withTimeout(spec.create(plan), 45000, `Файл ${spec.name}`)
+  })));
+
+  const files = [];
+  const fileErrors = [];
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === 'fulfilled' && Buffer.isBuffer(result.value.buffer) && result.value.buffer.length) {
+      files.push(toFile(result.value.name, result.value.mime, result.value.buffer));
+    } else {
+      const error = result.status === 'rejected' ? result.reason : new Error('Файл пустой.');
+      const message = cleanText(error?.message || 'Неизвестная ошибка создания файла.', 260);
+      console.error(`[buildFiles] ${specs[i].name}:`, error?.stack || error);
+      fileErrors.push({ name: specs[i].name, message });
+    }
+  }
+
+  if (files.length) {
+    try {
+      const zipParts = files.map(file => ({
+        name: file.name,
+        buffer: Buffer.from(file.base64, 'base64')
+      }));
+      const zip = await withTimeout(createZip(zipParts), 20000, 'Создание ZIP');
+      files.push(toFile('Весь_проект.zip', 'application/zip', zip));
+    } catch (error) {
+      console.error('[buildFiles] Весь_проект.zip:', error?.stack || error);
+      fileErrors.push({
+        name: 'Весь_проект.zip',
+        message: cleanText(error?.message || 'Не удалось собрать архив.', 260)
+      });
+    }
+  }
+
+  // Возвращаем готовый проект даже при сбое одного из необязательных форматов.
+  return { files, fileErrors };
 }
 function publicProject(plan) {
   return {
@@ -629,8 +666,8 @@ async function generateProject(body) {
   });
   const plan = normalizePlan(raw, topic, count, theme);
   await attachImages(plan);
-  const files = await withTimeout(buildFiles(plan), 60000, 'Сборка файлов');
-  return { project: publicProject(plan), files };
+  const built = await withTimeout(buildFiles(plan), 90000, 'Сборка файлов');
+  return { project: publicProject(plan), files: built.files, fileErrors: built.fileErrors };
 }
 function asyncRoute(handler) {
   return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
@@ -672,8 +709,8 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
     }
   });
   await attachImages(plan);
-  const files = await withTimeout(buildFiles(plan), 60000, 'Сборка файлов');
-  res.json({ project: publicProject(plan), files });
+  const built = await withTimeout(buildFiles(plan), 90000, 'Сборка файлов');
+  res.json({ project: publicProject(plan), files: built.files, fileErrors: built.fileErrors });
 }));
 
 app.post('/api/chat', asyncRoute(async (req, res) => {
@@ -712,14 +749,17 @@ app.get('/', (_req, res, next) => {
   res.status(200).send('Сервер генератора презентаций запущен. API: /api/health');
 });
 
-// Return JSON errors so the frontend can stop its progress indicator instead of hanging at 92%.
+// Keep the real reason in the server log and return a sanitized message for diagnosis.
 app.use((err, req, res, _next) => {
   console.error(`[${req.method} ${req.path}]`, err?.stack || err);
   if (res.headersSent) return;
   const status = Number(err?.status) || (err?.name === 'APIError' ? 502 : 500);
+  const rawMessage = cleanText(err?.message || 'Неизвестная ошибка сервера.', 600)
+    .replace(/sk-[A-Za-z0-9_-]{16,}/g, '[ключ скрыт]')
+    .replace(/Bearer\s+\S+/gi, 'Bearer [скрыт]');
   res.status(status).json({
-    error: status === 500 ? 'Не удалось завершить генерацию. Попробуй ещё раз.' : cleanText(err.message, 500),
-    details: process.env.NODE_ENV === 'development' ? cleanText(err.message, 1000) : undefined
+    error: rawMessage || 'Не удалось завершить генерацию. Проверь настройки сервера.',
+    details: process.env.NODE_ENV === 'development' ? rawMessage : undefined
   });
 });
 
