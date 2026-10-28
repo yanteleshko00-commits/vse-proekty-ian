@@ -12,13 +12,14 @@ import crypto from 'node:crypto';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
-const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna';
+// Use a supported OpenAI API model ID; don't let a stale OPENAI_MODEL setting select a non-API product name.
+const MODEL = 'gpt-4.1-mini';
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
-const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 180000);
+const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 240000);
 const MAX_SLIDES = 20;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: REQUEST_TIMEOUT_MS, maxRetries: 1 })
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: REQUEST_TIMEOUT_MS, maxRetries: 0 })
   : null;
 
 app.disable('x-powered-by');
@@ -155,8 +156,9 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
     // not only in instructions, to satisfy that API validation reliably.
     instructions,
     input: `Return a valid json object matching the requested schema.\nPayload: ${JSON.stringify(payload)}`,
+    max_output_tokens: 10000,
     text: { format: { type: 'json_object' } }
-  }), timeout, 'Генерация ИИ');
+  }), timeout, `Генерация ИИ (модель ${MODEL})`);
   return extractJson(result.output_text);
 }
 const PLANNER_INSTRUCTIONS = `
