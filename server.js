@@ -343,20 +343,78 @@ function drawVisual(doc, slide, x, y, w, h) {
     });
 }
 
+async function downloadWikimediaPhoto(query, outputPath) {
+  try {
+    const api = new URL('https://commons.wikimedia.org/w/api.php');
+    api.searchParams.set('action', 'query');
+    api.searchParams.set('generator', 'search');
+    api.searchParams.set('gsrsearch', `${query} filetype:bitmap`);
+    api.searchParams.set('gsrnamespace', '6');
+    api.searchParams.set('gsrlimit', '8');
+    api.searchParams.set('prop', 'imageinfo');
+    api.searchParams.set('iiprop', 'url|extmetadata');
+    api.searchParams.set('iiurlwidth', '1800');
+    api.searchParams.set('format', 'json');
+    const response = await fetch(api, { headers: { 'User-Agent': 'VseProektyIan/1.0 (educational presentation generator)' }, signal: AbortSignal.timeout(7000) });
+    if (!response.ok) return null;
+    const json = await response.json();
+    const pages = Object.values(json?.query?.pages || {});
+    const usable = pages.find(page => {
+      const url = page?.imageinfo?.[0]?.thumburl || page?.imageinfo?.[0]?.url || '';
+      return /\.(jpe?g|png|webp)(\?|$)/i.test(url);
+    });
+    if (!usable) return null;
+    const info = usable.imageinfo[0];
+    const imageUrl = info.thumburl || info.url;
+    const imageResponse = await fetch(imageUrl, { headers: { 'User-Agent': 'VseProektyIan/1.0' }, signal: AbortSignal.timeout(10000) });
+    if (!imageResponse.ok) return null;
+    const bytes = Buffer.from(await imageResponse.arrayBuffer());
+    if (bytes.length < 5000) return null;
+    const pathname = new URL(imageUrl).pathname.toLowerCase();
+    const ext = pathname.endsWith('.png') ? '.png' : pathname.endsWith('.webp') ? '.webp' : '.jpg';
+    const finalPath = outputPath.replace(/\.jpg$/i, ext);
+    fs.writeFileSync(finalPath, bytes);
+    const meta = info.extmetadata || {};
+    const artist = clean(meta.Artist?.value).replace(/<[^>]*>/g, '').slice(0, 100);
+    const license = clean(meta.LicenseShortName?.value).replace(/<[^>]*>/g, '').slice(0, 60);
+    return { path: finalPath, credit: [artist, license, 'Wikimedia Commons'].filter(Boolean).join(' · ') };
+  } catch {
+    return null;
+  }
+}
+
 async function generateSlideImages(slides, topic, dir) {
   if (!client) return;
 
   const candidates = slides
-    .filter(s => s.visualType === 'image')
+    .filter((s, index) => index === 0 || s.visualType === 'image')
     .slice(0, MAX_AI_IMAGES);
+
+  if (slides[0] && !slides[0].imagePrompt) {
+    slides[0].imagePrompt = `Premium cinematic full-bleed photographic background for a school presentation about ${topic}. Topic: ${slides[0].title}. High-quality realistic editorial photography, wide landscape 16:9 composition, clear darker area on the left for white title text, no text, no letters, no logos, no watermark.`;
+  }
 
   if (!candidates.length) return;
 
   let generated = 0;
 
-  for (const slide of candidates) {
+  for (let index = 0; index < candidates.length; index++) {
+    const slide = candidates[index];
+    const filePath = path.join(dir, `slide-image-${generated + 1}.jpg`);
+    // Mix licensed internet photography with generated illustrations. If web retrieval fails,
+    // use image generation as a graceful fallback.
+    if (index % 2 === 0) {
+      const photo = await downloadWikimediaPhoto(`${topic} ${slide.title}`, filePath);
+      if (photo) {
+        slide.imagePath = photo.path;
+        slide.imageCredit = photo.credit;
+        generated++;
+        continue;
+      }
+    }
+
     const prompt = slide.imagePrompt ||
-      `Educational illustration for a school presentation about ${topic}. Topic of this slide: ${slide.title}. Clean modern academic style, no text, landscape composition.`;
+      `Premium editorial educational visual about ${topic}. Slide subject: ${slide.title}. Realistic photographic style when appropriate, wide landscape composition, no text, no letters, no logos, no watermark.`;
 
     try {
       const result = await client.images.generate({
@@ -365,24 +423,15 @@ async function generateSlideImages(slides, topic, dir) {
         size: '1536x1024',
         quality: 'low'
       });
-
       const item = result?.data?.[0];
       if (!item?.b64_json) continue;
-
-      const filePath = path.join(dir, `slide-image-${generated + 1}.png`);
-
-      fs.writeFileSync(
-        filePath,
-        Buffer.from(item.b64_json, 'base64')
-      );
-
-      slide.imagePath = filePath;
+      const aiPath = path.join(dir, `slide-image-${generated + 1}.png`);
+      fs.writeFileSync(aiPath, Buffer.from(item.b64_json, 'base64'));
+      slide.imagePath = aiPath;
+      slide.imageCredit = 'Изображение создано ИИ';
       generated++;
     } catch (error) {
-      console.warn(
-        'Не удалось создать изображение для слайда:',
-        error?.message || error
-      );
+      console.warn('Не удалось создать изображение для слайда:', error?.message || error);
     }
   }
 
@@ -459,45 +508,31 @@ function renderPresentationPdf(slides, topic, outputPath, design = {}) {
       doc.rect(0, 0, W, 12).fill(slideAccent);
 
       if (index === 0) {
-        if (activeTheme.cover === 'wave') {
-          doc.save();
-          doc.moveTo(700, 0)
-            .lineTo(960, 0)
-            .lineTo(960, 540)
-            .lineTo(790, 540)
-            .bezierCurveTo(850, 390, 650, 240, 700, 0)
-            .fill(activeTheme.soft);
-          doc.restore();
-
-          doc.circle(820, 115, 62).fill(activeTheme.primary);
-          doc.circle(820, 115, 35).fill(activeTheme.accent);
-        } else if (activeTheme.cover === 'block') {
-          doc.rect(730, 0, 230, 540).fill(activeTheme.soft);
-          doc.rect(770, 70, 145, 400).fill(activeTheme.line);
-          doc.rect(805, 105, 145, 330).fill(activeTheme.primary);
-          doc.circle(835, 145, 16).fill(activeTheme.accent);
+        if (slide.imagePath && fs.existsSync(slide.imagePath)) {
+          try { doc.image(slide.imagePath, 0, 0, { cover: [W, H] }); } catch {}
         } else {
-          doc.circle(820, 100, 115).fill(activeTheme.soft);
-          doc.circle(820, 100, 72).fill(activeTheme.line);
-          doc.circle(820, 100, 35).fill(activeTheme.primary);
+          doc.rect(0, 0, W, H).fill(activeTheme.dark);
         }
-
+        doc.save();
+        doc.fillOpacity(0.52).rect(0, 0, W, H).fill('#07131D');
+        doc.fillOpacity(0.18).rect(0, 0, 650, H).fill('#000000');
+        doc.restore();
+        doc.rect(60, 72, 72, 5).fill(activeTheme.accent);
         doc.font('ProjectFont')
-          .fontSize(38)
-          .fillColor(activeTheme.dark)
-          .text(slide.title, 60, 120, {
-            width: 650,
-            height: 115,
+          .fontSize(39)
+          .fillColor('#FFFFFF')
+          .text(slide.title, 60, 125, {
+            width: 760,
+            height: 150,
             lineGap: 7,
             ellipsis: true
           });
-
         if (slide.subtitle) {
-          doc.fontSize(20)
-            .fillColor(activeTheme.muted)
-            .text(slide.subtitle, 60, 250, {
-              width: 620,
-              height: 115,
+          doc.fontSize(19)
+            .fillColor('#F1F5F9')
+            .text(slide.subtitle, 62, 300, {
+              width: 720,
+              height: 85,
               lineGap: 5,
               ellipsis: true
             });
@@ -520,6 +555,9 @@ function renderPresentationPdf(slides, topic, outputPath, design = {}) {
           });
 
         const hasVisual = slide.visualType && slide.visualType !== 'none';
+        if (slide.imageCredit) {
+          doc.fontSize(7).fillColor(activeTheme.muted).text(`Изображение: ${slide.imageCredit}`, 50, 518, { width: 860, height: 12, ellipsis: true });
+        }
 
         const layouts = [
           'split',
@@ -599,11 +637,6 @@ function renderPresentationPdf(slides, topic, outputPath, design = {}) {
         }
       }
 
-      doc.fontSize(10)
-        .fillColor(activeTheme.muted)
-        .text('Все проекты #Ian', 50, 515, {
-          width: 200
-        });
     });
 
     doc.end();
@@ -816,29 +849,35 @@ async function renderPresentationPptx(slides, topic, outputPath, design = {}) {
     const title = clean(d.title, `Слайд ${i + 1}`);
 
     if (i === 0) {
-      s.addShape(pptx.ShapeType.ellipse, {
-        x: 9.0, y: 0.8, w: 2.5, h: 2.5,
-        line: { color: hex(theme.soft), transparency: 100 },
-        fill: { color: hex(theme.soft) }
+      if (d.imagePath && fs.existsSync(d.imagePath)) {
+        try { s.addImage({ path: d.imagePath, x: 0, y: 0, w: 13.333, h: 7.5 }); } catch {}
+      } else {
+        s.addShape(pptx.ShapeType.rect, {
+          x: 0, y: 0, w: 13.333, h: 7.5,
+          line: { color: hex(theme.dark), transparency: 100 },
+          fill: { color: hex(theme.dark) }
+        });
+      }
+      s.addShape(pptx.ShapeType.rect, {
+        x: 0, y: 0, w: 13.333, h: 7.5,
+        line: { color: '07131D', transparency: 100 },
+        fill: { color: '07131D', transparency: 43 }
       });
-
-      s.addShape(pptx.ShapeType.ellipse, {
-        x: 9.55, y: 1.35, w: 1.4, h: 1.4,
-        line: { color: hex(theme.primary), transparency: 100 },
-        fill: { color: hex(theme.primary) }
+      s.addShape(pptx.ShapeType.rect, {
+        x: 0.8, y: 1.0, w: 0.75, h: 0.055,
+        line: { color: hex(theme.accent), transparency: 100 },
+        fill: { color: hex(theme.accent) }
       });
-
       s.addText(title, {
-        x: 0.8, y: 1.5, w: 7.8, h: 1.6,
-        fontSize: 30, bold: true,
-        color: hex(theme.dark), breakLine: false,
+        x: 0.8, y: 1.55, w: 10.9, h: 1.8,
+        fontSize: 32, bold: true,
+        color: 'FFFFFF', breakLine: false,
         fit: 'shrink', margin: 0.05, valign: 'mid'
       });
-
       if (d.subtitle) {
         s.addText(d.subtitle, {
-          x: 0.85, y: 3.25, w: 7.2, h: 1,
-          fontSize: 18, color: hex(theme.muted),
+          x: 0.85, y: 3.55, w: 9.5, h: 0.9,
+          fontSize: 18, color: 'F1F5F9',
           fit: 'shrink', margin: 0.05
         });
       }
@@ -856,6 +895,9 @@ async function renderPresentationPptx(slides, topic, outputPath, design = {}) {
 
       const hasVisual = d.visualType && d.visualType !== 'none';
       const layout = d.layout || design.layout || 'split';
+      if (d.imageCredit) {
+        s.addText(`Изображение: ${d.imageCredit}`, { x: 0.6, y: 7.12, w: 12.1, h: 0.16, fontSize: 6, color: hex(theme.muted), margin: 0, fit: 'shrink' });
+      }
 
       if (layout === 'statement') {
         addPanel(s, 0.75, 1.55, 11.8, 4.4, theme.soft);
@@ -911,10 +953,6 @@ async function renderPresentationPptx(slides, topic, outputPath, design = {}) {
       }
     }
 
-    s.addText('Все проекты #Ian', {
-      x: 0.55, y: 7.12, w: 3, h: 0.2,
-      fontSize: 8, color: hex(theme.muted), margin: 0
-    });
   });
 
   await pptx.writeFile({ fileName: outputPath });
@@ -1021,7 +1059,7 @@ async function generateWithAI({
   },
   "design": {
     "palette": "botanical",
-    "layout": "split"
+    "layout": "editorial"
   },
   "slides": [
     {
@@ -1049,7 +1087,10 @@ async function generateWithAI({
 - Не выдумывай статистику, эксперименты и источники. Если данные условные, прямо укажи это.
 - Количество слайдов должно быть ровно ${slidesCount}.
 - Слайды должны раскрывать тему по порядку и не повторять одни и те же тезисы.
-- Чередуй типы визуального оформления: none, image, bar, table, process, quote, formula.
+- Создай современную премиальную презентацию: обложка с фотореалистичным широким изображением, крупным контрастным заголовком и без логотипа.
+- Чередуй композиции слайдов: split, editorial, visual-first, cards, minimal, statement. Не повторяй один макет подряд.
+- На обложке обязательно задай visualType=image и подробный imagePrompt для полноэкранного фонового изображения без текста и логотипов.
+- Чередуй типы визуального оформления: image, bar, table, process, quote, formula и none; не добавляй график без реальных данных.
 - Для bar используй массив объектов [{"label":"Категория","value":10}].
 - Для table используй двумерный массив [["Показатель","Значение"],["Пример","Описание"]].
 - Для process используй массив строк с этапами.
@@ -1133,6 +1174,11 @@ app.post('/api/generate-image', async (req, res) => {
 
 async function buildProjectFiles(project, topic, dir) {
   const slides = normalizeSlides(project.slides, project.slides?.length || 10);
+  if (slides[0]) {
+    slides[0].visualType = 'image';
+    slides[0].layout = 'visual-first';
+    slides[0].imagePrompt = slides[0].imagePrompt || `Premium cinematic full-bleed photographic background for a school presentation about ${topic}. Wide landscape composition, darker area on the left for white title text, no text, no logos, no watermark.`;
+  }
 
   await generateSlideImages(slides, topic, dir);
 
@@ -1167,11 +1213,11 @@ async function buildProjectFiles(project, topic, dir) {
   return {
     slides,
     files: {
-      presentationPdf: fs.readFileSync(pdfPath).toString('base64'),
-      presentationPptx: fs.readFileSync(pptxPath).toString('base64'),
-      projectPdf: fs.readFileSync(textPdfPath).toString('base64'),
-      projectDocx: fs.readFileSync(docxPath).toString('base64'),
-      zip: fs.readFileSync(zipPath).toString('base64')
+      'Презентация_проекта.pptx': { base64: fs.readFileSync(pptxPath).toString('base64'), mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' },
+      'Презентация_проекта.pdf': { base64: fs.readFileSync(pdfPath).toString('base64'), mime: 'application/pdf' },
+      'Индивидуальный_проект.docx': { base64: fs.readFileSync(docxPath).toString('base64'), mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+      'Проект_текст.pdf': { base64: fs.readFileSync(textPdfPath).toString('base64'), mime: 'application/pdf' },
+      'Весь_проект.zip': { base64: fs.readFileSync(zipPath).toString('base64'), mime: 'application/zip' }
     }
   };
 }
