@@ -70,7 +70,7 @@ function normalizeSlides(slides, count) {
       : [],
     layout: clean(s?.layout, 'split'),
     background: clean(s?.background, 'light'),
-    accent: clean(s?.accent, '#18865B'),
+    accent: clean(s?.accent),
     headline: clean(s?.headline),
     emphasis: clean(s?.emphasis),
     visualType: clean(s?.visualType, 'none'),
@@ -91,7 +91,7 @@ function normalizeSlides(slides, count) {
       bullets: ['Материал по теме проекта.'],
       layout: 'split',
       background: 'light',
-      accent: '#18865B',
+      accent: '',
       headline: '',
       emphasis: '',
       visualType: 'none',
@@ -343,92 +343,163 @@ function drawVisual(doc, slide, x, y, w, h) {
     });
 }
 
-async function downloadWikimediaPhoto(query, outputPath) {
+async function searchWikimediaPhotos(query, limit = 10) {
   try {
     const api = new URL('https://commons.wikimedia.org/w/api.php');
     api.searchParams.set('action', 'query');
     api.searchParams.set('generator', 'search');
     api.searchParams.set('gsrsearch', `${query} filetype:bitmap`);
     api.searchParams.set('gsrnamespace', '6');
-    api.searchParams.set('gsrlimit', '8');
+    api.searchParams.set('gsrlimit', String(limit));
     api.searchParams.set('prop', 'imageinfo');
     api.searchParams.set('iiprop', 'url|extmetadata');
     api.searchParams.set('iiurlwidth', '1800');
     api.searchParams.set('format', 'json');
-    const response = await fetch(api, { headers: { 'User-Agent': 'VseProektyIan/1.0 (educational presentation generator)' }, signal: AbortSignal.timeout(7000) });
-    if (!response.ok) return null;
-    const json = await response.json();
-    const pages = Object.values(json?.query?.pages || {});
-    const usable = pages.find(page => {
-      const url = page?.imageinfo?.[0]?.thumburl || page?.imageinfo?.[0]?.url || '';
-      return /\.(jpe?g|png|webp)(\?|$)/i.test(url);
+    const response = await fetch(api, {
+      headers: { 'User-Agent': 'VseProektyIan/1.1 (educational presentation generator)' },
+      signal: AbortSignal.timeout(IMAGE_SEARCH_TIMEOUT_MS)
     });
-    if (!usable) return null;
-    const info = usable.imageinfo[0];
-    const imageUrl = info.thumburl || info.url;
-    const imageResponse = await fetch(imageUrl, { headers: { 'User-Agent': 'VseProektyIan/1.0' }, signal: AbortSignal.timeout(10000) });
+    if (!response.ok) return [];
+    const json = await response.json();
+    return Object.values(json?.query?.pages || {}).map(page => {
+      const info = page?.imageinfo?.[0];
+      const url = info?.thumburl || info?.url || '';
+      const title = clean(page?.title).replace(/^File:/i, '').replace(/_/g, ' ');
+      if (!info || !url || !/\.(jpe?g|png|webp)(\?|$)/i.test(url)) return null;
+      // Avoid obvious low-quality results: logos, icons, screenshots and Wikimedia UI captures.
+      if (/\b(logo|icon|favicon|screenshot|screen.?shot|wikimedia.?commons|wikipedia.?page|website.?capture|map.?of)\b/i.test(title)) return null;
+      const meta = info.extmetadata || {};
+      return {
+        title,
+        url,
+        originalUrl: info.url || url,
+        artist: clean(meta.Artist?.value).replace(/<[^>]*>/g, '').slice(0, 100),
+        license: clean(meta.LicenseShortName?.value).replace(/<[^>]*>/g, '').slice(0, 60)
+      };
+    }).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function heuristicPhotoScore(candidate, topic, slideTitle, query) {
+  const title = candidate.title.toLowerCase();
+  const wanted = `${topic} ${slideTitle} ${query}`.toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u).filter(w => w.length > 3);
+  let score = 0;
+  for (const word of wanted) if (title.includes(word)) score += 3;
+  if (/\b(photo|photograph|portrait|landscape|laboratory|classroom|computer|laptop|forest|building|experiment)\b/i.test(title)) score += 2;
+  if (/\b(drawing|diagram|chart|illustration|vector|render|model)\b/i.test(title)) score -= 2;
+  if (/\b(blurry|low.?quality|thumbnail|cropped|duplicate)\b/i.test(title)) score -= 5;
+  return score;
+}
+
+async function chooseBestPhoto(candidates, topic, slideTitle, query) {
+  if (!candidates.length) return null;
+  // Ask the vision model to judge relevance and visual quality; it selects an existing
+  // web photo only and never generates or edits an image.
+  if (client && candidates.length > 1) {
+    try {
+      const sample = candidates.slice(0, 6);
+      const content = [{
+        type: 'text',
+        text: `Выбери ЛУЧШУЮ реальную фотографию для школьного слайда. Тема проекта: "${topic}". Заголовок слайда: "${slideTitle}". Поисковый запрос: "${query}". Оцени каждое фото по соответствию теме (главное), качеству композиции, чёткости, современному виду и пригодности для красивой презентации. Отклоняй скриншоты сайтов/Википедии, интерфейсы ноутбуков, случайные нерелевантные предметы, логотипы, водяные знаки и изображения с большим количеством текста. Если все варианты плохие или нерелевантные, верни index 0 и suitable false. Верни только JSON: {"index":0,"suitable":true,"reason":"коротко"}. Индексы вариантов начинаются с 0.`
+      }];
+      for (let i = 0; i < sample.length; i++) {
+        content.push({ type: 'text', text: `Вариант ${i}. Имя файла: ${sample[i].title}` });
+        content.push({ type: 'image_url', image_url: { url: sample[i].url, detail: 'low' } });
+      }
+      const response = await client.chat.completions.create({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: 'Ты эксперт по визуальному качеству изображений. Оценивай только предоставленные фотографии. Не придумывай новые изображения. Отвечай только JSON.' },
+          { role: 'user', content }
+        ],
+        max_tokens: 120
+      });
+      const judgement = safeJson(response.choices?.[0]?.message?.content || '');
+      const idx = Number(judgement.index);
+      if (judgement.suitable !== false && Number.isInteger(idx) && idx >= 0 && idx < sample.length) {
+        return sample[idx];
+      }
+      // Model judged the entire batch unsuitable: caller should try another query.
+      return null;
+    } catch (error) {
+      console.warn('Проверка качества фото через vision не сработала, использую текстовый отбор:', error?.message || error);
+    }
+  }
+  return [...candidates].sort((a, b) =>
+    heuristicPhotoScore(b, topic, slideTitle, query) - heuristicPhotoScore(a, topic, slideTitle, query)
+  )[0] || null;
+}
+
+async function downloadWikimediaPhoto(query, outputPath, topic, slideTitle) {
+  const candidates = await searchWikimediaPhotos(query, 10);
+  const chosen = await chooseBestPhoto(candidates, topic, slideTitle, query);
+  if (!chosen) return null;
+  try {
+    const imageResponse = await fetch(chosen.url, {
+      headers: { 'User-Agent': 'VseProektyIan/1.1' },
+      signal: AbortSignal.timeout(IMAGE_SEARCH_TIMEOUT_MS)
+    });
     if (!imageResponse.ok) return null;
     const bytes = Buffer.from(await imageResponse.arrayBuffer());
-    if (bytes.length < 5000) return null;
-    const pathname = new URL(imageUrl).pathname.toLowerCase();
+    if (bytes.length < 12000) return null;
+    const pathname = new URL(chosen.url).pathname.toLowerCase();
     const ext = pathname.endsWith('.png') ? '.png' : pathname.endsWith('.webp') ? '.webp' : '.jpg';
     const finalPath = outputPath.replace(/\.jpg$/i, ext);
     fs.writeFileSync(finalPath, bytes);
-    const meta = info.extmetadata || {};
-    const artist = clean(meta.Artist?.value).replace(/<[^>]*>/g, '').slice(0, 100);
-    const license = clean(meta.LicenseShortName?.value).replace(/<[^>]*>/g, '').slice(0, 60);
-    return { path: finalPath, credit: [artist, license, 'Wikimedia Commons'].filter(Boolean).join(' · ') };
+    return {
+      path: finalPath,
+      credit: [chosen.artist, chosen.license, 'Wikimedia Commons'].filter(Boolean).join(' · '),
+      sourceTitle: chosen.title
+    };
   } catch {
     return null;
   }
 }
 
 async function generateSlideImages(slides, topic, dir) {
-  // Частые фотографии: обложка и примерно 2 из каждых 3 слайдов.
-  // Слайды с визуальным типом image также включаются независимо от позиции.
-  const candidates = slides.filter((slide, index) =>
-    index === 0 || slide.visualType === 'image' || index % 3 !== 2
-  );
-
+  // Aim for photos on nearly every slide. For each slide, search multiple query variants
+  // and use vision analysis to reject visually weak or irrelevant results.
   let downloaded = 0;
-  for (const slide of candidates) {
-    const index = slides.indexOf(slide);
+  for (let index = 0; index < slides.length; index++) {
+    const slide = slides[index];
     const filePath = path.join(dir, `slide-image-${index + 1}.jpg`);
+    const specific = clean(slide.imagePrompt) || `${topic} ${slide.title}`;
     const queries = index === 0
-      ? [`${topic} ${slide.title}`, topic]
-      : [`${topic} ${slide.title}`, slide.title, topic];
-
+      ? [`${topic} ${slide.title} photograph`, `${topic} real photo`, `${topic} photography`]
+      : [`${specific} photo`, `${topic} ${slide.title} photograph`, `${slide.title} real photo`, `${topic} photography`];
+    const seenQueries = new Set();
     for (const query of queries) {
-      const photo = await downloadWikimediaPhoto(query, filePath);
+      const q = query.trim();
+      if (!q || seenQueries.has(q)) continue;
+      seenQueries.add(q);
+      const photo = await downloadWikimediaPhoto(q, filePath, topic, slide.title);
       if (photo) {
         slide.imagePath = photo.path;
         slide.imageCredit = photo.credit;
+        slide.imageSourceTitle = photo.sourceTitle;
         downloaded++;
         break;
       }
     }
-
     if (!slide.imagePath) {
-      console.warn(`Не удалось найти интернет-фото для слайда ${index + 1}: ${slide.title}`);
+      console.warn(`Не найдено подходящее интернет-фото для слайда ${index + 1}: ${slide.title}`);
     }
   }
-
-  // Если на отдельных слайдах фото не нашлось, повторно используем найденные
-  // фотографии, чтобы сохранить визуальное оформление. При этом генерация ИИ не вызывается.
-  const available = slides.filter(slide => slide.imagePath);
-  if (available.length) {
-    let cursor = 0;
-    for (const slide of slides) {
-      if ((slide.visualType === 'image' || slides.indexOf(slide) === 0) && !slide.imagePath) {
-        const source = available[cursor % available.length];
-        slide.imagePath = source.imagePath;
-        slide.imageCredit = source.imageCredit;
-        cursor++;
-      }
+  // Reuse only for the cover as a last resort; never silently fill the whole deck with duplicates.
+  if (slides[0] && !slides[0].imagePath) {
+    const other = slides.slice(1).find(s => s.imagePath);
+    if (other) {
+      slides[0].imagePath = other.imagePath;
+      slides[0].imageCredit = other.imageCredit;
+      slides[0].imageSourceTitle = other.imageSourceTitle;
     }
   }
-  console.log(`Интернет-фото для презентации: ${downloaded} из ${candidates.length} попыток.`);
+  console.log(`Подобрано интернет-фото: ${downloaded} из ${slides.length} слайдов.`);
 }
+
 function renderPresentationPdf(slides, topic, outputPath, design = {}) {
   const requestedTheme = clean(design.palette).toLowerCase();
 
@@ -1048,7 +1119,7 @@ async function generateWithAI({
       "bullets": ["Тезис 1", "Тезис 2"],
       "layout": "split",
       "background": "light",
-      "accent": "#18865B",
+      "accent": "",
       "headline": "",
       "emphasis": "",
       "visualType": "none",
@@ -1076,7 +1147,10 @@ async function generateWithAI({
 - Для process используй массив строк с этапами.
 - Для quote используй короткую цитату или ключевую мысль.
 - Для formula используй строку с формулой.
-- Для image дай подробный imagePrompt на русском или английском, без надписей внутри изображения.
+- Для image дай подробный imagePrompt на русском или английском, без надписей внутри изображения. Для каждого слайда сформулируй запрос для поиска РЕАЛЬНОЙ фотографии в интернете, которая конкретно иллюстрирует его содержание; не проси создавать картинки ИИ.
+- Используй фотографии на большинстве слайдов (ориентир 9–11 из 12), если они помогают теме. Не повторяй одну фотографию на нескольких слайдах, кроме крайнего случая для обложки.
+- Выбирай палитру по теме проекта: ocean, editorial, violet, midnight, citrus или botanical. Не используй зелёный по умолчанию.
+- Визуально разнообразь слайды: крупные фотографии, сравнения, схемы, карточки и инфографика; оставляй достаточно свободного пространства и не перегружай текстом.
 - Не ставь visualType=bar без осмысленных данных. Не создавай ложные цифры.
 - Верни только JSON, без Markdown и пояснений.
 `;
@@ -1104,6 +1178,7 @@ async function generateWithAI({
     text: 'Практический материал по теме проекта.'
   };
   data.design = data.design || { palette: 'ocean', layout: 'editorial' };
+  if (!data.design.palette || data.design.palette === 'botanical') data.design.palette = 'ocean';
 
   return data;
 }
@@ -1157,8 +1232,16 @@ async function buildProjectFiles(project, topic, dir) {
   if (slides[0]) {
     slides[0].visualType = 'image';
     slides[0].layout = 'visual-first';
-    slides[0].imagePrompt = slides[0].imagePrompt || `Premium cinematic full-bleed photographic background for a school presentation about ${topic}. Wide landscape composition, darker area on the left for white title text, no text, no logos, no watermark.`;
+    slides[0].imagePrompt = `${topic} ${slides[0].title} real high-quality landscape photograph, visually striking, suitable as a presentation cover; no screenshots, no logos, no text overlays`;
   }
+  // Make the downloaded photos visible in the actual layouts. Keep meaningful charts,
+  // tables, processes and quotes, but turn most otherwise text-only slides into photo slides.
+  slides.forEach((slide, index) => {
+    if (index > 0 && index % 5 !== 4 && (!slide.visualType || slide.visualType === 'none')) {
+      slide.visualType = 'image';
+      if (!slide.layout || slide.layout === 'minimal') slide.layout = 'split';
+    }
+  });
 
   await generateSlideImages(slides, topic, dir);
 
