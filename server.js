@@ -150,14 +150,16 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   if (!openai) throw new Error('На сервере не задан OPENAI_API_KEY.');
   const result = await withTimeout(openai.responses.create({
     model: MODEL,
+    // The Responses API requires the word 'json' in the input messages
+    // whenever text.format.type is 'json_object'. Put it in input itself,
+    // not only in instructions, to satisfy that API validation reliably.
     instructions,
-    input: JSON.stringify(payload),
+    input: `Return a valid json object matching the requested schema.\nPayload: ${JSON.stringify(payload)}`,
     text: { format: { type: 'json_object' } }
   }), timeout, 'Генерация ИИ');
   return extractJson(result.output_text);
 }
 const PLANNER_INSTRUCTIONS = `
-Формат ответа: json. Верни один валидный объект json без Markdown и пояснений.
 Ты опытный автор и дизайнер презентаций. Верни ТОЛЬКО JSON-объект.
 Создай презентацию на русском языке с точным количеством слайдов, указанным в запросе.
 Каждый слайд должен иметь один type из: cover,cards,comparison,stat,process,quote,image,table,conclusion,sources.
