@@ -80,45 +80,6 @@ function containsCorruptedText(value) {
   if (value && typeof value === 'object') return Object.values(value).some(containsCorruptedText);
   return false;
 }
-function createLocalFallbackPlan(payload) {
-  const topic = cleanText(payload?.topic, 180) || 'Тема проекта';
-  const count = clampInt(payload?.requestedSlides, 1, MAX_SLIDES, 8);
-  const requirements = cleanText(payload?.extraRequirements, 500);
-  const sections = [
-    { type: 'cover', title: topic, subtitle: 'Исследование темы и её практического значения', body: 'Учебная презентация: основные понятия, анализ и выводы.' },
-    { type: 'cards', title: 'Почему эта тема важна', body: 'Чтобы понять тему, нужно рассмотреть её значение, причины интереса к ней и влияние на повседневную жизнь.', bullets: ['Актуальность темы', 'Связь с реальной жизнью', 'Вопросы, требующие изучения'] },
-    { type: 'comparison', title: 'Основные понятия', body: 'Перед анализом важно определить ключевые понятия и не смешивать факты с предположениями.', leftTitle: 'Что изучаем', rightTitle: 'Что проверяем', leftItems: ['Определение темы', 'Основные элементы', 'Примеры применения'], rightItems: ['Надёжность информации', 'Разные точки зрения', 'Практические ограничения'] },
-    { type: 'process', title: 'Как устроен процесс', body: 'Рассмотрите тему последовательно: от исходных условий к результатам и возможным последствиям.', steps: ['Сформулировать вопрос', 'Собрать информацию', 'Сравнить факты', 'Сделать обоснованный вывод'] },
-    { type: 'cards', title: 'Факторы и причины', body: 'На результат обычно влияет несколько факторов. Их следует рассматривать вместе, учитывая контекст.', cards: [{ title: 'Условия', text: 'Обстоятельства, в которых проявляется явление.' }, { title: 'Участники', text: 'Люди, системы или объекты, влияющие на результат.' }, { title: 'Ресурсы', text: 'Время, знания и средства, необходимые для решения.' }] },
-    { type: 'image', title: 'Пример из практики', body: 'Подберите конкретный пример по теме и объясните, что он показывает. Не выдавайте предположение за доказанный факт.' },
-    { type: 'stat', title: 'Как оценивать информацию', body: 'Проверяйте дату, автора, первоисточник и согласованность сведений в нескольких независимых материалах.', statistic: '3 шага', statisticLabel: 'Найти источник · проверить данные · сравнить подтверждения' },
-    { type: 'comparison', title: 'Плюсы и ограничения', body: 'У любого подхода есть сильные стороны и условия, при которых он работает хуже.', leftTitle: 'Преимущества', rightTitle: 'Ограничения', leftItems: ['Возможная польза', 'Практическое применение', 'Потенциал развития'], rightItems: ['Зависимость от условий', 'Возможные риски', 'Необходимость проверки'] },
-    { type: 'process', title: 'Практическая часть', body: requirements || 'Предложите небольшое исследование: сформулируйте цель, опишите метод, зафиксируйте наблюдения и объясните результат.', steps: ['Определить цель', 'Выбрать метод', 'Собрать наблюдения', 'Проанализировать результат', 'Сформулировать вывод'] },
-    { type: 'conclusion', title: 'Выводы', body: 'Подведите итог по изученным вопросам. Отделите подтверждённые сведения от предположений и укажите, что требует дальнейшего изучения.', bullets: ['Цель исследования определена', 'Ключевые вопросы рассмотрены', 'Практическое значение сформулировано'] },
-    { type: 'sources', title: 'Источники для проверки', body: 'Перед сдачей добавьте реальные источники, которыми вы пользовались: учебник, официальные публикации и проверенные материалы.', bullets: ['Учебные материалы по теме', 'Официальные сайты профильных организаций', 'Научные или справочные публикации'] }
-  ];
-  const slides = Array.from({ length: count }, (_, i) => {
-    const base = sections[i % sections.length];
-    return { ...base, title: i >= sections.length ? base.title + ' — часть ' + (Math.floor(i / sections.length) + 1) : base.title,
-      bullets: base.bullets ? [...base.bullets] : [], cards: base.cards ? base.cards.map(c => ({ ...c })) : [],
-      leftItems: base.leftItems ? [...base.leftItems] : [], rightItems: base.rightItems ? [...base.rightItems] : [],
-      steps: base.steps ? [...base.steps] : [], table: [], imageQuery: topic + ' ' + base.title,
-      notes: 'Резервный вариант: автоматически сформирован без доступного ИИ. Проверьте и уточните факты перед использованием.' };
-  });
-  slides[0].title = topic;
-  slides[0].type = 'cover';
-  slides[slides.length - 1].type = 'conclusion';
-  slides[slides.length - 1].title = 'Итоги и дальнейшая проверка';
-  return {
-    title: topic,
-    summary: 'Создан резервный вариант, потому что подключённые ИИ сейчас недоступны. Проверьте факты и добавьте реальные источники перед использованием.',
-    practicalPart: requirements || 'Для практической части сформулируйте цель, выберите подходящий метод исследования, запишите наблюдения и объясните полученные результаты.',
-    defense: 'Кратко представьте актуальность темы, цель и задачи, основные результаты, практическую значимость и выводы. Проверьте все факты и источники перед защитой.',
-    sources: [],
-    slides
-  };
-}
-
 function normalizeSlideType(type, index) {
   const allowed = ['cover', 'cards', 'comparison', 'stat', 'process', 'quote', 'image', 'table'];
   return allowed.includes(type) ? type : (index === 0 ? 'cover' : 'cards');
@@ -339,6 +300,9 @@ function validatePresentationPlan(raw, requestedCount) {
     if (!title) issues.push(`${prefix}: пустой заголовок`);
     if (title) titleCounts.set(title, (titleCounts.get(title) || 0) + 1);
     if (title && genericTitle.test(title)) issues.push(`${prefix}: шаблонный заголовок «${slide.title}»`);
+    if (/^(?:источники|итоги|выводы|заключение)(?:\\s|:|$)/i.test(title)) issues.push(`${prefix}: запрещён пустой финальный слайд с источниками или общим заключением`);
+    const allowedTypes = ['cover', 'cards', 'comparison', 'stat', 'process', 'quote', 'image', 'table'];
+    if (!allowedTypes.includes(String(slide.type || ''))) issues.push(`${prefix}: неподдерживаемый тип макета`);
     const query = cleanText(slide.imageQuery, 180).toLocaleLowerCase('en').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!query) issues.push(`${prefix}: нет собственного imageQuery`);
     if (query) imageQueries.set(query, (imageQueries.get(query) || 0) + 1);
@@ -353,9 +317,11 @@ function validatePresentationPlan(raw, requestedCount) {
     ].filter(value => typeof value === 'string').map(value => value.trim()).filter(Boolean);
     if (parts.join(' ').length < 32) issues.push(`${prefix}: недостаточно содержательного текста`);
     const type = normalizeSlideType(slide.type, index);
-    if (type === 'cards' && !(Array.isArray(slide.cards) && slide.cards.filter(card => card?.title && card?.text).length >= 2) &&
-        !(Array.isArray(slide.bullets) && slide.bullets.filter(Boolean).length >= 3)) {
-      issues.push(`${prefix}: макет cards требует минимум две карточки или три пункта`);
+    if (type === 'cards' && !(Array.isArray(slide.cards) && slide.cards.filter(card => card?.title && card?.text).length >= 2)) {
+      issues.push(`${prefix}: для макета cards нужны минимум две полностью заполненные карточки`);
+    }
+    if (type === 'stat' && !cleanText(slide.statistic || slide.statisticLabel || slide.body, 180)) {
+      issues.push(`${prefix}: для макета stat нужен конкретный факт или тезис`);
     }
     if (type === 'comparison' &&
         (!(Array.isArray(slide.leftItems) && slide.leftItems.filter(Boolean).length >= 2) ||
@@ -614,7 +580,7 @@ function buildPptx(plan) {
       });
     } else if (type === 'stat') {
       addText(slide, title, 0.75, 0.55, 11.7, 0.7, { fontSize: 27, bold: true, color: theme.ink });
-      addText(slide, s.statistic || 'Ключевой вывод', 0.85, 1.65, 6.2, 2.0, { fontSize: 47, bold: true, color: theme.accent });
+      addText(slide, s.statistic || s.statisticLabel || s.body || title, 0.85, 1.65, 6.2, 2.0, { fontSize: 47, bold: true, color: theme.accent });
       addText(slide, s.statisticLabel || s.body, 0.9, 3.8, 6.0, 1.3, { fontSize: 21, color: theme.ink, valign: 'top' });
       addImageOrPlaceholder(slide, s, 7.4, 1.6, 4.7, 4.4, theme);
     } else if (type === 'process') {
