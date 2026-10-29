@@ -340,9 +340,9 @@ const PLANNER_INSTRUCTIONS = `
 async function commonsImage(query, used) {
   // Несколько коротких запросов повышают шанс найти тематическую фотографию.
   const queries = [
-    String(query || '').replace(/[^\\p{L}\\p{N}\\s-]/gu, ' ').trim(),
+    String(query || '').replace(/[^\p{L}\p{N}\s-]/gu, ' ').trim(),
     String(query || '').split(/[—:,.!?]/)[0].trim(),
-    String(query || '').split(/\\s+/).slice(0, 5).join(' ').trim()
+    String(query || '').split(/\s+/).slice(0, 5).join(' ').trim()
   ].filter((q, i, a) => q.length >= 3 && a.indexOf(q) === i);
   for (const q of queries) {
     try {
