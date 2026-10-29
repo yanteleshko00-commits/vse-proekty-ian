@@ -731,6 +731,85 @@ function createPdfBuffer(plan) {
     doc.end();
   });
 }
+function createDefensePdfBuffer(plan) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: 'A4', margin: 54,
+      info: { Title: 'Текст защиты — ' + plan.title, Author: 'Все проекты #Ian' }
+    });
+    const chunks = [];
+    doc.on('data', chunk => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+    if (fs.existsSync(PDF_FONT_PATH)) doc.font(PDF_FONT_PATH);
+    const theme = plan.theme || COLORS.blue;
+    doc.fillColor('#' + theme.accent).fontSize(23).text('Текст защиты проекта');
+    doc.moveDown(0.5);
+    doc.fillColor('#' + theme.ink).fontSize(17).text(plan.title || 'Учебный проект');
+    doc.moveDown();
+    doc.fillColor('#' + theme.muted).fontSize(10).text('Подготовленный текст выступления');
+    doc.moveDown();
+    doc.fillColor('#' + theme.ink).fontSize(12).text(
+      plan.defense || ('Здравствуйте. Представляю проект на тему «' + plan.title + '». ' + (plan.summary || '') + ' ' + (plan.practicalPart || 'В ходе работы были рассмотрены основные аспекты темы и сформулированы выводы.')),
+      { lineGap: 5, paragraphGap: 8 }
+    );
+    if (plan.practicalPart) {
+      doc.moveDown();
+      doc.fillColor('#' + theme.accent).fontSize(15).text('Практическая часть');
+      doc.moveDown(0.4);
+      doc.fillColor('#' + theme.ink).fontSize(11).text(plan.practicalPart, { lineGap: 4 });
+    }
+    if (plan.sources && plan.sources.length) {
+      doc.moveDown();
+      doc.fillColor('#' + theme.accent).fontSize(14).text('Источники');
+      doc.moveDown(0.3);
+      doc.fillColor('#' + theme.ink).fontSize(9);
+      for (const source of plan.sources) doc.text('• ' + (source.url ? source.title + ' — ' + source.url : source.title), { paragraphGap: 3 });
+    }
+    doc.end();
+  });
+}
+
+function createBookletPdfBuffer(plan) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: 'A4', layout: 'landscape', margin: 26, autoFirstPage: false,
+      info: { Title: 'Буклет — ' + plan.title, Author: 'Все проекты #Ian' }
+    });
+    const chunks = [];
+    doc.on('data', chunk => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+    if (fs.existsSync(PDF_FONT_PATH)) doc.font(PDF_FONT_PATH);
+    const theme = plan.theme || COLORS.blue;
+    const pageW = 842, pageH = 595, margin = 26, gap = 14;
+    const panelW = (pageW - margin * 2 - gap * 2) / 3;
+    const panelX = [margin, margin + panelW + gap, margin + 2 * (panelW + gap)];
+    doc.addPage({ size: 'A4', layout: 'landscape', margin: 26 });
+    doc.rect(0, 0, pageW, pageH).fill('#' + theme.bg);
+    doc.rect(0, 0, pageW, 12).fill('#' + theme.accent);
+    for (let i = 0; i < 3; i++) {
+      doc.roundedRect(panelX[i], 28, panelW, pageH - 56, 12).fill('#FFFFFF');
+      if (i > 0) doc.moveTo(panelX[i] - gap / 2, 38).lineTo(panelX[i] - gap / 2, pageH - 38).lineWidth(0.7).stroke('#' + theme.accent2);
+    }
+    doc.fillColor('#' + theme.accent).fontSize(10).text('УЧЕБНЫЙ ПРОЕКТ', panelX[0] + 16, 48, { width: panelW - 32 });
+    doc.fillColor('#' + theme.ink).fontSize(20).text(normalizeText(plan.title || 'Проект', 90), panelX[0] + 16, 76, { width: panelW - 32, height: 92, ellipsis: true });
+    doc.fillColor('#' + theme.muted).fontSize(10).text('Главное о теме', panelX[0] + 16, 184, { width: panelW - 32 });
+    doc.fillColor('#' + theme.ink).fontSize(11).text(normalizeText(plan.summary || (plan.slides[1] && plan.slides[1].body) || '', 500), panelX[0] + 16, 205, { width: panelW - 32, height: 245, ellipsis: true, lineGap: 3 });
+    doc.fillColor('#' + theme.accent).fontSize(14).text('Ключевые идеи', panelX[1] + 16, 48, { width: panelW - 32 });
+    const ideas = (plan.slides || []).filter(s => s.type !== 'cover' && s.type !== 'sources').slice(0, 5);
+    const ideaText = ideas.map((s, i) => (i + 1) + '. ' + s.title + (s.body ? ': ' + s.body : '')).join('\n\n');
+    doc.fillColor('#' + theme.ink).fontSize(10).text(normalizeText(ideaText, 1300), panelX[1] + 16, 78, { width: panelW - 32, height: 420, ellipsis: true, lineGap: 3 });
+    doc.fillColor('#' + theme.accent).fontSize(14).text('Практика и выводы', panelX[2] + 16, 48, { width: panelW - 32 });
+    doc.fillColor('#' + theme.ink).fontSize(10).text(normalizeText(plan.practicalPart || 'Практическая часть помогает применить изученные идеи к теме проекта.', 850), panelX[2] + 16, 78, { width: panelW - 32, height: 200, ellipsis: true, lineGap: 3 });
+    const conclusion = (plan.slides || []).slice().reverse().find(s => s.type === 'conclusion' || /вывод|итог/i.test(s.title || ''));
+    doc.fillColor('#' + theme.accent).fontSize(12).text('Итог', panelX[2] + 16, 300, { width: panelW - 32 });
+    doc.fillColor('#' + theme.ink).fontSize(10).text(normalizeText((conclusion && conclusion.body) || (conclusion && conclusion.bullets && conclusion.bullets.join(' • ')) || 'Тема рассмотрена, основные идеи систематизированы.', 400), panelX[2] + 16, 322, { width: panelW - 32, height: 100, ellipsis: true, lineGap: 3 });
+    doc.fillColor('#' + theme.muted).fontSize(8).text('Все проекты #Ian', panelX[2] + 16, 500, { width: panelW - 32 });
+    doc.end();
+  });
+}
+
 async function createZip(files) {
   return new Promise((resolve, reject) => {
     const output = [];
@@ -766,6 +845,16 @@ async function buildFiles(plan) {
       name: 'Проект_текст.pdf',
       mime: 'application/pdf',
       create: createPdfBuffer
+    },
+    {
+      name: 'Текст_защиты.pdf',
+      mime: 'application/pdf',
+      create: createDefensePdfBuffer
+    },
+    {
+      name: 'Буклет.pdf',
+      mime: 'application/pdf',
+      create: createBookletPdfBuffer
     }
   ];
 
