@@ -338,30 +338,51 @@ const PLANNER_INSTRUCTIONS = `
 Верни поля: title, summary, practicalPart, defense, sources [{title,url}], slides [{type,title,subtitle,body,bullets,cards,leftTitle,rightTitle,leftItems,rightItems,steps,quote,statistic,statisticLabel,table,imageQuery,notes}].
 `;
 async function commonsImage(query, used) {
-  const url = new URL('https://commons.wikimedia.org/w/api.php');
-  url.search = new URLSearchParams({
-    action: 'query', generator: 'search', gsrsearch: `${query} filetype:bitmap`,
-    gsrnamespace: '6', gsrlimit: '8', prop: 'imageinfo', iiprop: 'url|extmetadata',
-    iiurlwidth: '1400', format: 'json', origin: '*'
-  }).toString();
-  const res = await withTimeout(fetch(url, {
-    headers: { 'User-Agent': 'IanProjectPresentation/1.0 (presentation generator)' },
-    signal: AbortSignal.timeout(2500)
-  }), 3000, 'Поиск изображения');
-  if (!res.ok) return null;
-  const data = await res.json();
-  const pages = Object.values(data.query?.pages || {});
-  for (const page of pages) {
-    const info = page.imageinfo?.[0];
-    const candidate = info?.thumburl || info?.url;
-    if (!candidate || !/^https:\/\/upload\.wikimedia\.org\//i.test(candidate)) continue;
-    if (used.has(candidate)) continue;
-    const mime = info?.mime || '';
-    if (!mime.startsWith('image/')) continue;
-    const title = page.title || '';
-    const credit = `${title} — Wikimedia Commons`;
-    used.add(candidate);
-    return { url: candidate, credit, title };
+  // Несколько коротких запросов повышают шанс найти тематическую фотографию.
+  const queries = [
+    String(query || '').replace(/[^\\p{L}\\p{N}\\s-]/gu, ' ').trim(),
+    String(query || '').split(/[—:,.!?]/)[0].trim(),
+    String(query || '').split(/\\s+/).slice(0, 5).join(' ').trim()
+  ].filter((q, i, a) => q.length >= 3 && a.indexOf(q) === i);
+  for (const q of queries) {
+    try {
+      const url = new URL('https://commons.wikimedia.org/w/api.php');
+      url.search = new URLSearchParams({
+        action: 'query', generator: 'search', gsrsearch: q,
+        gsrnamespace: '6', gsrlimit: '12', prop: 'imageinfo',
+        iiprop: 'url|mime', iiurlwidth: '1400', format: 'json', origin: '*'
+      }).toString();
+      const res = await withTimeout(fetch(url, {
+        headers: { 'User-Agent': 'IanProjectPresentation/1.1 (educational presentation generator; contact: site owner)' },
+        signal: AbortSignal.timeout(4200)
+      }), 4500, 'Поиск изображения');
+      if (!res.ok) continue;
+      const data = await res.json();
+      const pages = Object.values(data.query?.pages || {});
+      // Prefer real photographic formats and skip SVG/animated assets.
+      pages.sort((a, b) => {
+        const score = p => {
+          const info = p.imageinfo?.[0] || {};
+          const mime = info.mime || '';
+          const title = (p.title || '').toLowerCase();
+          return (['image/jpeg', 'image/png'].includes(mime) ? 4 : 0)
+            + (/\\.(jpg|jpeg|png)$/i.test(title) ? 2 : 0)
+            - (/logo|icon|flag|map|diagram|symbol/i.test(title) ? 5 : 0);
+        };
+        return score(b) - score(a);
+      });
+      for (const page of pages) {
+        const info = page.imageinfo?.[0];
+        const candidate = info?.thumburl || info?.url;
+        if (!candidate || !/^https:\\/\\/upload\\.wikimedia\\.org\\//i.test(candidate)) continue;
+        if (used.has(candidate)) continue;
+        if (!['image/jpeg', 'image/png'].includes(info?.mime || '')) continue;
+        used.add(candidate);
+        return { url: candidate, credit: `${page.title || 'Изображение'} — Wikimedia Commons`, title: page.title || '' };
+      }
+    } catch (err) {
+      console.warn('Wikimedia search attempt failed:', err.message);
+    }
   }
   return null;
 }
