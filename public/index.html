@@ -576,7 +576,7 @@ try{
     const state=await poll.json().catch(()=>({}));
     if(!poll.ok) throw new Error(state.error||"Не удалось проверить статус фоновой задачи.");
     if(state.status==="completed"){data=state.result;break;}
-    if(state.status==="failed") throw new Error(state.error||"Фоновая генерация завершилась ошибкой.");
+    if(state.status==="failed"){localStorage.removeItem("vseProektyActiveJob");throw new Error(state.error||"Фоновая генерация завершилась ошибкой.");}
     status.textContent="⚙️ Сервер продолжает собирать проект. Можно свернуть сайт — задача останется на сервере.";
   }
   localStorage.removeItem("vseProektyActiveJob");
@@ -757,7 +757,7 @@ async function resumeBackgroundJob(){
     const r=await fetch("/api/generation-jobs/"+encodeURIComponent(saved.jobId));const state=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(state.error||"Фоновая задача больше недоступна.");
     if(state.status==="completed"){const data=state.result;projectData={...saved.project,ai:data.project,files:data.files||[],fileErrors:data.fileErrors||[]};saveProjectState();localStorage.removeItem("vseProektyActiveJob");showRestoredProject();return;}
-    if(state.status==="failed")throw new Error(state.error||"Не удалось создать проект.");
+    if(state.status==="failed"){localStorage.removeItem("vseProektyActiveJob");throw new Error(state.error||"Не удалось создать проект.");}
     status.textContent="⚙️ Проект создаётся на сервере — можно пока пользоваться телефоном.";await new Promise(resolve=>setTimeout(resolve,2500));
   }}catch(e){status.textContent="⚠️ "+e.message;}
 }
