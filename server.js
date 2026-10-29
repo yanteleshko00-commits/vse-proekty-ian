@@ -148,19 +148,104 @@ async function withTimeout(promise, ms, label = 'Операция') {
     ]);
   } finally { clearTimeout(timer); }
 }
+function configuredAIProviders() {
+  const providers = [];
+  if (process.env.OPENAI_API_KEY) providers.push({ name: 'OpenAI', type: 'openai' });
+  if (process.env.GEMINI_API_KEY) providers.push({ name: 'Google Gemini', type: 'gemini', model: process.env.GEMINI_MODEL || 'gemini-3.7-flash' });
+  if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b' });
+  if (process.env.OPENROUTER_API_KEY) providers.push({ name: 'OpenRouter Free', type: 'openai-compatible', key: process.env.OPENROUTER_API_KEY, baseURL: 'https://openrouter.ai/api/v1', model: 'openrouter/free', freeOnly: true });
+  if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) providers.push({ name: 'Cloudflare Workers AI', type: 'cloudflare', accountId: process.env.CLOUDFLARE_ACCOUNT_ID, key: process.env.CLOUDFLARE_API_TOKEN, model: process.env.CLOUDFLARE_AI_MODEL || '@cf/openai/gpt-oss-120b' });
+  return providers;
+}
+function providerErrorMessage(data, status) {
+  const message = data?.error?.message || data?.message || data?.errors?.[0]?.message || (typeof data === 'string' ? data : 'HTTP ' + status);
+  return cleanText(String(message), 350);
+}
+async function callAIProvider(provider, instructions, input, jsonMode, timeout) {
+  const requestTimeout = Math.min(timeout, 18000);
+  const signal = AbortSignal.timeout(requestTimeout);
+  if (provider.type === 'openai') {
+    const result = await withTimeout(openai.responses.create({
+      model: MODEL, instructions, input, max_output_tokens: 10000,
+      ...(jsonMode ? { text: { format: { type: 'json_object' } } } : {})
+    }), requestTimeout, 'ИИ ' + provider.name);
+    return result.output_text || '';
+  }
+  if (provider.type === 'gemini') {
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(provider.model) + ':generateContent?key=' + encodeURIComponent(process.env.GEMINI_API_KEY);
+    const response = await fetch(url, {
+      method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: instructions }] },
+        contents: [{ role: 'user', parts: [{ text: input }] }],
+        generationConfig: { maxOutputTokens: 10000, ...(jsonMode ? { responseMimeType: 'application/json' } : {}) }
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(provider.name + ': ' + providerErrorMessage(data, response.status));
+    return (data.candidates?.[0]?.content?.parts || []).map(part => part.text || '').join('');
+  }
+  if (provider.type === 'openai-compatible') {
+    const response = await fetch(provider.baseURL + '/chat/completions', {
+      method: 'POST', signal,
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + provider.key, ...(provider.name === 'OpenRouter Free' ? { 'HTTP-Referer': 'https://vse-proekty-ian.onrender.com', 'X-Title': 'Все проекты #Ian' } : {}) },
+      body: JSON.stringify({ model: provider.model, messages: [{ role: 'system', content: instructions }, { role: 'user', content: input }], max_tokens: 10000, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(provider.name + ': ' + providerErrorMessage(data, response.status));
+    return data.choices?.[0]?.message?.content || '';
+  }
+  if (provider.type === 'cloudflare') {
+    const url = 'https://api.cloudflare.com/client/v4/accounts/' + encodeURIComponent(provider.accountId) + '/ai/run/' + encodeURIComponent(provider.model);
+    const response = await fetch(url, {
+      method: 'POST', signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + provider.key },
+      body: JSON.stringify({ messages: [{ role: 'system', content: instructions }, { role: 'user', content: input }], max_tokens: 10000 })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.success === false) throw new Error(provider.name + ': ' + providerErrorMessage(data, response.status));
+    return data.result?.response || data.result?.choices?.[0]?.message?.content || '';
+  }
+  throw new Error('Неизвестный ИИ-провайдер: ' + provider.name);
+}
+async function runAIWithFallback(instructions, input, jsonMode, timeout = REQUEST_TIMEOUT_MS) {
+  const providers = configuredAIProviders();
+  if (!providers.length) throw new Error('Не подключены API-ключи ИИ. Добавь OPENAI_API_KEY и ключи резервных бесплатных провайдеров в Render.');
+  const failures = [];
+  for (const provider of providers) {
+    try {
+      const output = await callAIProvider(provider, instructions, input, jsonMode, timeout);
+      if (!cleanText(output, 12000)) throw new Error(provider.name + ': пустой ответ.');
+      return { output, provider: provider.name };
+    } catch (error) {
+      const message = cleanText(error?.message || 'неизвестная ошибка', 350).replace(/sk-[A-Za-z0-9_-]{16,}/g, '[ключ скрыт]').replace(/Bearer\s+\S+/gi, 'Bearer [скрыт]');
+      failures.push(provider.name + ': ' + message);
+      console.warn('[AI fallback] ' + provider.name + ' недоступен: ' + message);
+    }
+  }
+  const error = new Error('Все подключённые ИИ временно недоступны. ' + failures.join(' | '));
+  error.status = 503;
+  throw error;
+}
 async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
-  if (!openai) throw new Error('На сервере не задан OPENAI_API_KEY.');
-  const result = await withTimeout(openai.responses.create({
-    model: MODEL,
-    // The Responses API requires the word 'json' in the input messages
-    // whenever text.format.type is 'json_object'. Put it in input itself,
-    // not only in instructions, to satisfy that API validation reliably.
-    instructions,
-    input: `Return a valid json object matching the requested schema.\nPayload: ${JSON.stringify(payload)}`,
-    max_output_tokens: 10000,
-    text: { format: { type: 'json_object' } }
-  }), timeout, `Генерация ИИ (модель ${MODEL})`);
-  return extractJson(result.output_text);
+  const input = 'Return a valid json object matching the requested schema.\nPayload: ' + JSON.stringify(payload);
+  const providers = configuredAIProviders();
+  if (!providers.length) throw new Error('Не подключены API-ключи ИИ. Добавь OPENAI_API_KEY и ключи резервных бесплатных провайдеров в Render.');
+  const failures = [];
+  for (const provider of providers) {
+    try {
+      const output = await callAIProvider(provider, instructions, input, true, timeout);
+      const parsed = extractJson(output);
+      console.log('[AI fallback] Генерация выполнена через ' + provider.name + '.');
+      return parsed;
+    } catch (error) {
+      const message = cleanText(error?.message || 'неизвестная ошибка', 350).replace(/sk-[A-Za-z0-9_-]{16,}/g, '[ключ скрыт]').replace(/Bearer\s+\S+/gi, 'Bearer [скрыт]');
+      failures.push(provider.name + ': ' + message);
+      console.warn('[AI fallback] ' + provider.name + ' недоступен: ' + message);
+    }
+  }
+  const error = new Error('Все подключённые ИИ недоступны или исчерпали лимиты. ' + failures.join(' | '));
+  error.status = 503;
+  throw error;
 }
 const PLANNER_INSTRUCTIONS = `
 Ты опытный автор и дизайнер презентаций. Верни ТОЛЬКО JSON-объект.
@@ -725,13 +810,11 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
 app.post('/api/chat', asyncRoute(async (req, res) => {
   const question = cleanText(req.body?.question, 2000);
   if (!question) return res.status(400).json({ error: 'Напиши вопрос.' });
-  if (!openai) return res.status(503).json({ error: 'На сервере не задан OPENAI_API_KEY.' });
-  const response = await withTimeout(openai.responses.create({
-    model: MODEL,
-    instructions: 'Ты полезный русскоязычный помощник сайта создания школьных проектов и презентаций. Отвечай ясно, по делу, не выдумывай факты.',
-    input: question
-  }), 45000, 'Ответ помощника');
-  res.json({ answer: response.output_text || 'Не удалось сформировать ответ.' });
+  const result = await runAIWithFallback(
+    'Ты полезный русскоязычный помощник сайта создания школьных проектов и презентаций. Отвечай ясно, по делу, не выдумывай факты.',
+    question, false, 45000
+  );
+  res.json({ answer: result.output || 'Не удалось сформировать ответ.', provider: result.provider });
 }));
 
 app.post('/api/generate-image', asyncRoute(async (req, res) => {
