@@ -194,6 +194,8 @@ function normalizePlan(raw, topic, requestedCount, theme) {
     title: normalizeText(raw.title || topic, 140),
     theme: theme,
     summary: normalizeText(raw.summary || '', 500),
+    designDirection: normalizeText(raw.designDirection || 'Редакционный стиль: крупные заголовки, чистая сетка и тематические фотографии.', 500),
+    colorMood: normalizeText(raw.colorMood || '', 120),
     slides,
     sources,
     practicalPart: normalizeText(raw.practicalPart || '', 1200),
@@ -329,13 +331,14 @@ const PLANNER_INSTRUCTIONS = `
 Ты опытный автор и дизайнер презентаций. Верни ТОЛЬКО JSON-объект.
 Создай презентацию на русском языке с точным количеством слайдов, указанным в запросе.
 Каждый слайд должен иметь один type из: cover,cards,comparison,stat,process,quote,image,table,conclusion,sources.
+Сначала проанализируй тему: предмет, аудитория, цель, настроение и визуальные ассоциации. Затем придумай цельную арт-дирекцию: палитру, композицию, контраст и визуальный ритм. В поле designDirection кратко опиши концепцию, в colorMood укажи 2–4 цвета словами.
 Обязательная логика: обложка/введение, проблема, факты или аналитика, решение/практическая часть, выводы и источники.
 Не придумывай статистику, цитаты, исследования, названия источников или URL. Если достоверное число неизвестно, не используй его как факт.
 Текст краткий: заголовок до 8 слов, body до 35 слов, до 4 bullets, каждый до 14 слов.
 Меняй макеты и ритм слайдов. Не повторяй одинаковые заголовки и формулировки. Не добавляй название сайта, логотипы или фразу «Индивидуальный проект» без необходимости.
-Для каждого слайда дай imageQuery — конкретное визуальное описание, отличающееся от остальных.
+Для КАЖДОГО слайда создай imageQuery как конкретный поисковый запрос к настоящей фотографии из интернета, связанный с содержанием именно этого слайда. Используй разные объекты, ракурсы и визуальные сюжеты. Не повторяй запросы и избегай логотипов или надписей.
 Для cards заполни cards [{title,text,value}]; для comparison заполни leftTitle,rightTitle,leftItems,rightItems; для stat заполни statistic,statisticLabel; для process заполни steps; для quote — quote; для table — table как массив строк, первая строка заголовки; для conclusion/sources — краткие итоги/источники.
-Верни поля: title, summary, practicalPart, defense, sources [{title,url}], slides [{type,title,subtitle,body,bullets,cards,leftTitle,rightTitle,leftItems,rightItems,steps,quote,statistic,statisticLabel,table,imageQuery,notes}].
+Верни поля: title, summary, designDirection, colorMood, practicalPart, defense, sources [{title,url}], slides [{type,title,subtitle,body,bullets,cards,leftTitle,rightTitle,leftItems,rightItems,steps,quote,statistic,statisticLabel,table,imageQuery,notes}].
 `;
 async function commonsImage(query, used) {
   // Несколько коротких запросов повышают шанс найти тематическую фотографию.
@@ -417,7 +420,8 @@ async function attachImages(plan) {
     while (nextSlide < plan.slides.length) {
       const slide = plan.slides[nextSlide++];
       try {
-        const found = await commonsImage(slide.imageQuery || `${plan.title} ${slide.title}`, used);
+        const query = [slide.imageQuery, slide.title, slide.body, plan.title].filter(Boolean).join(' ').slice(0, 220);
+        const found = await commonsImage(query, used);
         if (!found) continue;
         const image = await downloadImage(found.url);
         slide.imageUrl = found.url;
@@ -508,6 +512,8 @@ function buildPptx(plan) {
     }
     const title = s.title || plan.title;
     const type = s.type;
+    // Every slide gets its own relevant image; hero layouts keep their large image.
+    if (!['cover','stat','image'].includes(type)) addImageOrPlaceholder(slide, s, 9.72, 0.28, 2.62, 1.05, theme);
     if (type === 'cover') {
       slide.background = { color: theme.accent };
       addText(slide, 'ПРЕЗЕНТАЦИЯ', 0.75, 0.65, 4.8, 0.3, { fontSize: 11, bold: true, color: 'FFFFFF', charSpacing: 2 });
@@ -515,7 +521,7 @@ function buildPptx(plan) {
       addText(slide, s.subtitle || s.body || plan.summary, 0.78, 4.0, 5.7, 1.15, { fontSize: 17, color: 'EAF0FF', valign: 'top' });
       addImageOrPlaceholder(slide, s, 7.3, 1.15, 5.0, 4.9, theme);
     } else if (type === 'cards') {
-      addText(slide, title, 0.7, 0.45, 11.7, 0.65, { fontSize: 27, bold: true, color: theme.ink });
+      addText(slide, title, 0.7, 0.45, 8.65, 0.65, { fontSize: 27, bold: true, color: theme.ink });
       const cards = (s.cards?.length ? s.cards : (s.bullets || []).slice(0, 3).map((text, j) => ({ title: `Идея ${j + 1}`, text, value: '' }))).slice(0, 4);
       const cols = cards.length === 4 ? 2 : Math.max(1, cards.length);
       const cw = 11.7 / cols;
@@ -571,7 +577,7 @@ function buildPptx(plan) {
       addText(slide, s.body, 6.8, 1.65, 5.1, 1.25, { fontSize: 19, color: theme.ink, valign: 'top' });
       addBullets(slide, s.bullets, 6.8, 3.2, 5.0, theme);
     } else if (type === 'sources') {
-      addText(slide, title || 'Источники', 0.7, 0.5, 11.7, 0.65, { fontSize: 27, bold: true, color: theme.ink });
+      addText(slide, title || 'Источники', 0.7, 0.5, 8.65, 0.65, { fontSize: 27, bold: true, color: theme.ink });
       addBullets(slide, plan.sources.map(x => x.url ? `${x.title} — ${x.url}` : x.title), 0.85, 1.5, 11.0, theme, 6);
       if (!plan.sources.length) addText(slide, 'Добавьте проверенные источники, использованные при подготовке материала.', 0.9, 1.6, 10.5, 1.2, { fontSize: 18, color: theme.muted });
     } else {
@@ -983,6 +989,15 @@ app.get('/api/health', (_req, res) => res.json({
   aiProviders: configuredAIProviders().map(provider => provider.name),
   imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true'
 }));
+
+const generationJobs = new Map();
+function pruneGenerationJobs(){const cutoff=Date.now()-30*60*1000;for(const [id,job] of generationJobs)if(job.updatedAt<cutoff&&job.status!=="running")generationJobs.delete(id);}
+app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
+  pruneGenerationJobs();const id=crypto.randomUUID();const job={id,status:'running',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null};generationJobs.set(id,job);
+  Promise.resolve().then(()=>generateProject(req.body||{})).then(result=>{job.status='completed';job.result=result;job.updatedAt=Date.now();}).catch(error=>{job.status='failed';job.error=cleanText(error?.message||'Не удалось создать проект.',1000);job.updatedAt=Date.now();console.error('[background-generation]',id,error?.stack||error);});
+  res.status(202).json({jobId:id,status:'running'});
+}));
+app.get('/api/generation-jobs/:id',(req,res)=>{const job=generationJobs.get(req.params.id);if(!job)return res.status(404).json({error:'Задача не найдена. Возможно, сервер перезапускался.'});job.updatedAt=Date.now();res.json({jobId:job.id,status:job.status,result:job.status==='completed'?job.result:undefined,error:job.error});});
 
 app.post('/api/generate-project', asyncRoute(async (req, res) => {
   const result = await withTimeout(generateProject(req.body || {}), REQUEST_TIMEOUT_MS, 'Создание проекта');
