@@ -366,7 +366,7 @@ async function commonsImage(query, used) {
           const mime = info.mime || '';
           const title = (p.title || '').toLowerCase();
           return (['image/jpeg', 'image/png'].includes(mime) ? 4 : 0)
-            + (/\\.(jpg|jpeg|png)$/i.test(title) ? 2 : 0)
+            + (/\.(jpg|jpeg|png)$/i.test(title) ? 2 : 0)
             - (/logo|icon|flag|map|diagram|symbol/i.test(title) ? 5 : 0);
         };
         return score(b) - score(a);
@@ -374,7 +374,7 @@ async function commonsImage(query, used) {
       for (const page of pages) {
         const info = page.imageinfo?.[0];
         const candidate = info?.thumburl || info?.url;
-        if (!candidate || !/^https:\\/\\/upload\\.wikimedia\\.org\\//i.test(candidate)) continue;
+        if (!candidate || !/^https:\/\/upload\.wikimedia\.org\//i.test(candidate)) continue;
         if (used.has(candidate)) continue;
         if (!['image/jpeg', 'image/png'].includes(info?.mime || '')) continue;
         used.add(candidate);
