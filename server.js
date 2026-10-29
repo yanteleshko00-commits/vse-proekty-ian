@@ -331,13 +331,13 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
 const PLANNER_INSTRUCTIONS = `
 Ты опытный автор и дизайнер презентаций. Верни ТОЛЬКО JSON-объект.
 Создай презентацию на русском языке с точным количеством слайдов, указанным в запросе.
-Каждый слайд должен иметь один type из: cover,cards,comparison,stat,process,quote,image,table.
+Каждый слайд должен иметь один type из: cover,cards,comparison,stat,process,quote,image,table. Для каждого слайда выбери композицию осмысленно и меняй её в течение презентации: фото на всю высоту, карточки, крупный тезис, схема процесса, сравнительная таблица, коллаж, диаграммная композиция. Не повторяй один макет три слайда подряд.
 Сначала проанализируй тему: предмет, аудитория, цель, настроение и визуальные ассоциации. Затем придумай цельную арт-дирекцию: палитру, композицию, контраст и визуальный ритм. В поле designDirection кратко опиши концепцию, в colorMood укажи 2–4 цвета словами.
 Обязательная логика: обложка/введение, проблема, факты или аналитика, решение/практическая часть. НЕ создавай отдельный финальный слайд «Источники», «Итоги», «Выводы» или их комбинацию. Источники сохраняй в поле sources для текстовых документов, но не включай в slides.
 Не придумывай статистику, цитаты, исследования, названия источников или URL. Если достоверное число неизвестно, не используй его как факт.
-Текст краткий: заголовок до 8 слов, body до 35 слов, до 4 bullets, каждый до 14 слов.
+Текст должен быть конкретным именно для темы, не заполняй слайды общими фразами вроде «актуальность темы», «основные элементы» и «нужно проверить информацию». Заголовок до 8 слов, body до 45 слов, до 4 bullets, каждый до 14 слов. Каждый слайд должен сообщать новый факт, объяснение, пример, результат или практический шаг. Не повторяй один и тот же смысл на соседних слайдах.
 Меняй макеты и ритм слайдов. Не повторяй одинаковые заголовки и формулировки. Не добавляй название сайта, логотипы или фразу «Индивидуальный проект» без необходимости.
-Для КАЖДОГО слайда создай imageQuery как конкретный поисковый запрос к настоящей фотографии из интернета, связанный с содержанием именно этого слайда. Используй разные объекты, ракурсы и визуальные сюжеты. Не повторяй запросы и избегай логотипов или надписей.
+Для КАЖДОГО слайда создай imageQuery на английском языке как короткий, конкретный запрос к настоящей фотографии из интернета, связанный с содержанием именно этого слайда (предмет + действие/место/объект). Используй разные объекты, ракурсы и визуальные сюжеты. Не повторяй запросы, избегай логотипов, флагов, схем и надписей. Если по теме есть люди, лаборатории, предметы, места или реальные примеры — ищи именно их, а не абстрактные изображения.
 Для cards заполни cards [{title,text,value}]; для comparison заполни leftTitle,rightTitle,leftItems,rightItems; для stat заполни statistic,statisticLabel; для process заполни steps; для quote — quote; для table — table как массив строк, первая строка заголовки. Не используй отдельные слайды conclusion или sources.
 Верни поля: title, summary, designDirection, colorMood, practicalPart, defense, sources [{title,url}], slides [{type,title,subtitle,body,bullets,cards,leftTitle,rightTitle,leftItems,rightItems,steps,quote,statistic,statisticLabel,table,imageQuery,notes}].
 `;
@@ -472,9 +472,14 @@ function addImageOrPlaceholder(slide, s, x, y, w, h, theme) {
       return;
     } catch (e) { console.warn('PPTX image embed failed:', e.message); }
   }
-  addText(slide, 'Иллюстрация по теме', x + 0.15, y + h / 2 - 0.2, w - 0.3, 0.4, {
-    fontSize: 14, bold: true, color: theme.ink, align: 'center'
-  });
+  // Distinct vector illustration fallback: avoid empty blue boxes when internet photos are unavailable.
+  const cx = x + w * 0.52, cy = y + h * 0.48;
+  const accent = theme.accent, pale = theme.accent2;
+  slide.addShape('ellipse', { x: x + w * 0.23, y: y + h * 0.12, w: Math.min(w,h)*0.68, h: Math.min(w,h)*0.68, fill:{color:'FFFFFF',transparency:14}, line:{color:'FFFFFF',transparency:100} });
+  slide.addShape('roundRect', { x:x+w*.18, y:y+h*.28, w:w*.64, h:h*.44, rectRadius:.12, fill:{color:'FFFFFF',transparency:8}, line:{color:'FFFFFF',transparency:35,width:1} });
+  slide.addShape('line', { x:x+w*.28, y:y+h*.43, w:w*.42, h:0, line:{color:accent,width:3,beginArrowType:'none',endArrowType:'none'} });
+  slide.addShape('line', { x:x+w*.28, y:y+h*.55, w:w*.32, h:0, line:{color:pale,width:3} });
+  slide.addShape('ellipse', { x:x+w*.68, y:y+h*.62, w:Math.min(w,h)*.18, h:Math.min(w,h)*.18, fill:{color:accent}, line:{color:accent} });
 }
 function addBullets(slide, items, x, y, w, theme, max = 4) {
   let yy = y;
@@ -730,9 +735,15 @@ function createPresentationPdfBuffer(plan) {
           console.warn('PDF image embed failed:', error.message);
         }
       } else if (!isCover && slide.type !== 'quote') {
-        // Декоративная фигура сохраняет аккуратный макет, даже если фото недоступно.
-        doc.circle(820, 410, 54).fill(color(theme.accent2));
-        doc.circle(870, 450, 22).fill(color(theme.accent));
+        // Topic-oriented editorial illustration fallback when a real photo could not be fetched.
+        doc.save();
+        doc.roundedRect(625, 135, 280, 255, 26).fill(color('FFFFFF'));
+        doc.circle(770, 245, 82).fill(color(theme.accent2));
+        doc.circle(810, 210, 37).fill(color(theme.accent));
+        doc.roundedRect(665, 310, 190, 18, 9).fill(color(theme.bg));
+        doc.roundedRect(665, 341, 145, 12, 6).fill(color(theme.accent2));
+        doc.roundedRect(665, 365, 165, 10, 5).fill(color(theme.accent));
+        doc.restore();
       }
 
       doc.fontSize(9).fillColor(color(isCover ? 'FFFFFF' : theme.muted)).text(
