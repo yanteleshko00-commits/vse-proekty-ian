@@ -230,7 +230,7 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
     const result = await withTimeout(openai.responses.create({
       model: MODEL, instructions, input, max_output_tokens: 10000,
       ...(jsonMode ? { text: { format: { type: 'json_object' } } } : {})
-    }), requestTimeout, 'ИИ ' + provider.name);
+    }, { timeout: requestTimeout }), requestTimeout, 'ИИ ' + provider.name);
     return result.output_text || '';
   }
   if (provider.type === 'gemini') {
@@ -382,7 +382,7 @@ async function generateImageBuffer(prompt) {
     prompt: `Создай качественную редакционную иллюстрацию для образовательной презентации. Без текста, надписей и логотипов. Тема: ${prompt}`,
     size: '1536x1024',
     quality: 'low'
-  }), 8000, 'Генерация изображения');
+  }, { timeout: 8000 }), 8000, 'Генерация изображения');
   const b64 = result.data?.[0]?.b64_json;
   return b64 ? { bytes: Buffer.from(b64, 'base64'), mime: 'image/png' } : null;
 }
