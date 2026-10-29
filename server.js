@@ -497,8 +497,15 @@ function buildPptx(plan) {
 
   plan.slides.forEach((s, i) => {
     const slide = pptx.addSlide();
-    slide.background = { color: theme.bg };
+    // Alternate subtle paper/glass-tinted surfaces so the deck doesn't look like
+    // the same blue template repeated on every page.
+    slide.background = { color: i % 4 === 2 ? theme.accent2 : theme.bg };
     slide.addShape('rect', { x: 0, y: 0, w: 0.12, h: 7.5, fill: { color: theme.accent }, line: { color: theme.accent } });
+    if (s.type !== 'cover' && s.type !== 'quote') {
+      slide.addShape('ellipse', { x: 10.05, y: -0.72, w: 3.7, h: 3.7, fill: { color: 'FFFFFF', transparency: 34 }, line: { color: 'FFFFFF', transparency: 100 } });
+      slide.addShape('ellipse', { x: 11.15, y: 0.2, w: 1.35, h: 1.35, fill: { color: theme.accent2, transparency: 12 }, line: { color: theme.accent2, transparency: 100 } });
+      slide.addShape('line', { x: 0.72, y: 1.22, w: 11.75, h: 0, line: { color: theme.accent2, transparency: 12, width: 1.2 } });
+    }
     const title = s.title || plan.title;
     const type = s.type;
     if (type === 'cover') {
@@ -622,8 +629,18 @@ function createPresentationPdfBuffer(plan) {
     for (const [i, slide] of plan.slides.entries()) {
       doc.addPage({ size: [960, 540], margin: 0 });
       const isCover = slide.type === 'cover';
-      doc.rect(0, 0, 960, 540).fill(isCover ? color(theme.accent) : color(theme.bg));
-      if (!isCover) doc.rect(0, 0, 12, 540).fill(color(theme.accent));
+      const isQuote = slide.type === 'quote';
+      const slideBg = (i % 4 === 2 && !isCover && !isQuote) ? theme.accent2 : theme.bg;
+      doc.rect(0, 0, 960, 540).fill(isCover ? color(theme.accent) : color(slideBg));
+      if (!isCover) {
+        doc.rect(0, 0, 12, 540).fill(color(theme.accent));
+        // Soft layered glass-like shapes in the background, kept behind slide content.
+        if (!isQuote) {
+          doc.circle(910, 28, 118).fill(color('FFFFFF')).opacity(0.32);
+          doc.circle(930, 62, 42).fill(color(theme.accent2)).opacity(0.7);
+          doc.moveTo(48, 92).lineTo(912, 92).lineWidth(1).strokeColor(color(theme.accent2)).strokeOpacity(0.85).stroke();
+        }
+      }
 
       if (isCover) {
         doc.fontSize(13).fillColor('#FFFFFF').text('ПРЕЗЕНТАЦИЯ', 50, 48, { width: 430 });
