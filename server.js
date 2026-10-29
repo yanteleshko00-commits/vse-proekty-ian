@@ -208,12 +208,12 @@ async function runAIWithFallback(instructions, input, jsonMode, timeout = REQUES
   const failures = [];
   // Use one shared AI time budget instead of spending 18 seconds on every provider.
   // Otherwise several unavailable providers can outlive the Render request timeout.
-  const deadline = Date.now() + Math.min(timeout, 24000);
+  const deadline = Date.now() + Math.min(timeout, 60000);
   for (const provider of providers) {
     const remaining = deadline - Date.now();
     if (remaining < 1000) break;
     try {
-      const output = await callAIProvider(provider, instructions, input, jsonMode, Math.min(10000, remaining));
+      const output = await callAIProvider(provider, instructions, input, jsonMode, Math.min(16000, remaining));
       if (!cleanText(output, 12000)) throw new Error(provider.name + ': пустой ответ.');
       return { output, provider: provider.name };
     } catch (error) {
@@ -232,12 +232,12 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   if (!providers.length) throw new Error('Не подключены API-ключи ИИ. Добавь OPENAI_API_KEY и ключи резервных бесплатных провайдеров в Render.');
   const failures = [];
   // Keep all provider attempts inside one bounded deadline so the local fallback can run.
-  const deadline = Date.now() + Math.min(timeout, 24000);
+  const deadline = Date.now() + Math.min(timeout, 60000);
   for (const provider of providers) {
     const remaining = deadline - Date.now();
     if (remaining < 1000) break;
     try {
-      const output = await callAIProvider(provider, instructions, input, true, Math.min(10000, remaining));
+      const output = await callAIProvider(provider, instructions, input, true, Math.min(16000, remaining));
       const parsed = extractJson(output);
       if (containsCorruptedText(parsed)) {
         throw new Error(provider.name + ': ответ содержит повреждённый текст/ошибку кодировки.');
@@ -252,7 +252,8 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   }
   if (payload && payload.topic && !payload.currentProject) {
     console.error('[AI fallback] Все ИИ недоступны. Не создаю шаблонную презентацию, выдающую себя за результат ИИ.');
-    const error = new Error('Сейчас не удалось подключиться к ИИ. Презентация не создана, чтобы не выдавать шаблонные слайды за готовую работу. Подожди немного и попробуй ещё раз.');
+    const reasons = failures.length ? failures.join(' | ') : 'Провайдеры не успели ответить в отведённое время.';
+    const error = new Error('Не удалось получить пригодный ответ от ИИ. Диагностика: ' + reasons + '. Презентация не создана. Проверь ключи, лимиты и состояние ИИ-провайдеров в Render Logs, затем попробуй ещё раз.');
     error.status = 503;
     error.code = 'AI_PROVIDERS_UNAVAILABLE';
     throw error;
