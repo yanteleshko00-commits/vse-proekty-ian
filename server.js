@@ -150,11 +150,12 @@ async function withTimeout(promise, ms, label = 'Операция') {
 }
 function configuredAIProviders() {
   const providers = [];
-  if (process.env.OPENAI_API_KEY) providers.push({ name: 'OpenAI', type: 'openai' });
-  if (process.env.GEMINI_API_KEY) providers.push({ name: 'Google Gemini', type: 'gemini', model: process.env.GEMINI_MODEL || 'gemini-3.7-flash' });
-  if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b' });
+  // Try providers with free tiers/free routing before potentially billable providers.
+  if (process.env.GEMINI_API_KEY) providers.push({ name: 'Google Gemini', type: 'gemini', model: process.env.GEMINI_MODEL || 'gemini-3.8-flash' });
   if (process.env.OPENROUTER_API_KEY) providers.push({ name: 'OpenRouter Free', type: 'openai-compatible', key: process.env.OPENROUTER_API_KEY, baseURL: 'https://openrouter.ai/api/v1', model: 'openrouter/free', freeOnly: true });
+  if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b' });
   if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) providers.push({ name: 'Cloudflare Workers AI', type: 'cloudflare', accountId: process.env.CLOUDFLARE_ACCOUNT_ID, key: process.env.CLOUDFLARE_API_TOKEN, model: process.env.CLOUDFLARE_AI_MODEL || '@cf/openai/gpt-oss-120b' });
+  if (process.env.OPENAI_API_KEY) providers.push({ name: 'OpenAI', type: 'openai' });
   return providers;
 }
 function providerErrorMessage(data, status) {
@@ -769,6 +770,7 @@ function asyncRoute(handler) {
 
 app.get('/api/health', (_req, res) => res.json({
   ok: true, service: 'presentation-generator', model: MODEL,
+  aiProviders: configuredAIProviders().map(provider => provider.name),
   imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true'
 }));
 
