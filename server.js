@@ -19,6 +19,7 @@ const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
 const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 95000);
 const MAX_SLIDES = 20;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const PDF_FONT_PATH = path.resolve(process.cwd(), 'DejaVuSans.ttf');
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: REQUEST_TIMEOUT_MS, maxRetries: 0 })
   : null;
@@ -592,6 +593,8 @@ function createPresentationPdfBuffer(plan) {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
+    // Embed a Unicode font so Russian text renders correctly in generated PDFs.
+    if (fs.existsSync(PDF_FONT_PATH)) doc.font(PDF_FONT_PATH);
     const theme = plan.theme || COLORS.blue;
     const color = value => `#${String(value || 'FFFFFF').replace(/^#/, '')}`;
 
@@ -703,6 +706,8 @@ function createPdfBuffer(plan) {
     doc.on('data', c => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
+    // PDFKit's built-in fonts do not cover Cyrillic reliably; embed DejaVu Sans.
+    if (fs.existsSync(PDF_FONT_PATH)) doc.font(PDF_FONT_PATH);
     doc.fontSize(24).fillColor('#244B83').text(plan.title);
     doc.moveDown().fontSize(11).fillColor('#222222').text(plan.summary || '');
     plan.slides.forEach((s, i) => {
