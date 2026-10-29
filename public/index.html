@@ -246,6 +246,27 @@ section{scroll-margin-top:82px}
   *,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
 
+
+/* Liquid Glass v2: clear crystal surfaces, animated reflections, mobile-safe */
+:root{--lg-edge:rgba(255,255,255,.9);--lg-shadow:0 24px 70px rgba(28,67,112,.12)}
+body{background:radial-gradient(ellipse at 8% 5%,rgba(255,255,255,.98),transparent 36%),radial-gradient(ellipse at 92% 10%,rgba(116,185,255,.22),transparent 32%),radial-gradient(ellipse at 76% 75%,rgba(108,226,184,.19),transparent 34%),linear-gradient(135deg,#eaf3fb,#f7fbff 46%,#e8f4f4);background-attachment:fixed}
+header,.header,.site-header{background:rgba(245,250,255,.30)!important;-webkit-backdrop-filter:blur(34px) saturate(210%);backdrop-filter:blur(34px) saturate(210%);border-bottom:1px solid rgba(255,255,255,.76)!important;box-shadow:0 8px 38px rgba(26,55,90,.055),inset 0 1px 0 rgba(255,255,255,.8)}
+.hero{background:linear-gradient(135deg,rgba(255,255,255,.4),rgba(226,241,255,.16))!important}
+.step,.tariff,.check,.info-box,.result-card,.glass-card,.form,.progress-box,.ready,.file,.modal-content,.project-meta{background:linear-gradient(135deg,rgba(255,255,255,.34),rgba(255,255,255,.12))!important;border:1px solid var(--lg-edge)!important;-webkit-backdrop-filter:blur(32px) saturate(205%);backdrop-filter:blur(32px) saturate(205%);box-shadow:var(--lg-shadow),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.24)!important;position:relative}
+.form:before,.tariff:before,.step:before,.check:before,.progress-box:before,.ready:before,.file:before{content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;background:linear-gradient(118deg,rgba(255,255,255,.3),transparent 24%,transparent 68%,rgba(255,255,255,.15))}
+.form,.progress-box,.ready,.file{overflow:hidden}
+.field input,.field textarea,.field select{background:linear-gradient(135deg,rgba(255,255,255,.56),rgba(255,255,255,.27))!important;border:1px solid rgba(255,255,255,.96)!important;-webkit-backdrop-filter:blur(20px) saturate(190%);backdrop-filter:blur(20px) saturate(190%);box-shadow:inset 0 1px 0 rgba(255,255,255,.98),inset 0 -1px 0 rgba(255,255,255,.28),0 7px 22px rgba(32,62,95,.045)!important}
+.field input:focus,.field textarea:focus,.field select:focus{background:rgba(255,255,255,.72)!important;border-color:#fff!important;box-shadow:0 0 0 4px rgba(67,146,232,.13),inset 0 1px 0 #fff,0 10px 28px rgba(32,62,95,.08)!important}
+.generator{background:radial-gradient(ellipse at 88% 4%,rgba(116,183,255,.22),transparent 38%),linear-gradient(145deg,#071a37,#0c2850)!important}
+.generator .form{background:linear-gradient(135deg,rgba(255,255,255,.22),rgba(199,223,255,.10))!important;border-color:rgba(255,255,255,.76)!important;box-shadow:0 30px 90px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.22)!important}
+.file{background:linear-gradient(135deg,rgba(255,255,255,.50),rgba(255,255,255,.20))!important}
+.main-btn,.create-btn,.file button,.download,.support button,.menu-btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.68),inset 0 -1px 0 rgba(0,0,0,.08),0 12px 28px rgba(21,126,83,.19)!important;transition:transform .24s ease,box-shadow .24s ease,filter .24s ease}
+.main-btn:hover,.create-btn:hover,.file button:hover,.download:hover,.support button:hover,.menu-btn:hover{transform:translateY(-2px);filter:saturate(1.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.78),0 17px 34px rgba(21,126,83,.23)!important}
+.tariff,.step,.check,.file,.form,.progress-box{animation:glass-arrive .65s cubic-bezier(.2,.7,.2,1) both}
+@keyframes glass-arrive{from{opacity:.82;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:750px){body{background-attachment:scroll}.step,.tariff,.check,.info-box,.result-card,.glass-card,.form,.progress-box,.ready,.file,.modal-content{-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%)}.field input,.field textarea,.field select{font-size:16px!important}}
+@media(prefers-reduced-motion:reduce){.tariff,.step,.check,.file,.form,.progress-box{animation:none!important}}
+
 </style>
 
 <style id="mobile-no-zoom">
@@ -539,16 +560,26 @@ bar.style.width="3%";pct.textContent="3%";status.textContent="🔎 Анализ�
 animateProgress();
 
 try{
-  const response=await fetch("/api/generate-project",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      firstName:projectData.firstName,lastName:projectData.lastName,className:projectData.className,
-      school:projectData.school,topic:projectData.topic,slidesCount:projectData.slides,
-      extraRequirements:projectData.requirements
-    })
-  });
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok) throw new Error(data.error||"Не удалось подключиться к ИИ.");
+  const payload={
+    firstName:projectData.firstName,lastName:projectData.lastName,className:projectData.className,
+    school:projectData.school,topic:projectData.topic,slidesCount:projectData.slides,
+    extraRequirements:projectData.requirements
+  };
+  const startResponse=await fetch("/api/generate-project/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  const started=await startResponse.json().catch(()=>({}));
+  if(!startResponse.ok||!started.jobId) throw new Error(started.error||"Не удалось запустить фоновую генерацию.");
+  localStorage.setItem("vseProektyActiveJob",JSON.stringify({jobId:started.jobId,project:{...projectData},startedAt:Date.now()}));
+  let data=null;
+  while(true){
+    await new Promise(resolve=>setTimeout(resolve,2200));
+    const poll=await fetch("/api/generation-jobs/"+encodeURIComponent(started.jobId));
+    const state=await poll.json().catch(()=>({}));
+    if(!poll.ok) throw new Error(state.error||"Не удалось проверить статус фоновой задачи.");
+    if(state.status==="completed"){data=state.result;break;}
+    if(state.status==="failed") throw new Error(state.error||"Фоновая генерация завершилась ошибкой.");
+    status.textContent="⚙️ Сервер продолжает собирать проект. Можно свернуть сайт — задача останется на сервере.";
+  }
+  localStorage.removeItem("vseProektyActiveJob");
   if(!data.project) throw new Error("ИИ не вернул проект.");
 
   projectData.ai=data.project;
@@ -717,7 +748,21 @@ async function downloadFile(name){
 }
 function downloadAll(){downloadFile("Весь_проект.zip");}
 
-window.addEventListener("pageshow",()=>{restoreProjectState();});
+async function resumeBackgroundJob(){
+  let saved;try{saved=JSON.parse(localStorage.getItem("vseProektyActiveJob")||"null");}catch{}
+  if(!saved?.jobId)return;
+  const status=document.getElementById("status"),box=document.getElementById("progressBox"),bar=document.getElementById("progressBar"),pct=document.getElementById("percent");
+  box.style.display="block";status.textContent="⚙️ Проверяем фоновую задачу...";bar.style.width="95%";pct.textContent="95%";
+  try{while(true){
+    const r=await fetch("/api/generation-jobs/"+encodeURIComponent(saved.jobId));const state=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(state.error||"Фоновая задача больше недоступна.");
+    if(state.status==="completed"){const data=state.result;projectData={...saved.project,ai:data.project,files:data.files||[],fileErrors:data.fileErrors||[]};saveProjectState();localStorage.removeItem("vseProektyActiveJob");showRestoredProject();return;}
+    if(state.status==="failed")throw new Error(state.error||"Не удалось создать проект.");
+    status.textContent="⚙️ Проект создаётся на сервере — можно пока пользоваться телефоном.";await new Promise(resolve=>setTimeout(resolve,2500));
+  }}catch(e){status.textContent="⚠️ "+e.message;}
+}
+
+window.addEventListener("pageshow",()=>{restoreProjectState();resumeBackgroundJob();});
 window.addEventListener("popstate",()=>{restoreProjectState();});
 
 document.addEventListener("DOMContentLoaded",()=>{
