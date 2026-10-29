@@ -496,21 +496,66 @@ function addText(slide, text, x, y, w, h, opts = {}) {
   });
 }
 function addImageOrPlaceholder(slide, s, x, y, w, h, theme) {
-  slide.addShape('roundRect', { x, y, w, h, rectRadius: 0.12, fill: { color: theme.accent2 }, line: { color: theme.accent2, transparency: 100 } });
+  slide.addShape('roundRect', { x, y, w, h, rectRadius: 0.16, fill: { color: theme.accent2, transparency: 4 }, line: { color: theme.accent2, transparency: 100 } });
   if (s.imageBytes) {
     try {
       slide.addImage({ data: `data:${s.imageMime};base64,${s.imageBytes.toString('base64')}`, x, y, w, h, sizingCrop: true });
       return;
-    } catch (e) { console.warn('PPTX image embed failed:', e.message); }
+    } catch (error) { console.warn('PPTX image embed failed:', error.message); }
   }
-  // Distinct vector illustration fallback: avoid empty blue boxes when internet photos are unavailable.
-  const cx = x + w * 0.52, cy = y + h * 0.48;
+  // Разные векторные композиции вместо одной повторяющейся заглушки, если фотопоиск недоступен.
+  const type = normalizeSlideType(s.type, 0);
   const accent = theme.accent, pale = theme.accent2;
-  slide.addShape('ellipse', { x: x + w * 0.23, y: y + h * 0.12, w: Math.min(w,h)*0.68, h: Math.min(w,h)*0.68, fill:{color:'FFFFFF',transparency:14}, line:{color:'FFFFFF',transparency:100} });
-  slide.addShape('roundRect', { x:x+w*.18, y:y+h*.28, w:w*.64, h:h*.44, rectRadius:.12, fill:{color:'FFFFFF',transparency:8}, line:{color:'FFFFFF',transparency:35,width:1} });
-  slide.addShape('line', { x:x+w*.28, y:y+h*.43, w:w*.42, h:0, line:{color:accent,width:3,beginArrowType:'none',endArrowType:'none'} });
-  slide.addShape('line', { x:x+w*.28, y:y+h*.55, w:w*.32, h:0, line:{color:pale,width:3} });
-  slide.addShape('ellipse', { x:x+w*.68, y:y+h*.62, w:Math.min(w,h)*.18, h:Math.min(w,h)*.18, fill:{color:accent}, line:{color:accent} });
+  const ix = x + w * 0.12, iy = y + h * 0.12, iw = w * 0.76, ih = h * 0.76;
+  const seed = [...String(s.title || '')].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  if (type === 'process') {
+    const cy = y + h * 0.48;
+    for (let i = 0; i < 4; i++) {
+      const cx = ix + iw * (i + 0.5) / 4;
+      if (i < 3) slide.addShape('line', { x: cx + 0.12, y: cy, w: iw / 4 - 0.24, h: 0, line: { color: accent, transparency: 20, width: 2, endArrowType: 'triangle' } });
+      slide.addShape('ellipse', { x: cx - 0.22, y: cy - 0.22, w: 0.44, h: 0.44, fill: { color: i % 2 ? pale : accent }, line: { color: 'FFFFFF', transparency: 30, width: 1.5 } });
+      addText(slide, String(i + 1), cx - 0.15, cy - 0.12, 0.3, 0.22, { fontSize: 11, bold: true, color: i % 2 ? theme.ink : 'FFFFFF', align: 'center' });
+    }
+  } else if (type === 'comparison') {
+    const half = (iw - 0.14) / 2;
+    slide.addShape('roundRect', { x: ix, y: iy + ih * 0.12, w: half, h: ih * 0.76, rectRadius: 0.1, fill: { color: 'FFFFFF', transparency: 8 }, line: { color: accent, transparency: 35, width: 1.3 } });
+    slide.addShape('roundRect', { x: ix + half + 0.14, y: iy + ih * 0.12, w: half, h: ih * 0.76, rectRadius: 0.1, fill: { color: pale, transparency: 12 }, line: { color: pale, transparency: 15, width: 1.3 } });
+    for (let i = 0; i < 3; i++) {
+      const yy = iy + ih * (0.36 + i * 0.17);
+      slide.addShape('line', { x: ix + 0.14, y: yy, w: half - 0.28, h: 0, line: { color: accent, transparency: 15, width: 2 } });
+      slide.addShape('line', { x: ix + half + 0.28, y: yy, w: half - 0.28, h: 0, line: { color: theme.muted, transparency: 35, width: 2 } });
+    }
+  } else if (type === 'stat') {
+    const radius = Math.min(iw, ih) * 0.31;
+    slide.addShape('ellipse', { x: x + w * 0.12, y: y + h * 0.18, w: radius * 2, h: radius * 2, fill: { color: accent, transparency: 5 }, line: { color: 'FFFFFF', transparency: 65, width: 2 } });
+    slide.addShape('ellipse', { x: x + w * 0.24, y: y + h * 0.31, w: radius * 1.22, h: radius * 1.22, fill: { color: pale, transparency: 6 }, line: { color: pale, transparency: 100 } });
+    for (let i = 0; i < 4; i++) {
+      const bh = ih * (0.2 + ((seed + i * 7) % 5) * 0.1);
+      slide.addShape('roundRect', { x: x + w * (0.57 + i * 0.09), y: y + h * 0.82 - bh, w: w * 0.055, h: bh, rectRadius: 0.05, fill: { color: i % 2 ? pale : accent }, line: { color: 'FFFFFF', transparency: 100 } });
+    }
+  } else if (type === 'table') {
+    const rows = 4, cols = 3, cw = iw / cols, rh = ih / rows;
+    for (let row = 0; row < rows; row++) for (let col = 0; col < cols; col++) {
+      slide.addShape('rect', { x: ix + col * cw, y: iy + row * rh, w: cw, h: rh, fill: { color: row === 0 ? accent : (col === 0 ? pale : 'FFFFFF'), transparency: row === 0 ? 0 : 8 }, line: { color: pale, transparency: 18, width: 0.8 } });
+    }
+  } else if (type === 'quote') {
+    addText(slide, '“', x + w * 0.12, y + h * 0.03, w * 0.7, h * 0.8, { fontSize: Math.min(96, h * 28), bold: true, color: accent, valign: 'mid' });
+    slide.addShape('line', { x: ix, y: y + h * 0.78, w: iw * 0.68, h: 0, line: { color: accent, transparency: 10, width: 3 } });
+  } else if (type === 'cards') {
+    const cw = iw * 0.43, ch = ih * 0.34;
+    for (let i = 0; i < 3; i++) {
+      const col = i === 2 ? 1 : i, row = i === 2 ? 1 : 0;
+      const xx = ix + col * (cw + iw * 0.06), yy = iy + row * (ch + ih * 0.1);
+      slide.addShape('roundRect', { x: xx, y: yy, w: cw, h: ch, rectRadius: 0.1, fill: { color: 'FFFFFF', transparency: 5 }, line: { color: i % 2 ? pale : accent, transparency: 35, width: 1.1 } });
+      slide.addShape('line', { x: xx + 0.12, y: yy + ch * 0.34, w: cw * 0.65, h: 0, line: { color: accent, width: 2 } });
+      slide.addShape('line', { x: xx + 0.12, y: yy + ch * 0.58, w: cw * 0.5, h: 0, line: { color: pale, width: 2 } });
+    }
+  } else {
+    const offset = (seed % 5) * 0.045;
+    slide.addShape('ellipse', { x: ix + iw * (0.08 + offset), y: iy + ih * 0.08, w: iw * 0.72, h: ih * 0.72, fill: { color: accent, transparency: 18 }, line: { color: accent, transparency: 100 } });
+    slide.addShape('ellipse', { x: ix + iw * (0.4 - offset), y: iy + ih * 0.22, w: iw * 0.48, h: ih * 0.6, fill: { color: pale, transparency: 12 }, line: { color: pale, transparency: 100 } });
+    slide.addShape('roundRect', { x: ix + iw * 0.16, y: iy + ih * 0.52, w: iw * 0.65, h: ih * 0.25, rectRadius: 0.1, fill: { color: 'FFFFFF', transparency: 8 }, line: { color: 'FFFFFF', transparency: 65, width: 1 } });
+  }
 }
 function addBullets(slide, items, x, y, w, theme, max = 4) {
   let yy = y;
@@ -528,7 +573,7 @@ function addSlideNumber(slide, i, total, theme) {
 function buildPptx(plan) {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE';
-  pptx.author = 'Генератор презентаций';
+  pptx.author = 'Все проекты #Ian';
   pptx.subject = plan.title;
   pptx.title = plan.title;
   pptx.company = 'Все проекты #Ian';
@@ -538,91 +583,96 @@ function buildPptx(plan) {
 
   plan.slides.forEach((s, i) => {
     const slide = pptx.addSlide();
-    // Alternate subtle paper/glass-tinted surfaces so the deck doesn't look like
-    // the same blue template repeated on every page.
-    slide.background = { color: i % 4 === 2 ? theme.accent2 : theme.bg };
-    slide.addShape('rect', { x: 0, y: 0, w: 0.12, h: 7.5, fill: { color: theme.accent }, line: { color: theme.accent } });
-    if (s.type !== 'cover' && s.type !== 'quote') {
-      slide.addShape('ellipse', { x: 10.05, y: -0.72, w: 3.7, h: 3.7, fill: { color: 'FFFFFF', transparency: 34 }, line: { color: 'FFFFFF', transparency: 100 } });
-      slide.addShape('ellipse', { x: 11.15, y: 0.2, w: 1.35, h: 1.35, fill: { color: theme.accent2, transparency: 12 }, line: { color: theme.accent2, transparency: 100 } });
-      slide.addShape('line', { x: 0.72, y: 1.22, w: 11.75, h: 0, line: { color: theme.accent2, transparency: 12, width: 1.2 } });
-    }
+    const type = i === 0 ? 'cover' : normalizeSlideType(s.type, i);
     const title = s.title || plan.title;
-    const type = s.type;
-    // Every slide gets its own relevant image; hero layouts keep their large image.
-    if (!['cover','stat','image'].includes(type)) addImageOrPlaceholder(slide, s, 9.72, 0.28, 2.62, 1.05, theme);
     if (type === 'cover') {
       slide.background = { color: theme.accent };
-      addText(slide, 'ПРЕЗЕНТАЦИЯ', 0.75, 0.65, 4.8, 0.3, { fontSize: 11, bold: true, color: 'FFFFFF', charSpacing: 2 });
-      addText(slide, title, 0.75, 1.35, 6.2, 2.3, { fontSize: 32, bold: true, color: 'FFFFFF', breakLine: false, valign: 'mid' });
-      addText(slide, s.subtitle || s.body || plan.summary, 0.78, 4.0, 5.7, 1.15, { fontSize: 17, color: 'EAF0FF', valign: 'top' });
-      addImageOrPlaceholder(slide, s, 7.3, 1.15, 5.0, 4.9, theme);
-    } else if (type === 'cards') {
-      addText(slide, title, 0.7, 0.45, 8.65, 0.65, { fontSize: 27, bold: true, color: theme.ink });
-      const cards = (s.cards?.length ? s.cards : (s.bullets || []).slice(0, 3).map((text, j) => ({ title: `Идея ${j + 1}`, text, value: '' }))).slice(0, 4);
-      const cols = cards.length === 4 ? 2 : Math.max(1, cards.length);
-      const cw = 11.7 / cols;
-      cards.forEach((c, j) => {
-        const col = j % cols, row = Math.floor(j / cols);
-        const x = 0.7 + col * cw, y = 1.5 + row * 2.25;
-        slide.addShape('roundRect', { x, y, w: cw - 0.2, h: 1.9, rectRadius: 0.12, fill: { color: 'FFFFFF' }, line: { color: theme.accent2, transparency: 45 } });
-        if (c.value) addText(slide, c.value, x + 0.22, y + 0.18, cw - 0.65, 0.45, { fontSize: 23, bold: true, color: theme.accent });
-        addText(slide, c.title, x + 0.22, y + (c.value ? 0.7 : 0.22), cw - 0.65, 0.4, { fontSize: 17, bold: true, color: theme.ink });
-        addText(slide, c.text, x + 0.22, y + 1.15, cw - 0.65, 0.55, { fontSize: 13, color: theme.muted, valign: 'top' });
-      });
-    } else if (type === 'comparison') {
-      addText(slide, title, 0.7, 0.45, 11.7, 0.65, { fontSize: 27, bold: true, color: theme.ink });
-      [s.leftTitle, s.rightTitle].forEach((t, j) => {
-        const x = 0.75 + j * 6.0;
-        slide.addShape('roundRect', { x, y: 1.45, w: 5.65, h: 4.9, rectRadius: 0.12, fill: { color: 'FFFFFF' }, line: { color: theme.accent2, transparency: 40 } });
-        addText(slide, t, x + 0.25, 1.7, 5.1, 0.5, { fontSize: 20, bold: true, color: theme.accent });
-        addBullets(slide, j ? s.rightItems : s.leftItems, x + 0.3, 2.45, 5.0, theme);
-      });
-    } else if (type === 'stat') {
-      addText(slide, title, 0.75, 0.55, 11.7, 0.7, { fontSize: 27, bold: true, color: theme.ink });
-      addText(slide, s.statistic || s.statisticLabel || s.body || title, 0.85, 1.65, 6.2, 2.0, { fontSize: 47, bold: true, color: theme.accent });
-      addText(slide, s.statisticLabel || s.body, 0.9, 3.8, 6.0, 1.3, { fontSize: 21, color: theme.ink, valign: 'top' });
-      addImageOrPlaceholder(slide, s, 7.4, 1.6, 4.7, 4.4, theme);
-    } else if (type === 'process') {
-      addText(slide, title, 0.7, 0.45, 11.7, 0.65, { fontSize: 27, bold: true, color: theme.ink });
-      const steps = (s.steps?.length ? s.steps : s.bullets).slice(0, 5);
-      steps.forEach((step, j) => {
-        const x = 0.75 + j * (11.8 / Math.max(steps.length, 1));
-        slide.addShape('ellipse', { x, y: 2.0, w: 0.65, h: 0.65, fill: { color: theme.accent }, line: { color: theme.accent } });
-        addText(slide, String(j + 1), x, 2.12, 0.65, 0.3, { fontSize: 16, bold: true, color: 'FFFFFF', align: 'center' });
-        addText(slide, step, x - 0.05, 2.9, 1.8, 1.45, { fontSize: 14, color: theme.ink, valign: 'top' });
-        if (j < steps.length - 1) slide.addShape('line', { x: x + 0.72, y: 2.32, w: 1.45, h: 0, line: { color: theme.accent2, width: 2, endArrowType: 'triangle' } });
-      });
-      addText(slide, s.body, 0.8, 5.25, 11.5, 0.75, { fontSize: 15, color: theme.muted });
-    } else if (type === 'quote') {
-      slide.background = { color: theme.accent2 };
-      addText(slide, 'КЛЮЧЕВАЯ МЫСЛЬ', 0.9, 0.8, 10.8, 0.35, { fontSize: 11, bold: true, color: theme.ink, charSpacing: 2 });
-      addText(slide, `“${s.quote || s.body || title}”`, 0.9, 1.65, 10.9, 3.5, { fontSize: 29, bold: true, color: theme.ink, valign: 'mid' });
-      addText(slide, s.subtitle, 0.95, 5.6, 10.5, 0.45, { fontSize: 15, color: theme.ink });
-    } else if (type === 'table') {
-      addText(slide, title, 0.7, 0.45, 11.7, 0.65, { fontSize: 27, bold: true, color: theme.ink });
-      const rows = s.table?.length ? s.table : [['Параметр', 'Описание'], ['Основная идея', s.body || 'Требуется уточнение']];
-      const colW = 11.7 / Math.max(1, ...rows.map(r => r.length));
-      rows.slice(0, 6).forEach((row, ri) => row.slice(0, 4).forEach((cell, ci) => {
-        const x = 0.7 + ci * colW, y = 1.45 + ri * 0.72;
-        slide.addShape('rect', { x, y, w: colW, h: 0.7, fill: { color: ri === 0 ? theme.accent : 'FFFFFF' }, line: { color: theme.accent2, width: 0.6 } });
-        addText(slide, cell, x + 0.08, y + 0.06, colW - 0.16, 0.58, { fontSize: ri === 0 ? 13 : 12, bold: ri === 0, color: ri === 0 ? 'FFFFFF' : theme.ink });
-      }));
-    } else if (type === 'image') {
-      addText(slide, title, 0.7, 0.5, 11.7, 0.65, { fontSize: 27, bold: true, color: theme.ink });
-      addImageOrPlaceholder(slide, s, 0.75, 1.45, 5.6, 4.8, theme);
-      addText(slide, s.body, 6.8, 1.65, 5.1, 1.25, { fontSize: 19, color: theme.ink, valign: 'top' });
-      addBullets(slide, s.bullets, 6.8, 3.2, 5.0, theme);
-    } else if (type === 'sources') {
-      addText(slide, title || 'Источники', 0.7, 0.5, 8.65, 0.65, { fontSize: 27, bold: true, color: theme.ink });
-      addBullets(slide, plan.sources.map(x => x.url ? `${x.title} — ${x.url}` : x.title), 0.85, 1.5, 11.0, theme, 6);
-      if (!plan.sources.length) addText(slide, 'Добавьте проверенные источники, использованные при подготовке материала.', 0.9, 1.6, 10.5, 1.2, { fontSize: 18, color: theme.muted });
-    } else {
-      addText(slide, title, 0.7, 0.5, 11.7, 0.65, { fontSize: 27, bold: true, color: theme.ink });
-      addText(slide, s.body, 0.85, 1.55, 7.0, 1.2, { fontSize: 20, color: theme.ink, valign: 'top' });
-      addBullets(slide, s.bullets, 0.9, 3.0, 6.5, theme);
-      addImageOrPlaceholder(slide, s, 8.2, 1.6, 3.8, 4.2, theme);
+      slide.addShape('ellipse', { x: 9.8, y: -1.05, w: 4.2, h: 4.2, fill: { color: 'FFFFFF', transparency: 84 }, line: { color: 'FFFFFF', transparency: 100 } });
+      slide.addShape('ellipse', { x: 10.7, y: 0.1, w: 2.4, h: 2.4, fill: { color: theme.accent2, transparency: 28 }, line: { color: theme.accent2, transparency: 100 } });
+      addText(slide, 'ТЕМА ИССЛЕДОВАНИЯ', 0.78, 0.72, 5.7, 0.32, { fontSize: 11, bold: true, color: 'FFFFFF', charSpacing: 2.2 });
+      addText(slide, title, 0.78, 1.45, 5.8, 2.3, { fontSize: 34, bold: true, color: 'FFFFFF', valign: 'mid' });
+      addText(slide, s.subtitle || s.body || plan.summary, 0.82, 4.08, 5.65, 1.12, { fontSize: 17, color: 'EFF3FF', valign: 'top' });
+      slide.addShape('line', { x: 0.82, y: 5.55, w: 4.5, h: 0, line: { color: 'FFFFFF', transparency: 45, width: 1.2 } });
+      addText(slide, 'Все проекты #Ian', 0.82, 5.75, 3.8, 0.32, { fontSize: 11, color: 'FFFFFF' });
+      addImageOrPlaceholder(slide, s, 7.05, 1.12, 5.55, 5.0, theme);
+      addText(slide, '01', 11.85, 6.9, 0.55, 0.22, { fontSize: 10, color: 'FFFFFF', align: 'right' });
+      return;
     }
+
+    slide.background = { color: i % 4 === 2 ? 'FFFFFF' : theme.bg };
+    slide.addShape('rect', { x: 0, y: 0, w: 0.12, h: 7.5, fill: { color: theme.accent }, line: { color: theme.accent } });
+    slide.addShape('ellipse', { x: 11.55, y: -0.8, w: 2.45, h: 2.45, fill: { color: theme.accent2, transparency: 76 }, line: { color: theme.accent2, transparency: 100 } });
+    addText(slide, title, 0.72, 0.43, 8.45, 0.78, { fontSize: 27, bold: true, color: theme.ink, valign: 'mid' });
+    slide.addShape('line', { x: 0.72, y: 1.29, w: 11.88, h: 0, line: { color: theme.accent2, transparency: 18, width: 1.1 } });
+
+    if (type === 'cards') {
+      const cards = (s.cards || []).slice(0, 4);
+      const columns = cards.length <= 2 ? Math.max(1, cards.length) : 2;
+      const cardW = 8.45 / columns - 0.14;
+      const cardH = cards.length <= 2 ? 3.7 : 2.15;
+      cards.forEach((card, index) => {
+        const col = index % columns, row = Math.floor(index / columns);
+        const x = 0.72 + col * (8.45 / columns);
+        const y = cards.length <= 2 ? 2.0 : 1.55 + row * 2.37;
+        slide.addShape('roundRect', { x, y, w: cardW, h: cardH, rectRadius: 0.14, fill: { color: 'FFFFFF', transparency: 7 }, line: { color: theme.accent2, transparency: 37, width: 1 } });
+        if (card.value) addText(slide, card.value, x + 0.22, y + 0.2, cardW - 0.45, 0.4, { fontSize: 19, bold: true, color: theme.accent });
+        addText(slide, card.title, x + 0.22, y + (card.value ? 0.68 : 0.25), cardW - 0.45, 0.48, { fontSize: 16, bold: true, color: theme.ink });
+        addText(slide, card.text, x + 0.22, y + (card.value ? 1.18 : 0.83), cardW - 0.45, cardH - (card.value ? 1.35 : 0.98), { fontSize: 12.5, color: theme.muted, valign: 'top' });
+      });
+      addImageOrPlaceholder(slide, s, 9.58, 1.62, 2.95, 4.72, theme);
+    } else if (type === 'comparison') {
+      const panelY = 1.55, panelH = 4.85, panelW = 4.1;
+      [s.leftTitle, s.rightTitle].forEach((label, side) => {
+        const x = 0.72 + side * 4.35;
+        slide.addShape('roundRect', { x, y: panelY, w: panelW, h: panelH, rectRadius: 0.14, fill: { color: 'FFFFFF', transparency: 5 }, line: { color: theme.accent2, transparency: 35, width: 1 } });
+        slide.addShape('roundRect', { x: x + 0.18, y: panelY + 0.18, w: panelW - 0.36, h: 0.67, rectRadius: 0.1, fill: { color: side === 0 ? theme.accent : theme.accent2 }, line: { color: side === 0 ? theme.accent : theme.accent2, transparency: 100 } });
+        addText(slide, label, x + 0.32, panelY + 0.28, panelW - 0.64, 0.42, { fontSize: 16, bold: true, color: side === 0 ? 'FFFFFF' : theme.ink });
+        addBullets(slide, side ? s.rightItems : s.leftItems, x + 0.3, panelY + 1.08, panelW - 0.6, theme, 4);
+      });
+      addImageOrPlaceholder(slide, s, 9.62, 1.58, 2.95, 4.78, theme);
+    } else if (type === 'stat') {
+      const main = s.statistic || s.statisticLabel || s.body || title;
+      addText(slide, main, 0.82, 1.78, 6.0, 2.0, { fontSize: 43, bold: true, color: theme.accent, valign: 'mid' });
+      addText(slide, s.statisticLabel || s.body || s.subtitle, 0.88, 4.0, 5.9, 1.4, { fontSize: 19, color: theme.ink, valign: 'top' });
+      addImageOrPlaceholder(slide, s, 7.35, 1.55, 5.05, 4.85, theme);
+    } else if (type === 'process') {
+      const steps = (s.steps?.length ? s.steps : s.bullets || []).slice(0, 5);
+      const cardW = 4.07;
+      steps.forEach((step, index) => {
+        const col = index % 2, row = Math.floor(index / 2);
+        const x = 0.72 + col * 4.25, y = 1.52 + row * 1.58;
+        slide.addShape('roundRect', { x, y, w: cardW, h: 1.36, rectRadius: 0.13, fill: { color: 'FFFFFF', transparency: 5 }, line: { color: theme.accent2, transparency: 35, width: 1 } });
+        slide.addShape('ellipse', { x: x + 0.18, y: y + 0.25, w: 0.55, h: 0.55, fill: { color: theme.accent }, line: { color: theme.accent, transparency: 100 } });
+        addText(slide, String(index + 1), x + 0.18, y + 0.35, 0.55, 0.28, { fontSize: 14, bold: true, color: 'FFFFFF', align: 'center' });
+        addText(slide, step, x + 0.88, y + 0.18, cardW - 1.05, 0.98, { fontSize: 14, color: theme.ink, valign: 'mid' });
+      });
+      addImageOrPlaceholder(slide, s, 9.58, 1.52, 2.95, 4.78, theme);
+      if (s.body) addText(slide, s.body, 0.78, 6.35, 8.1, 0.35, { fontSize: 12, color: theme.muted });
+    } else if (type === 'quote') {
+      addText(slide, 'КЛЮЧЕВАЯ МЫСЛЬ', 0.84, 1.7, 6.7, 0.38, { fontSize: 10, bold: true, color: theme.accent, charSpacing: 2 });
+      addText(slide, `“${s.quote || s.body || title}”`, 0.84, 2.25, 6.95, 2.95, { fontSize: 29, bold: true, color: theme.ink, valign: 'mid' });
+      if (s.subtitle) addText(slide, s.subtitle, 0.9, 5.5, 6.8, 0.62, { fontSize: 14, color: theme.muted, valign: 'top' });
+      addImageOrPlaceholder(slide, s, 8.15, 1.55, 4.42, 4.9, theme);
+    } else if (type === 'table') {
+      const rows = (s.table || []).slice(0, 6), columns = Math.max(1, ...rows.map(row => row.length));
+      const tableX = 0.72, tableY = 1.58, tableW = 8.45, colW = tableW / columns, rowH = 0.74;
+      rows.forEach((row, rowIndex) => row.slice(0, 4).forEach((cell, colIndex) => {
+        const x = tableX + colIndex * colW, y = tableY + rowIndex * rowH;
+        slide.addShape('rect', { x, y, w: colW, h: rowH, fill: { color: rowIndex === 0 ? theme.accent : (colIndex === 0 ? theme.accent2 : 'FFFFFF'), transparency: rowIndex === 0 ? 0 : 5 }, line: { color: theme.accent2, transparency: 12, width: 0.7 } });
+        addText(slide, cell, x + 0.08, y + 0.07, colW - 0.16, rowH - 0.14, { fontSize: rowIndex === 0 ? 12.5 : 11.5, bold: rowIndex === 0 || colIndex === 0, color: rowIndex === 0 ? 'FFFFFF' : theme.ink, valign: 'mid' });
+      }));
+      addImageOrPlaceholder(slide, s, 9.58, 1.58, 2.95, 4.7, theme);
+    } else if (type === 'image') {
+      addImageOrPlaceholder(slide, s, 0.75, 1.55, 5.75, 4.85, theme);
+      addText(slide, s.body || s.subtitle, 6.85, 1.68, 5.3, 1.52, { fontSize: 19, color: theme.ink, valign: 'top' });
+      addBullets(slide, s.bullets, 6.9, 3.45, 5.1, theme, 4);
+    } else {
+      addText(slide, s.body || s.subtitle, 0.85, 1.62, 7.5, 1.55, { fontSize: 19, color: theme.ink, valign: 'top' });
+      addBullets(slide, s.bullets, 0.9, 3.45, 7.35, theme, 4);
+      addImageOrPlaceholder(slide, s, 8.82, 1.55, 3.7, 4.85, theme);
+    }
+    slide.addShape('line', { x: 0.72, y: 6.78, w: 11.88, h: 0, line: { color: theme.accent2, transparency: 35, width: 0.8 } });
+    addText(slide, 'ВСЕ ПРОЕКТЫ #IAN', 0.75, 6.92, 3.6, 0.22, { fontSize: 8, bold: true, color: theme.muted, charSpacing: 1 });
     addSlideNumber(slide, i, plan.slides.length, theme);
   });
   return pptx;
