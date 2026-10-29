@@ -331,7 +331,7 @@ header{border-bottom-color:#d7e5f8}.logo i{background:#2878f0}.nav button:hover{
 <div class="field"><label for="className">Класс</label><input id="className" type="text" placeholder="9А"></div>
 <div class="field"><label for="school">Школа</label><input id="school" type="text" placeholder="Необязательно"></div>
 <div class="field full"><label for="topic">Тема проекта</label><input id="topic" type="text" placeholder="Например: Снижение расхода электроэнергии"></div>
-<div class="field"><label for="slides">Количество слайдов</label><select id="slides"><option>8</option><option selected>12</option><option>15</option><option>20</option></select></div>
+<div class="field"><label for="slides">Количество слайдов (от 1 до 100)</label><input id="slides" type="number" min="1" max="100" step="1" value="12" inputmode="numeric" required></div>
 <div class="field"><label for="requirementsFile">Требования школы</label><input id="requirementsFile" type="file" accept=".pdf,.doc,.docx"></div>
 <div class="field full"><label for="requirements">Дополнительные требования</label><textarea id="requirements" placeholder="Например: добавить практическую часть, таблицу, расчёты..."></textarea></div>
 </div>
@@ -550,7 +550,7 @@ if(!topic){alert("Введите тему проекта.");document.getElementB
 
 projectData={
  firstName:val("firstName"),lastName:val("lastName"),className:val("className"),
- school:val("school"),topic,slides:Math.max(1,Math.min(30,Number(val("slides"))||12)),
+ school:val("school"),topic,slides:Math.max(1,Math.min(100,Math.floor(Number(val("slides"))||12))),
  requirements:val("requirements"),ai:null,files:null,fileErrors:[]
 };
 
