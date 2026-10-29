@@ -79,6 +79,45 @@ function containsCorruptedText(value) {
   if (value && typeof value === 'object') return Object.values(value).some(containsCorruptedText);
   return false;
 }
+function createLocalFallbackPlan(payload) {
+  const topic = cleanText(payload?.topic, 180) || 'Тема проекта';
+  const count = clampInt(payload?.requestedSlides, 4, MAX_SLIDES, 8);
+  const requirements = cleanText(payload?.extraRequirements, 500);
+  const sections = [
+    { type: 'cover', title: topic, subtitle: 'Исследование темы и её практического значения', body: 'Учебная презентация: основные понятия, анализ и выводы.' },
+    { type: 'cards', title: 'Почему эта тема важна', body: 'Чтобы понять тему, нужно рассмотреть её значение, причины интереса к ней и влияние на повседневную жизнь.', bullets: ['Актуальность темы', 'Связь с реальной жизнью', 'Вопросы, требующие изучения'] },
+    { type: 'comparison', title: 'Основные понятия', body: 'Перед анализом важно определить ключевые понятия и не смешивать факты с предположениями.', leftTitle: 'Что изучаем', rightTitle: 'Что проверяем', leftItems: ['Определение темы', 'Основные элементы', 'Примеры применения'], rightItems: ['Надёжность информации', 'Разные точки зрения', 'Практические ограничения'] },
+    { type: 'process', title: 'Как устроен процесс', body: 'Рассмотрите тему последовательно: от исходных условий к результатам и возможным последствиям.', steps: ['Сформулировать вопрос', 'Собрать информацию', 'Сравнить факты', 'Сделать обоснованный вывод'] },
+    { type: 'cards', title: 'Факторы и причины', body: 'На результат обычно влияет несколько факторов. Их следует рассматривать вместе, учитывая контекст.', cards: [{ title: 'Условия', text: 'Обстоятельства, в которых проявляется явление.' }, { title: 'Участники', text: 'Люди, системы или объекты, влияющие на результат.' }, { title: 'Ресурсы', text: 'Время, знания и средства, необходимые для решения.' }] },
+    { type: 'image', title: 'Пример из практики', body: 'Подберите конкретный пример по теме и объясните, что он показывает. Не выдавайте предположение за доказанный факт.' },
+    { type: 'stat', title: 'Как оценивать информацию', body: 'Проверяйте дату, автора, первоисточник и согласованность сведений в нескольких независимых материалах.', statistic: '3 шага', statisticLabel: 'Найти источник · проверить данные · сравнить подтверждения' },
+    { type: 'comparison', title: 'Плюсы и ограничения', body: 'У любого подхода есть сильные стороны и условия, при которых он работает хуже.', leftTitle: 'Преимущества', rightTitle: 'Ограничения', leftItems: ['Возможная польза', 'Практическое применение', 'Потенциал развития'], rightItems: ['Зависимость от условий', 'Возможные риски', 'Необходимость проверки'] },
+    { type: 'process', title: 'Практическая часть', body: requirements || 'Предложите небольшое исследование: сформулируйте цель, опишите метод, зафиксируйте наблюдения и объясните результат.', steps: ['Определить цель', 'Выбрать метод', 'Собрать наблюдения', 'Проанализировать результат', 'Сформулировать вывод'] },
+    { type: 'conclusion', title: 'Выводы', body: 'Подведите итог по изученным вопросам. Отделите подтверждённые сведения от предположений и укажите, что требует дальнейшего изучения.', bullets: ['Цель исследования определена', 'Ключевые вопросы рассмотрены', 'Практическое значение сформулировано'] },
+    { type: 'sources', title: 'Источники для проверки', body: 'Перед сдачей добавьте реальные источники, которыми вы пользовались: учебник, официальные публикации и проверенные материалы.', bullets: ['Учебные материалы по теме', 'Официальные сайты профильных организаций', 'Научные или справочные публикации'] }
+  ];
+  const slides = Array.from({ length: count }, (_, i) => {
+    const base = sections[i % sections.length];
+    return { ...base, title: i >= sections.length ? base.title + ' — часть ' + (Math.floor(i / sections.length) + 1) : base.title,
+      bullets: base.bullets ? [...base.bullets] : [], cards: base.cards ? base.cards.map(c => ({ ...c })) : [],
+      leftItems: base.leftItems ? [...base.leftItems] : [], rightItems: base.rightItems ? [...base.rightItems] : [],
+      steps: base.steps ? [...base.steps] : [], table: [], imageQuery: topic + ' ' + base.title,
+      notes: 'Резервный вариант: автоматически сформирован без доступного ИИ. Проверьте и уточните факты перед использованием.' };
+  });
+  slides[0].title = topic;
+  slides[0].type = 'cover';
+  slides[slides.length - 1].type = 'conclusion';
+  slides[slides.length - 1].title = 'Итоги и дальнейшая проверка';
+  return {
+    title: topic,
+    summary: 'Создан резервный вариант, потому что подключённые ИИ сейчас недоступны. Проверьте факты и добавьте реальные источники перед использованием.',
+    practicalPart: requirements || 'Для практической части сформулируйте цель, выберите подходящий метод исследования, запишите наблюдения и объясните полученные результаты.',
+    defense: 'Кратко представьте актуальность темы, цель и задачи, основные результаты, практическую значимость и выводы. Проверьте все факты и источники перед защитой.',
+    sources: [],
+    slides
+  };
+}
+
 function normalizeSlideType(type, index) {
   const allowed = ['cover', 'cards', 'comparison', 'stat', 'process', 'quote', 'image', 'table', 'conclusion', 'sources'];
   return allowed.includes(type) ? type : (index === 0 ? 'cover' : 'cards');
@@ -256,6 +295,10 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
       failures.push(provider.name + ': ' + message);
       console.warn('[AI fallback] ' + provider.name + ' недоступен: ' + message);
     }
+  }
+  if (payload && payload.topic && !payload.currentProject) {
+    console.error('[AI fallback] Все ИИ недоступны; создаю локальный резервный план без внешнего ИИ.');
+    return createLocalFallbackPlan(payload);
   }
   const error = new Error('Все подключённые ИИ недоступны или исчерпали лимиты. ' + failures.join(' | '));
   error.status = 503;
