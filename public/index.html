@@ -289,13 +289,25 @@ header{border-bottom-color:#d7e5f8}.logo i{background:#2878f0}.nav button:hover{
 .progress{background:#dce9fb}.progress-bar{background:#2878f0}.ready{background:#e6f2ff;border-color:#c4dcff}.ready-title{color:#123a80}.meta,.file{background:#f2f7ff;border-color:#d4e2f4}.file button,.create-btn,.main-btn,.menu-btn{background:#2878f0}.download{background:#0b1b3a}.tariff{border-color:#d4e2f4}.tariff.pro{border-color:#2878f0}.popular-badge{background:#2878f0}.tariff li::before,.checks .check span{color:#2878f0}.check{border-color:#d4e2f4}.support{background:linear-gradient(110deg,#2878f0,#123a80)}.support button{color:#123a80}.phone-tile{border-color:#d4e2f4}.modal-item{border-bottom-color:#dce7f5}.close{background:#e6f2ff;color:#123a80}
 .quick-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 20px}.tool-tile{display:flex;align-items:center;gap:13px;text-align:left;min-width:0;padding:17px;border:1px solid #cfe0f6;border-radius:16px;background:linear-gradient(135deg,#fff,#eaf4ff);color:#0b1b3a;box-shadow:0 5px 18px rgba(18,58,128,.07)}.tool-icon{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;border-radius:13px;background:#2878f0;color:white;font-size:23px}.tool-tile b{display:block;font-size:16px}.tool-tile small{display:block;margin-top:3px;color:#526783;font-size:13px;line-height:1.35}.tool-tile:active{transform:scale(.99)}.tool-form{display:flex;flex-direction:column;gap:12px;margin-top:15px}.tool-form textarea,.tool-form input{width:100%;padding:13px;border:1px solid #d4e2f4;border-radius:12px;font:inherit;color:#0b1b3a;background:#fff}.tool-form textarea{min-height:115px;resize:vertical}.tool-output{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:14px;padding:15px;border-radius:13px;background:#f2f7ff;border:1px solid #d4e2f4;display:none}.tool-output img{display:block;width:100%;height:auto;border-radius:10px;margin-top:10px}
 @media(max-width:600px){.quick-tools{grid-template-columns:1fr}.tool-tile{padding:14px}}
+/* Header app icon and accessible expandable Russian project requirements */
+.logo-app-icon{width:42px;height:42px;display:block;object-fit:cover;border-radius:13px;box-shadow:0 5px 16px rgba(15,95,55,.16)}
+.check details,details.check{cursor:pointer}
+details.check{padding:0;overflow:hidden}
+details.check summary{list-style:none;display:flex;align-items:center;gap:9px;padding:17px;font-weight:750;line-height:1.4;cursor:pointer}
+details.check summary::-webkit-details-marker{display:none}
+details.check summary:after{content:"＋";margin-left:auto;flex:0 0 auto;font-size:20px;color:var(--g);transition:transform .2s ease}
+details.check[open] summary:after{content:"−"}
+details.check summary span{flex:0 0 auto}
+details.check p{margin:0;padding:0 17px 18px 43px;color:var(--m);font-size:14px;line-height:1.6}
+details.check[open]{background:rgba(255,255,255,.66)!important;border-color:rgba(22,134,83,.28)!important}
+@media(max-width:750px){.logo-app-icon{width:38px;height:38px}}
 </style>
 
 </head>
 <body>
 
 <header><div class="container hi">
-<div class="logo"><i>💡</i><span>Все проекты #Ian</span></div>
+<div class="logo"><img class="logo-app-icon" src="/icon-512.png" alt="Иконка Все проекты"><span>Все проекты #Ian</span></div>
 <nav class="nav">
 <button onclick="go('how')">Как это работает</button>
 <button onclick="go('tariffs')">Тарифы</button>
@@ -380,7 +392,12 @@ header{border-bottom-color:#d7e5f8}.logo i{background:#2878f0}.nav button:hover{
 <section><div class="container">
 <h2 class="section-title">🇷🇺 Российские требования</h2><p class="section-subtitle">Основные элементы проекта учитываются в структуре.</p>
 <div class="checks">
-<div class="check"><span>✓</span> Структура проекта</div><div class="check"><span>✓</span> Цель и задачи</div><div class="check"><span>✓</span> Презентация</div><div class="check"><span>✓</span> Текст защиты</div><div class="check"><span>✓</span> Источники и литература</div><div class="check"><span>✓</span> Связь продукта с темой</div>
+<details class="check"><summary><span>✓</span> Структура проекта</summary><p>Обычно включает титульный лист, введение, основную часть, заключение и список источников. Точный порядок уточни у учителя.</p></details>
+<details class="check"><summary><span>✓</span> Цель и задачи</summary><p>Цель описывает ожидаемый результат, а задачи — конкретные шаги, которые помогут к нему прийти.</p></details>
+<details class="check"><summary><span>✓</span> Презентация</summary><p>Слайды должны кратко раскрывать тему, показывать главные результаты и дополнять выступление, а не дублировать длинный текст.</p></details>
+<details class="check"><summary><span>✓</span> Текст защиты</summary><p>Подготовь короткое выступление: актуальность, цель, методы, результаты, практическая значимость и ответы на вопросы.</p></details>
+<details class="check"><summary><span>✓</span> Источники и литература</summary><p>Указывай только реально использованные материалы: книги, статьи и официальные сайты. Проверь автора, название, дату и ссылку.</p></details>
+<details class="check"><summary><span>✓</span> Связь продукта с темой</summary><p>Практический продукт — например, буклет, памятка, опрос или макет — должен решать задачу проекта и быть описан в работе.</p></details>
 </div>
 <p style="margin-top:20px;color:#69766f;font-size:14px">⚠️ Требования конкретной школы рекомендуется проверить отдельно.</p>
 </div></section>
@@ -389,9 +406,9 @@ header{border-bottom-color:#d7e5f8}.logo i{background:#2878f0}.nav button:hover{
 <section id="tariffs"><div class="container">
 <h2 class="section-title">Тарифы</h2><p class="section-subtitle">Выбери подходящий вариант.</p>
 <div class="tariffs">
-<div class="tariff"><h3>Mini</h3><div class="price">200 ₽</div><ul><li>3 правки проекта</li><li>Текст проекта</li><li>Презентация</li><li>Проектный продукт</li><li>Текст защиты</li><li>Изображения из интернета</li></ul><button class="create-btn" onclick="go('generator')">Выбрать</button></div>
-<div class="tariff pro"><div class="popular-badge">🔥 Популярный</div><h3>Pro</h3><div class="price">500 ₽</div><ul><li>5 правок проекта</li><li>Текст проекта</li><li>Презентация</li><li>Проектный продукт</li><li>Текст защиты</li><li>50% изображений из интернета и 50% — ИИ</li></ul><button class="create-btn" onclick="go('generator')">Выбрать</button></div>
-<div class="tariff"><h3>Max</h3><div class="price">1 000 ₽</div><ul><li>10 правок проекта</li><li>Текст проекта</li><li>Презентация</li><li>Проектный продукт</li><li>Текст защиты</li><li>Все изображения создаются ИИ</li></ul><button class="create-btn" onclick="go('generator')">Выбрать</button></div>
+<div class="tariff"><h3>Mini</h3><div class="price">100 ₽</div><ul><li>3 правки проекта</li><li>Текст проекта</li><li>Презентация</li><li>Проектный продукт</li><li>Текст защиты</li><li>Изображения из интернета</li></ul><button class="create-btn" onclick="go('generator')">Выбрать</button></div>
+<div class="tariff pro"><div class="popular-badge">🔥 Популярный</div><h3>Pro</h3><div class="price">300 ₽</div><ul><li>5 правок проекта</li><li>Текст проекта</li><li>Презентация</li><li>Проектный продукт</li><li>Текст защиты</li><li>50% изображений из интернета и 50% — ИИ</li></ul><button class="create-btn" onclick="go('generator')">Выбрать</button></div>
+<div class="tariff"><h3>Max</h3><div class="price">500 ₽</div><ul><li>10 правок проекта</li><li>Текст проекта</li><li>Презентация</li><li>Проектный продукт</li><li>Текст защиты</li><li>Все изображения создаются ИИ</li></ul><button class="create-btn" onclick="go('generator')">Выбрать</button></div>
 </div></div></section>
 
 
