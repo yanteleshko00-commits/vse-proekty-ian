@@ -15,7 +15,8 @@ const PORT = Number(process.env.PORT || 3000);
 // Use a supported OpenAI API model ID; don't let a stale OPENAI_MODEL setting select a non-API product name.
 const MODEL = 'gpt-4.1-mini';
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
-const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 240000);
+// Keep requests below common hosting/proxy limits; slow image lookups are bounded separately.
+const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 85000);
 const MAX_SLIDES = 20;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const openai = process.env.OPENAI_API_KEY
@@ -182,8 +183,8 @@ async function commonsImage(query, used) {
   }).toString();
   const res = await withTimeout(fetch(url, {
     headers: { 'User-Agent': 'IanProjectPresentation/1.0 (presentation generator)' },
-    signal: AbortSignal.timeout(12000)
-  }), 14000, 'Поиск изображения');
+    signal: AbortSignal.timeout(6000)
+  }), 7000, 'Поиск изображения');
   if (!res.ok) return null;
   const data = await res.json();
   const pages = Object.values(data.query?.pages || {});
@@ -202,7 +203,7 @@ async function commonsImage(query, used) {
   return null;
 }
 async function downloadImage(url) {
-  const response = await withTimeout(fetch(url, { signal: AbortSignal.timeout(12000) }), 14000, 'Загрузка изображения');
+  const response = await withTimeout(fetch(url, { signal: AbortSignal.timeout(7000) }), 8000, 'Загрузка изображения');
   if (!response.ok) throw new Error(`Изображение вернуло HTTP ${response.status}`);
   const mime = (response.headers.get('content-type') || '').split(';')[0].trim();
   // Не переименовываем WebP в PNG: это повреждает файл при встраивании в PPTX.
@@ -224,21 +225,27 @@ async function generateImageBuffer(prompt) {
 }
 async function attachImages(plan) {
   const used = new Set();
-  // Параллельный поиск не даёт 10–20 слайдам ждать изображения строго по очереди.
-  // Проверка и резервирование URL выполняются синхронно после ответа каждого поиска.
-  await Promise.all(plan.slides.map(async (slide) => {
-    try {
-      const found = await commonsImage(slide.imageQuery || `${plan.title} ${slide.title}`, used);
-      if (!found) return;
-      const image = await downloadImage(found.url);
-      slide.imageUrl = found.url;
-      slide.imageCredit = found.credit;
-      slide.imageMime = image.mime;
-      slide.imageBytes = image.bytes;
-    } catch (err) {
-      console.warn('Image lookup failed:', err.message);
+  // Ограниченный пул: не перегружаем Wikimedia и уменьшаем вероятность тайм-аутов.
+  // commonsImage резервирует URL в Set сразу после ответа, поэтому повторов меньше.
+  let nextSlide = 0;
+  const workerCount = Math.min(4, plan.slides.length);
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (nextSlide < plan.slides.length) {
+      const slide = plan.slides[nextSlide++];
+      try {
+        const found = await commonsImage(slide.imageQuery || `${plan.title} ${slide.title}`, used);
+        if (!found) continue;
+        const image = await downloadImage(found.url);
+        slide.imageUrl = found.url;
+        slide.imageCredit = found.credit;
+        slide.imageMime = image.mime;
+        slide.imageBytes = image.bytes;
+      } catch (err) {
+        console.warn('Image lookup failed:', err.message);
+      }
     }
-  }));
+  });
+  await Promise.all(workers);
   // AI-картинки включаются только настройкой в Render; лимит защищает время и стоимость.
   if (process.env.ENABLE_AI_IMAGE_GENERATION === 'true') {
     let generatedCount = 0;
@@ -668,7 +675,7 @@ async function generateProject(body) {
   });
   const plan = normalizePlan(raw, topic, count, theme);
   await attachImages(plan);
-  const built = await withTimeout(buildFiles(plan), 90000, 'Сборка файлов');
+  const built = await withTimeout(buildFiles(plan), 45000, 'Сборка файлов');
   return { project: publicProject(plan), files: built.files, fileErrors: built.fileErrors };
 }
 function asyncRoute(handler) {
@@ -711,7 +718,7 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
     }
   });
   await attachImages(plan);
-  const built = await withTimeout(buildFiles(plan), 90000, 'Сборка файлов');
+  const built = await withTimeout(buildFiles(plan), 45000, 'Сборка файлов');
   res.json({ project: publicProject(plan), files: built.files, fileErrors: built.fileErrors });
 }));
 
