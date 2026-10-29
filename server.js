@@ -72,8 +72,8 @@ function extractJson(outputText) {
 
 function containsCorruptedText(value) {
   if (typeof value === 'string') {
-    // Reject common mojibake / binary-to-text artifacts before they reach a slide.
-    return /[Ôò¤Ä´©]|\u0000/.test(value);
+    // Detect common UTF-8/Windows-1251 mojibake and replacement/control characters.
+    return /[\uFFFD\u0000-\u0008\u000B\u000C\u000E-\u001F]|(?:Р[џЃ‚ѓ„…†‡€‰ЉЊЋЌЍЎЏђ‘’“”•–—™љњћќўџ])|(?:С[ЂЃ‚ѓ„…†‡€‰ЉЊЋЌЍЎЏђ‘’“”•–—™љњћќўџ])|(?:Ã.|Â.|Ð.|Ñ.)|(?:Ôò|Ä´|Â©)/u.test(value);
   }
   if (Array.isArray(value)) return value.some(containsCorruptedText);
   if (value && typeof value === 'object') return Object.values(value).some(containsCorruptedText);
@@ -123,6 +123,17 @@ function normalizeSlideType(type, index) {
   return allowed.includes(type) ? type : (index === 0 ? 'cover' : 'cards');
 }
 function normalizePlan(raw, topic, requestedCount, theme) {
+  // Never export garbled AI text. Use the built-in Russian outline instead.
+  if (containsCorruptedText(raw) || containsCorruptedText(topic)) {
+    console.warn('[text-encoding] Повреждённый текст обнаружен; заменяю план резервным русским вариантом.');
+    const safeTopic = containsCorruptedText(topic) ? 'Учебный проект' : topic;
+    return normalizePlan(
+      createLocalFallbackPlan({ topic: safeTopic, requestedSlides: requestedCount }),
+      safeTopic,
+      requestedCount,
+      theme
+    );
+  }
   const inputSlides = Array.isArray(raw.slides) ? raw.slides : [];
   const slides = inputSlides.slice(0, requestedCount).map((s, i) => ({
     type: normalizeSlideType(s.type, i),
