@@ -196,7 +196,7 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
     return data.choices?.[0]?.message?.content || '';
   }
   if (provider.type === 'cloudflare') {
-    const url = 'https://api.cloudflare.com/client/v4/accounts/' + encodeURIComponent(provider.accountId) + '/ai/run/' + encodeURIComponent(provider.model);
+    const url = 'https://api.cloudflare.com/client/v4/accounts/' + encodeURIComponent(provider.accountId) + '/ai/run/' + provider.model;
     const response = await fetch(url, {
       method: 'POST', signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + provider.key },
       body: JSON.stringify({ messages: [{ role: 'system', content: instructions }, { role: 'user', content: input }], max_tokens: 10000 })
@@ -849,7 +849,10 @@ app.use((err, req, res, _next) => {
   const lower = raw.toLowerCase();
   let status = Number(err?.status) || (err?.name === 'APIError' ? 502 : 500);
   let userMessage = raw;
-  if (err?.code === 'insufficient_quota' || lower.includes('you have no credits remaining') ||
+  if (lower.includes('все подключённые ии')) {
+    status = 503;
+    userMessage = raw;
+  } else if (err?.code === 'insufficient_quota' || lower.includes('you have no credits remaining') ||
       lower.includes('insufficient_quota') || lower.includes('billing hard limit')) {
     status = 503;
     userMessage = 'Закончились средства или доступные кредиты API OpenAI. Пополни баланс или подключи рабочий API-ключ в настройках Render.';
