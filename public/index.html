@@ -158,7 +158,6 @@ header{border-bottom-color:#d7e5f8}.logo i{background:#2878f0}.nav button:hover{
 <h2 class="section-title">🇷🇺 Российские требования</h2><p class="section-subtitle">Основные элементы проекта учитываются в структуре.</p>
 <div class="checks">
 <div class="check"><span>✓</span> Структура проекта</div><div class="check"><span>✓</span> Цель и задачи</div><div class="check"><span>✓</span> Презентация</div><div class="check"><span>✓</span> Текст защиты</div><div class="check"><span>✓</span> Источники и литература</div><div class="check"><span>✓</span> Связь продукта с темой</div>
-</div></div></section>
 </div>
 <p style="margin-top:20px;color:#69766f;font-size:14px">⚠️ Требования конкретной школы рекомендуется проверить отдельно.</p>
 </div></section>
@@ -271,7 +270,9 @@ function showRestoredProject(){
   document.getElementById("progressBox").style.display="block";
   document.getElementById("progressBar").style.width="100%";
   document.getElementById("percent").textContent="100%";
-  document.getElementById("status").textContent="✅ Проект готов!";
+  document.getElementById("status").textContent=Array.isArray(projectData.fileErrors)&&projectData.fileErrors.length
+    ? "⚠️ Проект создан. Не удалось подготовить: "+projectData.fileErrors.map(x=>x.name).join(", ")
+    : "✅ Проект готов!";
   document.getElementById("readyTopic").textContent="«"+projectData.topic+"»";
   document.getElementById("resultName").textContent=([projectData.firstName,projectData.lastName].filter(Boolean).join(" ")||"Не указано");
   document.getElementById("resultClass").textContent=projectData.className||"Не указан";
@@ -318,7 +319,8 @@ async function generatePicture(){
   btn.disabled=true;btn.textContent="Создаю изображение...";out.style.display="block";out.textContent="Генерирую картинку. Это может занять до минуты...";
   try{const r=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Не удалось создать изображение.");out.textContent="Готово!";if(d.image){const img=document.createElement("img");img.alt="Созданное изображение";img.src="data:"+(d.mime||"image/png")+";base64,"+d.image;out.appendChild(img);const a=document.createElement("a");a.href=img.src;a.download="Моя_картинка.png";a.textContent="Скачать изображение";a.style.display="inline-block";a.style.marginTop="12px";a.style.fontWeight="800";a.style.color="#123a80";out.appendChild(a);}}catch(e){out.textContent="Ошибка: "+e.message;}finally{btn.disabled=false;btn.textContent="Создать изображение";}
 }
-  async function createProject(){
+
+async function createProject(){
 stopProgress();
 const topic=val("topic");
 if(!topic){alert("Введите тему проекта.");document.getElementById("topic").focus();return;}
@@ -326,7 +328,7 @@ if(!topic){alert("Введите тему проекта.");document.getElementB
 projectData={
  firstName:val("firstName"),lastName:val("lastName"),className:val("className"),
  school:val("school"),topic,slides:Math.max(1,Math.min(30,Number(val("slides"))||12)),
- requirements:val("requirements"),ai:null,files:null
+ requirements:val("requirements"),ai:null,files:null,fileErrors:[]
 };
 
 const box=document.getElementById("progressBox"),bar=document.getElementById("progressBar"),pct=document.getElementById("percent"),status=document.getElementById("status"),result=document.getElementById("projectResult"),btn=document.getElementById("createButton");
@@ -348,10 +350,13 @@ try{
   if(!data.project) throw new Error("ИИ не вернул проект.");
 
   projectData.ai=data.project;
-  projectData.files=data.files||{};
+  projectData.files=data.files||[];
+  projectData.fileErrors=Array.isArray(data.fileErrors)?data.fileErrors:[];
   saveProjectState();
   stopProgress();
-  bar.style.transition="width .7s ease";bar.style.width="100%";pct.textContent="100%";status.textContent="✅ Проект готов!";
+  bar.style.transition="width .7s ease";bar.style.width="100%";pct.textContent="100%";status.textContent=projectData.fileErrors.length
+    ? "⚠️ Проект создан. Не удалось подготовить: "+projectData.fileErrors.map(x=>x.name).join(", ")
+    : "✅ Проект готов!";
   document.getElementById("readyTopic").textContent="«"+projectData.topic+"»";
   document.getElementById("resultName").textContent=([projectData.firstName,projectData.lastName].filter(Boolean).join(" ")||"Не указано");
   document.getElementById("resultClass").textContent=projectData.className||"Не указан";
@@ -409,12 +414,15 @@ async function editProject() {
 
     projectData.ai = data.project;
     projectData.files = data.files;
+    projectData.fileErrors = Array.isArray(data.fileErrors) ? data.fileErrors : [];
 
     await saveFilesToIDB(data.files);
     saveProjectState();
 
     document.getElementById("editInstruction").value = "";
-    status.textContent = "✅ Проект обновлён! Новые файлы готовы к скачиванию.";
+    status.textContent = projectData.fileErrors.length
+      ? "⚠️ Проект обновлён, но не подготовлены: " + projectData.fileErrors.map(x => x.name).join(", ")
+      : "✅ Проект обновлён! Новые файлы готовы к скачиванию.";
 
     document.getElementById("readyTopic").textContent = "«" + projectData.topic + "»";
     document.getElementById("resultSlides").textContent =
@@ -438,14 +446,72 @@ function downloadBlob(blob,name){
   a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),3000);
 }
-async function downloadFile(name){
-  if(!projectData?.files){
-    const files=await restoreFilesFromIDB();
-    if(files&&projectData){projectData.files=files;}
+function resolveDownloadFile(files, requestedName){
+  if(!files) return null;
+
+  // Поддерживаем как новую структуру (массив {name, mime, base64}),
+  // так и старую структуру объекта из предыдущих версий сайта.
+  if(!Array.isArray(files) && files[requestedName]?.base64){
+    return {name: requestedName, ...files[requestedName]};
   }
-  const f=projectData?.files?.[name];
-  if(!f){alert("Файл ещё не готов. Сначала создай проект.");return;}
-  downloadBlob(base64ToBlob(f.base64,f.mime),name);
+
+  const list = Array.isArray(files)
+    ? files.filter(Boolean)
+    : Object.entries(files).map(([key, file]) => file && typeof file === "object"
+        ? ({...file, name: file.name || key})
+        : null).filter(Boolean);
+
+  const exact = list.find(file => (file.name || file.filename) === requestedName && file.base64);
+  if(exact) return exact;
+
+  const extension = requestedName.split(".").pop().toLowerCase();
+  const byExtension = list.filter(file => String(file.name || file.filename || "").toLowerCase().endsWith("." + extension) && file.base64);
+  if(!byExtension.length) return null;
+
+  // Совместимость со старым сервером, который называл файлы по теме проекта.
+  if(extension === "pdf" && requestedName === "Презентация_проекта.pdf"){
+    const presentationPdf = byExtension.find(file => /презентац/i.test(file.name || file.filename || ""));
+    return presentationPdf || null;
+  }
+  if(extension === "pdf" && requestedName === "Проект_текст.pdf"){
+    const textPdf = byExtension.find(file => !/презентац/i.test(file.name || file.filename || ""));
+    return textPdf || byExtension[0];
+  }
+  return byExtension[0];
+}
+
+async function downloadFile(name){
+  try{
+    // Восстанавливаем состояние синхронно из sessionStorage, если страница была
+    // открыта кнопкой «Назад» или браузер восстановил её из памяти.
+    if(!projectData){
+      const saved = sessionStorage.getItem("vseProektyProject");
+      if(saved) projectData = JSON.parse(saved);
+    }
+
+    if(!projectData?.ai){
+      alert("Сначала создай проект, затем скачивай готовые файлы.");
+      return;
+    }
+
+    if(!projectData.files){
+      const files = await restoreFilesFromIDB();
+      if(files) projectData.files = files;
+    }
+
+    const file = resolveDownloadFile(projectData.files, name);
+    if(!file?.base64){
+      const failed = (projectData.fileErrors || []).find(item => item.name === name);
+      const reason = failed?.message ? "\nПричина: " + failed.message : "";
+      alert("Файл «" + name + "» не был создан." + reason);
+      return;
+    }
+
+    downloadBlob(base64ToBlob(file.base64, file.mime || "application/octet-stream"), name);
+  }catch(error){
+    console.error("Ошибка скачивания файла:", error);
+    alert("Не удалось скачать файл. Попробуй создать проект ещё раз.");
+  }
 }
 function downloadAll(){downloadFile("Весь_проект.zip");}
 
@@ -461,3 +527,5 @@ document.addEventListener("DOMContentLoaded",()=>{
 </script>
 </body>
 </html>
+
+
