@@ -17,7 +17,7 @@ const MODEL = 'gpt-4.1-mini';
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
 // Keep requests below common hosting/proxy limits; slow image lookups are bounded separately.
 const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 95000);
-const MAX_SLIDES = 20;
+const MAX_SLIDES = 100;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const PDF_FONT_PATH = path.resolve(process.cwd(), 'DejaVuSans.ttf');
 const openai = process.env.OPENAI_API_KEY
@@ -82,7 +82,7 @@ function containsCorruptedText(value) {
 }
 function createLocalFallbackPlan(payload) {
   const topic = cleanText(payload?.topic, 180) || 'Тема проекта';
-  const count = clampInt(payload?.requestedSlides, 4, MAX_SLIDES, 8);
+  const count = clampInt(payload?.requestedSlides, 1, MAX_SLIDES, 8);
   const requirements = cleanText(payload?.extraRequirements, 500);
   const sections = [
     { type: 'cover', title: topic, subtitle: 'Исследование темы и её практического значения', body: 'Учебная презентация: основные понятия, анализ и выводы.' },
@@ -120,7 +120,7 @@ function createLocalFallbackPlan(payload) {
 }
 
 function normalizeSlideType(type, index) {
-  const allowed = ['cover', 'cards', 'comparison', 'stat', 'process', 'quote', 'image', 'table', 'conclusion', 'sources'];
+  const allowed = ['cover', 'cards', 'comparison', 'stat', 'process', 'quote', 'image', 'table'];
   return allowed.includes(type) ? type : (index === 0 ? 'cover' : 'cards');
 }
 function normalizePlan(raw, topic, requestedCount, theme) {
@@ -162,14 +162,14 @@ function normalizePlan(raw, topic, requestedCount, theme) {
     notes: normalizeText(s.notes || '', 300)
   }));
   // Keep requested count exact. Fill missing slots with meaningful, distinct section layouts.
-  const fallbackTypes = ['cover', 'cards', 'comparison', 'stat', 'process', 'image', 'quote', 'conclusion', 'table', 'sources'];
+  const fallbackTypes = ['cover', 'cards', 'comparison', 'stat', 'process', 'image', 'quote', 'table'];
   while (slides.length < requestedCount) {
     const i = slides.length;
     slides.push({
       type: fallbackTypes[i % fallbackTypes.length],
-      title: i === requestedCount - 1 ? 'Итоги и источники' : `Следующий шаг: ${topic}`,
+      title: `Развитие темы: ${topic}`,
       subtitle: '',
-      body: i === requestedCount - 1 ? 'Проверьте источники и используйте данные в контексте.' : `Ключевые выводы по теме «${topic}».`,
+      body: `Практические аспекты и дополнительные факты по теме «${topic}».`,
       bullets: ['Главная идея', 'Практическое значение', 'Что можно изучить дальше'],
       cards: [], leftTitle: 'Возможности', rightTitle: 'Что учесть',
       leftItems: ['Потенциальная польза'], rightItems: ['Ограничения и условия'],
@@ -178,11 +178,12 @@ function normalizePlan(raw, topic, requestedCount, theme) {
       imageQuery: `${topic} ${i + 1}`, imageUrl: '', imageCredit: '', notes: ''
     });
   }
-  // Enforce a logical start/end even if the model ignored the requested structure.
+  // Enforce a cover, but never append a dedicated conclusions/sources slide.
   if (slides.length) slides[0].type = 'cover';
-  if (slides.length > 1 && !['conclusion', 'sources', 'quote'].includes(slides.at(-1).type)) {
-    slides.at(-1).type = 'conclusion';
-    slides.at(-1).title = 'Выводы';
+  if (slides.length > 1 && ['conclusion', 'sources'].includes(slides.at(-1).type)) {
+    slides.at(-1).type = 'cards';
+    slides.at(-1).title = `Практические аспекты: ${topic}`;
+    slides.at(-1).body = `Дополнительные факты и применение темы «${topic}».`;
   }
   const sources = (Array.isArray(raw.sources) ? raw.sources : [])
     .slice(0, 10)
@@ -330,14 +331,14 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
 const PLANNER_INSTRUCTIONS = `
 Ты опытный автор и дизайнер презентаций. Верни ТОЛЬКО JSON-объект.
 Создай презентацию на русском языке с точным количеством слайдов, указанным в запросе.
-Каждый слайд должен иметь один type из: cover,cards,comparison,stat,process,quote,image,table,conclusion,sources.
+Каждый слайд должен иметь один type из: cover,cards,comparison,stat,process,quote,image,table.
 Сначала проанализируй тему: предмет, аудитория, цель, настроение и визуальные ассоциации. Затем придумай цельную арт-дирекцию: палитру, композицию, контраст и визуальный ритм. В поле designDirection кратко опиши концепцию, в colorMood укажи 2–4 цвета словами.
-Обязательная логика: обложка/введение, проблема, факты или аналитика, решение/практическая часть, выводы и источники.
+Обязательная логика: обложка/введение, проблема, факты или аналитика, решение/практическая часть. НЕ создавай отдельный финальный слайд «Источники», «Итоги», «Выводы» или их комбинацию. Источники сохраняй в поле sources для текстовых документов, но не включай в slides.
 Не придумывай статистику, цитаты, исследования, названия источников или URL. Если достоверное число неизвестно, не используй его как факт.
 Текст краткий: заголовок до 8 слов, body до 35 слов, до 4 bullets, каждый до 14 слов.
 Меняй макеты и ритм слайдов. Не повторяй одинаковые заголовки и формулировки. Не добавляй название сайта, логотипы или фразу «Индивидуальный проект» без необходимости.
 Для КАЖДОГО слайда создай imageQuery как конкретный поисковый запрос к настоящей фотографии из интернета, связанный с содержанием именно этого слайда. Используй разные объекты, ракурсы и визуальные сюжеты. Не повторяй запросы и избегай логотипов или надписей.
-Для cards заполни cards [{title,text,value}]; для comparison заполни leftTitle,rightTitle,leftItems,rightItems; для stat заполни statistic,statisticLabel; для process заполни steps; для quote — quote; для table — table как массив строк, первая строка заголовки; для conclusion/sources — краткие итоги/источники.
+Для cards заполни cards [{title,text,value}]; для comparison заполни leftTitle,rightTitle,leftItems,rightItems; для stat заполни statistic,statisticLabel; для process заполни steps; для quote — quote; для table — table как массив строк, первая строка заголовки. Не используй отдельные слайды conclusion или sources.
 Верни поля: title, summary, designDirection, colorMood, practicalPart, defense, sources [{title,url}], slides [{type,title,subtitle,body,bullets,cards,leftTitle,rightTitle,leftItems,rightItems,steps,quote,statistic,statisticLabel,table,imageQuery,notes}].
 `;
 async function commonsImage(query, used) {
@@ -959,7 +960,7 @@ async function generateProject(body) {
     const e = new Error('Укажи тему проекта или презентации.');
     e.status = 400; throw e;
   }
-  const count = clampInt(body.slidesCount ?? body.slides ?? body.presentationSlides, 4, MAX_SLIDES, 8);
+  const count = clampInt(body.slidesCount ?? body.slides ?? body.presentationSlides, 1, MAX_SLIDES, 12);
   const theme = inferTheme(topic, body.style || '');
   const raw = await aiJson(PLANNER_INSTRUCTIONS, {
     topic,
