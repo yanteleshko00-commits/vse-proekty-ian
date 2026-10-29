@@ -226,41 +226,93 @@ async function runAIWithFallback(instructions, input, jsonMode, timeout = REQUES
   error.status = 503;
   throw error;
 }
+function scoreAIJsonCandidate(parsed, payload) {
+  const requestedSlides = Number.parseInt(payload?.requestedSlides, 10);
+  const isPresentation = Boolean(payload?.topic && Number.isInteger(requestedSlides) && requestedSlides > 0);
+  const issues = isPresentation ? validatePresentationPlan(parsed, requestedSlides) : [];
+  const slides = Array.isArray(parsed?.slides) ? parsed.slides : [];
+  const titles = slides.map(slide => cleanText(slide?.title, 100).toLocaleLowerCase('ru')).filter(Boolean);
+  const queries = slides.map(slide => cleanText(slide?.imageQuery, 180).toLocaleLowerCase('en')).filter(Boolean);
+  const types = slides.map(slide => String(slide?.type || '')).filter(Boolean);
+  const contentValues = slides.flatMap(slide => [
+    slide?.subtitle, slide?.body, slide?.quote, slide?.statisticLabel,
+    ...(Array.isArray(slide?.bullets) ? slide.bullets : []),
+    ...(Array.isArray(slide?.steps) ? slide.steps : []),
+    ...(Array.isArray(slide?.cards) ? slide.cards.flatMap(card => [card?.title, card?.text]) : []),
+    ...(Array.isArray(slide?.leftItems) ? slide.leftItems : []),
+    ...(Array.isArray(slide?.rightItems) ? slide.rightItems : [])
+  ]).filter(value => typeof value === 'string' && value.trim());
+  const wordCount = contentValues.join(' ').split(/\s+/).filter(Boolean).length;
+  const baseScore = issues.length === 0 ? 100000 : 50000 - issues.length * 2500;
+  const score = baseScore + Math.min(700, wordCount * 2)
+    + new Set(titles).size * 20 + new Set(queries).size * 10 + new Set(types).size * 14;
+  return { score, issues, slideCount: slides.length };
+}
+
 async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   const input = 'Return a valid json object matching the requested schema.\nPayload: ' + JSON.stringify(payload);
   const providers = configuredAIProviders();
-  if (!providers.length) throw new Error('Не подключены API-ключи ИИ. Добавь OPENAI_API_KEY и ключи резервных бесплатных провайдеров в Render.');
-  const failures = [];
-  // Keep all provider attempts inside one bounded deadline so the local fallback can run.
-  const deadline = Date.now() + Math.min(timeout, 60000);
-  for (const provider of providers) {
-    const remaining = deadline - Date.now();
-    if (remaining < 1000) break;
-    try {
-      const output = await callAIProvider(provider, instructions, input, true, Math.min(16000, remaining));
-      const parsed = extractJson(output);
-      if (containsCorruptedText(parsed)) {
-        throw new Error(provider.name + ': ответ содержит повреждённый текст/ошибку кодировки.');
-      }
-      console.log('[AI fallback] Генерация выполнена через ' + provider.name + '.');
-      return parsed;
-    } catch (error) {
-      const message = cleanText(error?.message || 'неизвестная ошибка', 350).replace(/sk-[A-Za-z0-9_-]{16,}/g, '[ключ скрыт]').replace(/Bearer\s+\S+/gi, 'Bearer [скрыт]');
-      failures.push(provider.name + ': ' + message);
-      console.warn('[AI fallback] ' + provider.name + ' недоступен: ' + message);
-    }
+  if (!providers.length) {
+    throw new Error('Не подключены API-ключи ИИ. Добавь хотя бы один рабочий API-ключ провайдера в Render.');
   }
-  if (payload && payload.topic && !payload.currentProject) {
-    console.error('[AI fallback] Все ИИ недоступны. Не создаю шаблонную презентацию, выдающую себя за результат ИИ.');
-    const reasons = failures.length ? failures.join(' | ') : 'Провайдеры не успели ответить в отведённое время.';
-    const error = new Error('Не удалось получить пригодный ответ от ИИ. Диагностика: ' + reasons + '. Презентация не создана. Проверь ключи, лимиты и состояние ИИ-провайдеров в Render Logs, затем попробуй ещё раз.');
+
+  // All configured providers start together. A failed provider cannot cancel the others.
+  const perProviderTimeout = Math.max(4000, Math.min(16000, timeout));
+  const waveStartedAt = Date.now();
+  const attempts = await Promise.all(providers.map(async provider => {
+    const startedAt = Date.now();
+    try {
+      const output = await callAIProvider(provider, instructions, input, true, perProviderTimeout);
+      if (!cleanText(output, 12000)) throw new Error('Пустой ответ.');
+      const parsed = extractJson(output);
+      if (containsCorruptedText(parsed)) throw new Error('Ответ содержит повреждённый текст/ошибку кодировки.');
+      const quality = scoreAIJsonCandidate(parsed, payload);
+      return {
+        ok: true, provider: provider.name, parsed,
+        score: quality.score, issues: quality.issues, slideCount: quality.slideCount,
+        elapsedMs: Date.now() - startedAt
+      };
+    } catch (error) {
+      const message = cleanText(error?.message || 'неизвестная ошибка', 350)
+        .replace(/sk-[A-Za-z0-9_-]{16,}/g, '[ключ скрыт]')
+        .replace(/Bearer\s+\S+/gi, 'Bearer [скрыт]');
+      return { ok: false, provider: provider.name, error: message, elapsedMs: Date.now() - startedAt };
+    }
+  }));
+
+  const successes = attempts.filter(attempt => attempt.ok);
+  const failures = attempts.filter(attempt => !attempt.ok);
+  failures.forEach(attempt => {
+    console.warn('[AI competition] ' + attempt.provider + ' не прошёл: ' + attempt.error + ' (' + attempt.elapsedMs + ' мс)');
+  });
+
+  if (!successes.length) {
+    const reasons = failures.map(attempt => attempt.provider + ': ' + attempt.error).join(' | ')
+      || 'Провайдеры не успели ответить в отведённое время.';
+    if (payload && payload.topic && !payload.currentProject) {
+      console.error('[AI competition] Все провайдеры провалились. Не создаю шаблонную презентацию.');
+      const error = new Error('Не удалось получить пригодный ответ от ИИ. Диагностика: ' + reasons + '. Проверь ключи, лимиты и Render Logs.');
+      error.status = 503;
+      error.code = 'AI_PROVIDERS_UNAVAILABLE';
+      throw error;
+    }
+    const error = new Error('Все подключённые ИИ недоступны или вернули некорректный JSON. Диагностика: ' + reasons);
     error.status = 503;
-    error.code = 'AI_PROVIDERS_UNAVAILABLE';
     throw error;
   }
-  const error = new Error('Все подключённые ИИ недоступны или исчерпали лимиты. ' + failures.join(' | '));
-  error.status = 503;
-  throw error;
+
+  // Quality validation outranks response speed; speed breaks ties only.
+  successes.sort((a, b) => b.score - a.score || a.elapsedMs - b.elapsedMs);
+  successes.forEach((candidate, index) => {
+    console.log('[AI competition] #' + (index + 1) + ' ' + candidate.provider
+      + ': score=' + candidate.score + ', issues=' + candidate.issues.length
+      + ', slides=' + candidate.slideCount + ', time=' + candidate.elapsedMs + 'ms');
+  });
+  const winner = successes[0];
+  console.log('[AI competition] Победитель: ' + winner.provider
+    + ' (score=' + winner.score + '), сравнено ответов: ' + successes.length
+    + '/' + providers.length + ', общая длительность=' + (Date.now() - waveStartedAt) + 'ms.');
+  return winner.parsed;
 }
 const PLANNER_INSTRUCTIONS = `
 Ты — редактор школьных презентаций, исследователь и профессиональный арт-директор. Верни только один валидный JSON-объект, без Markdown и комментариев.
@@ -301,7 +353,7 @@ function validatePresentationPlan(raw, requestedCount) {
     if (!title) issues.push(`${prefix}: пустой заголовок`);
     if (title) titleCounts.set(title, (titleCounts.get(title) || 0) + 1);
     if (title && genericTitle.test(title)) issues.push(`${prefix}: шаблонный заголовок «${slide.title}»`);
-    if (/^(?:источники|итоги|выводы|заключение)(?:\\s|:|$)/i.test(title)) issues.push(`${prefix}: запрещён пустой финальный слайд с источниками или общим заключением`);
+    if (/^(?:источники|итоги|выводы|заключение)(?:\s|:|$)/i.test(title)) issues.push(`${prefix}: запрещён пустой финальный слайд с источниками или общим заключением`);
     const allowedTypes = ['cover', 'cards', 'comparison', 'stat', 'process', 'quote', 'image', 'table'];
     if (!allowedTypes.includes(String(slide.type || ''))) issues.push(`${prefix}: неподдерживаемый тип макета`);
     const query = cleanText(slide.imageQuery, 180).toLocaleLowerCase('en').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
