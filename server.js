@@ -124,85 +124,54 @@ function normalizeSlideType(type, index) {
   return allowed.includes(type) ? type : (index === 0 ? 'cover' : 'cards');
 }
 function normalizePlan(raw, topic, requestedCount, theme) {
-  // Never export garbled AI text. Use the built-in Russian outline instead.
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('ИИ вернул неверную структуру презентации.');
   if (containsCorruptedText(raw) || containsCorruptedText(topic)) {
-    console.warn('[text-encoding] Повреждённый текст обнаружен; заменяю план резервным русским вариантом.');
-    const safeTopic = containsCorruptedText(topic) ? 'Учебный проект' : topic;
-    return normalizePlan(
-      createLocalFallbackPlan({ topic: safeTopic, requestedSlides: requestedCount }),
-      safeTopic,
-      requestedCount,
-      theme
-    );
+    const error = new Error('ИИ вернул текст с ошибкой кодировки. Презентация не создана, чтобы не выдавать испорченный текст за готовую работу.');
+    error.status = 502; throw error;
   }
   const inputSlides = Array.isArray(raw.slides) ? raw.slides : [];
-  const slides = inputSlides.slice(0, requestedCount).map((s, i) => ({
+  if (inputSlides.length !== requestedCount) {
+    const error = new Error(`ИИ вернул ${inputSlides.length} слайдов вместо ${requestedCount}. Шаблонные слайды не будут подставлены вместо содержания — попробуй ещё раз.`);
+    error.status = 502; throw error;
+  }
+  const slides = inputSlides.map((s, i) => ({
     type: normalizeSlideType(s.type, i),
-    title: normalizeText(s.title || (i === 0 ? topic : `Раздел ${i + 1}`), 90),
+    title: normalizeText(s.title || '', 90),
     subtitle: normalizeText(s.subtitle || '', 140),
     body: normalizeText(s.body || '', 300),
     bullets: (Array.isArray(s.bullets) ? s.bullets : []).slice(0, 4).map(x => normalizeText(x, 100)).filter(Boolean),
-    cards: (Array.isArray(s.cards) ? s.cards : []).slice(0, 4).map(c => ({
-      title: normalizeText(c.title || 'Ключевая идея', 55),
-      text: normalizeText(c.text || '', 110),
-      value: normalizeText(c.value || '', 25)
-    })),
-    leftTitle: normalizeText(s.leftTitle || 'Преимущества', 55),
-    rightTitle: normalizeText(s.rightTitle || 'Ограничения', 55),
-    leftItems: (Array.isArray(s.leftItems) ? s.leftItems : []).slice(0, 4).map(x => normalizeText(x, 100)),
-    rightItems: (Array.isArray(s.rightItems) ? s.rightItems : []).slice(0, 4).map(x => normalizeText(x, 100)),
-    steps: (Array.isArray(s.steps) ? s.steps : []).slice(0, 5).map(x => normalizeText(x, 100)),
-    quote: normalizeText(s.quote || s.body || '', 230),
+    cards: (Array.isArray(s.cards) ? s.cards : []).slice(0, 4).map(card => ({
+      title: normalizeText(card?.title || '', 55), text: normalizeText(card?.text || '', 110), value: normalizeText(card?.value || '', 25)
+    })).filter(card => card.title || card.text),
+    leftTitle: normalizeText(s.leftTitle || 'Сторона A', 55),
+    rightTitle: normalizeText(s.rightTitle || 'Сторона B', 55),
+    leftItems: (Array.isArray(s.leftItems) ? s.leftItems : []).slice(0, 4).map(x => normalizeText(x, 100)).filter(Boolean),
+    rightItems: (Array.isArray(s.rightItems) ? s.rightItems : []).slice(0, 4).map(x => normalizeText(x, 100)).filter(Boolean),
+    steps: (Array.isArray(s.steps) ? s.steps : []).slice(0, 5).map(x => normalizeText(x, 100)).filter(Boolean),
+    quote: normalizeText(s.quote || '', 230),
     statistic: normalizeText(s.statistic || '', 35),
     statisticLabel: normalizeText(s.statisticLabel || '', 110),
-    table: Array.isArray(s.table) ? s.table.slice(0, 6).map(r => Array.isArray(r) ? r.slice(0, 4).map(x => normalizeText(x, 70)) : []) : [],
-    imageQuery: normalizeText(s.imageQuery || `${topic} ${s.title || ''}`, 180),
-    imageUrl: '',
-    imageCredit: '',
-    notes: normalizeText(s.notes || '', 300)
+    table: Array.isArray(s.table) ? s.table.slice(0, 6).map(row => Array.isArray(row) ? row.slice(0, 4).map(x => normalizeText(x, 70)) : []) : [],
+    imageQuery: normalizeText(s.imageQuery || '', 180),
+    imageUrl: '', imageCredit: '', notes: normalizeText(s.notes || '', 300)
   }));
-  // Keep requested count exact. Fill missing slots with meaningful, distinct section layouts.
-  const fallbackTypes = ['cover', 'cards', 'comparison', 'stat', 'process', 'image', 'quote', 'table'];
-  while (slides.length < requestedCount) {
-    const i = slides.length;
-    slides.push({
-      type: fallbackTypes[i % fallbackTypes.length],
-      title: `Развитие темы: ${topic}`,
-      subtitle: '',
-      body: `Практические аспекты и дополнительные факты по теме «${topic}».`,
-      bullets: ['Главная идея', 'Практическое значение', 'Что можно изучить дальше'],
-      cards: [], leftTitle: 'Возможности', rightTitle: 'Что учесть',
-      leftItems: ['Потенциальная польза'], rightItems: ['Ограничения и условия'],
-      steps: ['Изучить вопрос', 'Проверить данные', 'Сделать вывод'],
-      quote: '', statistic: '', statisticLabel: '', table: [],
-      imageQuery: `${topic} ${i + 1}`, imageUrl: '', imageCredit: '', notes: ''
-    });
-  }
-  // Enforce a cover, but never append a dedicated conclusions/sources slide.
-  if (slides.length) slides[0].type = 'cover';
-  if (slides.length > 1 && ['conclusion', 'sources'].includes(slides.at(-1).type)) {
-    slides.at(-1).type = 'cards';
-    slides.at(-1).title = `Практические аспекты: ${topic}`;
-    slides.at(-1).body = `Дополнительные факты и применение темы «${topic}».`;
-  }
-  const sources = (Array.isArray(raw.sources) ? raw.sources : [])
-    .slice(0, 10)
-    .map(s => typeof s === 'string' ? { title: normalizeText(s, 160), url: '' } : {
-      title: normalizeText(s.title || s.name || 'Источник', 160),
-      url: cleanText(s.url || '', 500)
-    });
+  if (slides.some(s => !s.title || !s.imageQuery)) throw new Error('В презентации есть слайд без заголовка или описания изображения.');
+  slides[0].type = 'cover';
+  const sources = (Array.isArray(raw.sources) ? raw.sources : []).slice(0, 10)
+    .map(source => typeof source === 'string'
+      ? { title: normalizeText(source, 160), url: '' }
+      : { title: normalizeText(source?.title || source?.name || 'Источник', 160), url: cleanText(source?.url || '', 500) })
+    .filter(source => source.title);
   return {
-    title: normalizeText(raw.title || topic, 140),
-    theme: theme,
+    title: normalizeText(raw.title || topic, 140), theme,
     summary: normalizeText(raw.summary || '', 500),
-    designDirection: normalizeText(raw.designDirection || 'Редакционный стиль: крупные заголовки, чистая сетка и тематические фотографии.', 500),
-    colorMood: normalizeText(raw.colorMood || '', 120),
-    slides,
-    sources,
+    designDirection: normalizeText(raw.designDirection || 'Цельная редакционная композиция с тематическими фотографиями и разными макетами.', 500),
+    colorMood: normalizeText(raw.colorMood || '', 120), slides, sources,
     practicalPart: normalizeText(raw.practicalPart || '', 1200),
     defense: normalizeText(raw.defense || '', 1800)
   };
 }
+
 async function withTimeout(promise, ms, label = 'Операция') {
   let timer;
   try {
@@ -332,18 +301,109 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   throw error;
 }
 const PLANNER_INSTRUCTIONS = `
-Ты опытный автор и дизайнер презентаций. Верни ТОЛЬКО JSON-объект.
-Создай презентацию на русском языке с точным количеством слайдов, указанным в запросе.
-Каждый слайд должен иметь один type из: cover,cards,comparison,stat,process,quote,image,table. Для каждого слайда выбери композицию осмысленно и меняй её в течение презентации: фото на всю высоту, карточки, крупный тезис, схема процесса, сравнительная таблица, коллаж, диаграммная композиция. Не повторяй один макет три слайда подряд.
-Сначала проанализируй тему: предмет, аудитория, цель, настроение и визуальные ассоциации. Затем придумай цельную арт-дирекцию: палитру, композицию, контраст и визуальный ритм. В поле designDirection кратко опиши концепцию, в colorMood укажи 2–4 цвета словами.
-Обязательная логика: обложка/введение, проблема, факты или аналитика, решение/практическая часть. НЕ создавай отдельный финальный слайд «Источники», «Итоги», «Выводы» или их комбинацию. Источники сохраняй в поле sources для текстовых документов, но не включай в slides.
-Не придумывай статистику, цитаты, исследования, названия источников или URL. Если достоверное число неизвестно, не используй его как факт.
-Текст должен быть конкретным именно для темы и рассчитан на школьную защиту в России. Не заполняй слайды общими фразами вроде «актуальность темы», «основные элементы», «нужно проверить информацию» или «главная идея». Заголовок до 8 слов, body до 45 слов, до 4 bullets, каждый до 14 слов. Каждый слайд должен сообщать новый факт, объяснение, пример, результат или практический шаг. Не повторяй один и тот же смысл на соседних слайдах. Сначала сформируй план слайдов, проверь последовательность и отсутствие повторов, затем верни JSON. Для естественно-научных и исторических тем давай конкретные понятия, причины и примеры; для практических тем — шаги, реальные сценарии и ограничения. Не выдумывай данные, а если нужны цифры, указывай только те, в которых уверен.
-Меняй макеты и ритм слайдов. Не повторяй одинаковые заголовки и формулировки. Не добавляй название сайта, логотипы или фразу «Индивидуальный проект» без необходимости.
-Для КАЖДОГО слайда создай imageQuery на английском языке как короткий, конкретный запрос к настоящей фотографии из интернета, связанный с содержанием именно этого слайда (предмет + действие/место/объект). Используй разные объекты, ракурсы и визуальные сюжеты. Не повторяй запросы, избегай логотипов, флагов, схем и надписей. Если по теме есть люди, лаборатории, предметы, места или реальные примеры — ищи именно их, а не абстрактные изображения.
-Для cards заполни cards [{title,text,value}]; для comparison заполни leftTitle,rightTitle,leftItems,rightItems; для stat заполни statistic,statisticLabel; для process заполни steps; для quote — quote; для table — table как массив строк, первая строка заголовки. Не используй отдельные слайды conclusion или sources.
+Ты — редактор школьных презентаций, исследователь и профессиональный арт-директор. Верни только один валидный JSON-объект, без Markdown и комментариев.
+ЦЕЛЬ: подготовить содержательную презентацию, которую ученик сможет понять и защитить. Это не набор карточек с общими словами. Сначала продумай сюжетную линию, затем напиши каждый слайд как отдельный законченный смысловой шаг.
+СОДЕРЖАНИЕ:
+- Пиши по-русски на школьном уровне, объясняй сложное простыми словами без искажения фактов.
+- Верни ровно requestedSlides слайдов. Не пропускай, не объединяй и не добавляй слайды.
+- Логика: обложка → контекст/исследовательский вопрос → конкретные объяснения и факты → реальные примеры → практическое применение → ещё один содержательный аспект темы на последнем слайде.
+- Не делай отдельных слайдов «Источники», «Итоги», «Выводы». Источники укажи в поле sources. Последний слайд раскрывает тему, а не является пустым заключением.
+- Каждый слайд сообщает новую информацию: факт, причину, механизм, сравнение, пример, метод, наблюдение или ограничение. Не повторяй предыдущий слайд другими словами.
+- Запрещены шаблонные заголовки без конкретики: «Основные элементы», «Главная идея», «Развитие темы», «Пример из практики», «Актуальность темы», «Практические аспекты».
+- Не выдумывай проценты, статистику, цитаты, исследования, организации, URL и результаты экспериментов. Не утверждай, что ученик проводил опрос или эксперимент, если данных нет.
+- Заголовок до 8 слов, body до 45 слов, не более 4 коротких bullets. Убери повторы, общие слова и длинные абзацы.
+- cards: 2–4 конкретные карточки с уникальными заголовками и объяснениями. comparison: конкретные сопоставимые пункты с обеих сторон. process: 2–5 реальных шагов. stat: число только если оно обосновано; не придумывай цифры. table: заголовок и содержательные строки.
+- Не оставляй пустые слайды и текст-заполнитель. Практическая часть должна предлагать выполнимый метод, а не поддельные результаты.
+ВИЗУАЛЬНАЯ КОНЦЕПЦИЯ:
+- В designDirection задай цельную арт-дирекцию: настроение, визуальный язык, принципы композиции и контраст. colorMood — 2–4 подходящих цвета словами.
+- Используй только type из: cover,cards,comparison,stat,process,quote,image,table.
+- Меняй композиции по смыслу; не используй один type более двух раз подряд.
+- Каждый слайд обязан иметь отдельный imageQuery на английском: конкретная фотографическая сцена по содержанию именно этого слайда (объект + действие/место/условие). Запросы различаются по объекту, ракурсу и сцене. Не используй один общий запрос для всей темы, логотипы, флаги, схемы и изображения с надписями.
+- Для каждого type заполняй нужные поля реальным содержанием.
+ПЕРЕД ОТВЕТОМ ПРОВЕРЬ точное число слайдов, уникальность заголовков, содержательность каждого слайда, разные imageQuery, отсутствие шаблонов, вымышленных чисел и фиктивных источников.
 Верни поля: title, summary, designDirection, colorMood, practicalPart, defense, sources [{title,url}], slides [{type,title,subtitle,body,bullets,cards,leftTitle,rightTitle,leftItems,rightItems,steps,quote,statistic,statisticLabel,table,imageQuery,notes}].
 `;
+
+function validatePresentationPlan(raw, requestedCount) {
+  const issues = [];
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return ['ответ не является JSON-объектом'];
+  if (!Array.isArray(raw.slides)) return ['отсутствует массив slides'];
+  if (raw.slides.length !== requestedCount) issues.push(`нужно ровно ${requestedCount} слайдов, получено ${raw.slides.length}`);
+  const slides = raw.slides.slice(0, requestedCount);
+  const titleCounts = new Map(), imageQueries = new Map(), repeatedBodies = new Map();
+  const genericTitle = /^(?:развитие темы|основные элементы|главная идея|актуальность темы|пример из практики|практические аспекты|раздел \\d+)(?:\\s|:|$)/i;
+  slides.forEach((slide, index) => {
+    const prefix = `слайд ${index + 1}`;
+    if (!slide || typeof slide !== 'object') { issues.push(`${prefix}: отсутствует объект`); return; }
+    const title = cleanText(slide.title, 100).replace(/[.!?]+$/, '').toLocaleLowerCase('ru');
+    if (!title) issues.push(`${prefix}: пустой заголовок`);
+    if (title) titleCounts.set(title, (titleCounts.get(title) || 0) + 1);
+    if (title && genericTitle.test(title)) issues.push(`${prefix}: шаблонный заголовок «${slide.title}»`);
+    const query = cleanText(slide.imageQuery, 180).toLocaleLowerCase('en').replace(/[^a-z0-9 ]/g, ' ').replace(/\\s+/g, ' ').trim();
+    if (!query) issues.push(`${prefix}: нет собственного imageQuery`);
+    if (query) imageQueries.set(query, (imageQueries.get(query) || 0) + 1);
+    const parts = [
+      slide.subtitle, slide.body, slide.quote, slide.statisticLabel,
+      ...(Array.isArray(slide.bullets) ? slide.bullets : []),
+      ...(Array.isArray(slide.steps) ? slide.steps : []),
+      ...(Array.isArray(slide.cards) ? slide.cards.flatMap(card => [card?.title, card?.text]) : []),
+      ...(Array.isArray(slide.leftItems) ? slide.leftItems : []),
+      ...(Array.isArray(slide.rightItems) ? slide.rightItems : []),
+      ...(Array.isArray(slide.table) ? slide.table.flat() : [])
+    ].filter(value => typeof value === 'string').map(value => value.trim()).filter(Boolean);
+    if (parts.join(' ').length < 32) issues.push(`${prefix}: недостаточно содержательного текста`);
+    const type = normalizeSlideType(slide.type, index);
+    if (type === 'cards' && !(Array.isArray(slide.cards) && slide.cards.filter(card => card?.title && card?.text).length >= 2) &&
+        !(Array.isArray(slide.bullets) && slide.bullets.filter(Boolean).length >= 3)) {
+      issues.push(`${prefix}: макет cards требует минимум две карточки или три пункта`);
+    }
+    if (type === 'comparison' &&
+        (!(Array.isArray(slide.leftItems) && slide.leftItems.filter(Boolean).length >= 2) ||
+         !(Array.isArray(slide.rightItems) && slide.rightItems.filter(Boolean).length >= 2))) {
+      issues.push(`${prefix}: сравнение должно содержать минимум два пункта с каждой стороны`);
+    }
+    if (type === 'process' &&
+        !(Array.isArray(slide.steps) && slide.steps.filter(Boolean).length >= 2) &&
+        !(Array.isArray(slide.bullets) && slide.bullets.filter(Boolean).length >= 3)) {
+      issues.push(`${prefix}: процесс должен содержать шаги`);
+    }
+    if (type === 'table' && !(Array.isArray(slide.table) && slide.table.filter(row => Array.isArray(row) && row.some(Boolean)).length >= 3)) {
+      issues.push(`${prefix}: таблица должна содержать заголовок и две содержательные строки`);
+    }
+    const bodyKey = cleanText(slide.body, 300).toLocaleLowerCase('ru').replace(/[.,!?:;()«»"—-]+/g, ' ').replace(/\\s+/g, ' ').trim();
+    if (bodyKey.length >= 45) repeatedBodies.set(bodyKey, (repeatedBodies.get(bodyKey) || 0) + 1);
+  });
+  for (const [title, count] of titleCounts) if (count > 1) issues.push(`повторяется заголовок «${title}»`);
+  for (const count of repeatedBodies.values()) if (count > 1) issues.push('повторяется один и тот же текст на нескольких слайдах');
+  const requiredUniqueQueries = Math.max(1, Math.ceil(slides.length * 0.8));
+  if (slides.length > 1 && imageQueries.size < requiredUniqueQueries) issues.push(`нужно не менее ${requiredUniqueQueries} разных запросов изображений, получено ${imageQueries.size}`);
+  return [...new Set(issues)].slice(0, 20);
+}
+async function generateValidatedPresentation(topic, requestedCount, payload, instructions = PLANNER_INSTRUCTIONS) {
+  let raw = await aiJson(instructions, payload);
+  let issues = validatePresentationPlan(raw, requestedCount);
+  if (issues.length) {
+    console.warn('[presentation-quality] План не прошёл проверку; запрашиваю исправление:', issues.join('; '));
+    const repairInstructions = instructions + `
+
+РЕЖИМ ИСПРАВЛЕНИЯ: предыдущий JSON не прошёл автоматическую проверку. Верни ПОЛНЫЙ исправленный JSON, а не список изменений. Сохрани тему и точное количество слайдов. Исправь каждую проблему, не маскируй нехватку текста шаблонами.
+Ошибки проверки:
+${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\\n')}
+`;
+    raw = await aiJson(repairInstructions, {
+      topic, requestedSlides: requestedCount, originalRequest: payload,
+      previousDraft: raw, validationErrors: issues,
+      outputRules: `Верни ровно ${requestedCount} неповторяющихся слайдов и все требуемые поля. Исправь каждую ошибку из validationErrors.`
+    });
+    issues = validatePresentationPlan(raw, requestedCount);
+  }
+  if (issues.length) {
+    const error = new Error('ИИ не смог подготовить презентацию, прошедшую проверку качества: ' + issues.slice(0, 5).join('; ') + '. Попробуй ещё раз или укажи более конкретную тему.');
+    error.status = 502; error.code = 'PRESENTATION_QUALITY_CHECK_FAILED'; throw error;
+  }
+  return raw;
+}
+
 async function commonsImage(query, used) {
   // Несколько коротких запросов повышают шанс найти тематическую фотографию.
   const queries = [
@@ -424,7 +484,7 @@ async function attachImages(plan) {
     while (nextSlide < plan.slides.length) {
       const slide = plan.slides[nextSlide++];
       try {
-        const query = [slide.imageQuery, slide.title, slide.body, plan.title].filter(Boolean).join(' ').slice(0, 220);
+        const query = cleanText(slide.imageQuery || `${plan.title} ${slide.title}`, 180);
         const found = await commonsImage(query, used);
         if (!found) continue;
         const image = await downloadImage(found.url);
@@ -438,6 +498,8 @@ async function attachImages(plan) {
     }
   });
   await Promise.all(workers);
+  const realImageCount = plan.slides.filter(slide => Boolean(slide.imageBytes)).length;
+  console.log(`[images] Найдено реальных изображений: ${realImageCount}/${plan.slides.length}`);
   // AI-картинки включаются только настройкой в Render; лимит защищает время и стоимость.
   if (process.env.ENABLE_AI_IMAGE_GENERATION === 'true') {
     let generatedCount = 0;
@@ -970,15 +1032,11 @@ function publicProject(plan) {
 }
 async function generateProject(body) {
   const topic = cleanText(body.topic, 180);
-  if (!topic) {
-    const e = new Error('Укажи тему проекта или презентации.');
-    e.status = 400; throw e;
-  }
+  if (!topic) { const error = new Error('Укажи тему проекта или презентации.'); error.status = 400; throw error; }
   const count = clampInt(body.slidesCount ?? body.slides ?? body.presentationSlides, 1, MAX_SLIDES, 12);
   const theme = inferTheme(topic, body.style || '');
-  const raw = await aiJson(PLANNER_INSTRUCTIONS, {
-    topic,
-    requestedSlides: count,
+  const payload = {
+    topic, requestedSlides: count,
     style: body.style || 'современный, профессиональный, соответствующий теме',
     student: {
       firstName: cleanText(body.firstName, 60),
@@ -987,9 +1045,10 @@ async function generateProject(body) {
       school: cleanText(body.school, 100)
     },
     extraRequirements: cleanText(body.extraRequirements || body.requirements, 1200),
-    requiredStructure: ['обложка и введение', 'проблема', 'факты и аналитика', 'решение и практическая часть', 'выводы', 'источники'],
-    outputRules: 'Верни ровно requestedSlides слайдов. Не добавляй фиктивную статистику и ссылки.'
-  });
+    requiredStructure: ['обложка и введение', 'исследовательский вопрос или проблема', 'факты и объяснения', 'практическая часть или применение', 'содержательное раскрытие темы на последнем слайде'],
+    outputRules: 'Верни ровно requestedSlides слайдов, каждый с конкретным содержанием и собственным imageQuery. Не добавляй фиктивную статистику, результаты, шаблоны или вымышленные ссылки.'
+  };
+  const raw = await generateValidatedPresentation(topic, count, payload);
   const plan = normalizePlan(raw, topic, count, theme);
   await attachImages(plan);
   const built = await withTimeout(buildFiles(plan), 45000, 'Сборка файлов');
@@ -1027,21 +1086,20 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
     return res.status(400).json({ error: 'Нужны project с массивом слайдов и instruction.' });
   }
   const oldSlides = project.presentation || project.slides;
-  const count = clampInt(oldSlides.length, 4, MAX_SLIDES, 8);
-  const raw = await aiJson(PLANNER_INSTRUCTIONS + '\nРедактируй переданный проект с учётом инструкции. Сохрани тему и точное количество слайдов.', {
-    topic: cleanText(project.title, 180) || 'Презентация',
-    requestedSlides: count,
-    currentProject: project,
-    instruction,
-    outputRules: `Верни ровно ${count} слайдов. Не теряй практическую часть и источники.`
-  });
-  const plan = normalizePlan(raw, cleanText(project.title, 180) || 'Презентация', count, inferTheme(project.title || '', ''));
-  // Reuse prior image URLs only when unique; missing images will be searched again.
+  const count = clampInt(oldSlides.length, 1, MAX_SLIDES, 8);
+  const editTopic = cleanText(project.title, 180) || 'Презентация';
+  const editPayload = {
+    topic: editTopic, requestedSlides: count, currentProject: project, instruction,
+    outputRules: `Верни ровно ${count} качественных слайдов. Не теряй полезные факты и практическую часть. Не добавляй общие шаблоны.`
+  };
+  const editInstructions = PLANNER_INSTRUCTIONS + '\\nРедактируй переданный проект с учётом инструкции. Сохрани тему и точное число слайдов. Сохрани качественный материал, но исправляй повторы, пустые поля и неясные объяснения.';
+  const raw = await generateValidatedPresentation(editTopic, count, editPayload, editInstructions);
+  const plan = normalizePlan(raw, editTopic, count, inferTheme(project.title || '', ''));
   const prior = new Set();
-  oldSlides.forEach((s, i) => {
-    if (plan.slides[i] && s.imageUrl && !prior.has(s.imageUrl)) {
-      plan.slides[i].imageUrl = s.imageUrl;
-      prior.add(s.imageUrl);
+  oldSlides.forEach((slide, index) => {
+    if (plan.slides[index] && slide.imageUrl && !prior.has(slide.imageUrl)) {
+      plan.slides[index].imageUrl = slide.imageUrl;
+      prior.add(slide.imageUrl);
     }
   });
   await attachImages(plan);
