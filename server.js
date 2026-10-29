@@ -69,6 +69,16 @@ function extractJson(outputText) {
   if (match) return JSON.parse(match[0]);
   throw new Error('ИИ вернул ответ не в формате JSON.');
 }
+
+function containsCorruptedText(value) {
+  if (typeof value === 'string') {
+    // Reject common mojibake / binary-to-text artifacts before they reach a slide.
+    return /[Ôò¤Ä´©]|\u0000/.test(value);
+  }
+  if (Array.isArray(value)) return value.some(containsCorruptedText);
+  if (value && typeof value === 'object') return Object.values(value).some(containsCorruptedText);
+  return false;
+}
 function normalizeSlideType(type, index) {
   const allowed = ['cover', 'cards', 'comparison', 'stat', 'process', 'quote', 'image', 'table', 'conclusion', 'sources'];
   return allowed.includes(type) ? type : (index === 0 ? 'cover' : 'cards');
@@ -236,6 +246,9 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
     try {
       const output = await callAIProvider(provider, instructions, input, true, timeout);
       const parsed = extractJson(output);
+      if (containsCorruptedText(parsed)) {
+        throw new Error(provider.name + ': ответ содержит повреждённый текст/ошибку кодировки.');
+      }
       console.log('[AI fallback] Генерация выполнена через ' + provider.name + '.');
       return parsed;
     } catch (error) {
