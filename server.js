@@ -762,13 +762,27 @@ app.get('/', (_req, res, next) => {
 app.use((err, req, res, _next) => {
   console.error(`[${req.method} ${req.path}]`, err?.stack || err);
   if (res.headersSent) return;
-  const status = Number(err?.status) || (err?.name === 'APIError' ? 502 : 500);
-  const rawMessage = cleanText(err?.message || 'Неизвестная ошибка сервера.', 600)
+  const raw = cleanText(err?.message || 'Неизвестная ошибка сервера.', 600);
+  const lower = raw.toLowerCase();
+  let status = Number(err?.status) || (err?.name === 'APIError' ? 502 : 500);
+  let userMessage = raw;
+  if (err?.code === 'insufficient_quota' || lower.includes('you have no credits remaining') ||
+      lower.includes('insufficient_quota') || lower.includes('billing hard limit')) {
+    status = 503;
+    userMessage = 'Закончились средства или доступные кредиты API OpenAI. Пополни баланс или подключи рабочий API-ключ в настройках Render.';
+  } else if (status === 429 || lower.includes('rate limit')) {
+    status = 429;
+    userMessage = 'Слишком много запросов к ИИ. Подожди немного и попробуй ещё раз.';
+  } else if (lower.includes('api key') && (lower.includes('invalid') || lower.includes('incorrect'))) {
+    status = 503;
+    userMessage = 'API-ключ ИИ недействителен. Проверь OPENAI_API_KEY в настройках Render.';
+  }
+  userMessage = cleanText(userMessage, 600)
     .replace(/sk-[A-Za-z0-9_-]{16,}/g, '[ключ скрыт]')
     .replace(/Bearer\s+\S+/gi, 'Bearer [скрыт]');
   res.status(status).json({
-    error: rawMessage || 'Не удалось завершить генерацию. Проверь настройки сервера.',
-    details: process.env.NODE_ENV === 'development' ? rawMessage : undefined
+    error: userMessage || 'Не удалось завершить генерацию. Проверь настройки сервера.',
+    details: process.env.NODE_ENV === 'development' ? userMessage : undefined
   });
 });
 
