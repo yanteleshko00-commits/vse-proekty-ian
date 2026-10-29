@@ -16,7 +16,7 @@ const PORT = Number(process.env.PORT || 3000);
 const MODEL = 'gpt-4.1-mini';
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
 // Keep requests below common hosting/proxy limits; slow image lookups are bounded separately.
-const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 85000);
+const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 95000);
 const MAX_SLIDES = 20;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const openai = process.env.OPENAI_API_KEY
@@ -272,9 +272,14 @@ async function runAIWithFallback(instructions, input, jsonMode, timeout = REQUES
   const providers = configuredAIProviders();
   if (!providers.length) throw new Error('Не подключены API-ключи ИИ. Добавь OPENAI_API_KEY и ключи резервных бесплатных провайдеров в Render.');
   const failures = [];
+  // Use one shared AI time budget instead of spending 18 seconds on every provider.
+  // Otherwise several unavailable providers can outlive the Render request timeout.
+  const deadline = Date.now() + Math.min(timeout, 24000);
   for (const provider of providers) {
+    const remaining = deadline - Date.now();
+    if (remaining < 1000) break;
     try {
-      const output = await callAIProvider(provider, instructions, input, jsonMode, timeout);
+      const output = await callAIProvider(provider, instructions, input, jsonMode, Math.min(10000, remaining));
       if (!cleanText(output, 12000)) throw new Error(provider.name + ': пустой ответ.');
       return { output, provider: provider.name };
     } catch (error) {
@@ -292,9 +297,13 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   const providers = configuredAIProviders();
   if (!providers.length) throw new Error('Не подключены API-ключи ИИ. Добавь OPENAI_API_KEY и ключи резервных бесплатных провайдеров в Render.');
   const failures = [];
+  // Keep all provider attempts inside one bounded deadline so the local fallback can run.
+  const deadline = Date.now() + Math.min(timeout, 24000);
   for (const provider of providers) {
+    const remaining = deadline - Date.now();
+    if (remaining < 1000) break;
     try {
-      const output = await callAIProvider(provider, instructions, input, true, timeout);
+      const output = await callAIProvider(provider, instructions, input, true, Math.min(10000, remaining));
       const parsed = extractJson(output);
       if (containsCorruptedText(parsed)) {
         throw new Error(provider.name + ': ответ содержит повреждённый текст/ошибку кодировки.');
@@ -336,8 +345,8 @@ async function commonsImage(query, used) {
   }).toString();
   const res = await withTimeout(fetch(url, {
     headers: { 'User-Agent': 'IanProjectPresentation/1.0 (presentation generator)' },
-    signal: AbortSignal.timeout(6000)
-  }), 7000, 'Поиск изображения');
+    signal: AbortSignal.timeout(2500)
+  }), 3000, 'Поиск изображения');
   if (!res.ok) return null;
   const data = await res.json();
   const pages = Object.values(data.query?.pages || {});
@@ -356,7 +365,7 @@ async function commonsImage(query, used) {
   return null;
 }
 async function downloadImage(url) {
-  const response = await withTimeout(fetch(url, { signal: AbortSignal.timeout(7000) }), 8000, 'Загрузка изображения');
+  const response = await withTimeout(fetch(url, { signal: AbortSignal.timeout(3000) }), 4000, 'Загрузка изображения');
   if (!response.ok) throw new Error(`Изображение вернуло HTTP ${response.status}`);
   const mime = (response.headers.get('content-type') || '').split(';')[0].trim();
   // Не переименовываем WebP в PNG: это повреждает файл при встраивании в PPTX.
@@ -372,7 +381,7 @@ async function generateImageBuffer(prompt) {
     prompt: `Создай качественную редакционную иллюстрацию для образовательной презентации. Без текста, надписей и логотипов. Тема: ${prompt}`,
     size: '1536x1024',
     quality: 'low'
-  }), 60000, 'Генерация изображения');
+  }), 8000, 'Генерация изображения');
   const b64 = result.data?.[0]?.b64_json;
   return b64 ? { bytes: Buffer.from(b64, 'base64'), mime: 'image/png' } : null;
 }
@@ -381,7 +390,7 @@ async function attachImages(plan) {
   // Ограниченный пул: не перегружаем Wikimedia и уменьшаем вероятность тайм-аутов.
   // commonsImage резервирует URL в Set сразу после ответа, поэтому повторов меньше.
   let nextSlide = 0;
-  const workerCount = Math.min(4, plan.slides.length);
+  const workerCount = Math.min(10, plan.slides.length);
   const workers = Array.from({ length: workerCount }, async () => {
     while (nextSlide < plan.slides.length) {
       const slide = plan.slides[nextSlide++];
@@ -402,8 +411,10 @@ async function attachImages(plan) {
   // AI-картинки включаются только настройкой в Render; лимит защищает время и стоимость.
   if (process.env.ENABLE_AI_IMAGE_GENERATION === 'true') {
     let generatedCount = 0;
+    // One short AI-image fallback per deck: internet images cover the remaining slides.
+    // This prevents sequential image requests from exhausting the whole generation timeout.
     for (const slide of plan.slides) {
-      if (slide.imageBytes || generatedCount >= 4) continue;
+      if (slide.imageBytes || generatedCount >= 1) continue;
       try {
         const generated = await generateImageBuffer(slide.imageQuery || slide.title);
         if (generated) {
@@ -755,7 +766,7 @@ async function buildFiles(plan) {
 
   const results = await Promise.allSettled(specs.map(async (spec) => ({
     ...spec,
-    buffer: await withTimeout(spec.create(plan), 45000, `Файл ${spec.name}`)
+    buffer: await withTimeout(spec.create(plan), 30000, `Файл ${spec.name}`)
   })));
 
   const files = [];
@@ -778,7 +789,7 @@ async function buildFiles(plan) {
         name: file.name,
         buffer: Buffer.from(file.base64, 'base64')
       }));
-      const zip = await withTimeout(createZip(zipParts), 20000, 'Создание ZIP');
+      const zip = await withTimeout(createZip(zipParts), 10000, 'Создание ZIP');
       files.push(toFile('Весь_проект.zip', 'application/zip', zip));
     } catch (error) {
       console.error('[buildFiles] Весь_проект.zip:', error?.stack || error);
