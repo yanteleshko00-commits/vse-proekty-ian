@@ -406,6 +406,9 @@ html[data-theme="dark"] .progress{background:#354256!important}
 @media(max-width:750px){.lamp-scene{height:215px}.lamp-wire{height:38px}.lamp-svg{width:114px;height:140px}.lamp-switch{min-height:76px;border-radius:22px}}
 @media(prefers-reduced-motion:reduce){#appSplash,.lamp-svg,.lamp-glow,.lamp-glass,.lamp-filament,.lamp-switch{transition-duration:.01ms!important}#appSplash.is-lighting .splash-brand{animation:none!important}}
 
+/* Intro is visible only in installed standalone web-app mode */
+#appSplash{display:none!important}
+html[data-app-mode="standalone"] #appSplash{display:flex!important}
 /* Use the exact site logo artwork for the intro lamp */
 .logo-lamp-image{width:122px;height:122px;object-fit:contain;border-radius:26px;filter:grayscale(1) brightness(.75) saturate(.4) drop-shadow(0 10px 22px rgba(0,0,0,.32));opacity:.68;background:transparent;transition:filter .9s ease,opacity .9s ease,transform .8s cubic-bezier(.2,.8,.2,1)}
 #appSplash.is-lighting .logo-lamp-image{filter:drop-shadow(0 0 35px rgba(255,231,158,.95));opacity:1;transform:translateY(-3px) scale(1.05)}
@@ -919,6 +922,14 @@ document.addEventListener("DOMContentLoaded",()=>{
 <script id="theme-and-splash-script">
 (function(){
   const root=document.documentElement;
+  const isInstalledApp = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+  if(isInstalledApp){
+    root.setAttribute("data-app-mode","standalone");
+  }else{
+    root.setAttribute("data-app-mode","browser");
+    const initialSplash=document.getElementById("appSplash");
+    if(initialSplash)initialSplash.remove();
+  }
   function setTheme(theme){
     const dark=theme==="dark";
     root.setAttribute("data-theme",dark?"dark":"light");
