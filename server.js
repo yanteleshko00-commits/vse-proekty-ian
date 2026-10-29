@@ -331,7 +331,7 @@ function validatePresentationPlan(raw, requestedCount) {
   if (raw.slides.length !== requestedCount) issues.push(`нужно ровно ${requestedCount} слайдов, получено ${raw.slides.length}`);
   const slides = raw.slides.slice(0, requestedCount);
   const titleCounts = new Map(), imageQueries = new Map(), repeatedBodies = new Map();
-  const genericTitle = /^(?:развитие темы|основные элементы|главная идея|актуальность темы|пример из практики|практические аспекты|раздел \\d+)(?:\\s|:|$)/i;
+  const genericTitle = /^(?:развитие темы|основные элементы|главная идея|актуальность темы|пример из практики|практические аспекты|раздел \d+)(?:\s|:|$)/i;
   slides.forEach((slide, index) => {
     const prefix = `слайд ${index + 1}`;
     if (!slide || typeof slide !== 'object') { issues.push(`${prefix}: отсутствует объект`); return; }
@@ -339,7 +339,7 @@ function validatePresentationPlan(raw, requestedCount) {
     if (!title) issues.push(`${prefix}: пустой заголовок`);
     if (title) titleCounts.set(title, (titleCounts.get(title) || 0) + 1);
     if (title && genericTitle.test(title)) issues.push(`${prefix}: шаблонный заголовок «${slide.title}»`);
-    const query = cleanText(slide.imageQuery, 180).toLocaleLowerCase('en').replace(/[^a-z0-9 ]/g, ' ').replace(/\\s+/g, ' ').trim();
+    const query = cleanText(slide.imageQuery, 180).toLocaleLowerCase('en').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!query) issues.push(`${prefix}: нет собственного imageQuery`);
     if (query) imageQueries.set(query, (imageQueries.get(query) || 0) + 1);
     const parts = [
@@ -370,7 +370,7 @@ function validatePresentationPlan(raw, requestedCount) {
     if (type === 'table' && !(Array.isArray(slide.table) && slide.table.filter(row => Array.isArray(row) && row.some(Boolean)).length >= 3)) {
       issues.push(`${prefix}: таблица должна содержать заголовок и две содержательные строки`);
     }
-    const bodyKey = cleanText(slide.body, 300).toLocaleLowerCase('ru').replace(/[.,!?:;()«»"—-]+/g, ' ').replace(/\\s+/g, ' ').trim();
+    const bodyKey = cleanText(slide.body, 300).toLocaleLowerCase('ru').replace(/[.,!?:;()«»"—-]+/g, ' ').replace(/\s+/g, ' ').trim();
     if (bodyKey.length >= 45) repeatedBodies.set(bodyKey, (repeatedBodies.get(bodyKey) || 0) + 1);
   });
   for (const [title, count] of titleCounts) if (count > 1) issues.push(`повторяется заголовок «${title}»`);
@@ -484,7 +484,7 @@ async function attachImages(plan) {
     while (nextSlide < plan.slides.length) {
       const slide = plan.slides[nextSlide++];
       try {
-        const query = cleanText(slide.imageQuery || `${plan.title} ${slide.title}`, 180);
+    const query = cleanText(slide.imageQuery, 180).toLocaleLowerCase('en').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
         const found = await commonsImage(query, used);
         if (!found) continue;
         const image = await downloadImage(found.url);
@@ -1092,7 +1092,7 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
     topic: editTopic, requestedSlides: count, currentProject: project, instruction,
     outputRules: `Верни ровно ${count} качественных слайдов. Не теряй полезные факты и практическую часть. Не добавляй общие шаблоны.`
   };
-  const editInstructions = PLANNER_INSTRUCTIONS + '\\nРедактируй переданный проект с учётом инструкции. Сохрани тему и точное число слайдов. Сохрани качественный материал, но исправляй повторы, пустые поля и неясные объяснения.';
+  const editInstructions = PLANNER_INSTRUCTIONS + '\nРедактируй переданный проект с учётом инструкции. Сохрани тему и точное число слайдов. Сохрани качественный материал, но исправляй повторы, пустые поля и неясные объяснения.';
   const raw = await generateValidatedPresentation(editTopic, count, editPayload, editInstructions);
   const plan = normalizePlan(raw, editTopic, count, inferTheme(project.title || '', ''));
   const prior = new Set();
