@@ -153,6 +153,20 @@ function createProductPdfBuffer(plan) {
   });
 }
 
+
+const DEFENSE_INSTRUCTIONS = 'Ты — методист, который готовит школьника к защите индивидуального проекта. Верни только JSON: speech (связная речь на 3-5 минут, с приветствием, проблемой, целью, задачами, кратким содержанием, практической частью, демонстрацией итогового продукта и выводом), questions [{question,answer}] (минимум 5 вероятных вопросов комиссии с точными, понятными ответами). Используй только переданные сведения. Не утверждай, что опрос или эксперимент уже проведён, если это не подтверждено. Пиши естественно, без канцелярита, от первого лица ученика.';
+async function generateDefenseMaterial(topic,projectContent,plan,product) {
+  const raw=await aiJson(DEFENSE_INSTRUCTIONS,{
+    topic,projectContent,
+    slides:plan.slides.filter(s=>!s.isProductSlide).map((s,i)=>({number:i+1,title:s.title,summary:s.body||s.subtitle,bullets:s.bullets})),
+    finalProduct:{format:product.format,title:product.title,sections:product.sections,takeaway:product.takeaway}
+  },50000);
+  const speech=cleanText(raw.speech,9000);
+  const questions=(Array.isArray(raw.questions)?raw.questions:[]).map(x=>({question:normalizeText(x?.question||'',220),answer:normalizeText(x?.answer||'',420)})).filter(x=>x.question&&x.answer).slice(0,10);
+  if(speech.length<500||questions.length<3)throw new Error('Не удалось подготовить полноценную речь для защиты и ответы на вопросы комиссии.');
+  return {speech,questions};
+}
+
 function normalizePlan(raw, topic, requestedCount, theme) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('ИИ вернул неверную структуру презентации.');
   if (containsCorruptedText(raw) || containsCorruptedText(topic)) {
@@ -1218,7 +1232,9 @@ async function generateProject(body) {
   plan.projectContent = projectContent;
   plan.product = await generateFinalProduct(topic, projectContent, body.productType);
   plan.product.imageBytes = await renderProductImage(plan.product, theme);
-  plan.defense = (plan.defense || '') + '\n\nПрактический результат проекта — ' + plan.product.format + ' «' + plan.product.title + '». Покажите готовый материал и объясните, как им пользоваться.';
+  const defenseMaterial = await generateDefenseMaterial(topic, projectContent, plan, plan.product);
+  plan.defense = defenseMaterial.speech;
+  plan.projectContent.defenseQuestions = defenseMaterial.questions;
   await attachImages(plan);
   plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта — готовый материал на основе исследования.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта', isProductSlide: true });
   const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
@@ -1269,7 +1285,9 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
   plan.projectContent = project.projectContent || null;
   plan.product = await generateFinalProduct(editTopic, plan.projectContent || { conclusion: plan.summary }, project.product?.format || 'памятка');
   plan.product.imageBytes = await renderProductImage(plan.product, plan.theme);
-  plan.defense = (plan.defense || '') + '\n\nПрактический результат проекта — ' + plan.product.format + ' «' + plan.product.title + '».';
+  const defenseMaterial = await generateDefenseMaterial(editTopic, plan.projectContent || { conclusion: plan.summary }, plan, plan.product);
+  plan.defense = defenseMaterial.speech;
+  if (plan.projectContent) plan.projectContent.defenseQuestions = defenseMaterial.questions;
   const prior = new Set();
   oldSlides.forEach((slide, index) => {
     if (plan.slides[index] && slide.imageUrl && !prior.has(slide.imageUrl)) {
