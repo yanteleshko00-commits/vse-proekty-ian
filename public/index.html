@@ -524,8 +524,9 @@ html[data-app-mode="standalone"] #appSplash{display:flex!important}
 <div class="file"><div><b>📄 Презентация_проекта.pdf</b><br><small>Презентация для просмотра и печати</small></div><button onclick="downloadFile('Презентация_проекта.pdf')">Скачать</button></div>
 <div class="file"><div><b>📝 Индивидуальный_проект.docx</b><br><small>Редактируемый документ Word</small></div><button onclick="downloadFile('Индивидуальный_проект.docx')">Скачать</button></div>
 <div class="file"><div><b>📘 Проект_текст.pdf</b><br><small>Текстовая версия проекта</small></div><button onclick="downloadFile('Проект_текст.pdf')">Скачать</button></div>
-<div class="file"><div><b>🎙️ Текст_защиты.pdf</b><br><small>Текст выступления для защиты проекта</small></div><button onclick="downloadFile('Текст_защиты.pdf')">Скачать</button></div>
-<div class="file"><div><b>📘 Буклет.pdf</b><br><small>Краткий тематический буклет в формате PDF</small></div><button onclick="downloadFile('Буклет.pdf')">Скачать</button></div>
+<div class="file"><div><b>🎙️ Текст_защиты.pdf</b><br><small>Речь для защиты и ответы на вопросы комиссии</small></div><button onclick="downloadFile('Текст_защиты.pdf')">Скачать</button></div>
+<div class="file"><div><b>🧩 Итоговый_продукт.pdf</b><br><small>Готовый проектный продукт в формате PDF</small></div><button onclick="downloadFile('Итоговый_продукт.pdf')">Скачать</button></div>
+<div class="file"><div><b>🖼️ Итоговый_продукт.png</b><br><small>Изображение продукта, которое включено в презентацию</small></div><button onclick="downloadFile('Итоговый_продукт.png')">Скачать</button></div>
 <button class="download" onclick="downloadAll()">📦 Скачать весь проект</button>
 </div>
 </div>
@@ -743,6 +744,7 @@ try{
   if(!data.project) throw new Error("ИИ не вернул проект.");
 
   projectData.ai=data.project;
+  projectData.slides=data.project.slideCount||projectData.slides;
   projectData.files=data.files||[];
   projectData.fileErrors=Array.isArray(data.fileErrors)?data.fileErrors:[];
   saveProjectState();
@@ -806,6 +808,7 @@ async function editProject() {
     }
 
     projectData.ai = data.project;
+    projectData.slides = data.project.slideCount || projectData.slides;
     projectData.files = data.files;
     projectData.fileErrors = Array.isArray(data.fileErrors) ? data.fileErrors : [];
 
