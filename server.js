@@ -86,7 +86,7 @@ function normalizeSlideType(type, index) {
   return allowed.includes(type) ? type : (index === 0 ? 'cover' : 'cards');
 }
 
-const PROJECT_CONTENT_INSTRUCTIONS = 'Ты — методист и автор школьных проектов. Верни только JSON с полями problem, goal, tasks (4-6), relevance, object, subject, hypothesis, theory [{heading,text}], practice {method,materials,steps,result,limitations}, mainPoints, conclusion, sources [{title,url}]. Пиши по-русски на уровне 9 класса. Не выдумывай опросы, эксперименты, статистику, источники и ссылки. Если данных практики нет, предложи выполнимую работу и обозначь результат как планируемый.';
+const PROJECT_CONTENT_INSTRUCTIONS = 'Ты — методист и автор школьных проектов. Верни только JSON с полями problem, goal, tasks (4-6), relevance, object, subject, hypothesis, theory [{heading,text}], practice {method,materials,steps,result,limitations}, mainPoints, conclusion, sources [{title,url}], defenseQuestions [{question,answer}]. Пиши по-русски на уровне 9 класса. Не выдумывай опросы, эксперименты, статистику, источники и ссылки. Если данных практики нет, предложи выполнимую работу и обозначь результат как планируемый.';
 const PRODUCT_INSTRUCTIONS = 'Ты — дизайнер учебных проектных продуктов. Создай самостоятельный готовый материал, который можно использовать отдельно от презентации. Верни только JSON: format, title, subtitle, audience, sections [{heading,body}], steps, checklist, takeaway. Выбери подходящий формат: памятка, буклет, чек-лист, мини-гайд, карточки, инструкция. Дай 3-5 содержательных разделов и конкретные практические пункты. Всё должно опираться на projectContent, не выдумывай факты.';
 function xmlEscape(value) {
   return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
@@ -108,6 +108,7 @@ async function generateProjectContent(topic, body) {
     practice:{method:normalizeText(practice.method||'',300),materials:normalizeText(practice.materials||'',350),steps:(Array.isArray(practice.steps)?practice.steps:[]).map(x=>normalizeText(x,240)).filter(Boolean).slice(0,8),result:normalizeText(practice.result||'',600),limitations:normalizeText(practice.limitations||'',350)},
     mainPoints:(Array.isArray(raw.mainPoints)?raw.mainPoints:[]).map(x=>normalizeText(x,240)).filter(Boolean).slice(0,8),
     conclusion:normalizeText(raw.conclusion||'',700),
+    defenseQuestions:(Array.isArray(raw.defenseQuestions)?raw.defenseQuestions:[]).map(x=>({question:normalizeText(x?.question||'',220),answer:normalizeText(x?.answer||'',420)})).filter(x=>x.question&&x.answer).slice(0,10),
     sources:(Array.isArray(raw.sources)?raw.sources:[]).map(x=>({title:normalizeText(x?.title||'',180),url:cleanText(x?.url||'',500)})).filter(x=>x.title).slice(0,12)
   };
   if(!result.problem||!result.goal||result.tasks.length<3||!result.conclusion)throw new Error('Не удалось подготовить полноценную основу проекта: отсутствуют обязательные разделы.');
@@ -815,6 +816,12 @@ async function createDocxBuffer(plan) {
     for (const b of s.bullets || []) children.push(new Paragraph({ text: b, bullet: { level: 0 } }));
     for (const c of s.cards || []) children.push(new Paragraph({ children: [new TextRun({ text: `${c.title}: `, bold: true }), new TextRun(c.text)] }));
   });
+  if (plan.product) {
+    children.push(new Paragraph({ text: 'Итоговый продукт проекта: ' + plan.product.format, heading: HeadingLevel.HEADING_1 }));
+    children.push(new Paragraph(plan.product.title));
+    for (const section of plan.product.sections) children.push(new Paragraph({ children: [new TextRun({ text: section.heading + ': ', bold: true }), new TextRun(section.body)] }));
+    for (const item of [...plan.product.steps, ...plan.product.checklist]) children.push(new Paragraph({ text: item, bullet: { level: 0 } }));
+  }
   if (plan.practicalPart) {
     children.push(new Paragraph({ text: 'Практическая часть', heading: HeadingLevel.HEADING_1 }));
     children.push(new Paragraph(plan.practicalPart));
@@ -981,6 +988,19 @@ function createPdfBuffer(plan) {
       }
       if (s.imageCredit) doc.moveDown().fontSize(8).fillColor('#666666').text(`Иллюстрация: ${s.imageCredit}`);
     });
+    if (plan.projectContent) {
+      doc.addPage().fontSize(22).fillColor('#244B83').text('Полный текст проекта');
+      doc.moveDown().fontSize(14).fillColor('#244B83').text('Проблема');
+      doc.moveDown(0.3).fontSize(11).fillColor('#222222').text(plan.projectContent.problem);
+      doc.moveDown().fontSize(14).fillColor('#244B83').text('Цель и задачи');
+      doc.moveDown(0.3).fontSize(11).fillColor('#222222').text('Цель: ' + plan.projectContent.goal + '\n' + plan.projectContent.tasks.map((x,i)=>(i+1)+'. '+x).join('\n'));
+      doc.moveDown().fontSize(14).fillColor('#244B83').text('Теоретическая часть');
+      for (const section of plan.projectContent.theory) { doc.moveDown(0.3).fontSize(12).fillColor('#244B83').text(section.heading); doc.moveDown(0.2).fontSize(10).fillColor('#222222').text(section.text); }
+      doc.moveDown().fontSize(14).fillColor('#244B83').text('Практическая часть');
+      doc.moveDown(0.3).fontSize(10).fillColor('#222222').text(plan.projectContent.practice.method + '\n' + plan.projectContent.practice.steps.map((x,i)=>(i+1)+'. '+x).join('\n') + '\n' + plan.projectContent.practice.result);
+      doc.moveDown().fontSize(14).fillColor('#244B83').text('Заключение');
+      doc.moveDown(0.3).fontSize(10).fillColor('#222222').text(plan.projectContent.conclusion);
+    }
     if (plan.practicalPart) {
       doc.addPage().fontSize(22).fillColor('#244B83').text('Практическая часть');
       doc.moveDown().fontSize(12).fillColor('#222222').text(plan.practicalPart);
@@ -1017,6 +1037,13 @@ function createDefensePdfBuffer(plan) {
       doc.fillColor('#' + theme.accent).fontSize(15).text('Практическая часть');
       doc.moveDown(0.4);
       doc.fillColor('#' + theme.ink).fontSize(11).text(plan.practicalPart, { lineGap: 4 });
+    }
+    if (plan.projectContent?.defenseQuestions?.length) {
+      doc.addPage().fillColor('#' + theme.accent).fontSize(18).text('Возможные вопросы комиссии');
+      for (const item of plan.projectContent.defenseQuestions) {
+        doc.moveDown(0.7).fillColor('#' + theme.accent).fontSize(11).text('Вопрос: ' + item.question);
+        doc.moveDown(0.2).fillColor('#' + theme.ink).fontSize(10).text('Ответ: ' + item.answer, { lineGap: 3 });
+      }
     }
     if (plan.sources && plan.sources.length) {
       doc.moveDown();
@@ -1170,7 +1197,7 @@ function publicProject(plan) {
 async function generateProject(body) {
   const topic = cleanText(body.topic, 180);
   if (!topic) { const error = new Error('Укажи тему проекта или презентации.'); error.status = 400; throw error; }
-  const count = clampInt(body.slidesCount ?? body.slides ?? body.presentationSlides, 1, MAX_SLIDES, 12);
+  const count = clampInt(body.slidesCount ?? body.slides ?? body.presentationSlides, 7, MAX_SLIDES, 12);
   const theme = inferTheme(topic, body.style || '');
   const projectContent = await generateProjectContent(topic, body);
   const payload = {
@@ -1230,7 +1257,7 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
   }
   const allOldSlides = project.presentation || project.slides;
   const oldSlides = allOldSlides.filter(slide => !slide?.isProductSlide);
-  const count = clampInt(oldSlides.length, 1, MAX_SLIDES, 8);
+  const count = clampInt(oldSlides.length, 7, MAX_SLIDES, 8);
   const editTopic = cleanText(project.title, 180) || 'Презентация';
   const editPayload = {
     topic: editTopic, requestedSlides: count, currentProject: project, instruction,
