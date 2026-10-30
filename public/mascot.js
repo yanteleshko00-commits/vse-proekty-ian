@@ -46,7 +46,7 @@
   chat.setAttribute("aria-label", "Чат со Снупи");
   chat.innerHTML = `
     <div class="head"><span>🐶</span><span>Снупи<br><small style="font-weight:400;color:#718078">Помощник сайта</small></span><button type="button" aria-label="Закрыть">×</button></div>
-    <div class="messages" id="ian-messages"><div class="msg">Привет! Я Снупи. Спрашивай о сайте, проектах и презентациях. Меня ещё можно бросать по экрану! 🐾</div></div>
+    <div class="messages" id="ian-messages" role="log" aria-live="polite" aria-relevant="additions text"><div class="msg">Привет! Я Снупи. Спрашивай о сайте, проектах и презентациях. Меня ещё можно бросать по экрану! 🐾</div></div>
     <form id="ian-chat-form"><input id="ian-chat-input" maxlength="1000" placeholder="Напиши Снупи..." autocomplete="off"><button type="submit" aria-label="Отправить">↑</button></form>`;
   document.body.appendChild(chat);
 
@@ -58,14 +58,28 @@
 
   function say(text) {
     speech.textContent = text;
+    const bounds = mascot.getBoundingClientRect();
+    mascot.classList.toggle("speech-left", bounds.left < innerWidth * 0.48);
     mascot.classList.add("speak");
     clearTimeout(mascot._speechTimer);
     mascot._speechTimer = setTimeout(() => mascot.classList.remove("speak"), 2500);
   }
-  function animate(name, ms = 800) {
-    mascot.classList.remove("walk", "happy", "think");
+  const animationTimers = new Map();
+  function animate(name, ms = 850) {
+    ["walk", "happy", "think"].forEach(key => {
+      mascot.classList.remove(key);
+      if (animationTimers.has(key)) {
+        clearTimeout(animationTimers.get(key));
+        animationTimers.delete(key);
+      }
+    });
     mascot.classList.add(name);
-    setTimeout(() => mascot.classList.remove(name), ms);
+    if (ms > 0) {
+      animationTimers.set(name, setTimeout(() => {
+        mascot.classList.remove(name);
+        animationTimers.delete(name);
+      }, ms));
+    }
   }
   const bird = mascot.querySelector(".bird");
   let idleTimer;
@@ -123,6 +137,17 @@
     }
   });
   chat.querySelector(".head button").addEventListener("click", () => chat.classList.remove("open"));
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && chat.classList.contains("open")) chat.classList.remove("open");
+  });
+  window.addEventListener("resize", () => {
+    const r = mascot.getBoundingClientRect();
+    const x = Math.max(0, Math.min(innerWidth - mascot.offsetWidth, r.left));
+    const y = Math.max(0, Math.min(innerHeight - mascot.offsetHeight, r.top));
+    if (mascot.style.left) mascot.style.left = x + "px";
+    if (mascot.style.top) mascot.style.top = y + "px";
+    mascot.classList.toggle("speech-left", x < innerWidth * 0.48);
+  });
   mascot.addEventListener("keydown", e => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -132,8 +157,6 @@
 
   mascot.addEventListener("pointerdown", e => {
     if (e.button !== undefined && e.button !== 0) return;
-    clearTimeout(tapTimer);
-    taps = 0;
     const r = mascot.getBoundingClientRect();
     drag = { id: e.pointerId, x: r.left, y: r.top, px: e.clientX, py: e.clientY, time: performance.now(), moved: false };
     vx = 0; vy = 0;
@@ -147,12 +170,18 @@
     if (!drag || drag.id !== e.pointerId) return;
     const now = performance.now(), dt = Math.max(8, now - drag.time);
     const dx = e.clientX - drag.px, dy = e.clientY - drag.py;
-    if (Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) > 7) drag.moved = true;
-    vx = dx / dt * 16; vy = dy / dt * 16;
+    if (!drag.moved && Math.abs(e.clientX - drag.px) + Math.abs(e.clientY - drag.py) > 8) {
+      drag.moved = true;
+      clearTimeout(tapTimer);
+      taps = 0;
+    }
+    vx = Math.max(-22, Math.min(22, dx / dt * 16));
+    vy = Math.max(-22, Math.min(22, dy / dt * 16));
     drag.x = Math.max(0, Math.min(innerWidth - mascot.offsetWidth, drag.x + dx));
     drag.y = Math.max(0, Math.min(innerHeight - mascot.offsetHeight, drag.y + dy));
     mascot.style.left = drag.x + "px";
     mascot.style.top = drag.y + "px";
+    mascot.classList.toggle("speech-left", drag.x < innerWidth * 0.48);
     drag.px = e.clientX; drag.py = e.clientY; drag.time = now;
   });
   function release(e) {
@@ -172,7 +201,11 @@
     let sy = Math.max(-26, Math.min(26, vy * 1.5));
     if (Math.abs(sx) + Math.abs(sy) < 5) sx = x < innerWidth / 2 ? 9 : -9;
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) return;
+    if (reduced) {
+      mascot.style.left = Math.max(0, Math.min(innerWidth - mascot.offsetWidth, x)) + "px";
+      mascot.style.top = Math.max(0, Math.min(innerHeight - mascot.offsetHeight, y)) + "px";
+      return;
+    }
     function fly() {
       x += sx; y += sy; sx *= .965; sy = sy * .965 + .2;
       const maxX = innerWidth - mascot.offsetWidth, maxY = innerHeight - mascot.offsetHeight;
@@ -180,7 +213,11 @@
       if (y < 0 || y > maxY) { y = Math.max(0, Math.min(maxY, y)); sy *= -.7; }
       mascot.style.left = x + "px"; mascot.style.top = y + "px";
       if (Math.abs(sx) + Math.abs(sy) > .7) frame = requestAnimationFrame(fly);
-      else { mascot.style.left = "auto"; mascot.style.right = "10px"; }
+      else {
+        mascot.style.left = "auto";
+        mascot.style.right = "";
+        mascot.classList.remove("speech-left");
+      }
     }
     frame = requestAnimationFrame(fly);
   }
@@ -191,10 +228,14 @@
   form.addEventListener("submit", async e => {
     e.preventDefault();
     const question = input.value.trim();
-    if (!question) return;
+    if (!question || form.dataset.sending === "yes") return;
+    form.dataset.sending = "yes";
+    const sendButton = form.querySelector("button[type='submit']");
+    sendButton.disabled = true;
+    input.disabled = true;
     addMessage(question, "user");
     input.value = "";
-    animate("think", 0);
+    animate("think", 30000);
     const pending = addMessage("Снупи думает…", "bot");
     const history = Array.from(messages.querySelectorAll(".msg")).slice(-7)
       .map(n => (n.classList.contains("user") ? "Пользователь: " : "Снупи: ") + n.textContent).join("\n");
@@ -204,8 +245,9 @@
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: prompt })
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Не получилось получить ответ.");
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Сервер не смог ответить. Попробуй ещё раз.");
+      if (typeof data.answer !== "string" || !data.answer.trim()) throw new Error("Сервер вернул пустой ответ.");
       pending.textContent = data.answer || "Попробуй спросить иначе.";
       animate("happy");
       mascot.classList.add("bird-cheer");
@@ -214,6 +256,10 @@
       pending.textContent = err.message || "Не удалось подключиться. Попробуй позже.";
     }
     messages.scrollTop = messages.scrollHeight;
+    form.dataset.sending = "no";
+    sendButton.disabled = false;
+    input.disabled = false;
+    input.focus({ preventScroll: true });
   });
 
   document.addEventListener("click", e => {
