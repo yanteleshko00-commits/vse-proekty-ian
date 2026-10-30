@@ -16,20 +16,18 @@
       <ellipse cx="70" cy="122" rx="43" ry="6" fill="#24392c" opacity=".13"/>
       <g class="lamp"><circle cx="67" cy="57" r="52" fill="#ffe36a" opacity=".28"/><path d="M60 5h15l-2 8H62z" fill="#e4b92e"/><path d="M63 0h9v7h-9z" fill="#e4b92e"/></g>
       <g class="dog-body">
-        <path class="ear ear-left" d="M44 42C23 18 8 35 14 65c3 16 16 25 29 15z" fill="#343b37"/>
-        <path class="ear ear-right" d="M91 40c17-25 35-12 32 17-2 19-13 29-27 23z" fill="#343b37"/>
-        <ellipse cx="68" cy="88" rx="39" ry="34" fill="url(#snoopy-coat)" stroke="#dce5df" stroke-width="1.5"/>
-        <path d="M45 92q-17 6-12 21 8 7 17-5M91 92q17 6 12 21-8 7-17-5" fill="#fff" stroke="#dce5df" stroke-width="1.5"/>
-        <path d="M48 111q-2 9 7 9 7 0 7-9M76 111q-1 9 8 9 7 0 7-9" fill="#fff" stroke="#dce5df" stroke-width="1.5"/>
-        <ellipse cx="68" cy="52" rx="34" ry="31" fill="url(#snoopy-coat)" stroke="#dce5df" stroke-width="1.5"/>
-        <ellipse cx="68" cy="66" rx="26" ry="18" fill="#fff"/>
-        <ellipse class="eye eye-left" cx="56" cy="49" rx="3.2" ry="4.4" fill="#202722"/>
-        <ellipse class="eye eye-right" cx="79" cy="49" rx="3.2" ry="4.4" fill="#202722"/>
-        <ellipse cx="68" cy="63" rx="7" ry="5.2" fill="#202722"/>
-        <path d="M62 72q6 6 12 0" fill="none" stroke="#59665e" stroke-width="1.8" stroke-linecap="round"/>
-        <path d="M37 87q31 12 62 0" fill="none" stroke="#168653" stroke-width="5" stroke-linecap="round"/>
-        <circle cx="68" cy="91" r="4" fill="#168653"/>
-        <path class="tail" d="M105 94q17-1 17-14" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+        <ellipse cx="66" cy="94" rx="38" ry="27" fill="url(#snoopy-coat)" stroke="#dce5df" stroke-width="1.5"/>
+        <path d="M42 91q-13 8-10 22 7 7 16-4M82 94q15 4 12 18-7 7-16-3" fill="#fff" stroke="#dce5df" stroke-width="1.5"/>
+        <path d="M48 111q-2 8 6 9 7 0 7-8M76 111q-1 8 7 9 7 0 7-8" fill="#fff" stroke="#dce5df" stroke-width="1.5"/>
+        <path class="ear ear-left" d="M54 28C30 6 14 23 19 55c3 18 15 27 29 18z" fill="#252b28"/>
+        <ellipse cx="72" cy="47" rx="35" ry="30" fill="url(#snoopy-coat)" stroke="#dce5df" stroke-width="1.5"/>
+        <path d="M82 49q25-2 34 10-7 17-31 17-13 0-20-9 7-12 17-18z" fill="#fff" stroke="#dce5df" stroke-width="1.2"/>
+        <ellipse class="eye eye-left" cx="75" cy="38" rx="3" ry="4.2" fill="#202722"/>
+        <ellipse cx="112" cy="57" rx="7" ry="5.5" fill="#202722"/>
+        <path d="M90 69q8 5 15 0" fill="none" stroke="#59665e" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M44 83q22 10 43 4" fill="none" stroke="#168653" stroke-width="4.5" stroke-linecap="round"/>
+        <circle cx="69" cy="89" r="3.5" fill="#168653"/>
+        <path class="tail" d="M101 94q17-1 17-14" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
       </g>
       <g class="bird" transform="translate(111 68)">
         <ellipse cx="0" cy="0" rx="15" ry="17" fill="url(#bird-yellow)" stroke="#e5b43a" stroke-width="1"/>
@@ -40,6 +38,37 @@
       </g>
     </svg>`;
   document.body.appendChild(mascot);
+
+  // Маскот автоматически скрывается, если перекрывает поле, кнопку или другой
+  // элемент формы. Это особенно важно на узких экранах iPhone.
+  let overlapFrame = 0;
+  function checkMascotOverlap() {
+    cancelAnimationFrame(overlapFrame);
+    overlapFrame = requestAnimationFrame(() => {
+      const mr = mascot.getBoundingClientRect();
+      const controls = document.querySelectorAll("input, textarea, select, button, [contenteditable='true'], label");
+      let overlaps = false;
+      for (const el of controls) {
+        if (!el.isConnected || el.disabled || el.getAttribute("aria-hidden") === "true") continue;
+        const r = el.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2 || r.bottom < 0 || r.top > innerHeight) continue;
+        if (mr.left < r.right && mr.right > r.left && mr.top < r.bottom && mr.bottom > r.top) {
+          overlaps = true;
+          break;
+        }
+      }
+      mascot.classList.toggle("near-controls", overlaps && !mascot.classList.contains("dragging"));
+    });
+  }
+  window.addEventListener("scroll", checkMascotOverlap, { passive: true });
+  window.addEventListener("resize", checkMascotOverlap, { passive: true });
+  document.addEventListener("focusin", checkMascotOverlap);
+  document.addEventListener("focusout", () => requestAnimationFrame(checkMascotOverlap));
+  if (window.ResizeObserver) {
+    const pageObserver = new ResizeObserver(checkMascotOverlap);
+    pageObserver.observe(document.body);
+  }
+  checkMascotOverlap();
 
   const chat = document.createElement("section");
   chat.id = "ian-mascot-chat";
@@ -141,6 +170,7 @@
     if (e.key === "Escape" && chat.classList.contains("open")) chat.classList.remove("open");
   });
   window.addEventListener("resize", () => {
+    checkMascotOverlap();
     const r = mascot.getBoundingClientRect();
     const x = Math.max(0, Math.min(innerWidth - mascot.offsetWidth, r.left));
     const y = Math.max(0, Math.min(innerHeight - mascot.offsetHeight, r.top));
