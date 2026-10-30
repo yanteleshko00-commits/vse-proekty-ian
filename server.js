@@ -1112,11 +1112,6 @@ async function buildFiles(plan) {
       mime: 'application/pdf',
       create: createDefensePdfBuffer
     },
-    {
-      name: 'Буклет.pdf',
-      mime: 'application/pdf',
-      create: createBookletPdfBuffer
-    }
   ];
 
   const results = await Promise.allSettled(specs.map(async (spec) => ({
@@ -1198,7 +1193,7 @@ async function generateProject(body) {
   plan.product.imageBytes = await renderProductImage(plan.product, theme);
   plan.defense = (plan.defense || '') + '\n\nПрактический результат проекта — ' + plan.product.format + ' «' + plan.product.title + '». Покажите готовый материал и объясните, как им пользоваться.';
   await attachImages(plan);
-  plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта — готовый материал на основе исследования.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта' });
+  plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта — готовый материал на основе исследования.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта', isProductSlide: true });
   const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
   return { project: publicProject(plan), files: built.files, fileErrors: built.fileErrors };
 }
@@ -1233,7 +1228,8 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
   if (!project || !Array.isArray(project.presentation || project.slides) || !instruction) {
     return res.status(400).json({ error: 'Нужны project с массивом слайдов и instruction.' });
   }
-  const oldSlides = project.presentation || project.slides;
+  const allOldSlides = project.presentation || project.slides;
+  const oldSlides = allOldSlides.filter(slide => !slide?.isProductSlide);
   const count = clampInt(oldSlides.length, 1, MAX_SLIDES, 8);
   const editTopic = cleanText(project.title, 180) || 'Презентация';
   const editPayload = {
@@ -1255,7 +1251,7 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
     }
   });
   await attachImages(plan);
-  plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта' });
+  plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта', isProductSlide: true });
   const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
   res.json({ project: publicProject(plan), files: built.files, fileErrors: built.fileErrors });
 }));
