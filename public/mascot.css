@@ -45,13 +45,13 @@
 
 /* Stability and viewport fixes */
 #ian-mascot{max-width:calc(100vw - 12px);max-height:calc(100dvh - 12px)}
-#ian-mascot .speech-left{right:auto;left:102px;border-radius:15px 15px 15px 4px}
+#ian-mascot.speech-left .speech{right:auto;left:102px;border-radius:15px 15px 15px 4px}
 #ian-mascot .speech{z-index:2;max-width:min(220px,calc(100vw - 130px));overflow-wrap:anywhere}
 #ian-mascot-chat{max-height:min(70vh,620px);max-height:min(70dvh,620px);padding-bottom:env(safe-area-inset-bottom)}
 #ian-mascot-chat form button:disabled{opacity:.55;cursor:wait}
 #ian-mascot-chat input:disabled{opacity:.7}
 @media(max-width:600px){
   #ian-mascot .speech{max-width:min(185px,calc(100vw - 118px))}
-  #ian-mascot .speech-left{left:88px;right:auto}
+  #ian-mascot.speech-left .speech{left:88px;right:auto}
   #ian-mascot-chat{width:calc(100vw - 20px);right:10px;max-height:65dvh}
 }
