@@ -70,3 +70,22 @@
   #ian-mascot{transition:none}
   #ian-mascot.near-controls{display:none}
 }
+
+/* Watch-inspired character performance: brief, expressive movement cycles. */
+#ian-mascot.run .dog{animation:ian-run .34s ease-in-out 4}
+#ian-mascot.snooze .dog{animation:ian-snooze 2.5s ease-in-out 1}
+#ian-mascot.dance .dog{animation:ian-dance .48s ease-in-out 3}
+#ian-mascot.bird-fly .bird{animation:ian-bird-flight 1.25s cubic-bezier(.2,.8,.2,1) 1}
+#ian-mascot.bird-fly .bird-wing{animation:ian-wing .13s ease-in-out 9 alternate}
+#ian-mascot.run .bird{animation:ian-bird-flight .8s ease-in-out 2}
+#ian-mascot.snooze .bird{transform:translateY(3px) rotate(-5deg)}
+#ian-mascot.motion-off .dog,#ian-mascot.motion-off .bird,#ian-mascot.motion-off .bird-wing{animation:none!important;transition:none!important}
+#ian-mascot-chat .head .motion-toggle{margin-left:auto;flex:0 0 34px;width:34px;height:34px;border:1px solid rgba(30,60,42,.12);border-radius:50%;background:rgba(255,255,255,.78);color:#176b43;font-size:15px;font-weight:800;box-shadow:none}
+#ian-mascot-chat .head .motion-toggle:before{display:none}
+#ian-mascot-chat .head button[aria-label="Закрыть"]{margin-left:0}
+@keyframes ian-run{0%,100%{transform:translateY(0) rotate(0) scaleX(1)}25%{transform:translateY(-7px) rotate(-5deg) scaleX(1.025)}55%{transform:translateY(1px) rotate(4deg) scaleX(.98)}80%{transform:translateY(-4px) rotate(-2deg)}}
+@keyframes ian-snooze{0%,100%{transform:rotate(0) translateY(0)}18%,72%{transform:rotate(-7deg) translateY(2px)}40%{transform:rotate(-4deg) translateY(4px) scale(.985)}}
+@keyframes ian-dance{0%,100%{transform:rotate(0) translateY(0)}25%{transform:rotate(-8deg) translateY(-5px)}50%{transform:rotate(8deg) translateY(-3px)}75%{transform:rotate(-5deg) translateY(-6px)}}
+@keyframes ian-bird-flight{0%{transform:translate(0,0) scale(1)}35%{transform:translate(-13px,-22px) rotate(-14deg) scale(1.04)}70%{transform:translate(7px,-30px) rotate(10deg)}100%{transform:translate(0,0) scale(1)}}
+@media(prefers-reduced-motion:reduce){#ian-mascot *,#ian-mascot-chat{animation:none!important;transition:none!important}#ian-mascot{transform:none!important}}
+@media(max-width:600px){#ian-mascot-chat .head .motion-toggle{width:32px;height:32px;flex-basis:32px}}
