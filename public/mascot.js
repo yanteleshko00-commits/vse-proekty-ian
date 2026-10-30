@@ -79,6 +79,39 @@
     <form id="ian-chat-form"><input id="ian-chat-input" maxlength="1000" placeholder="Напиши Снупи..." autocomplete="off"><button type="submit" aria-label="Отправить">↑</button></form>`;
   document.body.appendChild(chat);
 
+  // Accessible motion controls; preference is stored locally on this device.
+  const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let motionEnabled = !motionQuery.matches;
+  try {
+    const savedMotion = localStorage.getItem("ianMascotMotion");
+    if (savedMotion === "off") motionEnabled = false;
+    if (savedMotion === "on" && !motionQuery.matches) motionEnabled = true;
+  } catch (_) {}
+  const motionControl = document.createElement("button");
+  motionControl.type = "button";
+  motionControl.dataset.motionToggle = "true";
+  motionControl.className = "motion-toggle";
+  chat.querySelector(".head").insertBefore(motionControl, chat.querySelector(".head button"));
+  function applyMotionSetting() {
+    mascot.classList.toggle("motion-off", !motionEnabled);
+    motionControl.setAttribute("aria-pressed", String(!motionEnabled));
+    motionControl.setAttribute("aria-label", motionEnabled ? "Выключить анимации" : "Включить анимации");
+    motionControl.textContent = motionEnabled ? "Ⅱ" : "▶";
+    motionControl.title = motionEnabled ? "Выключить анимации" : "Включить анимации";
+  }
+  motionControl.addEventListener("click", () => {
+    motionEnabled = !motionEnabled && !motionQuery.matches;
+    try { localStorage.setItem("ianMascotMotion", motionEnabled ? "on" : "off"); } catch (_) {}
+    if (!motionEnabled) mascot.classList.remove("walk", "run", "happy", "think", "look", "blink", "bird-hop", "bird-flap", "bird-cheer", "bird-fly", "snooze", "dance");
+    applyMotionSetting();
+    say(motionEnabled ? "Анимации снова включены!" : "Хорошо, буду неподвижным.");
+  });
+  motionQuery.addEventListener?.("change", event => {
+    if (event.matches) motionEnabled = false;
+    applyMotionSetting();
+  });
+  applyMotionSetting();
+
   const speech = mascot.querySelector(".speech");
   const messages = chat.querySelector(".messages");
   const input = chat.querySelector("input");
@@ -113,25 +146,29 @@
   const bird = mascot.querySelector(".bird");
   let idleTimer;
   function randomIdle() {
-    if (mascot.classList.contains("dragging") || chat.classList.contains("open")) return;
-    const moves = ["look", "blink", "bird-hop"];
+    if (!motionEnabled || document.hidden || mascot.classList.contains("dragging") || chat.classList.contains("open")) return;
+    const moves = ["look", "blink", "bird-hop", "walk", "run", "snooze", "dance", "bird-fly"];
     const move = moves[Math.floor(Math.random() * moves.length)];
     mascot.classList.remove("look", "blink", "bird-hop");
     void mascot.offsetWidth;
     mascot.classList.add(move);
-    setTimeout(() => mascot.classList.remove(move), 1100);
+    setTimeout(() => mascot.classList.remove(move), move === "snooze" ? 2600 : 1450);
   }
-  idleTimer = setInterval(randomIdle, 5200);
+  idleTimer = setInterval(randomIdle, 4600);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) mascot.classList.remove("walk", "run", "happy", "think", "look", "blink", "bird-hop", "bird-flap", "bird-cheer", "bird-fly", "snooze", "dance");
+    else checkMascotOverlap();
+  });
   mascot.addEventListener("pointerenter", () => {
-    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) mascot.classList.add("curious");
+    if (motionEnabled && !matchMedia("(prefers-reduced-motion: reduce)").matches) mascot.classList.add("curious");
   });
   mascot.addEventListener("pointerleave", () => mascot.classList.remove("curious"));
   function lampToggle() {
     lit = !lit;
     mascot.classList.toggle("lit", lit);
     say(lit ? "Лампочка включена! 💡" : "Лампочка выключена.");
-    animate("happy");
-    mascot.classList.add("bird-cheer");
+    if (motionEnabled) animate("happy");
+    if (motionEnabled) mascot.classList.add("bird-cheer");
     setTimeout(() => mascot.classList.remove("bird-cheer"), 1200);
   }
   function openChat() {
@@ -165,7 +202,7 @@
       }, 430);
     }
   });
-  chat.querySelector(".head button").addEventListener("click", () => chat.classList.remove("open"));
+  chat.querySelector(".head button[aria-label=\"Закрыть\"]").addEventListener("click", () => chat.classList.remove("open"));
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && chat.classList.contains("open")) chat.classList.remove("open");
   });
@@ -223,14 +260,14 @@
     if (!moved) return;
     mascot.dataset.dragged = "yes";
     say("Ух ты! Вот это бросок! 😄");
-    animate("happy");
-    mascot.classList.add("bird-flap");
+    if (motionEnabled) animate("happy");
+    if (motionEnabled) mascot.classList.add("bird-flap");
     setTimeout(() => mascot.classList.remove("bird-flap"), 1000);
     cancelAnimationFrame(frame);
     let sx = Math.max(-26, Math.min(26, vx * 1.5));
     let sy = Math.max(-26, Math.min(26, vy * 1.5));
     if (Math.abs(sx) + Math.abs(sy) < 5) sx = x < innerWidth / 2 ? 9 : -9;
-    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduced = !motionEnabled || matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) {
       mascot.style.left = Math.max(0, Math.min(innerWidth - mascot.offsetWidth, x)) + "px";
       mascot.style.top = Math.max(0, Math.min(innerHeight - mascot.offsetHeight, y)) + "px";
@@ -265,7 +302,7 @@
     input.disabled = true;
     addMessage(question, "user");
     input.value = "";
-    animate("think", 30000);
+    if (motionEnabled) animate("think", 30000);
     const pending = addMessage("Снупи думает…", "bot");
     const history = Array.from(messages.querySelectorAll(".msg")).slice(-7)
       .map(n => (n.classList.contains("user") ? "Пользователь: " : "Снупи: ") + n.textContent).join("\n");
@@ -279,8 +316,8 @@
       if (!response.ok) throw new Error(data.error || "Сервер не смог ответить. Попробуй ещё раз.");
       if (typeof data.answer !== "string" || !data.answer.trim()) throw new Error("Сервер вернул пустой ответ.");
       pending.textContent = data.answer || "Попробуй спросить иначе.";
-      animate("happy");
-      mascot.classList.add("bird-cheer");
+      if (motionEnabled) animate("happy");
+      if (motionEnabled) mascot.classList.add("bird-cheer");
       setTimeout(() => mascot.classList.remove("bird-cheer"), 1200);
     } catch (err) {
       pending.textContent = err.message || "Не удалось подключиться. Попробуй позже.";
@@ -294,11 +331,11 @@
 
   document.addEventListener("click", e => {
     if (e.target.closest("#createButton,.create-btn")) {
-      animate("think", 1500); say("Создаём проект! ✨");
+      if (motionEnabled) animate("think", 1500); say("Создаём проект! ✨");
     } else if (e.target.closest(".download,[onclick*='downloadFile'],[onclick*='downloadAll']")) {
-      animate("happy"); say("Файл готов к скачиванию! 📦");
+      if (motionEnabled) animate("happy"); say("Файл готов к скачиванию! 📦");
     } else if (e.target.closest(".nav button,.mobile-menu")) {
-      say("Пойдём посмотрим!"); animate("happy");
+      say("Пойдём посмотрим!"); if (motionEnabled) animate("happy");
     }
   });
   const status = document.getElementById("status");
