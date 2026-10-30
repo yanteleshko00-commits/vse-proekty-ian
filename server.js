@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import sharp from 'sharp';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -84,6 +85,73 @@ function normalizeSlideType(type, index) {
   const allowed = ['cover', 'cards', 'comparison', 'stat', 'process', 'quote', 'image', 'table'];
   return allowed.includes(type) ? type : (index === 0 ? 'cover' : 'cards');
 }
+
+const PROJECT_CONTENT_INSTRUCTIONS = 'Ты — методист и автор школьных проектов. Верни только JSON с полями problem, goal, tasks (4-6), relevance, object, subject, hypothesis, theory [{heading,text}], practice {method,materials,steps,result,limitations}, mainPoints, conclusion, sources [{title,url}]. Пиши по-русски на уровне 9 класса. Не выдумывай опросы, эксперименты, статистику, источники и ссылки. Если данных практики нет, предложи выполнимую работу и обозначь результат как планируемый.';
+const PRODUCT_INSTRUCTIONS = 'Ты — дизайнер учебных проектных продуктов. Создай самостоятельный готовый материал, который можно использовать отдельно от презентации. Верни только JSON: format, title, subtitle, audience, sections [{heading,body}], steps, checklist, takeaway. Выбери подходящий формат: памятка, буклет, чек-лист, мини-гайд, карточки, инструкция. Дай 3-5 содержательных разделов и конкретные практические пункты. Всё должно опираться на projectContent, не выдумывай факты.';
+function xmlEscape(value) {
+  return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+function wrapProductText(value, maxChars, maxLines) {
+  const words=cleanText(value,900).split(/\s+/).filter(Boolean), lines=[]; let line='';
+  for(const word of words){const next=line?line+' '+word:word;if(next.length>maxChars&&line){lines.push(line);line=word;}else line=next;if(lines.length>=maxLines)break;}
+  if(line&&lines.length<maxLines)lines.push(line);
+  return lines;
+}
+async function generateProjectContent(topic, body) {
+  const raw=await aiJson(PROJECT_CONTENT_INSTRUCTIONS,{topic,student:{className:cleanText(body.className,30),school:cleanText(body.school,100)},requirements:cleanText(body.extraRequirements||body.requirements,1200)},55000);
+  const practice=raw.practice&&typeof raw.practice==='object'?raw.practice:{};
+  const result={
+    problem:normalizeText(raw.problem||'',500),goal:normalizeText(raw.goal||'',350),
+    tasks:(Array.isArray(raw.tasks)?raw.tasks:[]).map(x=>normalizeText(x,220)).filter(Boolean).slice(0,8),
+    relevance:normalizeText(raw.relevance||'',500),object:normalizeText(raw.object||'',250),subject:normalizeText(raw.subject||'',250),hypothesis:normalizeText(raw.hypothesis||'',350),
+    theory:(Array.isArray(raw.theory)?raw.theory:[]).map(x=>({heading:normalizeText(x?.heading||'',100),text:normalizeText(x?.text||'',650)})).filter(x=>x.heading&&x.text).slice(0,6),
+    practice:{method:normalizeText(practice.method||'',300),materials:normalizeText(practice.materials||'',350),steps:(Array.isArray(practice.steps)?practice.steps:[]).map(x=>normalizeText(x,240)).filter(Boolean).slice(0,8),result:normalizeText(practice.result||'',600),limitations:normalizeText(practice.limitations||'',350)},
+    mainPoints:(Array.isArray(raw.mainPoints)?raw.mainPoints:[]).map(x=>normalizeText(x,240)).filter(Boolean).slice(0,8),
+    conclusion:normalizeText(raw.conclusion||'',700),
+    sources:(Array.isArray(raw.sources)?raw.sources:[]).map(x=>({title:normalizeText(x?.title||'',180),url:cleanText(x?.url||'',500)})).filter(x=>x.title).slice(0,12)
+  };
+  if(!result.problem||!result.goal||result.tasks.length<3||!result.conclusion)throw new Error('Не удалось подготовить полноценную основу проекта: отсутствуют обязательные разделы.');
+  return result;
+}
+async function generateFinalProduct(topic, projectContent, requestedFormat='') {
+  const raw=await aiJson(PRODUCT_INSTRUCTIONS,{topic,requestedFormat:cleanText(requestedFormat,60),projectContent,outputRules:'Создай полезный самостоятельный продукт с конкретными рекомендациями и практическими пунктами.'},50000);
+  const product={
+    format:normalizeText(raw.format||requestedFormat||'Памятка',40),title:normalizeText(raw.title||topic,90),
+    subtitle:normalizeText(raw.subtitle||'Практический материал по теме проекта',180),audience:normalizeText(raw.audience||'Для учащихся',100),
+    sections:(Array.isArray(raw.sections)?raw.sections:[]).map(x=>({heading:normalizeText(x?.heading||'',70),body:normalizeText(x?.body||'',420)})).filter(x=>x.heading&&x.body).slice(0,5),
+    steps:(Array.isArray(raw.steps)?raw.steps:[]).map(x=>normalizeText(x,180)).filter(Boolean).slice(0,5),
+    checklist:(Array.isArray(raw.checklist)?raw.checklist:[]).map(x=>normalizeText(x,150)).filter(Boolean).slice(0,5),
+    takeaway:normalizeText(raw.takeaway||projectContent.conclusion,300)
+  };
+  if(product.sections.length<2||(!product.steps.length&&!product.checklist.length))throw new Error('Итоговый продукт неполный: нужны разделы и практические пункты.');
+  return product;
+}
+async function renderProductImage(product,theme) {
+  const accent='#'+(theme?.accent||COLORS.blue.accent),ink='#'+(theme?.ink||COLORS.blue.ink),muted='#'+(theme?.muted||COLORS.blue.muted),pale='#'+(theme?.accent2||COLORS.blue.accent2);
+  const chunks=[];let y=330;
+  for(const section of product.sections.slice(0,4)){
+    chunks.push('<rect x="72" y="'+y+'" width="1096" height="210" rx="28" fill="#fff" stroke="'+pale+'" stroke-width="3"/>');
+    chunks.push('<text x="112" y="'+(y+58)+'" font-family="Arial" font-size="34" font-weight="700" fill="'+accent+'">'+xmlEscape(section.heading)+'</text>');
+    wrapProductText(section.body,62,3).forEach((line,i)=>chunks.push('<text x="112" y="'+(y+112+i*42)+'" font-family="Arial" font-size="25" fill="'+ink+'">'+xmlEscape(line)+'</text>'));
+    y+=232;
+  }
+  const items=(product.checklist.length?product.checklist:product.steps).slice(0,4), listY=Math.min(y+8,1370);
+  chunks.push('<rect x="72" y="'+listY+'" width="1096" height="250" rx="28" fill="'+pale+'" opacity=".34"/>');
+  chunks.push('<text x="112" y="'+(listY+58)+'" font-family="Arial" font-size="32" font-weight="700" fill="'+accent+'">'+(product.checklist.length?'Проверь себя':'Что делать')+'</text>');
+  items.forEach((item,i)=>{chunks.push('<circle cx="126" cy="'+(listY+108+i*42)+'" r="8" fill="'+accent+'"/>');chunks.push('<text x="152" y="'+(listY+117+i*42)+'" font-family="Arial" font-size="23" fill="'+ink+'">'+xmlEscape(wrapProductText(item,65,1)[0]||item)+'</text>');});
+  const takeaway=wrapProductText(product.takeaway,75,2).join(' ');
+  const subtitle=wrapProductText(product.subtitle,75,2).map((line,i)=>'<text x="84" y="'+(250+i*38)+'" font-family="Arial" font-size="25" fill="'+muted+'">'+xmlEscape(line)+'</text>').join('');
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1754" viewBox="0 0 1240 1754"><rect width="1240" height="1754" fill="#f7f9fc"/><rect width="1240" height="24" fill="'+accent+'"/><text x="82" y="100" font-family="Arial" font-size="24" font-weight="700" fill="'+accent+'">'+xmlEscape(product.format.toUpperCase())+' • ИТОГОВЫЙ ПРОДУКТ</text><text x="82" y="190" font-family="Arial" font-size="52" font-weight="700" fill="'+ink+'">'+xmlEscape(product.title)+'</text>'+subtitle+chunks.join('')+'<text x="82" y="1655" font-family="Arial" font-size="22" fill="'+muted+'">'+xmlEscape(takeaway)+'</text><text x="82" y="1710" font-family="Arial" font-size="18" fill="'+muted+'">Все проекты #Ian • '+xmlEscape(product.audience)+'</text></svg>';
+  return sharp(Buffer.from(svg)).png().toBuffer();
+}
+function createProductPdfBuffer(plan) {
+  return new Promise((resolve,reject)=>{
+    const doc=new PDFDocument({size:'A4',margin:0,info:{Title:plan.product.title,Author:'Все проекты #Ian'}}),chunks=[];
+    doc.on('data',x=>chunks.push(x));doc.on('end',()=>resolve(Buffer.concat(chunks)));doc.on('error',reject);
+    doc.image(plan.product.imageBytes,0,0,{fit:[595.28,841.89],align:'center',valign:'center'});doc.end();
+  });
+}
+
 function normalizePlan(raw, topic, requestedCount, theme) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('ИИ вернул неверную структуру презентации.');
   if (containsCorruptedText(raw) || containsCorruptedText(topic)) {
@@ -737,6 +805,7 @@ async function createPptxBuffer(plan) {
 async function createDocxBuffer(plan) {
   const children = [
     new Paragraph({ text: plan.title, heading: HeadingLevel.TITLE }),
+    ...(plan.projectContent ? [new Paragraph({ text: 'Проблема', heading: HeadingLevel.HEADING_1 }), new Paragraph(plan.projectContent.problem), new Paragraph({ text: 'Цель', heading: HeadingLevel.HEADING_1 }), new Paragraph(plan.projectContent.goal), new Paragraph({ text: 'Задачи', heading: HeadingLevel.HEADING_1 }), ...plan.projectContent.tasks.map(x => new Paragraph({ text: x, bullet: { level: 0 } })), new Paragraph({ text: 'Теоретическая часть', heading: HeadingLevel.HEADING_1 }), ...plan.projectContent.theory.flatMap(x => [new Paragraph({ text: x.heading, heading: HeadingLevel.HEADING_2 }), new Paragraph(x.text)]), new Paragraph({ text: 'Практическая часть', heading: HeadingLevel.HEADING_1 }), new Paragraph(plan.projectContent.practice.method), ...plan.projectContent.practice.steps.map(x => new Paragraph({ text: x, bullet: { level: 0 } })), new Paragraph(plan.projectContent.practice.result), new Paragraph({ text: 'Заключение', heading: HeadingLevel.HEADING_1 }), new Paragraph(plan.projectContent.conclusion)] : []),
     new Paragraph({ text: plan.summary || '' }),
     new Paragraph({ text: 'Содержание презентации', heading: HeadingLevel.HEADING_1 })
   ];
@@ -1016,6 +1085,8 @@ function toFile(name, mime, buffer) {
 }
 async function buildFiles(plan) {
   const specs = [
+    { name: 'Итоговый_продукт.pdf', mime: 'application/pdf', create: createProductPdfBuffer },
+    { name: 'Итоговый_продукт.png', mime: 'image/png', create: async p => p.product.imageBytes },
     {
       name: 'Презентация_проекта.pptx',
       mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
@@ -1091,6 +1162,8 @@ function publicProject(plan) {
   return {
     title: plan.title,
     summary: plan.summary,
+    projectContent: plan.projectContent || null,
+    product: plan.product ? { format: plan.product.format, title: plan.product.title, subtitle: plan.product.subtitle, audience: plan.product.audience, sections: plan.product.sections, steps: plan.product.steps, checklist: plan.product.checklist, takeaway: plan.product.takeaway } : null,
     presentation: plan.slides.map(({ imageBytes, imageMime, imageData, ...s }) => s),
     slides: plan.slides.map(({ imageBytes, imageMime, imageData, ...s }) => s),
     practicalPart: plan.practicalPart,
@@ -1104,8 +1177,9 @@ async function generateProject(body) {
   if (!topic) { const error = new Error('Укажи тему проекта или презентации.'); error.status = 400; throw error; }
   const count = clampInt(body.slidesCount ?? body.slides ?? body.presentationSlides, 1, MAX_SLIDES, 12);
   const theme = inferTheme(topic, body.style || '');
+  const projectContent = await generateProjectContent(topic, body);
   const payload = {
-    topic, requestedSlides: count,
+    topic, requestedSlides: count, projectContent,
     style: body.style || 'современный, профессиональный, соответствующий теме',
     student: {
       firstName: cleanText(body.firstName, 60),
@@ -1117,10 +1191,15 @@ async function generateProject(body) {
     requiredStructure: ['обложка и введение', 'исследовательский вопрос или проблема', 'факты и объяснения', 'практическая часть или применение', 'содержательное раскрытие темы на последнем слайде'],
     outputRules: 'Верни ровно requestedSlides слайдов, каждый с конкретным содержанием и собственным imageQuery. Не добавляй фиктивную статистику, результаты, шаблоны или вымышленные ссылки.'
   };
-  const raw = await generateValidatedPresentation(topic, count, payload);
+  const raw = await generateValidatedPresentation(topic, count, payload, PLANNER_INSTRUCTIONS + '\nОБЯЗАТЕЛЬНО опирайся на projectContent из входных данных. Не выдумывай результаты практики.');
   const plan = normalizePlan(raw, topic, count, theme);
+  plan.projectContent = projectContent;
+  plan.product = await generateFinalProduct(topic, projectContent, body.productType);
+  plan.product.imageBytes = await renderProductImage(plan.product, theme);
+  plan.defense = (plan.defense || '') + '\n\nПрактический результат проекта — ' + plan.product.format + ' «' + plan.product.title + '». Покажите готовый материал и объясните, как им пользоваться.';
   await attachImages(plan);
-  const built = await withTimeout(buildFiles(plan), 45000, 'Сборка файлов');
+  plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта — готовый материал на основе исследования.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта' });
+  const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
   return { project: publicProject(plan), files: built.files, fileErrors: built.fileErrors };
 }
 function asyncRoute(handler) {
@@ -1164,6 +1243,10 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
   const editInstructions = PLANNER_INSTRUCTIONS + '\nРедактируй переданный проект с учётом инструкции. Сохрани тему и точное число слайдов. Сохрани качественный материал, но исправляй повторы, пустые поля и неясные объяснения.';
   const raw = await generateValidatedPresentation(editTopic, count, editPayload, editInstructions);
   const plan = normalizePlan(raw, editTopic, count, inferTheme(project.title || '', ''));
+  plan.projectContent = project.projectContent || null;
+  plan.product = await generateFinalProduct(editTopic, plan.projectContent || { conclusion: plan.summary }, project.product?.format || 'памятка');
+  plan.product.imageBytes = await renderProductImage(plan.product, plan.theme);
+  plan.defense = (plan.defense || '') + '\n\nПрактический результат проекта — ' + plan.product.format + ' «' + plan.product.title + '».';
   const prior = new Set();
   oldSlides.forEach((slide, index) => {
     if (plan.slides[index] && slide.imageUrl && !prior.has(slide.imageUrl)) {
@@ -1172,7 +1255,8 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
     }
   });
   await attachImages(plan);
-  const built = await withTimeout(buildFiles(plan), 45000, 'Сборка файлов');
+  plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта' });
+  const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
   res.json({ project: publicProject(plan), files: built.files, fileErrors: built.fileErrors });
 }));
 
