@@ -55,3 +55,18 @@
   #ian-mascot.speech-left .speech{left:88px;right:auto}
   #ian-mascot-chat{width:calc(100vw - 20px);right:10px;max-height:65dvh}
 }
+
+/* Mobile-safe mascot placement and automatic form protection */
+#ian-mascot{width:88px;height:82px;right:12px;top:42%;transition:opacity .2s ease,visibility .2s ease}
+#ian-mascot.near-controls{opacity:0;visibility:hidden;pointer-events:none}
+#ian-mascot .dog{overflow:visible}
+#ian-mascot .speech{z-index:3}
+@media(max-width:600px){
+  #ian-mascot{width:66px;height:62px;right:8px;top:34%}
+  #ian-mascot .speech{right:62px;max-width:min(170px,calc(100vw - 86px));font-size:12px;padding:8px 10px}
+  #ian-mascot.speech-left .speech{left:62px;right:auto}
+}
+@media(prefers-reduced-motion:reduce){
+  #ian-mascot{transition:none}
+  #ian-mascot.near-controls{display:none}
+}
