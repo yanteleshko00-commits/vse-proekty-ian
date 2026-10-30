@@ -1,15 +1,28 @@
-#ian-mascot{position:fixed;z-index:9000;right:10px;top:40%;width:72px;height:88px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;filter:drop-shadow(0 8px 12px #1837262b);will-change:left,top,transform}
-#ian-mascot.dragging{cursor:grabbing;z-index:9002;transition:none}
-#ian-mascot .dog{width:100%;height:100%;transform-origin:50% 80%;animation:ian-idle 3s ease-in-out infinite}
-#ian-mascot.lit .dog{animation:ian-glow 1.5s ease-in-out infinite;filter:drop-shadow(0 0 9px #ffe36a) drop-shadow(0 0 19px #ffd84d)}
+#ian-mascot{position:fixed;z-index:9000;right:10px;top:40%;width:112px;height:104px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;filter:drop-shadow(0 8px 12px #18372625);will-change:left,top,transform;transform-origin:50% 85%}
+#ian-mascot.dragging{cursor:grabbing;z-index:9002;transition:none;transform:scale(1.08)}
+#ian-mascot .dog{width:100%;height:100%;overflow:visible;transform-origin:50% 85%;animation:ian-breathe 4.2s ease-in-out infinite}
+#ian-mascot .dog-body{transform-origin:65px 100px;transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+#ian-mascot .ear{transform-box:fill-box;transform-origin:top center;transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+#ian-mascot.curious .dog-body{transform:rotate(-5deg) translateY(-2px)}
+#ian-mascot.curious .ear-right{transform:rotate(12deg)}
+#ian-mascot.look .dog-body{transform:translateX(5px) rotate(3deg)}
+#ian-mascot.blink .eye{transform:scaleY(.12);transform-box:fill-box;transform-origin:center;transition:transform .12s}
+#ian-mascot .bird{transform-box:fill-box;transform-origin:50% 90%;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+#ian-mascot .bird-wing{transform-box:fill-box;transform-origin:100% 50%}
+#ian-mascot.bird-hop .bird{transform:translateY(-13px) rotate(-8deg)}
+#ian-mascot.bird-flap .bird-wing,#ian-mascot.bird-cheer .bird-wing{animation:ian-wing .18s ease-in-out 5 alternate}
+#ian-mascot.bird-cheer .bird{animation:ian-bird-pop .55s cubic-bezier(.2,.8,.2,1) 2}
+#ian-mascot .tail{transform-box:fill-box;transform-origin:0 50%}
+#ian-mascot.happy .tail{animation:ian-tail .18s ease-in-out 6 alternate}
+#ian-mascot.lit .dog{animation:ian-glow 1.7s ease-in-out infinite;filter:drop-shadow(0 0 9px #ffe36a) drop-shadow(0 0 19px #ffd84d)}
 #ian-mascot.walk .dog{animation:ian-walk .4s ease-in-out infinite}
-#ian-mascot.happy .dog{animation:ian-jump .55s ease 2}
-#ian-mascot.think .dog{animation:ian-think .8s ease-in-out infinite}
-#ian-mascot .speech{position:absolute;right:68px;top:5px;width:max-content;max-width:220px;padding:9px 12px;border:1px solid #ffffffd9;border-radius:15px 15px 4px 15px;background:#ffffffc9;color:#17231d;font:600 13px/1.4 -apple-system,sans-serif;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:0;transform:translateY(5px);transition:.22s;pointer-events:none}
-#ian-mascot.speak .speech{opacity:1;transform:translateY(0)}
-#ian-mascot .lamp{opacity:0;transition:opacity .3s}
+#ian-mascot.happy .dog{animation:ian-jump .62s cubic-bezier(.2,.8,.2,1) 2}
+#ian-mascot.think .dog{animation:ian-think 1.1s ease-in-out infinite}
+#ian-mascot .speech{position:absolute;right:102px;top:0;width:max-content;max-width:220px;padding:9px 12px;border:1px solid #ffffffd9;border-radius:15px 15px 4px 15px;background:#ffffffc9;color:#17231d;font:600 13px/1.4 -apple-system,sans-serif;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:0;transform:translateY(7px) scale(.97);transition:opacity .24s,transform .35s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+#ian-mascot.speak .speech{opacity:1;transform:translateY(0) scale(1)}
+#ian-mascot .lamp{opacity:0;transition:opacity .35s}
 #ian-mascot.lit .lamp{opacity:1}
-#ian-mascot-chat{position:fixed;z-index:9001;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));width:min(350px,calc(100vw - 26px));max-height:70vh;display:flex;flex-direction:column;overflow:hidden;border:1px solid #ffffffd9;border-radius:23px;background:#f8fbf2df;backdrop-filter:blur(25px) saturate(170%);-webkit-backdrop-filter:blur(25px) saturate(170%);box-shadow:0 22px 70px #10281930;opacity:0;visibility:hidden;transform:translateY(12px) scale(.97);transition:.25s}
+#ian-mascot-chat{position:fixed;z-index:9001;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));width:min(350px,calc(100vw - 26px));max-height:70vh;display:flex;flex-direction:column;overflow:hidden;border:1px solid #ffffffd9;border-radius:23px;background:#f8fbf2df;backdrop-filter:blur(25px) saturate(170%);-webkit-backdrop-filter:blur(25px) saturate(170%);box-shadow:0 22px 70px #10281930;opacity:0;visibility:hidden;transform:translateY(12px) scale(.97);transition:opacity .25s,transform .4s cubic-bezier(.2,.8,.2,1),visibility .25s}
 #ian-mascot-chat.open{opacity:1;visibility:visible;transform:none}
 #ian-mascot-chat .head{display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid #24483218;font:700 15px -apple-system,sans-serif}
 #ian-mascot-chat .head button{margin-left:auto;width:32px;height:32px;border-radius:50%;background:#e8eee9;color:#26372d;font-size:20px}
@@ -19,10 +32,13 @@
 #ian-mascot-chat form{display:flex;gap:8px;padding:10px;border-top:1px solid #24483218}
 #ian-mascot-chat input{flex:1;min-width:0;padding:11px;border:1px solid #dce6df;border-radius:13px;background:#fff;color:#17231d;font:14px -apple-system,sans-serif}
 #ian-mascot-chat form button{width:42px;border-radius:13px;background:#168653;color:white;font-size:18px}
-@keyframes ian-idle{50%{transform:translateY(-4px) rotate(-2deg)}}
-@keyframes ian-walk{50%{transform:translateY(-5px) rotate(4deg)}}
-@keyframes ian-jump{50%{transform:translateY(-14px) scale(1.06)}}
-@keyframes ian-think{50%{transform:rotate(-5deg) translateY(-3px)}}
-@keyframes ian-glow{50%{transform:translateY(-3px) scale(1.03)}}
-@media(max-width:600px){#ian-mascot{width:64px;height:78px;right:6px}}
-@media(prefers-reduced-motion:reduce){#ian-mascot *,#ian-mascot-chat{animation:none!important;transition:none!important}}
+@keyframes ian-breathe{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3px) scale(1.012)}}
+@keyframes ian-walk{50%{transform:translateY(-5px) rotate(3deg)}}
+@keyframes ian-jump{0%,100%{transform:translateY(0) scale(1)}45%{transform:translateY(-15px) scale(1.055)}65%{transform:translateY(-10px) scale(1.02)}}
+@keyframes ian-think{0%,100%{transform:rotate(0)}35%{transform:rotate(-4deg) translateY(-2px)}70%{transform:rotate(3deg)}}
+@keyframes ian-glow{50%{transform:translateY(-3px) scale(1.025)}}
+@keyframes ian-wing{to{transform:rotate(-55deg)}}
+@keyframes ian-bird-pop{50%{transform:translateY(-11px) rotate(12deg)}}
+@keyframes ian-tail{to{transform:rotate(20deg)}}
+@media(max-width:600px){#ian-mascot{width:98px;height:92px;right:5px}#ian-mascot .speech{right:86px;max-width:185px}}
+@media(prefers-reduced-motion:reduce){#ian-mascot *,#ian-mascot-chat{animation:none!important;transition:none!important}#ian-mascot .dog{transform:none!important}}
