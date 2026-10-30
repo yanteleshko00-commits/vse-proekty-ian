@@ -8,21 +8,36 @@
   mascot.setAttribute("aria-label", "Снупи. Перетащи меня или нажми три раза для лампочки");
   mascot.innerHTML = `
     <div class="speech" id="ian-mascot-speech">Привет! Потяни меня за лапку 🐾</div>
-    <svg class="dog" viewBox="0 0 100 116" aria-hidden="true">
-      <ellipse cx="51" cy="108" rx="25" ry="5" fill="#25372b" opacity=".14"/>
-      <g class="lamp"><circle cx="51" cy="48" r="38" fill="#ffe36a" opacity=".35"/><path d="M43 9h16l-2 7H45z" fill="#e4b92e"/><path d="M46 3h10v7H46z" fill="#e4b92e"/></g>
-      <path d="M25 66C11 61 9 42 16 27c5-11 14-10 18-1 4 10 0 20-2 28" fill="#292d2b"/>
-      <path d="M72 66c16-9 18-26 10-39-5-8-12-5-13 5-1 10 2 21 3 34" fill="#292d2b"/>
-      <ellipse cx="50" cy="68" rx="29" ry="34" fill="#fff" stroke="#dce5df" stroke-width="1.5"/>
-      <ellipse cx="49" cy="40" rx="29" ry="26" fill="#fff" stroke="#dce5df" stroke-width="1.5"/>
-      <ellipse cx="50" cy="47" rx="21" ry="17" fill="#fff"/>
-      <ellipse cx="39" cy="38" rx="3.3" ry="4.2" fill="#202722"/><ellipse cx="59" cy="38" rx="3.3" ry="4.2" fill="#202722"/>
-      <ellipse cx="50" cy="48" rx="5.8" ry="4.3" fill="#202722"/>
-      <path d="M45 54q5 5 10 0" fill="none" stroke="#202722" stroke-width="1.8" stroke-linecap="round"/>
-      <path d="M28 67q-15 8-9 22 7 8 16-2M71 67q14 8 8 22-7 8-16-2" fill="#fff" stroke="#dce5df" stroke-width="1.5"/>
-      <path d="M35 94q-2 10 7 10 7 0 6-10M56 94q-1 10 7 10 7 0 6-10" fill="#fff" stroke="#dce5df" stroke-width="1.5"/>
-      <path d="M28 58q22 11 45 0" fill="none" stroke="#168653" stroke-width="4" stroke-linecap="round"/>
-      <circle cx="50" cy="61" r="3.5" fill="#168653"/>
+    <svg class="dog" viewBox="0 0 150 132" aria-hidden="true">
+      <defs>
+        <radialGradient id="snoopy-coat" cx="35%" cy="25%" r="80%"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#e8eee9"/></radialGradient>
+        <linearGradient id="bird-yellow" x2="0" y2="1"><stop stop-color="#fff27c"/><stop offset="1" stop-color="#f4bd31"/></linearGradient>
+      </defs>
+      <ellipse cx="70" cy="122" rx="43" ry="6" fill="#24392c" opacity=".13"/>
+      <g class="lamp"><circle cx="67" cy="57" r="52" fill="#ffe36a" opacity=".28"/><path d="M60 5h15l-2 8H62z" fill="#e4b92e"/><path d="M63 0h9v7h-9z" fill="#e4b92e"/></g>
+      <g class="dog-body">
+        <path class="ear ear-left" d="M44 42C23 18 8 35 14 65c3 16 16 25 29 15z" fill="#343b37"/>
+        <path class="ear ear-right" d="M91 40c17-25 35-12 32 17-2 19-13 29-27 23z" fill="#343b37"/>
+        <ellipse cx="68" cy="88" rx="39" ry="34" fill="url(#snoopy-coat)" stroke="#dce5df" stroke-width="1.5"/>
+        <path d="M45 92q-17 6-12 21 8 7 17-5M91 92q17 6 12 21-8 7-17-5" fill="#fff" stroke="#dce5df" stroke-width="1.5"/>
+        <path d="M48 111q-2 9 7 9 7 0 7-9M76 111q-1 9 8 9 7 0 7-9" fill="#fff" stroke="#dce5df" stroke-width="1.5"/>
+        <ellipse cx="68" cy="52" rx="34" ry="31" fill="url(#snoopy-coat)" stroke="#dce5df" stroke-width="1.5"/>
+        <ellipse cx="68" cy="66" rx="26" ry="18" fill="#fff"/>
+        <ellipse class="eye eye-left" cx="56" cy="49" rx="3.2" ry="4.4" fill="#202722"/>
+        <ellipse class="eye eye-right" cx="79" cy="49" rx="3.2" ry="4.4" fill="#202722"/>
+        <ellipse cx="68" cy="63" rx="7" ry="5.2" fill="#202722"/>
+        <path d="M62 72q6 6 12 0" fill="none" stroke="#59665e" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M37 87q31 12 62 0" fill="none" stroke="#168653" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="68" cy="91" r="4" fill="#168653"/>
+        <path class="tail" d="M105 94q17-1 17-14" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+      </g>
+      <g class="bird" transform="translate(111 68)">
+        <ellipse cx="0" cy="0" rx="15" ry="17" fill="url(#bird-yellow)" stroke="#e5b43a" stroke-width="1"/>
+        <path class="bird-wing" d="M-4 -2q-17-13-13 5 6 10 14 3" fill="#f6c83e" stroke="#e5b43a" stroke-width="1"/>
+        <circle cx="5" cy="-5" r="2" fill="#333b32"/>
+        <path d="M13 0l9 4-9 4z" fill="#ef9131"/>
+        <path d="M-4 16l-3 7m10-7 2 7" stroke="#bd8730" stroke-width="2" stroke-linecap="round"/>
+      </g>
     </svg>`;
   document.body.appendChild(mascot);
 
@@ -52,11 +67,29 @@
     mascot.classList.add(name);
     setTimeout(() => mascot.classList.remove(name), ms);
   }
+  const bird = mascot.querySelector(".bird");
+  let idleTimer;
+  function randomIdle() {
+    if (mascot.classList.contains("dragging") || chat.classList.contains("open")) return;
+    const moves = ["look", "blink", "bird-hop"];
+    const move = moves[Math.floor(Math.random() * moves.length)];
+    mascot.classList.remove("look", "blink", "bird-hop");
+    void mascot.offsetWidth;
+    mascot.classList.add(move);
+    setTimeout(() => mascot.classList.remove(move), 1100);
+  }
+  idleTimer = setInterval(randomIdle, 5200);
+  mascot.addEventListener("pointerenter", () => {
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) mascot.classList.add("curious");
+  });
+  mascot.addEventListener("pointerleave", () => mascot.classList.remove("curious"));
   function lampToggle() {
     lit = !lit;
     mascot.classList.toggle("lit", lit);
     say(lit ? "Лампочка включена! 💡" : "Лампочка выключена.");
     animate("happy");
+    mascot.classList.add("bird-cheer");
+    setTimeout(() => mascot.classList.remove("bird-cheer"), 1200);
   }
   function openChat() {
     chat.classList.add("open");
@@ -132,6 +165,8 @@
     mascot.dataset.dragged = "yes";
     say("Ух ты! Вот это бросок! 😄");
     animate("happy");
+    mascot.classList.add("bird-flap");
+    setTimeout(() => mascot.classList.remove("bird-flap"), 1000);
     cancelAnimationFrame(frame);
     let sx = Math.max(-26, Math.min(26, vx * 1.5));
     let sy = Math.max(-26, Math.min(26, vy * 1.5));
@@ -173,6 +208,8 @@
       if (!response.ok) throw new Error(data.error || "Не получилось получить ответ.");
       pending.textContent = data.answer || "Попробуй спросить иначе.";
       animate("happy");
+      mascot.classList.add("bird-cheer");
+      setTimeout(() => mascot.classList.remove("bird-cheer"), 1200);
     } catch (err) {
       pending.textContent = err.message || "Не удалось подключиться. Попробуй позже.";
     }
