@@ -5,18 +5,58 @@
   mascot.id = "ian-mascot";
   mascot.tabIndex = 0;
   mascot.setAttribute("role", "button");
-  mascot.setAttribute("aria-label", "Логотип Все проекты #Ian с живыми глазками. Нажми или перетащи");
+  mascot.setAttribute("aria-label", "Живая лампочка с руками, ногами и эмоциями. Нажми или перетащи");
   mascot.innerHTML = `
-    <div class="speech" id="ian-mascot-speech">Привет! Я оживший логотип сайта 👀</div>
-    <div class="dog logo-dog" role="img" aria-label="Логотип сайта с глазками">
-      <div class="dog-body logo-dog-body">
-        <img class="site-logo" src="/icon-512.png" alt="" draggable="false">
-        <div class="bear-eyes logo-eyes" aria-hidden="true">
-          <span class="eye-wrap"><span class="eye"></span><span class="eye-shine"></span></span>
-          <span class="eye-wrap"><span class="eye"></span><span class="eye-shine"></span></span>
-        </div>
-      </div>
-    </div>`;
+    <div class="speech" id="ian-mascot-speech">Привет! Я твоя живая лампочка! 💡</div>
+    <svg class="dog bulb-character" viewBox="0 0 120 154" role="img" aria-label="Живая лампочка с глазами, улыбкой, руками и ногами" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="ianBulbGlass" x1="12%" y1="0%" x2="88%" y2="100%">
+          <stop offset="0" stop-color="#fffde8"/><stop offset=".48" stop-color="#ffe98b"/><stop offset="1" stop-color="#ffbd42"/>
+        </linearGradient>
+        <linearGradient id="ianBulbBase" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#dce5ee"/><stop offset="1" stop-color="#8999aa"/>
+        </linearGradient>
+      </defs>
+      <g class="dog-body">
+        <g class="stick-legs" fill="none" stroke="#f4c45d" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+          <path class="leg leg-back-a" d="M49 123 Q46 134 40 141"/><path class="leg leg-back-b" d="M71 123 Q75 134 82 141"/>
+          <path d="M40 141l-8 1M82 141l8 1" stroke="#273548" stroke-width="5"/>
+        </g>
+        <g class="stick-arms" fill="none" stroke="#f4c45d" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+          <path class="arm arm-left" d="M25 67 Q12 72 8 87"/><path class="arm arm-right" d="M95 67 Q108 72 112 87"/>
+          <circle cx="8" cy="88" r="3.5" fill="#f4c45d" stroke="none"/><circle cx="112" cy="88" r="3.5" fill="#f4c45d" stroke="none"/>
+        </g>
+        <g class="bear-head">
+          <path class="bulb-glass" d="M60 8C34 8 17 26 17 50c0 17 8 27 18 38 6 6 9 12 10 20h30c1-8 4-14 10-20 10-11 18-21 18-38C103 26 86 8 60 8Z" fill="url(#ianBulbGlass)" stroke="#d69a32" stroke-width="2.5"/>
+          <path d="M31 37Q35 22 49 18" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".7"/>
+          <g class="bear-eyes" fill="#26364a">
+            <ellipse class="eye" cx="47" cy="55" rx="4.3" ry="6.3"/><ellipse class="eye" cx="73" cy="55" rx="4.3" ry="6.3"/>
+            <circle cx="45.5" cy="52.5" r="1.6" fill="#fff"/><circle cx="71.5" cy="52.5" r="1.6" fill="#fff"/>
+          </g>
+          <g class="bear-brows" fill="none" stroke="#9b6825" stroke-width="2.4" stroke-linecap="round"><path class="brow brow-left" d="M40 44q7-5 13 0"/><path class="brow brow-right" d="M67 44q7-5 13 0"/></g>
+          <g class="face-mouth" fill="none" stroke="#8d4d28" stroke-width="2.8" stroke-linecap="round">
+            <path class="mouth mouth-neutral" d="M53 70q7 4 14 0"/>
+            <path class="mouth mouth-happy" d="M50 68q10 15 20 0" />
+            <path class="mouth mouth-sad" d="M52 75q8-9 16 0"/>
+            <ellipse class="mouth mouth-surprised" cx="60" cy="71" rx="4" ry="6"/>
+            <path class="mouth mouth-confused" d="M54 71q6-5 12 0"/>
+            <path class="mouth mouth-worried" d="M52 74q8-6 16 0"/>
+            <path class="mouth mouth-proud" d="M52 68q8 8 16 0"/>
+            <path class="mouth mouth-laugh" d="M50 67q10 17 20 0"/>
+            <path class="mouth mouth-smirk" d="M54 70q9 4 15-2"/>
+            <path class="mouth mouth-sleepy" d="M54 72h12"/>
+          </g>
+          <g class="cheeks" fill="#f18b75"><circle cx="34" cy="67" r="5"/><circle cx="86" cy="67" r="5"/></g>
+          <g class="heart-sparkles" fill="#ff7894"><path d="M28 30c-6-7-16 2 0 13 16-11 6-20 0-13Z"/><path d="M94 26c-4-5-11 1 0 9 11-8 4-14 0-9Z"/></g>
+        </g>
+        <g class="bulb-neck">
+          <path d="M46 105h28v7H46z" fill="#e4ad49" stroke="#b77b2d" stroke-width="1.5"/>
+          <path d="M47 112h26v5H47zM49 118h22v5H49z" fill="url(#ianBulbBase)" stroke="#7d8b9b" stroke-width="1.2"/>
+          <path d="M54 124h12" stroke="#6d7d8d" stroke-width="2.5" stroke-linecap="round"/>
+        </g>
+        <g class="sparkle" fill="#fff2a6"><path d="M8 28l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/><path d="M108 14l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></g>
+      </g>
+    </svg>`;
   document.body.appendChild(mascot);
 
   // Маскот автоматически скрывается, если перекрывает поле, кнопку или другой
@@ -225,6 +265,33 @@
     setTimeout(() => mascot.classList.remove(move), move === "snooze" ? 2600 : 1450);
   }
   idleTimer = setInterval(randomIdle, 4600);
+
+  // Небольшие самостоятельные прогулки по свободному нижнему краю экрана.
+  // Не двигаемся, пока человек печатает, перетаскивает персонажа или открыт чат.
+  let roamTimer = 0;
+  function takeTinyWalk() {
+    if (!motionEnabled || document.hidden || drag || chat.classList.contains("open") ||
+        document.querySelector("input:focus,textarea:focus,select:focus,[contenteditable='true']:focus")) return;
+    const rect = mascot.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+    const current = Math.max(8, Math.min(maxLeft, rect.left));
+    const direction = current > maxLeft - 55 ? -1 : current < 55 ? 1 : (Math.random() > .5 ? 1 : -1);
+    const next = Math.max(8, Math.min(maxLeft, current + direction * (34 + Math.random() * 42)));
+    mascot.style.transition = "left 1.15s cubic-bezier(.2,.8,.2,1)";
+    mascot.style.left = next + "px";
+    mascot.style.right = "auto";
+    mascot.classList.add("walk");
+    setEmotion("curious", 1300);
+    setTimeout(() => mascot.classList.remove("walk"), 1250);
+    setTimeout(() => { mascot.style.transition = ""; }, 1400);
+  }
+  roamTimer = window.setInterval(takeTinyWalk, 14500);
+  window.addEventListener("resize", () => {
+    if (drag) return;
+    const r = mascot.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - r.width - 8);
+    if (r.left > maxLeft) mascot.style.left = maxLeft + "px";
+  }, {passive:true});
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) mascot.classList.remove("walk", "run", "happy", "think", "look", "blink", "bird-hop", "bird-flap", "bird-cheer", "bird-fly", "snooze", "dance");
     else checkMascotOverlap();
