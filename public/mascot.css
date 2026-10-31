@@ -110,7 +110,7 @@
 #ian-mascot.motion-enabled.dance .dog-body{animation:ian-mascot-dance .48s ease-in-out 3}
 #ian-mascot.motion-enabled.snooze .dog-body{animation:ian-mascot-snooze 2.4s ease-in-out 1}
 #ian-mascot.motion-enabled.curious .ear-right{transform:rotate(15deg)}
-#ian-mascot.motion-enabled.look .dog-head{transform:translateX(4px) rotate(3deg)}
+#ian-mascot.motion-enabled.look .dog-body{transform:translateX(4px) rotate(2deg)}
 #ian-mascot.motion-enabled.blink .eye{transform:scaleY(.12);transform-box:fill-box;transform-origin:center}
 #ian-mascot.motion-off .dog,#ian-mascot.motion-off .bird,#ian-mascot.motion-off .tail,
 #ian-mascot.motion-off .leg,#ian-mascot.motion-off .bird-wing{animation:none!important}
@@ -130,3 +130,9 @@
   #ian-mascot .speech{right:88px;max-width:min(176px,calc(100vw - 112px))}
   #ian-mascot.speech-left .speech{left:88px;right:auto}
 }
+
+#ian-mascot.motion-enabled.think .dog{animation:ian-think 1.1s ease-in-out infinite}
+#ian-mascot.motion-enabled.bird-fly .bird{animation:ian-bird-flight 1.25s cubic-bezier(.2,.8,.2,1) 1}
+#ian-mascot.motion-enabled.bird-fly .bird-wing{animation:ian-wing .13s ease-in-out 9 alternate}
+#ian-mascot.motion-enabled.bird-cheer .bird{animation:ian-bird-pop .55s cubic-bezier(.2,.8,.2,1) 2}
+#ian-mascot.motion-enabled.bird-flap .bird-wing{animation:ian-wing .18s ease-in-out 5 alternate}
