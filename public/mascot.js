@@ -344,25 +344,67 @@
     mascot.classList.toggle("speech-left", drag.x < innerWidth * 0.48);
     drag.px = e.clientX; drag.py = e.clientY; drag.time = now;
   });
+  let wallBounceCooldown = 0;
+  function showWallImpact(axis) {
+    const now = performance.now();
+    if (now - wallBounceCooldown < 420) return;
+    wallBounceCooldown = now;
+    setEmotion("angry", 1500);
+    mascot.classList.remove("collision");
+    void mascot.offsetWidth;
+    mascot.classList.add("collision", "wall-hit");
+    mascot.style.setProperty("--wall-hit-angle", axis === "x" ? "9deg" : "-7deg");
+    say(["Ай! Стенка! 😠", "Ой, куда это я?! 😤", "Эй, осторожнее с моим носом! 😠"][Math.floor(Math.random()*3)]);
+    setTimeout(() => mascot.classList.remove("collision", "wall-hit"), 620);
+  }
+  function glideAndBounce() {
+    if (drag || !mascot.isConnected) return;
+    const maxX = Math.max(0, innerWidth - mascot.offsetWidth);
+    const maxY = Math.max(0, innerHeight - mascot.offsetHeight);
+    let x = parseFloat(mascot.style.left) || mascot.getBoundingClientRect().left;
+    let y = parseFloat(mascot.style.top) || mascot.getBoundingClientRect().top;
+    let hit = "";
+    x += vx;
+    y += vy;
+    if (x < 0) { x = 0; vx = Math.abs(vx) * 0.72; hit = "x"; }
+    else if (x > maxX) { x = maxX; vx = -Math.abs(vx) * 0.72; hit = "x"; }
+    if (y < 0) { y = 0; vy = Math.abs(vy) * 0.68; hit = hit || "y"; }
+    else if (y > maxY) { y = maxY; vy = -Math.abs(vy) * 0.68; hit = hit || "y"; }
+    if (hit) {
+      showWallImpact(hit);
+      mascot.style.setProperty("--bounce-direction", hit === "x" ? "1" : "-1");
+    }
+    vx *= 0.94;
+    vy *= 0.94;
+    mascot.style.setProperty("left", x + "px", "important");
+    mascot.style.setProperty("top", y + "px", "important");
+    mascot.classList.toggle("speech-left", x < innerWidth * 0.48);
+    if (Math.abs(vx) < 0.18 && Math.abs(vy) < 0.18) {
+      vx = 0; vy = 0; frame = 0;
+      mascot.classList.remove("gliding");
+      return;
+    }
+    frame = requestAnimationFrame(glideAndBounce);
+  }
   function release(e) {
     if (!drag || drag.id !== e.pointerId) return;
     const moved = drag.moved;
-    let x = drag.x, y = drag.y;
+    const x = drag.x, y = drag.y;
     drag = null;
     mascot.classList.remove("dragging");
     if (!moved) return;
     mascot.dataset.dragged = "yes";
-    say("Ух ты! Вот это бросок! 😄");
-    // Keep the mascot exactly where it was released. No inertia or screen-wide flight.
     cancelAnimationFrame(frame);
-    vx = 0; vy = 0;
+    mascot.classList.add("gliding");
+    mascot.classList.remove("collision", "wall-hit");
     mascot.style.setProperty("left", Math.max(0, Math.min(innerWidth - mascot.offsetWidth, x)) + "px", "important");
     mascot.style.setProperty("top", Math.max(0, Math.min(innerHeight - mascot.offsetHeight, y)) + "px", "important");
-    if (motionEnabled) {
-      animate("happy", 900);
-      mascot.classList.add("collision");
-      setTimeout(() => mascot.classList.remove("collision"), 700);
+    if (Math.abs(vx) + Math.abs(vy) < 1.1) {
+      vx *= 1.8; vy *= 1.8;
     }
+    say("Ух ты! Лечу! 🍯");
+    if (motionEnabled) animate("happy", 700);
+    frame = requestAnimationFrame(glideAndBounce);
   }
   mascot.addEventListener("pointerup", release);
   mascot.addEventListener("pointercancel", release);
