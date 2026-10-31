@@ -619,6 +619,27 @@
   }
   roamTimer = window.setInterval(takeTinyWalk, 14500);
   restartRoamTimer();
+
+  // При прокрутке страницы маскот шагает на месте и объявляет «Я в пути!».
+  let scrollWalkTimer = 0, scrollSpeechLock = false, previousScrollY = window.scrollY;
+  window.addEventListener("scroll", () => {
+    const currentScrollY = window.scrollY;
+    const delta = currentScrollY - previousScrollY;
+    previousScrollY = currentScrollY;
+    if (Math.abs(delta) < 3 || !motionEnabled || doNotDisturb || document.hidden || drag || gameActive || chat.classList.contains("open")) return;
+    mascot.classList.toggle("scroll-down", delta > 0);
+    mascot.classList.toggle("scroll-up", delta < 0);
+    mascot.classList.add("scroll-walk");
+    if (!scrollSpeechLock) {
+      scrollSpeechLock = true;
+      say("Я в пути! 🚶💨");
+      window.setTimeout(() => { scrollSpeechLock = false; }, 3600);
+    }
+    clearTimeout(scrollWalkTimer);
+    scrollWalkTimer = window.setTimeout(() => {
+      mascot.classList.remove("scroll-walk", "scroll-down", "scroll-up");
+    }, 850);
+  }, { passive: true });
   window.addEventListener("resize", () => {
     if (drag) return;
     const r = mascot.getBoundingClientRect();
