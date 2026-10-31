@@ -42,7 +42,16 @@
             <ellipse class="mouth mouth-surprised" cx="90" cy="82" rx="5.5" ry="8"/>
             <path class="mouth mouth-angry" d="M80 84 Q90 78 100 84"/>
             <path class="mouth mouth-sleepy" d="M82 82 Q90 84 98 82"/>
+            <path class="mouth mouth-confused" d="M83 82 Q91 77 99 84"/>
+            <path class="mouth mouth-worried" d="M80 86 Q90 79 100 86"/>
+            <path class="mouth mouth-proud" d="M80 79 Q91 88 101 78"/>
+            <path class="mouth mouth-shy" d="M84 83 Q90 86 96 83"/>
+            <ellipse class="mouth mouth-laugh" cx="90" cy="83" rx="9" ry="10"/>
+            <path class="mouth mouth-smirk" d="M84 82 Q94 87 101 78"/>
           </g>
+          <g class="cheeks" fill="#e98f75"><ellipse cx="60" cy="72" rx="7" ry="4"/><ellipse cx="120" cy="72" rx="7" ry="4"/></g>
+          <g class="emotion-tears" aria-hidden="true"><path d="M67 59 Q61 68 67 71 Q73 68 67 59 M113 59 Q107 68 113 71 Q119 68 113 59" fill="#72b9df"/></g>
+          <g class="emotion-stars" aria-hidden="true"><text x="133" y="35" font-size="17" fill="#e7b94f">✦</text><text x="30" y="54" font-size="13" fill="#e7b94f">✦</text></g>
           <g class="heart-sparkles" aria-hidden="true"><text x="137" y="35" font-size="17" fill="#e65b68">♥</text><text x="31" y="57" font-size="11" fill="#e65b68">♥</text></g>
         </g>
         <g class="honey-pot" transform="translate(124 121) rotate(-8)"><path d="M-13 -8 Q-16 1 -12 18 Q0 25 14 17 L12 -8Z" fill="#d99b28" stroke="#9b641b" stroke-width="2"/><rect x="-15" y="-13" width="30" height="7" rx="3" fill="#f1c75b" stroke="#9b641b" stroke-width="1.5"/><path d="M-7 1 Q0 -4 8 1" fill="none" stroke="#fff0ad" stroke-width="2"/><text x="0" y="12" text-anchor="middle" font-size="8" font-weight="800" fill="#70451d">МЁД</text></g>
@@ -128,7 +137,7 @@
     mascot._speechTimer = setTimeout(() => mascot.classList.remove("speak"), 2500);
   }
 
-  const emotionNames = ["neutral", "happy", "sad", "surprised", "curious", "angry", "sleepy", "thinking", "love"];
+  const emotionNames = ["neutral", "happy", "sad", "surprised", "curious", "angry", "sleepy", "thinking", "love", "excited", "confused", "worried", "proud", "shy", "laugh", "playful"];
   function setEmotion(name, duration = 2300) {
     const emotion = emotionNames.includes(name) ? name : "neutral";
     mascot.classList.remove(...emotionNames.map(item => "emotion-" + item));
@@ -148,8 +157,15 @@
     if (/(ого|вау|не ожидал|неожидан|серьезно|серьёзно|правда?!)/i.test(q)) return "surprised";
     if (/(люблю|обожаю|мед|мёд|сердеч|милый|дорогой)/i.test(q)) return "love";
     if (/(спать|сонный|устал|пора спать|спокойной ночи)/i.test(q)) return "sleepy";
+    if (/(не понял|не понимаю|запутал|странно)/i.test(q)) return "confused";
+    if (/(боюсь|страшно|пережива|волнуюсь|тревожно)/i.test(q)) return "worried";
+    if (/(горжусь|получилось|сдал|победил|готово)/i.test(q)) return "proud";
+    if (/(стесняюсь|неловко|смущен|смущён)/i.test(q)) return "shy";
+    if (/(ха-ха|ахаха|смешно|шутка|рассмеш)/i.test(q)) return "laugh";
+    if (/(играть|игра|прикол|шалость)/i.test(q)) return "playful";
+    if (/(ура|супер|круто|восторг|невероятно)/i.test(q)) return "excited";
     if (/(думаю|подумай|почему|как именно|что значит|объясни)/i.test(q) || /\?\s*$/.test(q)) return "thinking";
-    if (/(привет|здравствуй|ура|рад|счастлив|спасибо|молодец|класс|отлично)/i.test(q)) return "happy";
+    if (/(привет|здравствуй|рад|счастлив|спасибо|молодец|класс|отлично)/i.test(q)) return "happy";
     return "curious";
   }
 
@@ -236,10 +252,11 @@
   }
   function playMascotScenario(action) {
     const emotionByAction = {
-      happy: "happy", dance: "happy", jump: "happy", wave: "happy",
-      walk: "curious", run: "happy", look: "curious", blink: "happy",
+      happy: "happy", dance: "playful", jump: "excited", wave: "happy",
+      walk: "curious", run: "excited", look: "curious", blink: "shy",
       think: "thinking", snooze: "sleepy", sleep: "sleepy",
-      sad: "sad", surprise: "surprised", angry: "angry", love: "love"
+      sad: "sad", surprise: "surprised", angry: "angry", love: "love",
+      confused: "confused", worried: "worried", proud: "proud", laugh: "laugh"
     };
     setEmotion(emotionByAction[action] || "curious", 2200);
     if(!motionEnabled) return;
