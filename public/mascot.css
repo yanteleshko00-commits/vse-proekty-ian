@@ -361,3 +361,26 @@
 #ian-mascot.gliding .dog-body{animation:loony-float .34s ease-in-out infinite alternate}
 @keyframes loony-float{from{transform:translateY(0) rotate(-2deg)}to{transform:translateY(-5px) rotate(2deg)}}
 @media(prefers-reduced-motion:reduce){#ian-mascot.gliding .dog-body{animation:none!important}}
+
+
+/* Диалоговая реплика маскота: компактный пузырь, который всегда остаётся в границах экрана. */
+#ian-mascot .speech{
+  position:fixed!important;
+  z-index:9010;
+  display:block;
+  box-sizing:border-box;
+  width:max-content;
+  max-width:min(260px,calc(100vw - 24px))!important;
+  max-height:min(32vh,190px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  white-space:normal;
+  padding:9px 12px;
+  line-height:1.35;
+  border-radius:16px;
+  box-shadow:0 5px 22px #18372620;
+  -webkit-overflow-scrolling:touch;
+}
+#ian-mascot.speak .speech{opacity:1;transform:translateY(0) scale(1)}
