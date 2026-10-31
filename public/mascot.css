@@ -569,3 +569,27 @@ html[data-theme="dark"] #ian-mascot .speech{
 @media(prefers-reduced-motion:reduce){#ian-mascot.motion-enabled .dog-body,#ian-mascot.motion-enabled .bear-head,#ian-mascot.motion-enabled .arm,#ian-mascot.motion-enabled .leg{animation:none!important}}
 
 #ian-mascot .bear-eyes .eye{translate:var(--gaze-x,0px) var(--gaze-y,0px);transition:translate .12s ease,transform .16s ease}
+
+
+/* Расширенные настройки, мини-игра и мелкие состояния персонажа */
+#ian-mascot-chat .head .mascot-settings-toggle{margin-left:0;flex:0 0 34px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(30,60,42,.12);background:rgba(255,255,255,.82);color:#176b43;font-size:17px;line-height:1;box-shadow:none}
+#ian-mascot-chat .head .mascot-settings-toggle.active{background:#dff4e6;transform:rotate(35deg)}
+#ian-mascot-settings{display:flex;flex-direction:column;gap:11px;padding:13px 14px;border-bottom:1px solid rgba(36,72,50,.12);background:rgba(242,249,243,.96);color:#20372a;font:13px/1.35 -apple-system,BlinkMacSystemFont,sans-serif}
+#ian-mascot-settings[hidden]{display:none!important}
+#ian-mascot-settings .mascot-setting-check{display:flex;align-items:center;gap:9px;font-weight:650;cursor:pointer}
+#ian-mascot-settings input[type=checkbox]{width:18px;height:18px;accent-color:#168653}
+#ian-mascot-settings .mascot-setting-range{display:grid;grid-template-columns:1fr auto;gap:5px 10px;font-weight:650}
+#ian-mascot-settings .mascot-setting-range strong{color:#168653;font-variant-numeric:tabular-nums}
+#ian-mascot-settings input[type=range]{grid-column:1/-1;width:100%;margin:2px 0;accent-color:#168653}
+#ian-mascot-settings .mascot-setting-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+#ian-mascot-settings .mascot-setting-actions button{min-height:36px;padding:8px 10px;border:1px solid rgba(22,134,83,.16);border-radius:11px;background:#fff;color:#176b43;font:650 12px -apple-system,sans-serif}
+#ian-mascot-settings .mascot-setting-actions button:first-child{background:#168653;color:#fff}
+#ian-mascot-settings .mascot-setting-actions button:last-child{grid-column:1/-1}
+#ian-mascot-settings .mascot-settings-note{color:#718078;font-size:11px}
+#ian-mascot.game-mode{z-index:9003;cursor:pointer;filter:drop-shadow(0 9px 18px rgba(236,164,30,.35))}
+#ian-mascot.game-mode .dog-body{animation:ian-game-hop .48s ease-in-out infinite alternate}
+#ian-mascot.game-mode .sparkle{animation:ian-game-sparkle .8s ease-in-out infinite alternate;transform-origin:center}
+@keyframes ian-game-hop{from{transform:translateY(0) rotate(-4deg)}to{transform:translateY(-11px) rotate(4deg)}}
+@keyframes ian-game-sparkle{from{opacity:.4;transform:scale(.75)}to{opacity:1;transform:scale(1.2)}}
+@media(max-width:600px){#ian-mascot-chat .head .mascot-settings-toggle{width:32px;height:32px;flex-basis:32px}#ian-mascot-settings{padding:11px 12px;gap:9px}#ian-mascot-settings .mascot-setting-actions button{min-height:40px}}
+@media(prefers-reduced-motion:reduce){#ian-mascot.game-mode .dog-body,#ian-mascot.game-mode .sparkle{animation:none!important}}
