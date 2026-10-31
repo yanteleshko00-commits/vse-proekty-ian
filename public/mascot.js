@@ -127,6 +127,329 @@
   const form = chat.querySelector("form");
   let lit = false, taps = 0, tapTimer, drag = null, vx = 0, vy = 0, frame = 0;
 
+  // Дополнительный характер, настройки, контекстные подсказки и мини-игра.
+  let doNotDisturb = false, soundEnabled = false, roamSpeed = 1.2;
+  let gameActive = false, gameCatchCount = 0, gameMoveTimer = 0, gameClockTimer = 0, gameSecondsLeft = 18;
+  let petTimer = 0, petPerformed = false, petStartPoint = null;
+  let lastHumanAction = Date.now(), lastPersonalityLine = 0, hintTimer = 0, lastFieldInputAt = 0;
+  const hintedFields = new WeakSet();
+
+  const settingsControl = document.createElement("button");
+  settingsControl.type = "button";
+  settingsControl.className = "mascot-settings-toggle";
+  settingsControl.textContent = "⚙";
+  settingsControl.title = "Настройки маскота";
+  settingsControl.setAttribute("aria-label", "Настройки маскота");
+  settingsControl.setAttribute("aria-expanded", "false");
+  chat.querySelector(".head").insertBefore(settingsControl, chat.querySelector(".head button[aria-label='Закрыть']"));
+
+  const settingsPanel = document.createElement("div");
+  settingsPanel.id = "ian-mascot-settings";
+  settingsPanel.className = "mascot-settings-panel";
+  settingsPanel.hidden = true;
+  settingsPanel.innerHTML =
+    '<label class="mascot-setting-check"><input id="mascot-dnd" type="checkbox"> Не беспокоить</label>' +
+    '<label class="mascot-setting-check"><input id="mascot-sound" type="checkbox"> Звуки реакций</label>' +
+    '<label class="mascot-setting-range">Скорость прогулки <strong id="mascot-speed-value">1,2×</strong><input id="mascot-speed" type="range" min="0.6" max="2.4" step="0.2" value="1.2"></label>' +
+    '<label class="mascot-setting-range">Размер маскота <strong id="mascot-size-value">90 px</strong><input id="mascot-size" type="range" min="64" max="144" step="4" value="90"></label>' +
+    '<div class="mascot-setting-actions"><button type="button" data-mascot-action="game">🎮 Поймай меня</button><button type="button" data-mascot-action="stop-game">Остановить игру</button><button type="button" data-mascot-action="home">⌂ Вернуть домой</button></div>' +
+    '<div class="mascot-settings-note">Настройки сохраняются на этом устройстве.</div>';
+  chat.insertBefore(settingsPanel, messages);
+
+  const dndControl = settingsPanel.querySelector("#mascot-dnd");
+  const soundControl = settingsPanel.querySelector("#mascot-sound");
+  const speedControl = settingsPanel.querySelector("#mascot-speed");
+  const sizeControl = settingsPanel.querySelector("#mascot-size");
+  const speedValue = settingsPanel.querySelector("#mascot-speed-value");
+  const sizeValue = settingsPanel.querySelector("#mascot-size-value");
+
+  function readMascotPreference(key, fallback) {
+    try { const value = localStorage.getItem("ianMascot:" + key); return value === null ? fallback : value; }
+    catch (_) { return fallback; }
+  }
+  function saveMascotPreference(key, value) {
+    try { localStorage.setItem("ianMascot:" + key, String(value)); } catch (_) {}
+  }
+  doNotDisturb = readMascotPreference("dnd", "off") === "on";
+  soundEnabled = readMascotPreference("sound", "off") === "on";
+  roamSpeed = Math.max(.6, Math.min(2.4, Number(readMascotPreference("speed", "1.2")) || 1.2));
+  dndControl.checked = doNotDisturb;
+  soundControl.checked = soundEnabled;
+  speedControl.value = String(roamSpeed);
+  speedValue.textContent = roamSpeed.toFixed(1).replace(".", ",") + "×";
+
+  function setSettingsOpen(open) {
+    settingsPanel.hidden = !open;
+    settingsControl.setAttribute("aria-expanded", String(open));
+    settingsControl.classList.toggle("active", open);
+  }
+  settingsControl.addEventListener("click", () => setSettingsOpen(settingsPanel.hidden));
+  dndControl.addEventListener("change", () => {
+    doNotDisturb = dndControl.checked;
+    saveMascotPreference("dnd", doNotDisturb ? "on" : "off");
+    say(doNotDisturb ? "Режим «Не беспокоить» включён." : "Снова могу подсказывать и гулять!");
+    if (doNotDisturb) stopCatchGame(false, true);
+  });
+  soundControl.addEventListener("change", () => {
+    soundEnabled = soundControl.checked;
+    saveMascotPreference("sound", soundEnabled ? "on" : "off");
+    if (soundEnabled) playMascotSound(660);
+  });
+  speedControl.addEventListener("input", () => {
+    roamSpeed = Number(speedControl.value);
+    speedValue.textContent = roamSpeed.toFixed(1).replace(".", ",") + "×";
+    saveMascotPreference("speed", roamSpeed);
+    restartRoamTimer();
+  });
+
+  function applyMascotSize(size) {
+    const safeSize = Math.max(64, Math.min(144, Number(size) || 90));
+    mascot.style.setProperty("width", safeSize + "px", "important");
+    mascot.style.setProperty("height", Math.round(safeSize * .88) + "px", "important");
+    const r = mascot.getBoundingClientRect();
+    mascot.style.setProperty("left", Math.max(4, Math.min(innerWidth - r.width - 4, r.left)) + "px", "important");
+    mascot.style.setProperty("top", Math.max(4, Math.min(innerHeight - r.height - 4, r.top)) + "px", "important");
+  }
+  const savedSize = Number(readMascotPreference("size", "0"));
+  if (savedSize >= 64 && savedSize <= 144) {
+    sizeControl.value = String(savedSize);
+    applyMascotSize(savedSize);
+  } else {
+    sizeControl.value = String(Math.max(64, Math.min(144, Math.round(mascot.getBoundingClientRect().width))));
+  }
+  sizeValue.textContent = sizeControl.value + " px";
+  sizeControl.addEventListener("input", () => {
+    const size = Number(sizeControl.value);
+    sizeValue.textContent = size + " px";
+    applyMascotSize(size);
+    saveMascotPreference("size", size);
+  });
+
+  function playMascotSound(frequency = 560) {
+    if (!soundEnabled || document.hidden) return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    try {
+      const context = new AudioCtx(), oscillator = context.createOscillator(), gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(.045, context.currentTime + .025);
+      gain.gain.exponentialRampToValueAtTime(.0001, context.currentTime + .16);
+      oscillator.connect(gain); gain.connect(context.destination);
+      oscillator.start(); oscillator.stop(context.currentTime + .17);
+      oscillator.onended = () => context.close().catch(() => {});
+    } catch (_) {}
+  }
+  function restartRoamTimer() {
+    if (roamTimer) clearInterval(roamTimer);
+    roamTimer = window.setInterval(takeTinyWalk, Math.round(18000 / Math.max(.6, roamSpeed)));
+  }
+
+  function returnMascotHome() {
+    stopCatchGame(false, true);
+    mascot.style.removeProperty("left"); mascot.style.removeProperty("top");
+    mascot.style.removeProperty("right"); mascot.style.removeProperty("bottom");
+    mascot.style.removeProperty("transition");
+    mascot.classList.remove("gliding", "dragging", "game-mode");
+    setEmotion("happy", 1400);
+    if (motionEnabled) animate("happy", 900);
+    say("Я вернулся на своё место! 💡");
+  }
+  function moveMascotForGame() {
+    const r = mascot.getBoundingClientRect();
+    const maxX = Math.max(8, innerWidth - r.width - 8);
+    const maxY = Math.max(70, innerHeight - r.height - 72);
+    const minY = Math.min(95, maxY);
+    const x = 8 + Math.random() * Math.max(0, maxX - 8);
+    const y = minY + Math.random() * Math.max(0, maxY - minY);
+    mascot.style.transition = "left .42s cubic-bezier(.2,.8,.2,1), top .42s cubic-bezier(.2,.8,.2,1)";
+    mascot.style.setProperty("left", x + "px", "important");
+    mascot.style.setProperty("top", y + "px", "important");
+    mascot.style.setProperty("right", "auto", "important");
+    mascot.style.setProperty("bottom", "auto", "important");
+  }
+  function stopCatchGame(won = false, quiet = false) {
+    if (!gameActive) return;
+    gameActive = false;
+    clearInterval(gameMoveTimer); clearInterval(gameClockTimer);
+    gameMoveTimer = 0; gameClockTimer = 0;
+    mascot.classList.remove("game-mode", "run", "dance");
+    mascot.style.removeProperty("transition");
+    if (won) {
+      let best = 0;
+      try { best = Number(localStorage.getItem("ianMascotCatchBest") || 0); } catch (_) {}
+      if (gameCatchCount > best) {
+        best = gameCatchCount;
+        try { localStorage.setItem("ianMascotCatchBest", String(best)); } catch (_) {}
+      }
+      setEmotion("delighted", 2400);
+      if (motionEnabled) animate("dance", 1500);
+      playMascotSound(880);
+      if (!quiet) say("Поймал! 🎉 " + gameCatchCount + " из 5. Рекорд: " + best + ".");
+    } else if (!quiet) {
+      setEmotion("playful", 1800);
+      say("Время вышло! Ты поймал меня " + gameCatchCount + " из 5. Попробуем ещё раз?");
+    }
+  }
+  function catchMascot() {
+    if (!gameActive) return;
+    gameCatchCount++;
+    setEmotion("excited", 650);
+    playMascotSound(620 + gameCatchCount * 55);
+    if (gameCatchCount >= 5) { stopCatchGame(true); return; }
+    say("Есть! " + gameCatchCount + "/5. Ещё немного!");
+    setTimeout(() => { if (gameActive) moveMascotForGame(); }, 260);
+  }
+  function beginCatchGame() {
+    if (gameActive || doNotDisturb) return;
+    chat.classList.remove("open"); setSettingsOpen(false);
+    gameCatchCount = 0; gameSecondsLeft = 18; gameActive = true;
+    mascot.classList.add("game-mode", "run");
+    setEmotion("playful", 19000);
+    say("Поймай меня 5 раз за 18 секунд! 🎮");
+    playMascotSound(740); moveMascotForGame();
+    gameMoveTimer = window.setInterval(moveMascotForGame, Math.max(580, 1100 / roamSpeed));
+    gameClockTimer = window.setInterval(() => {
+      if (document.hidden) { stopCatchGame(false, true); return; }
+      gameSecondsLeft--;
+      if (gameSecondsLeft <= 0) stopCatchGame(false);
+      else if (gameSecondsLeft === 10 || gameSecondsLeft === 5) say("Осталось " + gameSecondsLeft + " секунд!");
+    }, 1000);
+  }
+  settingsPanel.querySelectorAll("[data-mascot-action]").forEach(button => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.mascotAction;
+      if (action === "game") beginCatchGame();
+      else if (action === "stop-game") { stopCatchGame(false); setSettingsOpen(false); }
+      else if (action === "home") { setSettingsOpen(false); returnMascotHome(); }
+    });
+  });
+
+  function petMascot() {
+    petPerformed = true;
+    setEmotion("love", 1500);
+    if (motionEnabled) animate("happy", 1100);
+    playMascotSound(700);
+    say(["Ой, как приятно! 💛", "Спасибо за поглаживание!", "Вот это забота! Я доволен."][Math.floor(Math.random() * 3)]);
+  }
+  mascot.addEventListener("pointerdown", event => {
+    if (event.button !== undefined && event.button !== 0) return;
+    petStartPoint = { x: event.clientX, y: event.clientY };
+    clearTimeout(petTimer);
+    petTimer = window.setTimeout(() => {
+      if (petStartPoint && drag && !drag.moved) petMascot();
+    }, 680);
+  });
+  mascot.addEventListener("pointermove", event => {
+    if (!petStartPoint) return;
+    if (Math.abs(event.clientX - petStartPoint.x) + Math.abs(event.clientY - petStartPoint.y) > 10) {
+      clearTimeout(petTimer); petTimer = 0;
+    }
+  });
+  mascot.addEventListener("pointerup", () => {
+    clearTimeout(petTimer); petTimer = 0; petStartPoint = null;
+  });
+  mascot.addEventListener("pointercancel", () => {
+    clearTimeout(petTimer); petTimer = 0; petStartPoint = null; petPerformed = false;
+  });
+
+  function getPageStage() {
+    const statusText = document.getElementById("status")?.textContent || "";
+    const result = document.getElementById("projectResult");
+    if (/создаём|создаем|генерац|анализируем/i.test(statusText) && document.getElementById("progressBox")?.style.display !== "none")
+      return "Сейчас идёт создание проекта. Лучше не обновлять страницу и дождаться готовности.";
+    if (result && getComputedStyle(result).display !== "none")
+      return "Проект уже готов. Можно скачать файлы или попросить меня подсказать, что улучшить.";
+    if (document.activeElement?.id === "editInstruction")
+      return "Ты редактируешь проект. Напиши конкретно, что нужно исправить или добавить.";
+    if (document.activeElement?.id === "topic" || document.activeElement?.name === "topic")
+      return "Ты выбираешь тему. Хорошая тема конкретная, понятная и такую работу реально выполнить.";
+    if (/презентац/i.test(location.hash) || document.activeElement?.id?.toLowerCase().includes("presentation"))
+      return "Ты работаешь с презентацией. Сначала укажи тему, затем проверь структуру и число слайдов.";
+    return "Я могу подсказать по созданию проекта, презентации и работе с сайтом.";
+  }
+  function getFieldHint(field) {
+    const key = ((field.id || "") + " " + (field.name || "") + " " + (field.placeholder || "")).toLowerCase();
+    if (/topic|тема/.test(key)) return "Подсказка: сузь тему до одного понятного вопроса — так проект получится точнее.";
+    if (/slide|слайд/.test(key)) return "Подсказка: ориентируйся на требования учителя. Если их нет, обычно удобно начать с 8–12 слайдов.";
+    if (/school|школ/.test(key)) return "Это поле можно заполнить названием школы; не добавляй сюда личные данные, которые не требуются.";
+    if (/class|класс/.test(key)) return "Укажи класс в том формате, который просит форма.";
+    if (/require|дополн|пожелан/.test(key)) return "В пожеланиях можно указать требования учителя, стиль оформления и нужные практические материалы.";
+    if (/edit|измен|instruction/.test(key)) return "Лучше перечислить изменения конкретно: что убрать, что добавить и что переписать.";
+    const label = field.labels?.[0]?.textContent?.trim();
+    return label ? "Подсказка по полю «" + label + "»: заполняй его по требованиям задания." : "Нужна подсказка? Спроси меня — помогу разобраться.";
+  }
+  document.addEventListener("focusin", event => {
+    const field = event.target;
+    if (!field.matches?.("input,textarea,select,[contenteditable='true']") || field.closest("#ian-mascot-chat") || doNotDisturb || hintedFields.has(field)) return;
+    clearTimeout(hintTimer);
+    hintTimer = window.setTimeout(() => {
+      if (document.activeElement !== field || doNotDisturb || chat.classList.contains("open") || Date.now() - lastFieldInputAt < 9000) return;
+      hintedFields.add(field); say(getFieldHint(field)); setEmotion("thinking", 2200);
+    }, 22000);
+  });
+  document.addEventListener("focusout", event => {
+    if (event.target.matches?.("input,textarea,select,[contenteditable='true']")) clearTimeout(hintTimer);
+  });
+  document.addEventListener("input", event => {
+    if (!event.target.closest("#ian-mascot-chat")) lastFieldInputAt = Date.now();
+  });
+
+  const personalityLines = [
+    ["Люблю, когда на сайте появляются новые идеи! 💡", "delighted"],
+    ["Пока осмотрю страницу. Вдруг найду что-нибудь интересное.", "curious"],
+    ["Хм-м, кажется, здесь может родиться отличный проект.", "thinking"],
+    ["Секундочку… проверяю, всё ли вокруг в порядке.", "look"],
+    ["Я немного подремлю, пока ты занят. 😴", "sleepy"],
+    ["Мой внутренний моторчик сегодня работает отлично!", "excited"]
+  ];
+  window.setInterval(() => {
+    if (doNotDisturb || !motionEnabled || document.hidden || gameActive || chat.classList.contains("open") ||
+        mascot.classList.contains("dragging") || Date.now() - lastHumanAction < 65000 ||
+        Date.now() - lastPersonalityLine < 115000) return;
+    const line = personalityLines[Math.floor(Math.random() * personalityLines.length)];
+    lastPersonalityLine = Date.now();
+    setEmotion(line[1], 2400);
+    if (line[1] === "sleepy") mascot.classList.add("snooze");
+    else if (line[1] === "delighted" || line[1] === "excited") animate("happy", 1200);
+    else if (line[1] === "thinking") animate("think", 1600);
+    say(line[0]);
+  }, 26000);
+  document.addEventListener("pointerdown", event => {
+    if (!event.target.closest("#ian-mascot-chat")) lastHumanAction = Date.now();
+  }, { passive: true });
+  document.addEventListener("keydown", () => { lastHumanAction = Date.now(); }, { passive: true });
+
+  function handleMascotSpecialCommand(question) {
+    const q = normalizeMascotText(question);
+    if (/поймай меня|давай играть|сыграем|мини игра|миниигра/.test(q)) {
+      addMessage(question, "user"); addMessage("Попробуй поймать меня пять раз за 18 секунд!", "bot");
+      beginCatchGame(); return true;
+    }
+    if (/настройк/.test(q)) {
+      addMessage(question, "user");
+      addMessage("Открыл мои настройки. Здесь можно настроить размер, скорость и режим тишины.", "bot");
+      chat.classList.add("open"); setSettingsOpen(true); return true;
+    }
+    if (/поглад|дай пять|пять мне/.test(q)) {
+      addMessage(question, "user"); addMessage("Хи-хи! Спасибо! 💛", "bot"); petMascot(); return true;
+    }
+    if (/секрет|магия|золотой мёд|золотый мед/.test(q)) {
+      addMessage(question, "user"); addMessage("Ты нашёл секретную реакцию! Включаю золотой танец! ✨", "bot");
+      setEmotion("delighted", 2600);
+      if (motionEnabled) animate("dance", 1800);
+      mascot.classList.add("lit"); lit = true; playMascotSound(940);
+      say("Секрет найден! Ты настоящий исследователь! 🌟"); return true;
+    }
+    if (/что происходит|где я|на каком этапе|что делать сейчас/.test(q)) {
+      addMessage(question, "user"); addMessage(getPageStage(), "bot"); return true;
+    }
+    return false;
+  }
+  document.addEventListener("keydown", event => { if (event.key === "Escape") setSettingsOpen(false); });
+  document.addEventListener("visibilitychange", () => { if (document.hidden && gameActive) stopCatchGame(false, true); });
+
   function positionSpeech() {
     const bounds = mascot.getBoundingClientRect();
     const gap = 25, margin = 12;
@@ -253,7 +576,7 @@
   const bird = mascot.querySelector(".bird");
   let idleTimer;
   function randomIdle() {
-    if (!motionEnabled || document.hidden || mascot.classList.contains("dragging") || chat.classList.contains("open")) return;
+    if (!motionEnabled || doNotDisturb || gameActive || document.hidden || mascot.classList.contains("dragging") || chat.classList.contains("open")) return;
     // Idle motion stays in place; the mascot never wanders over page content.
     const moves = ["look", "blink", "snooze", "happy", "think"];
     const move = moves[Math.floor(Math.random() * moves.length)];
@@ -270,7 +593,7 @@
   // Не двигаемся, пока человек печатает, перетаскивает персонажа или открыт чат.
   let roamTimer = 0;
   function takeTinyWalk() {
-    if (!motionEnabled || document.hidden || drag || chat.classList.contains("open") ||
+    if (!motionEnabled || doNotDisturb || gameActive || document.hidden || drag || chat.classList.contains("open") ||
         document.querySelector("input:focus,textarea:focus,select:focus,[contenteditable='true']:focus")) return;
     const rect = mascot.getBoundingClientRect();
     const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
@@ -286,6 +609,7 @@
     setTimeout(() => { mascot.style.transition = ""; }, 1400);
   }
   roamTimer = window.setInterval(takeTinyWalk, 14500);
+  restartRoamTimer();
   window.addEventListener("resize", () => {
     if (drag) return;
     const r = mascot.getBoundingClientRect();
@@ -310,6 +634,7 @@
   }
   function openChat() {
     chat.classList.add("open");
+    setSettingsOpen(false);
     say(["О, привет! Ты ко мне? 🍯", "Ну наконец-то! Я уже заскучал.", "Привет-привет! Что нового?", "Я тут! Рассказывай, что случилось."][Math.floor(Math.random()*4)]);
     setEmotion("happy", 1300);
     setTimeout(() => input.focus({ preventScroll: true }), 180);
@@ -366,6 +691,8 @@
       mascot.dataset.dragged = "";
       return;
     }
+    if (petPerformed) { petPerformed = false; return; }
+    if (gameActive) { catchMascot(); return; }
     taps++;
     clearTimeout(tapTimer);
     if (taps === 3) {
@@ -380,7 +707,10 @@
       }, 430);
     }
   });
-  chat.querySelector(".head button[aria-label=\"Закрыть\"]").addEventListener("click", () => chat.classList.remove("open"));
+  chat.querySelector(".head button[aria-label=\"Закрыть\"]").addEventListener("click", () => {
+    chat.classList.remove("open");
+    setSettingsOpen(false);
+  });
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && chat.classList.contains("open")) chat.classList.remove("open");
   });
@@ -537,6 +867,11 @@
     e.preventDefault();
     const question = input.value.trim();
     if (!question || form.dataset.sending === "yes") return;
+    if (handleMascotSpecialCommand(question)) {
+      input.value = "";
+      messages.scrollTop = messages.scrollHeight;
+      return;
+    }
 
     setEmotion(inferEmotion(question), 30000);
     const localScenario = awaitingDialogueReply ? null : findMascotScenario(question);
@@ -589,7 +924,7 @@
 
   let lastGeneralReaction = 0;
   function reactToAction(emotion = "curious", animation = "look", bubble = "") {
-    if (!motionEnabled || document.hidden || mascot.classList.contains("dragging")) return;
+    if (!motionEnabled || doNotDisturb || document.hidden || mascot.classList.contains("dragging")) return;
     const now = Date.now();
     if (now - lastGeneralReaction < 650) return;
     lastGeneralReaction = now;
