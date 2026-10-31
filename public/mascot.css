@@ -653,3 +653,21 @@ html[data-theme="dark"] #ian-mascot .speech{border-color:rgba(125,198,255,.34)!i
 @keyframes ian-scroll-arm-b{from{transform:rotate(-18deg)}to{transform:rotate(24deg)}}
 @keyframes ian-scroll-sparkle{from{opacity:.35;transform:scale(.72) rotate(0)}to{opacity:1;transform:scale(1.18) rotate(18deg)}}
 @media(prefers-reduced-motion:reduce){#ian-mascot.scroll-walk .dog-body,#ian-mascot.scroll-walk .stick-legs .leg,#ian-mascot.scroll-walk .stick-arms .arm,#ian-mascot.scroll-walk .sparkle{animation:none!important}}
+
+
+/* Дополнительные живые жесты в паузах между действиями пользователя. */
+#ian-mascot.motion-enabled.wiggle .dog-body{animation:ian-idle-wiggle .48s cubic-bezier(.36,.07,.19,.97) 2!important}
+#ian-mascot.motion-enabled.stretch .dog-body{animation:ian-idle-stretch .95s cubic-bezier(.2,.8,.2,1) 2!important}
+#ian-mascot.motion-enabled.bounce .dog{animation:ian-idle-bounce .62s cubic-bezier(.2,.8,.2,1) 2!important}
+#ian-mascot.motion-enabled.peek .dog-body{animation:ian-idle-peek .7s cubic-bezier(.2,.8,.2,1) 2!important}
+#ian-mascot.motion-enabled.wiggle .sparkle,#ian-mascot.motion-enabled.bounce .sparkle{animation:ian-idle-twinkle .42s ease-in-out 4 alternate!important;transform-origin:center}
+@keyframes ian-idle-wiggle{0%,100%{transform:rotate(0)}20%{transform:rotate(-8deg) translateY(-2px)}40%{transform:rotate(7deg)}60%{transform:rotate(-5deg) translateY(-1px)}80%{transform:rotate(4deg)}}
+@keyframes ian-idle-stretch{0%,100%{transform:scale(1,1)}35%{transform:scale(1.035,.94) translateY(2px)}65%{transform:scale(.98,1.055) translateY(-3px)}}
+@keyframes ian-idle-bounce{0%,100%{transform:translateY(0) scale(1)}35%{transform:translateY(-15px) scale(1.045,.97)}58%{transform:translateY(1px) scale(.97,1.04)}78%{transform:translateY(-5px) scale(1.015,.99)}}
+@keyframes ian-idle-peek{0%,100%{transform:translateX(0) rotate(0)}35%{transform:translateX(7px) rotate(5deg)}70%{transform:translateX(-3px) rotate(-3deg)}}
+@keyframes ian-idle-twinkle{from{opacity:.35;transform:scale(.7) rotate(-12deg)}to{opacity:1;transform:scale(1.3) rotate(18deg)}}
+@media(prefers-reduced-motion:reduce){
+ #ian-mascot.motion-enabled.wiggle .dog-body,#ian-mascot.motion-enabled.stretch .dog-body,
+ #ian-mascot.motion-enabled.bounce .dog,#ian-mascot.motion-enabled.peek .dog-body,
+ #ian-mascot.motion-enabled.wiggle .sparkle,#ian-mascot.motion-enabled.bounce .sparkle{animation:none!important}
+}
