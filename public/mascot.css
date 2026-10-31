@@ -354,3 +354,10 @@
 @media(prefers-reduced-motion:reduce){
   #ian-mascot:active{transform:none}
 }
+
+
+/* Живые реакции на встряхивание и бросок — оригинальные эффекты маскота. */
+#ian-mascot.collision .dog-body{animation:bear-bonk .42s ease-out 2!important}
+#ian-mascot.gliding .dog-body{animation:loony-float .34s ease-in-out infinite alternate}
+@keyframes loony-float{from{transform:translateY(0) rotate(-2deg)}to{transform:translateY(-5px) rotate(2deg)}}
+@media(prefers-reduced-motion:reduce){#ian-mascot.gliding .dog-body{animation:none!important}}
