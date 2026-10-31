@@ -16,7 +16,7 @@
           <span class="eye-wrap"><span class="eye"></span><span class="eye-shine"></span></span>
         </div>
       </div>
-    </div>`
+    </div>`;
   document.body.appendChild(mascot);
 
   // Маскот автоматически скрывается, если перекрывает поле, кнопку или другой
@@ -89,19 +89,36 @@
 
   function positionSpeech() {
     const bounds = mascot.getBoundingClientRect();
+    const gap = 25, margin = 12;
     speech.style.position = "fixed";
-    speech.style.maxWidth = Math.max(120, Math.min(260, window.innerWidth - 24)) + "px";
     speech.style.left = "0px";
     speech.style.top = "0px";
-    const bubble = speech.getBoundingClientRect();
-    const gap = 25;
-    let left = bounds.left + bounds.width / 2 < window.innerWidth / 2
-      ? bounds.right + gap
-      : bounds.left - bubble.width - gap;
-    left = Math.max(12, Math.min(left, window.innerWidth - bubble.width - 12));
-    let top = bounds.top + bounds.height / 2 - bubble.height / 2;
-    if (top + bubble.height > window.innerHeight - 10) top = window.innerHeight - bubble.height - 10;
-    top = Math.max(10, top);
+
+    const rightSpace = window.innerWidth - bounds.right - gap - margin;
+    const leftSpace = bounds.left - gap - margin;
+    const useRight = rightSpace >= leftSpace;
+    const sideSpace = Math.max(rightSpace, leftSpace);
+    let left, top, bubble;
+
+    if (sideSpace >= 145) {
+      speech.style.maxWidth = Math.min(260, sideSpace) + "px";
+      bubble = speech.getBoundingClientRect();
+      left = useRight ? bounds.right + gap : bounds.left - bubble.width - gap;
+      top = bounds.top + bounds.height / 2 - bubble.height / 2;
+    } else {
+      // When the mascot is near the middle, place the bubble above or below it.
+      speech.style.maxWidth = Math.max(120, Math.min(260, window.innerWidth - margin * 2)) + "px";
+      bubble = speech.getBoundingClientRect();
+      left = bounds.left + bounds.width / 2 - bubble.width / 2;
+      const belowSpace = window.innerHeight - bounds.bottom - gap - margin;
+      const aboveSpace = bounds.top - gap - margin;
+      top = belowSpace >= bubble.height || belowSpace >= aboveSpace
+        ? bounds.bottom + gap
+        : bounds.top - bubble.height - gap;
+    }
+
+    left = Math.max(margin, Math.min(left, window.innerWidth - bubble.width - margin));
+    top = Math.max(margin, Math.min(top, window.innerHeight - bubble.height - margin));
     speech.style.left = left + "px";
     speech.style.top = top + "px";
   }
