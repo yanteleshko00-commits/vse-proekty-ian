@@ -504,3 +504,66 @@ html[data-theme="dark"] #ian-mascot .speech{
 @media(prefers-reduced-motion:reduce){
   #ian-mascot .logo-eyes .eye{transition:none}
 }
+
+
+/* Новый персонаж: самостоятельная лампочка с палочками-ручками и ножками. */
+#ian-mascot{
+  width:112px!important;height:148px!important;
+  left:auto!important;right:12px!important;top:auto!important;
+  bottom:calc(18px + env(safe-area-inset-bottom))!important;
+  overflow:visible!important;
+  filter:drop-shadow(0 8px 13px rgba(93,67,20,.2))!important;
+}
+#ian-mascot .bulb-character{display:block;width:100%;height:100%;overflow:visible}
+#ian-mascot .dog-body{transform-origin:60px 125px}
+#ian-mascot .bear-head{transform-origin:60px 72px;transition:transform .28s ease}
+#ian-mascot .stick-arms,#ian-mascot .stick-legs{transform-box:fill-box;transform-origin:center}
+#ian-mascot .arm{transform-box:fill-box;transform-origin:50% 12%;transition:transform .25s ease}
+#ian-mascot .leg{transform-box:fill-box;transform-origin:50% 5%}
+#ian-mascot.motion-enabled .dog-body{animation:bulb-idle 3.2s ease-in-out infinite}
+#ian-mascot.motion-enabled .bear-head{animation:bulb-head 4.4s ease-in-out infinite}
+#ian-mascot.motion-enabled .arm-left{animation:bulb-arm-left 2.3s ease-in-out infinite}
+#ian-mascot.motion-enabled .arm-right{animation:bulb-arm-right 2.6s ease-in-out infinite}
+#ian-mascot.motion-enabled.walk .leg-back-a,#ian-mascot.motion-enabled.run .leg-back-a{animation:bulb-leg-a .34s ease-in-out infinite alternate}
+#ian-mascot.motion-enabled.walk .leg-back-b,#ian-mascot.motion-enabled.run .leg-back-b{animation:bulb-leg-b .34s ease-in-out infinite alternate}
+#ian-mascot.motion-enabled.walk .dog-body{animation:bulb-walk .34s ease-in-out infinite}
+#ian-mascot.motion-enabled.run .dog-body{animation:bulb-run .25s ease-in-out infinite}
+#ian-mascot.motion-enabled.happy .dog-body{animation:bulb-hop .55s ease-in-out 2}
+#ian-mascot.motion-enabled.dance .dog-body{animation:bulb-dance .48s ease-in-out 3}
+#ian-mascot.motion-enabled.think .bear-head{animation:bulb-think .9s ease-in-out infinite}
+#ian-mascot.motion-enabled.look .bear-head{transform:translateX(4px) rotate(5deg)}
+#ian-mascot.motion-enabled.curious .bear-head{transform:rotate(-6deg) translateY(-2px)}
+#ian-mascot.motion-enabled.blink .eye{transform:scaleY(.08)!important;transform-box:fill-box;transform-origin:center}
+#ian-mascot.motion-enabled.lit .bulb-glass{filter:drop-shadow(0 0 9px #ffe77b) drop-shadow(0 0 19px #ffc83d)}
+#ian-mascot.motion-enabled.lit .sparkle{animation:bulb-twinkle .55s ease-in-out infinite alternate}
+#ian-mascot.motion-enabled.snooze .bear-head{transform:rotate(-7deg) translateY(3px)}
+#ian-mascot .face-mouth .mouth{opacity:0;transition:opacity .16s}
+#ian-mascot .face-mouth .mouth-neutral{opacity:1}
+#ian-mascot.emotion-happy .mouth-neutral,#ian-mascot.emotion-sad .mouth-neutral,#ian-mascot.emotion-surprised .mouth-neutral,#ian-mascot.emotion-confused .mouth-neutral,#ian-mascot.emotion-worried .mouth-neutral,#ian-mascot.emotion-proud .mouth-neutral,#ian-mascot.emotion-shy .mouth-neutral,#ian-mascot.emotion-laugh .mouth-neutral,#ian-mascot.emotion-playful .mouth-neutral,#ian-mascot.emotion-excited .mouth-neutral,#ian-mascot.emotion-sleepy .mouth-neutral,#ian-mascot.emotion-love .mouth-neutral{opacity:0}
+#ian-mascot.emotion-happy .mouth-happy,#ian-mascot.emotion-love .mouth-happy,#ian-mascot.emotion-grateful .mouth-happy,#ian-mascot.emotion-relieved .mouth-happy{opacity:1}
+#ian-mascot.emotion-sad .mouth-sad{opacity:1}
+#ian-mascot.emotion-surprised .mouth-surprised,#ian-mascot.emotion-amazed .mouth-surprised{opacity:1}
+#ian-mascot.emotion-confused .mouth-confused,#ian-mascot.emotion-thinking .mouth-confused,#ian-mascot.emotion-curious .mouth-confused{opacity:1}
+#ian-mascot.emotion-worried .mouth-worried,#ian-mascot.emotion-concerned .mouth-worried{opacity:1}
+#ian-mascot.emotion-proud .mouth-proud,#ian-mascot.emotion-determined .mouth-proud{opacity:1}
+#ian-mascot.emotion-laugh .mouth-laugh,#ian-mascot.emotion-excited .mouth-laugh,#ian-mascot.emotion-delighted .mouth-laugh{opacity:1}
+#ian-mascot.emotion-playful .mouth-smirk,#ian-mascot.emotion-mischievous .mouth-smirk{opacity:1}
+#ian-mascot.emotion-sleepy .mouth-sleepy,#ian-mascot.emotion-bored .mouth-sleepy{opacity:1}
+#ian-mascot.motion-off .dog-body,#ian-mascot.motion-off .bear-head,#ian-mascot.motion-off .arm,#ian-mascot.motion-off .leg{animation:none!important}
+#ian-mascot:after{content:none!important;display:none!important}
+#ian-mascot .speech{left:auto;right:calc(100% + 8px);top:8px}
+#ian-mascot.speech-left .speech{left:calc(100% + 8px);right:auto}
+@keyframes bulb-idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes bulb-head{0%,100%{transform:rotate(0)}50%{transform:rotate(2deg) translateY(-1px)}}
+@keyframes bulb-arm-left{0%,100%{transform:rotate(0)}50%{transform:rotate(9deg)}}
+@keyframes bulb-arm-right{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}
+@keyframes bulb-leg-a{from{transform:rotate(-22deg)}to{transform:rotate(22deg)}}
+@keyframes bulb-leg-b{from{transform:rotate(22deg)}to{transform:rotate(-22deg)}}
+@keyframes bulb-walk{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes bulb-run{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-8px) rotate(2deg)}}
+@keyframes bulb-hop{0%,100%{transform:translateY(0)}45%{transform:translateY(-14px)}70%{transform:translateY(-6px)}}
+@keyframes bulb-dance{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg) translateY(-4px)}75%{transform:rotate(8deg) translateY(-4px)}}
+@keyframes bulb-think{0%,100%{transform:rotate(0)}35%{transform:rotate(-5deg)}70%{transform:rotate(4deg)}}
+@keyframes bulb-twinkle{to{opacity:.28;transform:scale(.75)}}
+@media(max-width:600px){#ian-mascot{width:88px!important;height:120px!important;left:auto!important;right:7px!important;bottom:calc(14px + env(safe-area-inset-bottom))!important}#ian-mascot .speech{right:calc(100% + 6px);left:auto;max-width:min(170px,calc(100vw - 110px))}#ian-mascot.speech-left .speech{left:calc(100% + 6px);right:auto}}
+@media(prefers-reduced-motion:reduce){#ian-mascot.motion-enabled .dog-body,#ian-mascot.motion-enabled .bear-head,#ian-mascot.motion-enabled .arm,#ian-mascot.motion-enabled .leg{animation:none!important}}
