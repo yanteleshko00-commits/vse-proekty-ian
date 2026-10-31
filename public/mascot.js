@@ -101,13 +101,13 @@
     let left, top, bubble;
 
     if (sideSpace >= 145) {
-      speech.style.maxWidth = Math.min(260, sideSpace) + "px";
+      speech.style.setProperty("max-width", Math.min(260, sideSpace) + "px", "important");
       bubble = speech.getBoundingClientRect();
       left = useRight ? bounds.right + gap : bounds.left - bubble.width - gap;
       top = bounds.top + bounds.height / 2 - bubble.height / 2;
     } else {
       // When the mascot is near the middle, place the bubble above or below it.
-      speech.style.maxWidth = Math.max(120, Math.min(260, window.innerWidth - margin * 2)) + "px";
+      speech.style.setProperty("max-width", Math.max(120, Math.min(260, window.innerWidth - margin * 2)) + "px", "important");
       bubble = speech.getBoundingClientRect();
       left = bounds.left + bounds.width / 2 - bubble.width / 2;
       const belowSpace = window.innerHeight - bounds.bottom - gap - margin;
@@ -138,7 +138,6 @@
     if (mascot.classList.contains("speak")) positionSpeech();
   }, { passive: true });
 
-  const logoPupils = mascot.querySelectorAll(".logo-eyes .eye");
   function trackLogoEyes(event) {
     const bounds = mascot.getBoundingClientRect();
     const dx = (event.clientX - (bounds.left + bounds.width / 2)) / Math.max(1, bounds.width / 2);
