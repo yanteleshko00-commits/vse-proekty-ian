@@ -304,3 +304,11 @@
 #ian-mascot.emotion-relieved .bear-eyes .eye{transform:scaleY(.72)}#ian-mascot.emotion-mischievous .brow-right{transform:translateY(-4px) rotate(-13deg)}#ian-mascot.emotion-bored .bear-eyes .eye{transform:scaleY(.42)}#ian-mascot.emotion-concerned .bear-brows .brow{transform:translateY(-3px) rotate(-6deg)}#ian-mascot.emotion-amazed .bear-eyes .eye{transform:scale(1.4)}
 #ian-mascot.emotion-grateful .cheeks,#ian-mascot.emotion-delighted .emotion-stars{opacity:.8}
 #ian-mascot .shirt{filter:saturate(1.08)}#ian-mascot .bear-torso{filter:drop-shadow(0 1px 0 #f5d99c)}
+
+/* Физика отскока от границ экрана */
+#ian-mascot.gliding{cursor:grabbing;transition:none!important}
+#ian-mascot.wall-hit .dog-body{animation:ian-wall-recoil .42s cubic-bezier(.2,.8,.2,1) 1!important}
+#ian-mascot.wall-hit .bear-head{animation:bear-shake .36s ease-in-out 2!important}
+#ian-mascot.wall-hit.emotion-angry .bear-eyes .eye{transform:scaleY(.88)}
+@keyframes ian-wall-recoil{0%{transform:translateX(0) rotate(0) scale(1)}22%{transform:translateX(calc(var(--bounce-direction,1)*-7px)) rotate(var(--wall-hit-angle,8deg)) scale(.97,1.03)}55%{transform:translateX(calc(var(--bounce-direction,1)*3px)) rotate(calc(var(--wall-hit-angle,8deg)*-.45)) scale(1.02,.98)}100%{transform:translateX(0) rotate(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){#ian-mascot.wall-hit .dog-body,#ian-mascot.wall-hit .bear-head{animation:none!important}}
