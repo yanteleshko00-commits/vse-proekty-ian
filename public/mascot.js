@@ -1010,10 +1010,23 @@
   });
 
   const status = document.getElementById("status");
+  let lastMascotReadyReaction = 0;
   if (status && window.MutationObserver) {
     new MutationObserver(() => {
       const t = status.textContent.toLowerCase();
-      if (!doNotDisturb && (t.includes("ошиб") || t.includes("не удалось"))) say("Кажется, нужна помощь. Спроси меня!");
+      if (doNotDisturb) return;
+      if (t.includes("ошиб") || t.includes("не удалось")) {
+        say("Кажется, нужна помощь. Спроси меня!");
+      } else if ((t.includes("проект готов") || t.includes("успешно создан")) &&
+                 Date.now() - lastMascotReadyReaction > 18000) {
+        lastMascotReadyReaction = Date.now();
+        const topic = document.getElementById("readyTopic")?.textContent?.trim();
+        const slides = document.getElementById("resultSlides")?.textContent?.trim();
+        setEmotion("proud", 3200);
+        if (motionEnabled) animate("dance", 1700);
+        say("Ура, проект готов! " + (topic ? topic + ". " : "") +
+            (slides ? slides + ". " : "") + "Проверь файлы и требования учителя. 🎉");
+      }
     }).observe(status, { childList: true, subtree: true, characterData: true });
   }
   setTimeout(() => { if (!doNotDisturb) say("Тяни меня пальцем, чтобы бросить. Три нажатия — лампочка! 💡"); }, 1800);
