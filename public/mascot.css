@@ -241,7 +241,8 @@
 #ian-mascot.emotion-sad .mouth-neutral,
 #ian-mascot.emotion-surprised .mouth-neutral,
 #ian-mascot.emotion-angry .mouth-neutral,
-#ian-mascot.emotion-sleepy .mouth-neutral{opacity:0}
+#ian-mascot.emotion-sleepy .mouth-neutral,
+#ian-mascot.emotion-love .mouth-neutral{opacity:0}
 #ian-mascot.emotion-happy .mouth-happy{opacity:1}
 #ian-mascot.emotion-sad .mouth-sad{opacity:1}
 #ian-mascot.emotion-surprised .mouth-surprised{opacity:1}
