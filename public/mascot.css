@@ -229,3 +229,43 @@
 @keyframes bear-sparkle{to{opacity:.25;transform:scale(.8)}}
 @media(max-width:600px){#ian-mascot{width:104px;height:120px;right:7px!important}#ian-mascot .speech{max-width:min(170px,calc(100vw - 125px))}}
 @media(prefers-reduced-motion:reduce){#ian-mascot.motion-enabled .dog-body,#ian-mascot.motion-enabled .bear-head,#ian-mascot.motion-enabled .bear-arms{animation:none!important}}
+
+
+/* Эмоции мордочки: отдельные выражения переключаются из mascot.js */
+#ian-mascot .face-mouth .mouth{opacity:0;transition:opacity .18s ease}
+#ian-mascot .face-mouth .mouth-neutral{opacity:1}
+#ian-mascot .bear-eyes .eye{transform-box:fill-box;transform-origin:center;transition:transform .18s ease}
+#ian-mascot .bear-brows .brow{transform-box:fill-box;transform-origin:center;transition:transform .18s ease}
+#ian-mascot .heart-sparkles{opacity:0;transform:scale(.7);transform-origin:center;transition:opacity .2s ease,transform .25s ease}
+#ian-mascot.emotion-happy .mouth-neutral,
+#ian-mascot.emotion-sad .mouth-neutral,
+#ian-mascot.emotion-surprised .mouth-neutral,
+#ian-mascot.emotion-angry .mouth-neutral,
+#ian-mascot.emotion-sleepy .mouth-neutral{opacity:0}
+#ian-mascot.emotion-happy .mouth-happy{opacity:1}
+#ian-mascot.emotion-sad .mouth-sad{opacity:1}
+#ian-mascot.emotion-surprised .mouth-surprised{opacity:1}
+#ian-mascot.emotion-angry .mouth-angry{opacity:1}
+#ian-mascot.emotion-sleepy .mouth-sleepy{opacity:1}
+#ian-mascot.emotion-love .mouth-happy{opacity:1}
+#ian-mascot.emotion-happy .bear-eyes .eye{transform:scaleY(.82)}
+#ian-mascot.emotion-sad .bear-eyes .eye{transform:translateY(1px) scaleY(1.12)}
+#ian-mascot.emotion-sad .brow-left{transform:rotate(-17deg) translateY(-2px)}
+#ian-mascot.emotion-sad .brow-right{transform:rotate(17deg) translateY(-2px)}
+#ian-mascot.emotion-surprised .bear-eyes .eye{transform:scale(1.34)}
+#ian-mascot.emotion-surprised .bear-brows .brow{transform:translateY(-4px) scaleX(1.08)}
+#ian-mascot.emotion-angry .brow-left{transform:rotate(17deg) translateY(2px)}
+#ian-mascot.emotion-angry .brow-right{transform:rotate(-17deg) translateY(2px)}
+#ian-mascot.emotion-angry .bear-eyes .eye{transform:scaleY(.88)}
+#ian-mascot.emotion-sleepy .bear-eyes .eye{transform:scaleY(.16)}
+#ian-mascot.emotion-sleepy .bear-brows .brow{transform:translateY(2px)}
+#ian-mascot.emotion-thinking .bear-head{transform:rotate(-3deg) translateY(-1px)}
+#ian-mascot.emotion-thinking .bear-eyes{transform:translateY(-3px)}
+#ian-mascot.emotion-curious .bear-head{transform:rotate(-5deg) translateY(-2px)}
+#ian-mascot.emotion-curious .brow-right{transform:translateY(-3px) rotate(-8deg)}
+#ian-mascot.emotion-love .heart-sparkles{opacity:1;transform:scale(1)}
+#ian-mascot.emotion-love .bear-eyes .eye{transform:scaleY(.75)}
+#ian-mascot.motion-off .face-mouth .mouth{transition:none}
+@media(prefers-reduced-motion:reduce){
+  #ian-mascot .face-mouth .mouth,#ian-mascot .bear-eyes .eye,#ian-mascot .bear-brows .brow,#ian-mascot .heart-sparkles{transition:none!important}
+}
