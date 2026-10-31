@@ -423,14 +423,60 @@
     input.focus({ preventScroll: true });
   });
 
+  let lastGeneralReaction = 0;
+  function reactToAction(emotion = "curious", animation = "look", bubble = "") {
+    if (!motionEnabled || document.hidden || mascot.classList.contains("dragging")) return;
+    const now = Date.now();
+    if (now - lastGeneralReaction < 650) return;
+    lastGeneralReaction = now;
+    setEmotion(emotion, 1700);
+    if (animation) animate(animation, 850);
+    if (bubble) say(bubble);
+  }
+
+  // React to meaningful actions throughout the site without interrupting the user.
   document.addEventListener("click", e => {
+    if (e.target.closest("#ian-mascot,#ian-mascot-chat")) return;
     if (e.target.closest("#createButton,.create-btn")) {
-      if (motionEnabled) animate("think", 1500); say("Создаём проект! ✨");
+      reactToAction("thinking", "think", "Начинаем новый проект! ✨");
     } else if (e.target.closest(".download,[onclick*='downloadFile'],[onclick*='downloadAll']")) {
-      if (motionEnabled) animate("happy"); say("Файл готов к скачиванию! 📦");
-    } else if (e.target.closest(".nav button,.mobile-menu")) {
-      say("Пойдём посмотрим!"); if (motionEnabled) animate("happy");
+      reactToAction("proud", "happy", "Файл готов! 🍯");
+    } else if (e.target.closest(".nav button,.mobile-menu,a[href^='#']")) {
+      reactToAction("excited", "happy", "Пойдём посмотрим!");
+    } else if (e.target.closest("button,[role='button']")) {
+      reactToAction("curious", "look");
+    } else {
+      reactToAction("happy", "look");
     }
+  }, true);
+
+  document.addEventListener("focusin", e => {
+    if (e.target.closest("#ian-mascot-chat")) return;
+    if (e.target.matches("input,textarea,select,[contenteditable='true']")) reactToAction("thinking", "think");
+  });
+  document.addEventListener("input", e => {
+    if (e.target.closest("#ian-mascot-chat")) return;
+    if (e.target.matches("input,textarea,[contenteditable='true']")) reactToAction("thinking", "think");
+  });
+  document.addEventListener("change", e => {
+    if (e.target.closest("#ian-mascot-chat")) return;
+    if (e.target.matches("input,select,textarea")) reactToAction("happy", "happy");
+  });
+  document.addEventListener("submit", e => {
+    if (e.target === form) return;
+    if (e.target.matches("form")) reactToAction("thinking", "think", "Проверим, всё ли заполнено!");
+  }, true);
+  let scrollReactionTimer = 0;
+  window.addEventListener("scroll", () => {
+    if (scrollReactionTimer) return;
+    scrollReactionTimer = window.setTimeout(() => {
+      scrollReactionTimer = 0;
+      reactToAction("curious", "look");
+    }, 900);
+  }, {passive:true});
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") reactToAction("surprised", "look");
+    else if (e.key === "Enter" && !e.target.closest("#ian-mascot-chat")) reactToAction("excited", "happy");
   });
   const status = document.getElementById("status");
   if (status && window.MutationObserver) {
