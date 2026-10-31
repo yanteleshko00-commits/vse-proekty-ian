@@ -57,7 +57,7 @@
 
 /* Mobile-safe mascot placement and automatic form protection */
 #ian-mascot{width:88px;height:82px;right:12px;top:42%;transition:opacity .2s ease,visibility .2s ease}
-#ian-mascot.near-controls{opacity:0;visibility:hidden;pointer-events:none}
+#ian-mascot.near-controls{opacity:1;visibility:visible;pointer-events:auto}
 #ian-mascot .dog{overflow:visible}
 #ian-mascot .speech{z-index:3}
 @media(max-width:600px){
@@ -67,7 +67,7 @@
 }
 @media(prefers-reduced-motion:reduce){
   #ian-mascot{transition:none}
-  #ian-mascot.near-controls{display:none}
+  #ian-mascot.near-controls{display:block}
 }
 
 /* Watch-inspired character performance: brief, expressive movement cycles. */
@@ -136,3 +136,12 @@
 #ian-mascot.motion-enabled.bird-fly .bird-wing{animation:ian-wing .13s ease-in-out 9 alternate}
 #ian-mascot.motion-enabled.bird-cheer .bird{animation:ian-bird-pop .55s cubic-bezier(.2,.8,.2,1) 2}
 #ian-mascot.motion-enabled.bird-flap .bird-wing{animation:ian-wing .18s ease-in-out 5 alternate}
+
+/* Persistent floating position: visible through every page section and form area */
+#ian-mascot{
+ position:fixed!important;z-index:9000!important;right:10px!important;left:auto;
+ top:auto!important;bottom:calc(82px + env(safe-area-inset-bottom))!important;
+ opacity:1!important;visibility:visible!important;pointer-events:auto!important;
+}
+#ian-mascot.near-controls{opacity:1!important;visibility:visible!important;display:block!important;pointer-events:auto!important}
+@media(max-width:600px){#ian-mascot{right:7px!important;bottom:calc(72px + env(safe-area-inset-bottom))!important}}
