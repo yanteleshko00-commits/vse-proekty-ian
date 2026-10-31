@@ -385,9 +385,80 @@
     const label = field.labels?.[0]?.textContent?.trim();
     return label ? "Подсказка по полю «" + label + "»: заполняй его по требованиям задания." : "Нужна подсказка? Спроси меня — помогу разобраться.";
   }
+  let activeTypingField = null;
+  let focusMoveFrame = 0;
+  function isEditableField(field) {
+    return !!field?.matches?.("input:not([type='hidden']):not([type='button']):not([type='submit']):not([type='file']),textarea,select,[contenteditable='true']");
+  }
+  function lookAtField(field) {
+    if (!field || !isEditableField(field)) return;
+    const mascotRect = mascot.getBoundingClientRect();
+    const fieldRect = field.getBoundingClientRect();
+    const mx = mascotRect.left + mascotRect.width / 2;
+    const my = mascotRect.top + mascotRect.height / 2;
+    const fx = fieldRect.left + fieldRect.width / 2;
+    const fy = fieldRect.top + Math.min(fieldRect.height / 2, 36);
+    const dx = Math.max(-1, Math.min(1, (fx - mx) / Math.max(1, innerWidth * .42)));
+    const dy = Math.max(-1, Math.min(1, (fy - my) / Math.max(1, innerHeight * .42)));
+    mascot.querySelectorAll(".bear-eyes .eye").forEach((eye, index) => {
+      eye.style.transform = "translate(" + (dx * 3.2).toFixed(1) + "px," + (dy * 2.7).toFixed(1) + "px)";
+      eye.style.transformOrigin = "center";
+    });
+    mascot.classList.add("watching-field");
+  }
+  function moveNearField(field) {
+    if (!field || !isEditableField(field) || field.closest("#ian-mascot-chat")) return;
+    activeTypingField = field;
+    const vv = window.visualViewport;
+    const viewLeft = vv?.offsetLeft || 0;
+    const viewTop = vv?.offsetTop || 0;
+    const viewWidth = vv?.width || innerWidth;
+    const viewHeight = vv?.height || innerHeight;
+    const fr = field.getBoundingClientRect();
+    const mr = mascot.getBoundingClientRect();
+    const gap = 10, margin = 8;
+    let x, y;
+
+    // Prefer sitting beside the active field, never on top of the text/caret.
+    const rightSpace = viewLeft + viewWidth - fr.right;
+    const leftSpace = fr.left - viewLeft;
+    if (rightSpace >= mr.width + gap + margin) {
+      x = fr.right + gap;
+      y = fr.top + fr.height / 2 - mr.height / 2;
+    } else if (leftSpace >= mr.width + gap + margin) {
+      x = fr.left - mr.width - gap;
+      y = fr.top + fr.height / 2 - mr.height / 2;
+    } else {
+      // On phones, place it just above the field, within the visible keyboard viewport.
+      x = fr.left + fr.width / 2 - mr.width / 2;
+      const above = fr.top - mr.height - gap;
+      const below = fr.bottom + gap;
+      y = above >= viewTop + margin ? above : below;
+    }
+    x = Math.max(viewLeft + margin, Math.min(x, viewLeft + viewWidth - mr.width - margin));
+    y = Math.max(viewTop + margin, Math.min(y, viewTop + viewHeight - mr.height - margin));
+
+    mascot.classList.remove("walk", "scroll-walk", "scroll-up", "scroll-down", "gliding");
+    mascot.style.transition = "left .58s cubic-bezier(.22,.61,.36,1), top .58s cubic-bezier(.22,.61,.36,1), right .58s cubic-bezier(.22,.61,.36,1), bottom .58s cubic-bezier(.22,.61,.36,1)";
+    mascot.style.setProperty("left", Math.round(x) + "px", "important");
+    mascot.style.setProperty("top", Math.round(y) + "px", "important");
+    mascot.style.setProperty("right", "auto", "important");
+    mascot.style.setProperty("bottom", "auto", "important");
+    mascot.classList.add("walk");
+    lookAtField(field);
+    clearTimeout(mascot._focusWalkTimer);
+    mascot._focusWalkTimer = setTimeout(() => mascot.classList.remove("walk"), 900);
+  }
+  function scheduleFieldFollow(field = activeTypingField) {
+    if (!field || document.activeElement !== field) return;
+    cancelAnimationFrame(focusMoveFrame);
+    focusMoveFrame = requestAnimationFrame(() => moveNearField(field));
+  }
   document.addEventListener("focusin", event => {
     const field = event.target;
-    if (!field.matches?.("input,textarea,select,[contenteditable='true']") || field.closest("#ian-mascot-chat") || doNotDisturb || hintedFields.has(field)) return;
+    if (!isEditableField(field) || field.closest("#ian-mascot-chat")) return;
+    scheduleFieldFollow(field);
+    if (doNotDisturb || hintedFields.has(field)) return;
     clearTimeout(hintTimer);
     const showHintWhenReady = () => {
       if (document.activeElement !== field || doNotDisturb || chat.classList.contains("open")) return;
@@ -401,11 +472,39 @@
     hintTimer = window.setTimeout(showHintWhenReady, 22000);
   });
   document.addEventListener("focusout", event => {
-    if (event.target.matches?.("input,textarea,select,[contenteditable='true']")) clearTimeout(hintTimer);
+    if (!isEditableField(event.target)) return;
+    clearTimeout(hintTimer);
+    setTimeout(() => {
+      if (isEditableField(document.activeElement)) {
+        activeTypingField = document.activeElement;
+        scheduleFieldFollow(activeTypingField);
+      } else {
+        activeTypingField = null;
+        mascot.classList.remove("watching-field", "walk");
+        mascot.querySelectorAll(".bear-eyes .eye").forEach(eye => eye.style.transform = "");
+        mascot.style.transition = "left .55s cubic-bezier(.22,.61,.36,1), top .55s cubic-bezier(.22,.61,.36,1)";
+        mascot.style.removeProperty("left");
+        mascot.style.removeProperty("top");
+        mascot.style.removeProperty("right");
+        mascot.style.removeProperty("bottom");
+        setTimeout(() => { mascot.style.transition = ""; }, 600);
+      }
+    }, 80);
   });
   document.addEventListener("input", event => {
-    if (!event.target.closest("#ian-mascot-chat")) lastFieldInputAt = Date.now();
+    if (event.target.closest("#ian-mascot-chat")) return;
+    lastFieldInputAt = Date.now();
+    if (isEditableField(event.target)) {
+      activeTypingField = event.target;
+      scheduleFieldFollow(activeTypingField);
+      mascot.classList.add("watching-field");
+    }
   });
+  window.addEventListener("scroll", () => {
+    if (activeTypingField && document.activeElement === activeTypingField) scheduleFieldFollow(activeTypingField);
+  }, {passive:true});
+  window.visualViewport?.addEventListener("resize", () => scheduleFieldFollow(), {passive:true});
+  window.visualViewport?.addEventListener("scroll", () => scheduleFieldFollow(), {passive:true});
 
   const personalityLines = [
     ["Люблю, когда на сайте появляются новые идеи! 💡", "delighted"],
@@ -681,10 +780,24 @@
     const delta = currentScrollY - previousScrollY;
     previousScrollY = currentScrollY;
     if (Math.abs(delta) < 3 || !motionEnabled || doNotDisturb || document.hidden || drag || gameActive || chat.classList.contains("open")) return;
+    if (activeTypingField && document.activeElement === activeTypingField) {
+      scheduleFieldFollow(activeTypingField);
+      return;
+    }
     const direction = delta > 0 ? "down" : "up";
+    const rect = mascot.getBoundingClientRect();
+    const maxLeft = Math.max(8, innerWidth - rect.width - 8);
+    const currentLeft = Number.isFinite(rect.left) ? rect.left : maxLeft;
+    // A few short steps along the bottom edge make the page scroll feel like
+    // the mascot is walking with the visitor, instead of only bouncing in place.
+    const step = Math.min(48, Math.max(18, Math.abs(delta) * .16));
+    const nextLeft = Math.max(8, Math.min(maxLeft, currentLeft + (direction === "down" ? step : -step)));
+    mascot.style.transition = "left .62s cubic-bezier(.22,.61,.36,1)";
+    mascot.style.setProperty("left", Math.round(nextLeft) + "px", "important");
+    mascot.style.setProperty("right", "auto", "important");
     mascot.classList.toggle("scroll-down", direction === "down");
     mascot.classList.toggle("scroll-up", direction === "up");
-    mascot.classList.add("scroll-walk");
+    mascot.classList.add("scroll-walk", "walk");
     if (!scrollSpeechLock) {
       scrollSpeechLock = true;
       sayScrollPhrase(direction);
@@ -692,8 +805,9 @@
     }
     clearTimeout(scrollWalkTimer);
     scrollWalkTimer = window.setTimeout(() => {
-      mascot.classList.remove("scroll-walk", "scroll-down", "scroll-up");
-    }, 850);
+      mascot.classList.remove("scroll-walk", "scroll-down", "scroll-up", "walk");
+      mascot.style.transition = "";
+    }, 900);
   }, { passive: true });
   window.addEventListener("resize", () => {
     if (drag) return;

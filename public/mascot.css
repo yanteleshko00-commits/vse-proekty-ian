@@ -778,3 +778,29 @@ html[data-theme="dark"] #ian-mascot-speech{
   #ian-mascot.gliding .dog-body,
   #ian-mascot.talking .face-mouth .mouth{animation:none!important}
 }
+/* Field-aware mascot: walk beside the active form control and look toward it. */
+#ian-mascot{
+  transition:left .58s cubic-bezier(.22,.61,.36,1),top .58s cubic-bezier(.22,.61,.36,1),
+             right .58s cubic-bezier(.22,.61,.36,1),bottom .58s cubic-bezier(.22,.61,.36,1);
+}
+#ian-mascot.watching-field .bear-head{
+  transition:transform .38s cubic-bezier(.22,.61,.36,1)!important;
+}
+#ian-mascot.watching-field .bear-eyes .eye{
+  transition:transform .22s ease-out!important;
+}
+#ian-mascot.motion-enabled.scroll-walk .leg-back-a,
+#ian-mascot.motion-enabled.walk .leg-back-a{animation:bulb-leg-a .32s ease-in-out infinite alternate!important}
+#ian-mascot.motion-enabled.scroll-walk .leg-back-b,
+#ian-mascot.motion-enabled.walk .leg-back-b{animation:bulb-leg-b .32s ease-in-out infinite alternate!important}
+#ian-mascot.motion-enabled.scroll-walk .dog-body,
+#ian-mascot.motion-enabled.walk .dog-body{animation:bulb-walk .32s ease-in-out infinite!important}
+#ian-mascot.motion-enabled.scroll-walk .arm-left{animation:bulb-arm-left .5s ease-in-out infinite alternate!important}
+#ian-mascot.motion-enabled.scroll-walk .arm-right{animation:bulb-arm-right .5s ease-in-out infinite alternate!important}
+@media(prefers-reduced-motion:reduce){
+ #ian-mascot{transition:none!important}
+ #ian-mascot.motion-enabled.scroll-walk .leg-back-a,
+ #ian-mascot.motion-enabled.scroll-walk .leg-back-b,
+ #ian-mascot.motion-enabled.scroll-walk .dog-body,
+ #ian-mascot.motion-enabled.walk .dog-body{animation:none!important}
+}
