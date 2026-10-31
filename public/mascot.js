@@ -11,13 +11,13 @@
     <svg class="dog bear-svg" viewBox="0 0 180 190" role="img" aria-label="Медвежонок с горшочком мёда">
       <defs>
         <linearGradient id="bearFur" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6d58a"/><stop offset="1" stop-color="#c98a3e"/></linearGradient>
-        <linearGradient id="bearShirt" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#4b9b75"/><stop offset="1" stop-color="#25664c"/></linearGradient>
+        <linearGradient id="bearShirt" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e84b3c"/><stop offset="1" stop-color="#b92525"/></linearGradient>
       </defs>
       <g class="bear-shadow"><ellipse cx="91" cy="176" rx="54" ry="8" fill="#253b2d" opacity=".13"/></g>
       <g class="dog-body">
         <g class="bear-legs"><path class="leg leg-back-a" d="M55 137 Q42 154 49 166 Q57 174 77 168 L81 151Z" fill="#c98a3e"/><path class="leg leg-back-b" d="M102 145 Q105 164 119 169 Q139 175 145 163 Q147 155 126 143Z" fill="#dba653"/></g>
         <path class="bear-torso" d="M49 83 Q35 107 46 143 Q70 160 119 146 Q137 116 119 83Z" fill="url(#bearFur)" stroke="#a96e32" stroke-width="2"/>
-        <path class="shirt" d="M47 101 Q82 85 124 102 L126 143 Q91 160 49 143Z" fill="url(#bearShirt)" stroke="#8e302b" stroke-width="2"/>
+        <path class="shirt" d="M47 101 Q82 85 124 102 L126 143 Q91 160 49 143Z" fill="url(#bearShirt)" stroke="#8f2824" stroke-width="2"/>
         <path d="M68 98 Q88 108 107 98" fill="none" stroke="#8bc9a4" stroke-width="3" stroke-linecap="round"/>
         <path class="shirt-badge" d="M88 119 q-9 -9 -13 -1 q-3 8 13 17 q16 -9 13 -17 q-4 -8 -13 1Z" fill="#e8c46a" stroke="#f9e6a8" stroke-width="1.2"/>
         <g class="bear-arms"><path class="arm arm-left" d="M51 105 Q28 111 29 133 Q30 145 42 143 Q50 140 53 125Z" fill="#e3b66b" stroke="#a96e32" stroke-width="2"/><path class="arm arm-right" d="M119 105 Q140 108 145 127 Q148 141 135 145 Q124 144 119 128Z" fill="#e3b66b" stroke="#a96e32" stroke-width="2"/></g>
@@ -137,7 +137,7 @@
     mascot._speechTimer = setTimeout(() => mascot.classList.remove("speak"), 2500);
   }
 
-  const emotionNames = ["neutral", "happy", "sad", "surprised", "curious", "angry", "sleepy", "thinking", "love", "excited", "confused", "worried", "proud", "shy", "laugh", "playful"];
+  const emotionNames = ["neutral", "happy", "sad", "surprised", "curious", "angry", "sleepy", "thinking", "love", "excited", "confused", "worried", "proud", "shy", "laugh", "playful", "determined", "relieved", "mischievous", "grateful", "bored", "delighted", "concerned", "amazed"];
   function setEmotion(name, duration = 2300) {
     const emotion = emotionNames.includes(name) ? name : "neutral";
     mascot.classList.remove(...emotionNames.map(item => "emotion-" + item));
@@ -166,6 +166,14 @@
     if (/(ура|супер|круто|восторг|невероятно)/i.test(q)) return "excited";
     if (/(думаю|подумай|почему|как именно|что значит|объясни)/i.test(q) || /\?\s*$/.test(q)) return "thinking";
     if (/(привет|здравствуй|рад|счастлив|спасибо|молодец|класс|отлично)/i.test(q)) return "happy";
+    if (/(справлюсь|не сдамся|решительно|добьюсь|цель)/i.test(q)) return "determined";
+    if (/(фух|наконец|полегчало|успокоился)/i.test(q)) return "relieved";
+    if (/(хитр|шалю|подмиг|секрет)/i.test(q)) return "mischievous";
+    if (/(благодарен|признателен|ценю)/i.test(q)) return "grateful";
+    if (/(надоело|неинтересно|однообразно)/i.test(q)) return "bored";
+    if (/(восхитительно|потрясающе|обалденно)/i.test(q)) return "delighted";
+    if (/(переживаю за|опасаюсь|не уверен)/i.test(q)) return "concerned";
+    if (/(невероятно|поразительно|изумительно)/i.test(q)) return "amazed";
     return "curious";
   }
 
@@ -478,6 +486,32 @@
     if (e.key === "Escape") reactToAction("surprised", "look");
     else if (e.key === "Enter" && !e.target.closest("#ian-mascot-chat")) reactToAction("excited", "happy");
   });
+  document.addEventListener("pointerover", e => {
+    const target = e.target.closest("button,a,[role='button'],.tile,.card,.result-card");
+    if (!target || target.closest("#ian-mascot,#ian-mascot-chat")) return;
+    reactToAction("curious", "look");
+  }, {passive:true});
+  document.addEventListener("dblclick", e => {
+    if (e.target.closest("#ian-mascot,#ian-mascot-chat")) return;
+    reactToAction("delighted", "happy", "О, двойное нажатие! ✨");
+  });
+  document.addEventListener("copy", () => reactToAction("proud", "happy", "Забирай полезное с собой!"));
+  document.addEventListener("paste", () => reactToAction("thinking", "think", "Сейчас посмотрим, что ты вставил."));
+  document.addEventListener("cut", () => reactToAction("surprised", "look"));
+  document.addEventListener("dragstart", e => {
+    if (e.target.closest && e.target.closest("#ian-mascot")) return;
+    reactToAction("excited", "happy", "Что-то отправляется в путь!");
+  }, true);
+  document.addEventListener("drop", e => {
+    if (e.target.closest && e.target.closest("#ian-mascot-chat")) return;
+    reactToAction("surprised", "look", "О, что-то прилетело!");
+  }, true);
+  window.addEventListener("online", () => reactToAction("delighted", "happy", "Интернет снова с нами!"));
+  window.addEventListener("offline", () => reactToAction("concerned", "think", "Похоже, интернет пропал. Я подожду."));
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) reactToAction("happy", "wave", "С возвращением! 🍯");
+  });
+
   const status = document.getElementById("status");
   if (status && window.MutationObserver) {
     new MutationObserver(() => {
