@@ -620,20 +620,32 @@
   roamTimer = window.setInterval(takeTinyWalk, 14500);
   restartRoamTimer();
 
-  // При прокрутке страницы маскот шагает на месте и объявляет «Я в пути!».
-  let scrollWalkTimer = 0, scrollSpeechLock = false, previousScrollY = window.scrollY;
+  // Во время прокрутки маскот шагает и выбирает разные реплики по направлению.
+  let scrollWalkTimer = 0, scrollSpeechLock = false, previousScrollY = window.scrollY, lastScrollPhrase = "";
+  const scrollPhrases = {
+    down: ["Смотрим, что ниже! 👀", "Пошли дальше!", "Ого, сколько тут всего!", "Исследуем страницу! 🔎", "Не отставай! 😄", "Так-так, что там дальше?", "Кажется, мы что-то ищем!", "Вперёд, к новым разделам!"],
+    up: ["Вернёмся наверх!", "А что было выше?", "Поднимемся и проверим!", "Кажется, мы что-то пропустили!", "Назад к началу! ⬆️", "О, знакомый раздел!"]
+  };
+  function sayScrollPhrase(direction) {
+    const choices = scrollPhrases[direction];
+    let phrase = choices[Math.floor(Math.random() * choices.length)];
+    if (choices.length > 1 && phrase === lastScrollPhrase) phrase = choices[(choices.indexOf(phrase) + 1) % choices.length];
+    lastScrollPhrase = phrase;
+    say(phrase);
+  }
   window.addEventListener("scroll", () => {
     const currentScrollY = window.scrollY;
     const delta = currentScrollY - previousScrollY;
     previousScrollY = currentScrollY;
     if (Math.abs(delta) < 3 || !motionEnabled || doNotDisturb || document.hidden || drag || gameActive || chat.classList.contains("open")) return;
-    mascot.classList.toggle("scroll-down", delta > 0);
-    mascot.classList.toggle("scroll-up", delta < 0);
+    const direction = delta > 0 ? "down" : "up";
+    mascot.classList.toggle("scroll-down", direction === "down");
+    mascot.classList.toggle("scroll-up", direction === "up");
     mascot.classList.add("scroll-walk");
     if (!scrollSpeechLock) {
       scrollSpeechLock = true;
-      say("Я в пути! 🚶💨");
-      window.setTimeout(() => { scrollSpeechLock = false; }, 3600);
+      sayScrollPhrase(direction);
+      window.setTimeout(() => { scrollSpeechLock = false; }, 4800);
     }
     clearTimeout(scrollWalkTimer);
     scrollWalkTimer = window.setTimeout(() => {
