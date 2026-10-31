@@ -145,3 +145,37 @@
 }
 #ian-mascot.near-controls{opacity:1!important;visibility:visible!important;display:block!important;pointer-events:auto!important}
 @media(max-width:600px){#ian-mascot{right:7px!important;bottom:calc(72px + env(safe-area-inset-bottom))!important}}
+
+
+/* User-provided Snoopy + Woodstock fan-art image */
+#ian-mascot{
+  width:172px;height:184px;
+  left:14px;right:auto;top:auto;
+  bottom:calc(18px + env(safe-area-inset-bottom));
+  overflow:visible;
+}
+#ian-mascot .dog{
+  display:block;width:100%;height:100%;
+  object-fit:contain;overflow:visible;
+  transform-origin:50% 85%;
+}
+#ian-mascot:after{
+  content:"Фан-арт";
+  position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);
+  padding:2px 8px;border-radius:20px;
+  background:rgba(255,255,255,.84);color:#526158;
+  border:1px solid rgba(30,45,36,.10);
+  font:600 10px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+  pointer-events:none;
+}
+#ian-mascot .speech{right:auto;left:calc(100% + 8px);top:6px}
+#ian-mascot.speech-left .speech{left:auto;right:calc(100% + 8px)}
+@media(max-width:600px){
+  #ian-mascot{
+    width:138px;height:148px;
+    left:6px;right:auto;top:auto;
+    bottom:calc(72px + env(safe-area-inset-bottom));
+  }
+  #ian-mascot .speech{left:calc(100% + 5px);right:auto;max-width:min(170px,calc(100vw - 160px))}
+  #ian-mascot.speech-left .speech{left:auto;right:calc(100% + 5px)}
+}

@@ -5,57 +5,10 @@
   mascot.id = "ian-mascot";
   mascot.tabIndex = 0;
   mascot.setAttribute("role", "button");
-  mascot.setAttribute("aria-label", "Снупи. Перетащи меня или нажми три раза для лампочки");
+  mascot.setAttribute("aria-label", "Снупи и Вудсток — фан-арт. Перетащи меня или нажми три раза для лампочки");
   mascot.innerHTML = `
     <div class="speech" id="ian-mascot-speech">Привет! Потяни меня за лапку 🐾</div>
-    <svg class="dog" viewBox="0 0 180 150" aria-hidden="true">
-      <defs>
-        <linearGradient id="ian-coat" x1="0" y1="0" x2="0.85" y2="1">
-          <stop offset="0" stop-color="#fffdf6"/>
-          <stop offset="1" stop-color="#e9dfcc"/>
-        </linearGradient>
-        <linearGradient id="ian-ear" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#87543c"/>
-          <stop offset="1" stop-color="#4c3029"/>
-        </linearGradient>
-        <linearGradient id="ian-bird" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#ffd36a"/>
-          <stop offset="1" stop-color="#e99b42"/>
-        </linearGradient>
-      </defs>
-      <ellipse cx="82" cy="137" rx="53" ry="7" fill="#26382e" opacity=".13"/>
-      <g class="bird" transform="translate(145 36)">
-        <path d="M-7 1q-5-12 4-16 9-3 14 5 5 8-1 17-9 9-17-6z" fill="url(#ian-bird)" stroke="#bd7937" stroke-width="1.2"/>
-        <path class="bird-wing" d="M-4 0q-12-8-10 3 4 8 12 5" fill="#e99142" stroke="#bd7937" stroke-width="1"/>
-        <circle cx="5" cy="-4" r="1.8" fill="#352d28"/>
-        <path d="M10 1l8 3-8 4z" fill="#d96e36"/>
-        <path d="M-2 10l-2 5m8-5 2 5" stroke="#9f6538" stroke-width="1.8" stroke-linecap="round"/>
-        <path d="M0-16l2-5 3 5" fill="none" stroke="#5a9a86" stroke-width="2" stroke-linecap="round"/>
-      </g>
-      <g class="dog-body">
-        <path class="tail" d="M39 91q-18-2-20-20-1-8 5-12" fill="none" stroke="#f7f0e3" stroke-width="10" stroke-linecap="round"/>
-        <path d="M21 60q-3-5 2-9" fill="none" stroke="#87543c" stroke-width="5" stroke-linecap="round"/>
-        <ellipse cx="75" cy="99" rx="48" ry="29" fill="url(#ian-coat)" stroke="#d8cdbb" stroke-width="1.4"/>
-        <path d="M53 76q17-12 31 0 7 9 3 20-13 8-31 2-10-7-3-22z" fill="#8a563d" opacity=".96"/>
-        <path class="leg leg-back-a" d="M47 111q-8 9-8 19" fill="none" stroke="#e9dfcc" stroke-width="12" stroke-linecap="round"/>
-        <path class="leg leg-back-b" d="M68 114q-2 8-1 16" fill="none" stroke="#f6efe2" stroke-width="11" stroke-linecap="round"/>
-        <path class="leg leg-front-a" d="M103 108q7 9 5 21" fill="none" stroke="#f6efe2" stroke-width="11" stroke-linecap="round"/>
-        <path class="leg leg-front-b" d="M120 105q9 9 9 22" fill="none" stroke="#e9dfcc" stroke-width="11" stroke-linecap="round"/>
-        <path d="M31 132q8-5 15 0m14 0q7-5 14 0m34 0q8-5 15 0m9 0q7-5 14 0" fill="none" stroke="#b9aa93" stroke-width="2.2" stroke-linecap="round"/>
-        <path class="ear ear-left" d="M91 32q-22-24-34-5-8 14 2 34 8 15 20 11 11-13 12-40z" fill="url(#ian-ear)"/>
-        <path class="ear ear-right" d="M126 37q22-21 30-3 7 16-5 34-8 12-17 5-9-12-8-36z" fill="url(#ian-ear)"/>
-        <ellipse cx="109" cy="52" rx="34" ry="29" fill="url(#ian-coat)" stroke="#d8cdbb" stroke-width="1.4"/>
-        <path d="M91 38q5-17 20-15 13 2 16 17-12 9-31 7z" fill="#87543c" opacity=".95"/>
-        <path d="M117 57q22-7 40 4 8 6 4 17-8 14-31 11-19-3-27-14 1-11 14-18z" fill="url(#ian-coat)" stroke="#d8cdbb" stroke-width="1.2"/>
-        <ellipse class="eye eye-left" cx="111" cy="48" rx="3.2" ry="4.3" fill="#272522"/>
-        <path d="M103 40q7-4 13-1" fill="none" stroke="#684333" stroke-width="2" stroke-linecap="round"/>
-        <ellipse cx="160" cy="63" rx="7.2" ry="5.5" fill="#242321"/>
-        <path d="M128 77q9 6 18 1" fill="none" stroke="#8d7460" stroke-width="1.5" stroke-linecap="round"/>
-        <path d="M82 77q17 9 33 2l5 10q-16 13-34 1z" fill="#278f88" stroke="#176f6b" stroke-width="1.2"/>
-        <path d="M105 87l-2 16 12-11" fill="#e4a45d" stroke="#a76e3b" stroke-width="1"/>
-        <circle cx="110" cy="91" r="2.5" fill="#f8e4b2"/>
-      </g>
-    </svg>`;
+    <img class="dog" src="/snoopy-woodstock.png?v=20261031-fanart1" alt="" draggable="false">`;
   document.body.appendChild(mascot);
 
   // Маскот автоматически скрывается, если перекрывает поле, кнопку или другой
