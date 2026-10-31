@@ -1,4 +1,4 @@
-#ian-mascot{position:fixed;z-index:9000;right:10px;top:40%;width:112px;height:104px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;filter:drop-shadow(0 8px 12px #18372625);will-change:left,top,transform;transform-origin:50% 85%}
+#ian-mascot{position:fixed;z-index:9000;right:10px;top:40%;width:112px;height:104px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;filter:drop-shadow(0 8px 12px #10294b25);will-change:left,top,transform;transform-origin:50% 85%}
 #ian-mascot.dragging{cursor:grabbing;z-index:9002;transition:none;transform:scale(1.08)}
 #ian-mascot .dog{width:100%;height:100%;overflow:visible;transform-origin:50% 85%;animation:ian-breathe 4.2s ease-in-out infinite}
 #ian-mascot .dog-body{transform-origin:65px 100px;transition:transform .45s cubic-bezier(.2,.8,.2,1)}
@@ -22,16 +22,16 @@
 #ian-mascot.speak .speech{opacity:1;transform:translateY(0) scale(1)}
 #ian-mascot .lamp{opacity:0;transition:opacity .35s}
 #ian-mascot.lit .lamp{opacity:1}
-#ian-mascot-chat{position:fixed;z-index:9001;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));width:min(350px,calc(100vw - 26px));max-height:70vh;display:flex;flex-direction:column;overflow:hidden;border:1px solid #ffffffd9;border-radius:23px;background:#f8fbf2df;backdrop-filter:blur(25px) saturate(170%);-webkit-backdrop-filter:blur(25px) saturate(170%);box-shadow:0 22px 70px #10281930;opacity:0;visibility:hidden;transform:translateY(12px) scale(.97);transition:opacity .25s,transform .4s cubic-bezier(.2,.8,.2,1),visibility .25s}
+#ian-mascot-chat{position:fixed;z-index:9001;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));width:min(350px,calc(100vw - 26px));max-height:70vh;display:flex;flex-direction:column;overflow:hidden;border:1px solid #ffffffd9;border-radius:23px;background:#f2f7ffdf;backdrop-filter:blur(25px) saturate(170%);-webkit-backdrop-filter:blur(25px) saturate(170%);box-shadow:0 22px 70px #10294b30;opacity:0;visibility:hidden;transform:translateY(12px) scale(.97);transition:opacity .25s,transform .4s cubic-bezier(.2,.8,.2,1),visibility .25s}
 #ian-mascot-chat.open{opacity:1;visibility:visible;transform:none}
-#ian-mascot-chat .head{display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid #24483218;font:700 15px -apple-system,sans-serif}
-#ian-mascot-chat .head button{margin-left:auto;width:32px;height:32px;border-radius:50%;background:#e8eee9;color:#26372d;font-size:20px}
+#ian-mascot-chat .head{display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid #123a8018;font:700 15px -apple-system,sans-serif}
+#ian-mascot-chat .head button{margin-left:auto;width:32px;height:32px;border-radius:50%;background:#e4efff;color:#10294b;font-size:20px}
 #ian-mascot-chat .messages{display:flex;flex-direction:column;gap:8px;overflow:auto;padding:13px;min-height:120px}
-#ian-mascot-chat .msg{max-width:88%;padding:9px 12px;border-radius:14px;background:#fff;color:#24352b;font:14px/1.45 -apple-system,sans-serif;overflow-wrap:anywhere}
-#ian-mascot-chat .msg.user{align-self:flex-end;background:#168653;color:#fff}
-#ian-mascot-chat form{display:flex;gap:8px;padding:10px;border-top:1px solid #24483218}
+#ian-mascot-chat .msg{max-width:88%;padding:9px 12px;border-radius:14px;background:#fff;color:#10294b;font:14px/1.45 -apple-system,sans-serif;overflow-wrap:anywhere}
+#ian-mascot-chat .msg.user{align-self:flex-end;background:#2878f0;color:#fff}
+#ian-mascot-chat form{display:flex;gap:8px;padding:10px;border-top:1px solid #123a8018}
 #ian-mascot-chat input{flex:1;min-width:0;padding:11px;border:1px solid #dce6df;border-radius:13px;background:#fff;color:#17231d;font:14px -apple-system,sans-serif}
-#ian-mascot-chat form button{width:42px;border-radius:13px;background:#168653;color:white;font-size:18px}
+#ian-mascot-chat form button{width:42px;border-radius:13px;background:#2878f0;color:white;font-size:18px}
 @keyframes ian-breathe{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3px) scale(1.012)}}
 @keyframes ian-walk{50%{transform:translateY(-5px) rotate(3deg)}}
 @keyframes ian-jump{0%,100%{transform:translateY(0) scale(1)}45%{transform:translateY(-15px) scale(1.055)}65%{transform:translateY(-10px) scale(1.02)}}
@@ -79,7 +79,7 @@
 #ian-mascot.run .bird{animation:ian-bird-flight .8s ease-in-out 2}
 #ian-mascot.snooze .bird{transform:translateY(3px) rotate(-5deg)}
 #ian-mascot.motion-off .dog,#ian-mascot.motion-off .bird,#ian-mascot.motion-off .bird-wing{animation:none!important;transition:none!important}
-#ian-mascot-chat .head .motion-toggle{margin-left:auto;flex:0 0 34px;width:34px;height:34px;border:1px solid rgba(30,60,42,.12);border-radius:50%;background:rgba(255,255,255,.78);color:#176b43;font-size:15px;font-weight:800;box-shadow:none}
+#ian-mascot-chat .head .motion-toggle{margin-left:auto;flex:0 0 34px;width:34px;height:34px;border:1px solid rgba(18,58,128,.14);border-radius:50%;background:rgba(255,255,255,.78);color:#123a80;font-size:15px;font-weight:800;box-shadow:none}
 #ian-mascot-chat .head .motion-toggle:before{display:none}
 #ian-mascot-chat .head button[aria-label="Закрыть"]{margin-left:0}
 @keyframes ian-run{0%,100%{transform:translateY(0) rotate(0) scaleX(1)}25%{transform:translateY(-7px) rotate(-5deg) scaleX(1.025)}55%{transform:translateY(1px) rotate(4deg) scaleX(.98)}80%{transform:translateY(-4px) rotate(-2deg)}}
@@ -163,7 +163,7 @@
   content:"Фан-арт";
   position:absolute;left:50%;bottom:-7px;transform:translateX(-50%);
   padding:2px 8px;border-radius:20px;
-  background:rgba(255,255,255,.84);color:#526158;
+  background:rgba(255,255,255,.84);color:#687991;
   border:1px solid rgba(30,45,36,.10);
   font:600 10px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
   pointer-events:none;
@@ -320,8 +320,8 @@
 #ian-mascot:focus,
 #ian-mascot:focus-visible{
   -webkit-tap-highlight-color:transparent!important;
-  -webkit-filter:drop-shadow(0 8px 12px #18372625)!important;
-  filter:drop-shadow(0 8px 12px #18372625)!important;
+  -webkit-filter:drop-shadow(0 8px 12px #10294b25)!important;
+  filter:drop-shadow(0 8px 12px #10294b25)!important;
   opacity:1!important;
   color-scheme:light;
   outline:none;
@@ -380,7 +380,7 @@
   padding:9px 12px;
   line-height:1.35;
   border-radius:16px;
-  box-shadow:0 5px 22px #18372620;
+  box-shadow:0 5px 22px #10294b20;
   -webkit-overflow-scrolling:touch;
 }
 #ian-mascot.speak .speech{opacity:1;transform:translateY(0) scale(1)}
@@ -572,20 +572,20 @@ html[data-theme="dark"] #ian-mascot .speech{
 
 
 /* Расширенные настройки, мини-игра и мелкие состояния персонажа */
-#ian-mascot-chat .head .mascot-settings-toggle{margin-left:0;flex:0 0 34px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(30,60,42,.12);background:rgba(255,255,255,.82);color:#176b43;font-size:17px;line-height:1;box-shadow:none}
-#ian-mascot-chat .head .mascot-settings-toggle.active{background:#dff4e6;transform:rotate(35deg)}
-#ian-mascot-settings{display:flex;flex-direction:column;gap:11px;padding:13px 14px;border-bottom:1px solid rgba(36,72,50,.12);background:rgba(242,249,243,.96);color:#20372a;font:13px/1.35 -apple-system,BlinkMacSystemFont,sans-serif}
+#ian-mascot-chat .head .mascot-settings-toggle{margin-left:0;flex:0 0 34px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(18,58,128,.14);background:rgba(255,255,255,.82);color:#123a80;font-size:17px;line-height:1;box-shadow:none}
+#ian-mascot-chat .head .mascot-settings-toggle.active{background:#e6f2ff;transform:rotate(35deg)}
+#ian-mascot-settings{display:flex;flex-direction:column;gap:11px;padding:13px 14px;border-bottom:1px solid rgba(18,58,128,.14);background:rgba(242,249,243,.96);color:#10294b;font:13px/1.35 -apple-system,BlinkMacSystemFont,sans-serif}
 #ian-mascot-settings[hidden]{display:none!important}
 #ian-mascot-settings .mascot-setting-check{display:flex;align-items:center;gap:9px;font-weight:650;cursor:pointer}
-#ian-mascot-settings input[type=checkbox]{width:18px;height:18px;accent-color:#168653}
+#ian-mascot-settings input[type=checkbox]{width:18px;height:18px;accent-color:#2878f0}
 #ian-mascot-settings .mascot-setting-range{display:grid;grid-template-columns:1fr auto;gap:5px 10px;font-weight:650}
-#ian-mascot-settings .mascot-setting-range strong{color:#168653;font-variant-numeric:tabular-nums}
-#ian-mascot-settings input[type=range]{grid-column:1/-1;width:100%;margin:2px 0;accent-color:#168653}
+#ian-mascot-settings .mascot-setting-range strong{color:#2878f0;font-variant-numeric:tabular-nums}
+#ian-mascot-settings input[type=range]{grid-column:1/-1;width:100%;margin:2px 0;accent-color:#2878f0}
 #ian-mascot-settings .mascot-setting-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-#ian-mascot-settings .mascot-setting-actions button{min-height:36px;padding:8px 10px;border:1px solid rgba(22,134,83,.16);border-radius:11px;background:#fff;color:#176b43;font:650 12px -apple-system,sans-serif}
-#ian-mascot-settings .mascot-setting-actions button:first-child{background:#168653;color:#fff}
+#ian-mascot-settings .mascot-setting-actions button{min-height:36px;padding:8px 10px;border:1px solid rgba(40,120,240,.18);border-radius:11px;background:#fff;color:#123a80;font:650 12px -apple-system,sans-serif}
+#ian-mascot-settings .mascot-setting-actions button:first-child{background:#2878f0;color:#fff}
 #ian-mascot-settings .mascot-setting-actions button:last-child{grid-column:1/-1}
-#ian-mascot-settings .mascot-settings-note{color:#718078;font-size:11px}
+#ian-mascot-settings .mascot-settings-note{color:#687991;font-size:11px}
 #ian-mascot.game-mode{z-index:9003;cursor:pointer;filter:drop-shadow(0 9px 18px rgba(236,164,30,.35))}
 #ian-mascot.game-mode .dog-body{animation:ian-game-hop .48s ease-in-out infinite alternate}
 #ian-mascot.game-mode .sparkle{animation:ian-game-sparkle .8s ease-in-out infinite alternate;transform-origin:center}
@@ -595,21 +595,40 @@ html[data-theme="dark"] #ian-mascot .speech{
 @media(prefers-reduced-motion:reduce){#ian-mascot.game-mode .dog-body,#ian-mascot.game-mode .sparkle{animation:none!important}}
 
 
-/* Mascot palette matches the site's green-and-white logo. */
-#ian-mascot .bulb-glass{stroke:#087546!important}
-#ian-mascot .stick-arms,#ian-mascot .stick-legs{stroke:#168653!important}
-#ian-mascot .stick-arms circle{fill:#168653!important}
-#ian-mascot .bulb-neck path:first-child{fill:#18a66a!important;stroke:#087546!important}
-#ian-mascot .sparkle{fill:#b8f0ce!important}
-#ian-mascot.motion-enabled.lit .bulb-glass{filter:drop-shadow(0 0 9px #8ee0b0) drop-shadow(0 0 19px #18a66a)!important}
+/* Mascot palette matches the site's blue-and-white logo. */
+#ian-mascot .bulb-glass{stroke:#123a80!important}
+#ian-mascot .stick-arms,#ian-mascot .stick-legs{stroke:#2878f0!important}
+#ian-mascot .stick-arms circle{fill:#2878f0!important}
+#ian-mascot .bulb-neck path:first-child{fill:#2878f0!important;stroke:#123a80!important}
+#ian-mascot .sparkle{fill:#cbe6ff!important}
+#ian-mascot.motion-enabled.lit .bulb-glass{filter:drop-shadow(0 0 9px #7dc6ff) drop-shadow(0 0 19px #2878f0)!important}
 #ian-mascot .speech{
   color:#111!important;background:rgba(255,255,255,.98)!important;
-  border:1px solid rgba(8,117,70,.22)!important;
-  box-shadow:0 7px 24px rgba(12,45,28,.18)!important;
+  border:1px solid rgba(18,58,128,.22)!important;
+  box-shadow:0 7px 24px rgba(16,41,75,.18)!important;
   margin:0!important;
 }
 html[data-theme="dark"] #ian-mascot .speech{
   color:#fff!important;background:rgba(25,34,47,.98)!important;
-  border-color:rgba(160,205,178,.32)!important;
+  border-color:rgba(125,198,255,.34)!important;
   box-shadow:0 8px 26px rgba(0,0,0,.42)!important;
 }
+
+
+/* Blue-and-white brand palette: mascot, chat settings and speech bubble. */
+#ian-mascot .bulb-glass{stroke:#123a80!important}
+#ian-mascot .stick-arms,#ian-mascot .stick-legs{stroke:#2878f0!important}
+#ian-mascot .stick-arms circle{fill:#2878f0!important}
+#ian-mascot .bulb-neck path:first-child{fill:#2878f0!important;stroke:#123a80!important}
+#ian-mascot .sparkle{fill:#cbe6ff!important}
+#ian-mascot.motion-enabled.lit .bulb-glass{filter:drop-shadow(0 0 9px #7dc6ff) drop-shadow(0 0 19px #2878f0)!important}
+#ian-mascot .speech{border-color:rgba(18,58,128,.22)!important}
+html[data-theme="dark"] #ian-mascot .speech{border-color:rgba(125,198,255,.34)!important}
+#ian-mascot-chat .head .mascot-settings-toggle{color:#123a80!important}
+#ian-mascot-chat .head .mascot-settings-toggle.active{background:#e6f2ff!important}
+#ian-mascot-settings{border-color:rgba(18,58,128,.14)!important;background:rgba(242,247,255,.97)!important;color:#10294b!important}
+#ian-mascot-settings input[type=checkbox],#ian-mascot-settings input[type=range]{accent-color:#2878f0!important}
+#ian-mascot-settings .mascot-setting-range strong{color:#2878f0!important}
+#ian-mascot-settings .mascot-setting-actions button{border-color:rgba(40,120,240,.18)!important;color:#123a80!important}
+#ian-mascot-settings .mascot-setting-actions button:first-child{background:#2878f0!important;color:#fff!important}
+#ian-mascot-settings .mascot-settings-note{color:#687991!important}
