@@ -567,3 +567,5 @@ html[data-theme="dark"] #ian-mascot .speech{
 @keyframes bulb-twinkle{to{opacity:.28;transform:scale(.75)}}
 @media(max-width:600px){#ian-mascot{width:88px!important;height:120px!important;left:auto!important;right:7px!important;bottom:calc(14px + env(safe-area-inset-bottom))!important}#ian-mascot .speech{right:calc(100% + 6px);left:auto;max-width:min(170px,calc(100vw - 110px))}#ian-mascot.speech-left .speech{left:calc(100% + 6px);right:auto}}
 @media(prefers-reduced-motion:reduce){#ian-mascot.motion-enabled .dog-body,#ian-mascot.motion-enabled .bear-head,#ian-mascot.motion-enabled .arm,#ian-mascot.motion-enabled .leg{animation:none!important}}
+
+#ian-mascot .bear-eyes .eye{translate:var(--gaze-x,0px) var(--gaze-y,0px);transition:translate .12s ease,transform .16s ease}
