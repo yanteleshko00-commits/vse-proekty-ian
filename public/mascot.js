@@ -384,10 +384,16 @@
     const field = event.target;
     if (!field.matches?.("input,textarea,select,[contenteditable='true']") || field.closest("#ian-mascot-chat") || doNotDisturb || hintedFields.has(field)) return;
     clearTimeout(hintTimer);
-    hintTimer = window.setTimeout(() => {
-      if (document.activeElement !== field || doNotDisturb || chat.classList.contains("open") || Date.now() - lastFieldInputAt < 9000) return;
+    const showHintWhenReady = () => {
+      if (document.activeElement !== field || doNotDisturb || chat.classList.contains("open")) return;
+      const quietFor = Date.now() - lastFieldInputAt;
+      if (lastFieldInputAt && quietFor < 9000) {
+        hintTimer = window.setTimeout(showHintWhenReady, 9000 - quietFor + 150);
+        return;
+      }
       hintedFields.add(field); say(getFieldHint(field)); setEmotion("thinking", 2200);
-    }, 22000);
+    };
+    hintTimer = window.setTimeout(showHintWhenReady, 22000);
   });
   document.addEventListener("focusout", event => {
     if (event.target.matches?.("input,textarea,select,[contenteditable='true']")) clearTimeout(hintTimer);
@@ -1007,8 +1013,8 @@
   if (status && window.MutationObserver) {
     new MutationObserver(() => {
       const t = status.textContent.toLowerCase();
-      if (t.includes("ошиб") || t.includes("не удалось")) say("Кажется, нужна помощь. Спроси меня!");
+      if (!doNotDisturb && (t.includes("ошиб") || t.includes("не удалось"))) say("Кажется, нужна помощь. Спроси меня!");
     }).observe(status, { childList: true, subtree: true, characterData: true });
   }
-  setTimeout(() => say("Тяни меня пальцем, чтобы бросить. Три нажатия — лампочка! 💡"), 1800);
+  setTimeout(() => { if (!doNotDisturb) say("Тяни меня пальцем, чтобы бросить. Три нажатия — лампочка! 💡"); }, 1800);
 })();
