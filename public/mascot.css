@@ -671,3 +671,110 @@ html[data-theme="dark"] #ian-mascot .speech{border-color:rgba(125,198,255,.34)!i
  #ian-mascot.motion-enabled.bounce .dog,#ian-mascot.motion-enabled.peek .dog-body,
  #ian-mascot.motion-enabled.wiggle .sparkle,#ian-mascot.motion-enabled.bounce .sparkle{animation:none!important}
 }
+
+/* Smooth, readable speech layer. It lives under <body>, outside the mascot's
+   transformed/filter layer so its viewport coordinates stay correct on iOS. */
+#ian-mascot-speech{
+  position:fixed!important;
+  z-index:9015!important;
+  display:block!important;
+  box-sizing:border-box!important;
+  width:max-content!important;
+  min-width:min(190px,calc(100vw - 24px))!important;
+  max-width:min(252px,calc(100vw - 24px))!important;
+  max-height:min(34dvh,220px)!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overflow-wrap:anywhere!important;
+  word-break:normal!important;
+  white-space:normal!important;
+  padding:12px 15px!important;
+  border:1px solid rgba(40,120,240,.28)!important;
+  border-radius:17px!important;
+  color:#142743!important;
+  background:rgba(255,255,255,.99)!important;
+  box-shadow:0 10px 30px rgba(16,41,75,.22),inset 0 1px 0 rgba(255,255,255,.95)!important;
+  font:650 14px/1.48 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  letter-spacing:.005em!important;
+  text-shadow:none!important;
+  opacity:0;
+  transform:translateY(9px) scale(.985);
+  transform-origin:center;
+  transition:opacity .32s ease,transform .46s cubic-bezier(.22,.61,.36,1)!important;
+  pointer-events:none!important;
+  -webkit-font-smoothing:antialiased;
+}
+#ian-mascot-speech.is-visible{
+  opacity:1;
+  transform:translateY(0) scale(1);
+}
+html[data-theme="dark"] #ian-mascot-speech{
+  color:#f5f8ff!important;
+  background:rgba(24,37,57,.99)!important;
+  border-color:rgba(125,198,255,.38)!important;
+  box-shadow:0 12px 34px rgba(0,0,0,.42)!important;
+}
+#ian-mascot.motion-enabled .dog-body{
+  animation-duration:4.7s!important;
+  animation-timing-function:cubic-bezier(.45,0,.55,1)!important;
+}
+#ian-mascot.motion-enabled .bear-head{
+  animation-duration:5.8s!important;
+  animation-timing-function:cubic-bezier(.45,0,.55,1)!important;
+}
+#ian-mascot.motion-enabled .bear-arms{
+  animation-duration:4.8s!important;
+  animation-timing-function:cubic-bezier(.45,0,.55,1)!important;
+}
+#ian-mascot.motion-enabled.walk .dog-body,
+#ian-mascot.scroll-walk .dog-body{
+  animation-duration:.58s!important;
+  animation-timing-function:cubic-bezier(.45,0,.55,1)!important;
+}
+#ian-mascot.scroll-walk .stick-legs .leg,
+#ian-mascot.scroll-walk .stick-arms .arm{
+  animation-duration:.58s!important;
+  animation-timing-function:cubic-bezier(.45,0,.55,1)!important;
+}
+#ian-mascot.motion-enabled.run .dog-body{animation-duration:.38s!important}
+#ian-mascot.motion-enabled.happy .dog-body{animation-duration:.72s!important}
+#ian-mascot.motion-enabled.dance .dog-body{animation-duration:.64s!important}
+#ian-mascot.motion-enabled.think .bear-head{animation-duration:1.3s!important}
+#ian-mascot.gliding .dog-body{
+  animation-duration:.54s!important;
+  animation-timing-function:cubic-bezier(.22,.61,.36,1)!important;
+}
+#ian-mascot.talking .face-mouth .mouth{
+  transform-box:fill-box;
+  transform-origin:center;
+  animation:ian-mouth-talk .24s ease-in-out infinite alternate;
+}
+@keyframes ian-mouth-talk{
+  from{transform:scaleY(.88)}
+  to{transform:scaleY(1.38)}
+}
+@media(max-width:600px){
+  #ian-mascot-speech{
+    min-width:min(184px,calc(100vw - 24px))!important;
+    max-width:min(230px,calc(100vw - 24px))!important;
+    padding:11px 13px!important;
+    font-size:13.5px!important;
+    line-height:1.46!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  #ian-mascot-speech{transition:none!important}
+  #ian-mascot.motion-enabled .dog-body,
+  #ian-mascot.motion-enabled .bear-head,
+  #ian-mascot.motion-enabled .bear-arms,
+  #ian-mascot.motion-enabled.walk .dog-body,
+  #ian-mascot.scroll-walk .dog-body,
+  #ian-mascot.scroll-walk .stick-legs .leg,
+  #ian-mascot.scroll-walk .stick-arms .arm,
+  #ian-mascot.motion-enabled.run .dog-body,
+  #ian-mascot.motion-enabled.happy .dog-body,
+  #ian-mascot.motion-enabled.dance .dog-body,
+  #ian-mascot.motion-enabled.think .bear-head,
+  #ian-mascot.gliding .dog-body,
+  #ian-mascot.talking .face-mouth .mouth{animation:none!important}
+}

@@ -122,6 +122,11 @@
   applyMotionSetting();
 
   const speech = mascot.querySelector(".speech");
+  speech.setAttribute("role", "status");
+  speech.setAttribute("aria-live", "polite");
+  // Portal the bubble out of the mascot: CSS filters/transforms can otherwise
+  // turn a fixed child into an element positioned relative to the mascot.
+  document.body.appendChild(speech);
   const messages = chat.querySelector(".messages");
   const input = chat.querySelector("input");
   const form = chat.querySelector("form");
@@ -458,49 +463,86 @@
 
   function positionSpeech() {
     const bounds = mascot.getBoundingClientRect();
-    const gap = 9, margin = 10;
-    speech.style.position = "fixed";
-    speech.style.left = "0px";
-    speech.style.top = "0px";
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const gap = 12;
+    const margin = 12;
 
-    const rightSpace = window.innerWidth - bounds.right - gap - margin;
+    // The bubble is mounted directly under <body>, so fixed coordinates are
+    // measured against the viewport rather than the mascot's filtered layer.
+    speech.style.setProperty("position", "fixed", "important");
+    speech.style.setProperty("left", margin + "px", "important");
+    speech.style.setProperty("top", margin + "px", "important");
+    speech.style.setProperty("right", "auto", "important");
+    speech.style.setProperty("bottom", "auto", "important");
+    speech.style.setProperty("width", "max-content", "important");
+
+    const fullWidth = Math.min(252, Math.max(150, viewportWidth - margin * 2));
+    speech.style.setProperty("min-width", Math.min(190, fullWidth) + "px", "important");
+    speech.style.setProperty("max-width", fullWidth + "px", "important");
+
+    const rightSpace = viewportWidth - bounds.right - gap - margin;
     const leftSpace = bounds.left - gap - margin;
     const useRight = rightSpace >= leftSpace;
     const sideSpace = Math.max(rightSpace, leftSpace);
     let left, top, bubble;
 
-    if (sideSpace >= 145) {
-      speech.style.setProperty("max-width", Math.min(260, sideSpace) + "px", "important");
+    if (sideSpace >= 205) {
+      const sideWidth = Math.min(252, sideSpace);
+      speech.style.setProperty("min-width", Math.min(190, sideWidth) + "px", "important");
+      speech.style.setProperty("max-width", sideWidth + "px", "important");
       bubble = speech.getBoundingClientRect();
       left = useRight ? bounds.right + gap : bounds.left - bubble.width - gap;
-      top = bounds.top + bounds.height / 2 - bubble.height / 2;
+      top = bounds.top + bounds.height * 0.46 - bubble.height / 2;
+      speech.dataset.position = useRight ? "right" : "left";
+      mascot.classList.toggle("speech-left", useRight);
     } else {
-      // When the mascot is near the middle, place the bubble above or below it.
-      speech.style.setProperty("max-width", Math.max(120, Math.min(260, window.innerWidth - margin * 2)) + "px", "important");
+      // In the middle of a narrow screen, keep a wide bubble above or below.
       bubble = speech.getBoundingClientRect();
       left = bounds.left + bounds.width / 2 - bubble.width / 2;
-      const belowSpace = window.innerHeight - bounds.bottom - gap - margin;
-      const aboveSpace = bounds.top - gap - margin;
-      top = belowSpace >= bubble.height || belowSpace >= aboveSpace
-        ? bounds.bottom + gap
-        : bounds.top - bubble.height - gap;
+      const aboveTop = bounds.top - bubble.height - gap;
+      const belowTop = bounds.bottom + gap;
+      if (aboveTop >= margin) {
+        top = aboveTop;
+        speech.dataset.position = "above";
+      } else if (belowTop + bubble.height <= viewportHeight - margin) {
+        top = belowTop;
+        speech.dataset.position = "below";
+      } else {
+        top = Math.max(margin, Math.min(aboveTop, viewportHeight - bubble.height - margin));
+        speech.dataset.position = "above";
+      }
+      mascot.classList.toggle("speech-left", bounds.left < viewportWidth * 0.48);
     }
 
-    left = Math.max(margin, Math.min(left, window.innerWidth - bubble.width - margin));
-    top = Math.max(margin, Math.min(top, window.innerHeight - bubble.height - margin));
-    speech.style.left = left + "px";
-    speech.style.top = top + "px";
+    bubble = speech.getBoundingClientRect();
+    left = Math.max(margin, Math.min(left, viewportWidth - bubble.width - margin));
+    top = Math.max(margin, Math.min(top, viewportHeight - bubble.height - margin));
+    speech.style.setProperty("left", Math.round(left) + "px", "important");
+    speech.style.setProperty("top", Math.round(top) + "px", "important");
   }
 
   function say(text) {
-    speech.textContent = text;
-    mascot.classList.add("speak");
+    const line = String(text ?? "").trim();
+    if (!line) return;
+
+    speech.textContent = line;
+    speech.setAttribute("aria-label", line);
+    speech.classList.add("is-visible");
+    mascot.classList.add("speak", "talking");
+
     positionSpeech();
     requestAnimationFrame(() => {
       if (mascot.classList.contains("speak")) positionSpeech();
     });
+
     clearTimeout(mascot._speechTimer);
-    mascot._speechTimer = setTimeout(() => mascot.classList.remove("speak"), 3200);
+    // Keep longer replies visible long enough to read without rushing.
+    const visibleFor = Math.min(8200, Math.max(4200, 2500 + line.length * 32));
+    mascot._speechTimer = setTimeout(() => {
+      mascot.classList.remove("speak", "talking");
+      speech.classList.remove("is-visible");
+    }, visibleFor);
   }
 
   window.addEventListener("resize", () => {
@@ -821,6 +863,7 @@
     mascot.style.setProperty("left", drag.x + "px", "important");
     mascot.style.setProperty("top", drag.y + "px", "important");
     mascot.classList.toggle("speech-left", drag.x < innerWidth * 0.48);
+    if (mascot.classList.contains("speak")) positionSpeech();
     drag.px = e.clientX; drag.py = e.clientY; drag.time = now;
   });
   let wallBounceCooldown = 0;
@@ -858,6 +901,7 @@
     mascot.style.setProperty("left", x + "px", "important");
     mascot.style.setProperty("top", y + "px", "important");
     mascot.classList.toggle("speech-left", x < innerWidth * 0.48);
+    if (mascot.classList.contains("speak")) positionSpeech();
     if (Math.abs(vx) < 0.18 && Math.abs(vy) < 0.18) {
       vx = 0; vy = 0; frame = 0;
       mascot.classList.remove("gliding");
