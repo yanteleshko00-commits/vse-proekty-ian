@@ -8,33 +8,52 @@
   mascot.setAttribute("aria-label", "Снупи. Перетащи меня или нажми три раза для лампочки");
   mascot.innerHTML = `
     <div class="speech" id="ian-mascot-speech">Привет! Потяни меня за лапку 🐾</div>
-    <svg class="dog" viewBox="0 0 150 132" aria-hidden="true">
+    <svg class="dog" viewBox="0 0 180 150" aria-hidden="true">
       <defs>
-        <radialGradient id="snoopy-coat" cx="35%" cy="25%" r="80%"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#e8eee9"/></radialGradient>
-        <linearGradient id="bird-yellow" x2="0" y2="1"><stop stop-color="#fff27c"/><stop offset="1" stop-color="#f4bd31"/></linearGradient>
+        <linearGradient id="ian-coat" x1="0" y1="0" x2="0.85" y2="1">
+          <stop offset="0" stop-color="#fffdf6"/>
+          <stop offset="1" stop-color="#e9dfcc"/>
+        </linearGradient>
+        <linearGradient id="ian-ear" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#87543c"/>
+          <stop offset="1" stop-color="#4c3029"/>
+        </linearGradient>
+        <linearGradient id="ian-bird" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffd36a"/>
+          <stop offset="1" stop-color="#e99b42"/>
+        </linearGradient>
       </defs>
-      <ellipse cx="70" cy="122" rx="43" ry="6" fill="#24392c" opacity=".13"/>
-      <g class="lamp"><circle cx="67" cy="57" r="52" fill="#ffe36a" opacity=".28"/><path d="M60 5h15l-2 8H62z" fill="#e4b92e"/><path d="M63 0h9v7h-9z" fill="#e4b92e"/></g>
-      <g class="dog-body">
-        <ellipse cx="66" cy="94" rx="38" ry="27" fill="url(#snoopy-coat)" stroke="#dce5df" stroke-width="1.5"/>
-        <path d="M42 91q-13 8-10 22 7 7 16-4M82 94q15 4 12 18-7 7-16-3" fill="#fff" stroke="#dce5df" stroke-width="1.5"/>
-        <path d="M48 111q-2 8 6 9 7 0 7-8M76 111q-1 8 7 9 7 0 7-8" fill="#fff" stroke="#dce5df" stroke-width="1.5"/>
-        <path class="ear ear-left" d="M54 28C30 6 14 23 19 55c3 18 15 27 29 18z" fill="#252b28"/>
-        <ellipse cx="72" cy="47" rx="35" ry="30" fill="url(#snoopy-coat)" stroke="#dce5df" stroke-width="1.5"/>
-        <path d="M82 49q25-2 34 10-7 17-31 17-13 0-20-9 7-12 17-18z" fill="#fff" stroke="#dce5df" stroke-width="1.2"/>
-        <ellipse class="eye eye-left" cx="75" cy="38" rx="3" ry="4.2" fill="#202722"/>
-        <ellipse cx="112" cy="57" rx="7" ry="5.5" fill="#202722"/>
-        <path d="M90 69q8 5 15 0" fill="none" stroke="#59665e" stroke-width="1.6" stroke-linecap="round"/>
-        <path d="M44 83q22 10 43 4" fill="none" stroke="#168653" stroke-width="4.5" stroke-linecap="round"/>
-        <circle cx="69" cy="89" r="3.5" fill="#168653"/>
-        <path class="tail" d="M101 94q17-1 17-14" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+      <ellipse cx="82" cy="137" rx="53" ry="7" fill="#26382e" opacity=".13"/>
+      <g class="bird" transform="translate(145 36)">
+        <path d="M-7 1q-5-12 4-16 9-3 14 5 5 8-1 17-9 9-17-6z" fill="url(#ian-bird)" stroke="#bd7937" stroke-width="1.2"/>
+        <path class="bird-wing" d="M-4 0q-12-8-10 3 4 8 12 5" fill="#e99142" stroke="#bd7937" stroke-width="1"/>
+        <circle cx="5" cy="-4" r="1.8" fill="#352d28"/>
+        <path d="M10 1l8 3-8 4z" fill="#d96e36"/>
+        <path d="M-2 10l-2 5m8-5 2 5" stroke="#9f6538" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M0-16l2-5 3 5" fill="none" stroke="#5a9a86" stroke-width="2" stroke-linecap="round"/>
       </g>
-      <g class="bird" transform="translate(111 68)">
-        <ellipse cx="0" cy="0" rx="15" ry="17" fill="url(#bird-yellow)" stroke="#e5b43a" stroke-width="1"/>
-        <path class="bird-wing" d="M-4 -2q-17-13-13 5 6 10 14 3" fill="#f6c83e" stroke="#e5b43a" stroke-width="1"/>
-        <circle cx="5" cy="-5" r="2" fill="#333b32"/>
-        <path d="M13 0l9 4-9 4z" fill="#ef9131"/>
-        <path d="M-4 16l-3 7m10-7 2 7" stroke="#bd8730" stroke-width="2" stroke-linecap="round"/>
+      <g class="dog-body">
+        <path class="tail" d="M39 91q-18-2-20-20-1-8 5-12" fill="none" stroke="#f7f0e3" stroke-width="10" stroke-linecap="round"/>
+        <path d="M21 60q-3-5 2-9" fill="none" stroke="#87543c" stroke-width="5" stroke-linecap="round"/>
+        <ellipse cx="75" cy="99" rx="48" ry="29" fill="url(#ian-coat)" stroke="#d8cdbb" stroke-width="1.4"/>
+        <path d="M53 76q17-12 31 0 7 9 3 20-13 8-31 2-10-7-3-22z" fill="#8a563d" opacity=".96"/>
+        <path class="leg leg-back-a" d="M47 111q-8 9-8 19" fill="none" stroke="#e9dfcc" stroke-width="12" stroke-linecap="round"/>
+        <path class="leg leg-back-b" d="M68 114q-2 8-1 16" fill="none" stroke="#f6efe2" stroke-width="11" stroke-linecap="round"/>
+        <path class="leg leg-front-a" d="M103 108q7 9 5 21" fill="none" stroke="#f6efe2" stroke-width="11" stroke-linecap="round"/>
+        <path class="leg leg-front-b" d="M120 105q9 9 9 22" fill="none" stroke="#e9dfcc" stroke-width="11" stroke-linecap="round"/>
+        <path d="M31 132q8-5 15 0m14 0q7-5 14 0m34 0q8-5 15 0m9 0q7-5 14 0" fill="none" stroke="#b9aa93" stroke-width="2.2" stroke-linecap="round"/>
+        <path class="ear ear-left" d="M91 32q-22-24-34-5-8 14 2 34 8 15 20 11 11-13 12-40z" fill="url(#ian-ear)"/>
+        <path class="ear ear-right" d="M126 37q22-21 30-3 7 16-5 34-8 12-17 5-9-12-8-36z" fill="url(#ian-ear)"/>
+        <ellipse cx="109" cy="52" rx="34" ry="29" fill="url(#ian-coat)" stroke="#d8cdbb" stroke-width="1.4"/>
+        <path d="M91 38q5-17 20-15 13 2 16 17-12 9-31 7z" fill="#87543c" opacity=".95"/>
+        <path d="M117 57q22-7 40 4 8 6 4 17-8 14-31 11-19-3-27-14 1-11 14-18z" fill="url(#ian-coat)" stroke="#d8cdbb" stroke-width="1.2"/>
+        <ellipse class="eye eye-left" cx="111" cy="48" rx="3.2" ry="4.3" fill="#272522"/>
+        <path d="M103 40q7-4 13-1" fill="none" stroke="#684333" stroke-width="2" stroke-linecap="round"/>
+        <ellipse cx="160" cy="63" rx="7.2" ry="5.5" fill="#242321"/>
+        <path d="M128 77q9 6 18 1" fill="none" stroke="#8d7460" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M82 77q17 9 33 2l5 10q-16 13-34 1z" fill="#278f88" stroke="#176f6b" stroke-width="1.2"/>
+        <path d="M105 87l-2 16 12-11" fill="#e4a45d" stroke="#a76e3b" stroke-width="1"/>
+        <circle cx="110" cy="91" r="2.5" fill="#f8e4b2"/>
       </g>
     </svg>`;
   document.body.appendChild(mascot);
@@ -82,10 +101,11 @@
   // Accessible motion controls; preference is stored locally on this device.
   const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   let motionEnabled = !motionQuery.matches;
+  let userMotionChoice = false;
   try {
     const savedMotion = localStorage.getItem("ianMascotMotion");
-    if (savedMotion === "off") motionEnabled = false;
-    if (savedMotion === "on" && !motionQuery.matches) motionEnabled = true;
+    if (savedMotion === "off") { motionEnabled = false; userMotionChoice = true; }
+    if (savedMotion === "on") { motionEnabled = true; userMotionChoice = true; }
   } catch (_) {}
   const motionControl = document.createElement("button");
   motionControl.type = "button";
@@ -93,6 +113,7 @@
   motionControl.className = "motion-toggle";
   chat.querySelector(".head").insertBefore(motionControl, chat.querySelector(".head button"));
   function applyMotionSetting() {
+    mascot.classList.toggle("motion-enabled", motionEnabled);
     mascot.classList.toggle("motion-off", !motionEnabled);
     motionControl.setAttribute("aria-pressed", String(!motionEnabled));
     motionControl.setAttribute("aria-label", motionEnabled ? "Выключить анимации" : "Включить анимации");
@@ -100,14 +121,15 @@
     motionControl.title = motionEnabled ? "Выключить анимации" : "Включить анимации";
   }
   motionControl.addEventListener("click", () => {
-    motionEnabled = !motionEnabled && !motionQuery.matches;
+    motionEnabled = !motionEnabled;
+    userMotionChoice = true;
     try { localStorage.setItem("ianMascotMotion", motionEnabled ? "on" : "off"); } catch (_) {}
     if (!motionEnabled) mascot.classList.remove("walk", "run", "happy", "think", "look", "blink", "bird-hop", "bird-flap", "bird-cheer", "bird-fly", "snooze", "dance");
     applyMotionSetting();
     say(motionEnabled ? "Анимации снова включены!" : "Хорошо, буду неподвижным.");
   });
   motionQuery.addEventListener?.("change", event => {
-    if (event.matches) motionEnabled = false;
+    if (!userMotionChoice) motionEnabled = !event.matches;
     applyMotionSetting();
   });
   applyMotionSetting();
