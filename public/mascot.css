@@ -270,3 +270,28 @@
 @media(prefers-reduced-motion:reduce){
   #ian-mascot .face-mouth .mouth,#ian-mascot .bear-eyes .eye,#ian-mascot .bear-brows .brow,#ian-mascot .heart-sparkles{transition:none!important}
 }
+
+/* Additional face states */
+#ian-mascot .cheeks,#ian-mascot .emotion-tears,#ian-mascot .emotion-stars{opacity:0;transition:opacity .2s ease}
+#ian-mascot .emotion-stars{transform-origin:center;animation:ian-stars-pop .7s ease-in-out infinite alternate}
+#ian-mascot.emotion-confused .mouth-neutral,#ian-mascot.emotion-worried .mouth-neutral,#ian-mascot.emotion-proud .mouth-neutral,#ian-mascot.emotion-shy .mouth-neutral,#ian-mascot.emotion-laugh .mouth-neutral,#ian-mascot.emotion-playful .mouth-neutral,#ian-mascot.emotion-excited .mouth-neutral{opacity:0}
+#ian-mascot.emotion-confused .mouth-confused{opacity:1}
+#ian-mascot.emotion-worried .mouth-worried{opacity:1}
+#ian-mascot.emotion-proud .mouth-proud{opacity:1}
+#ian-mascot.emotion-shy .mouth-shy{opacity:1}
+#ian-mascot.emotion-laugh .mouth-laugh,#ian-mascot.emotion-excited .mouth-laugh{opacity:1}
+#ian-mascot.emotion-playful .mouth-smirk{opacity:1}
+#ian-mascot.emotion-sad .emotion-tears{opacity:1}
+#ian-mascot.emotion-excited .emotion-stars{opacity:1}
+#ian-mascot.emotion-shy .cheeks,#ian-mascot.emotion-love .cheeks{opacity:.65}
+#ian-mascot.emotion-confused .brow-left{transform:translateY(-4px) rotate(-10deg)}
+#ian-mascot.emotion-confused .brow-right{transform:translateY(2px) rotate(8deg)}
+#ian-mascot.emotion-worried .bear-eyes .eye{transform:scaleY(1.12)}
+#ian-mascot.emotion-worried .bear-brows .brow{transform:translateY(-2px)}
+#ian-mascot.emotion-proud .bear-head{transform:translateY(-3px) rotate(3deg)}
+#ian-mascot.emotion-shy .bear-head{transform:rotate(-4deg) translateY(2px)}
+#ian-mascot.emotion-excited .bear-eyes .eye{transform:scale(1.32)}
+#ian-mascot.emotion-excited .bear-brows .brow{transform:translateY(-4px) scaleX(1.08)}
+#ian-mascot.emotion-playful .bear-head{transform:rotate(5deg)}
+@keyframes ian-stars-pop{from{transform:scale(.8) rotate(-8deg)}to{transform:scale(1.12) rotate(8deg)}}
+@media(prefers-reduced-motion:reduce){#ian-mascot .cheeks,#ian-mascot .emotion-tears,#ian-mascot .emotion-stars{transition:none!important;animation:none!important}}
