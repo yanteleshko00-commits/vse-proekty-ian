@@ -593,3 +593,23 @@ html[data-theme="dark"] #ian-mascot .speech{
 @keyframes ian-game-sparkle{from{opacity:.4;transform:scale(.75)}to{opacity:1;transform:scale(1.2)}}
 @media(max-width:600px){#ian-mascot-chat .head .mascot-settings-toggle{width:32px;height:32px;flex-basis:32px}#ian-mascot-settings{padding:11px 12px;gap:9px}#ian-mascot-settings .mascot-setting-actions button{min-height:40px}}
 @media(prefers-reduced-motion:reduce){#ian-mascot.game-mode .dog-body,#ian-mascot.game-mode .sparkle{animation:none!important}}
+
+
+/* Mascot palette matches the site's green-and-white logo. */
+#ian-mascot .bulb-glass{stroke:#087546!important}
+#ian-mascot .stick-arms,#ian-mascot .stick-legs{stroke:#168653!important}
+#ian-mascot .stick-arms circle{fill:#168653!important}
+#ian-mascot .bulb-neck path:first-child{fill:#18a66a!important;stroke:#087546!important}
+#ian-mascot .sparkle{fill:#b8f0ce!important}
+#ian-mascot.motion-enabled.lit .bulb-glass{filter:drop-shadow(0 0 9px #8ee0b0) drop-shadow(0 0 19px #18a66a)!important}
+#ian-mascot .speech{
+  color:#111!important;background:rgba(255,255,255,.98)!important;
+  border:1px solid rgba(8,117,70,.22)!important;
+  box-shadow:0 7px 24px rgba(12,45,28,.18)!important;
+  margin:0!important;
+}
+html[data-theme="dark"] #ian-mascot .speech{
+  color:#fff!important;background:rgba(25,34,47,.98)!important;
+  border-color:rgba(160,205,178,.32)!important;
+  box-shadow:0 8px 26px rgba(0,0,0,.42)!important;
+}
