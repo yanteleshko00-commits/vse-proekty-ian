@@ -174,12 +174,13 @@
   let idleTimer;
   function randomIdle() {
     if (!motionEnabled || document.hidden || mascot.classList.contains("dragging") || chat.classList.contains("open")) return;
-    const moves = ["look", "blink", "walk", "run", "snooze", "dance", "happy", "think"];
+    // Idle motion stays in place; the mascot never wanders over page content.
+    const moves = ["look", "blink", "snooze", "happy", "think"];
     const move = moves[Math.floor(Math.random() * moves.length)];
     mascot.classList.remove("look", "blink", "happy", "think");
     void mascot.offsetWidth;
     mascot.classList.add(move);
-    const idleEmotion = ({ look: "curious", think: "thinking", snooze: "sleepy", happy: "happy", dance: "happy", run: "happy", walk: "curious" })[move] || "neutral";
+    const idleEmotion = ({ look: "curious", think: "thinking", snooze: "sleepy", happy: "happy" })[move] || "neutral";
     setEmotion(idleEmotion, move === "snooze" ? 2600 : 1450);
     setTimeout(() => mascot.classList.remove(move), move === "snooze" ? 2600 : 1450);
   }
@@ -327,33 +328,16 @@
     if (!moved) return;
     mascot.dataset.dragged = "yes";
     say("Ух ты! Вот это бросок! 😄");
-    if (motionEnabled) animate("happy");
-    if (motionEnabled) mascot.classList.add("collision");
-    setTimeout(() => mascot.classList.remove("collision"), 900);
+    // Keep the mascot exactly where it was released. No inertia or screen-wide flight.
     cancelAnimationFrame(frame);
-    let sx = Math.max(-26, Math.min(26, vx * 1.5));
-    let sy = Math.max(-26, Math.min(26, vy * 1.5));
-    if (Math.abs(sx) + Math.abs(sy) < 5) sx = x < innerWidth / 2 ? 9 : -9;
-    const reduced = !motionEnabled || matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      mascot.style.setProperty("left", Math.max(0, Math.min(innerWidth - mascot.offsetWidth, x)) + "px", "important");
-      mascot.style.setProperty("top", Math.max(0, Math.min(innerHeight - mascot.offsetHeight, y)) + "px", "important");
-      return;
+    vx = 0; vy = 0;
+    mascot.style.setProperty("left", Math.max(0, Math.min(innerWidth - mascot.offsetWidth, x)) + "px", "important");
+    mascot.style.setProperty("top", Math.max(0, Math.min(innerHeight - mascot.offsetHeight, y)) + "px", "important");
+    if (motionEnabled) {
+      animate("happy", 900);
+      mascot.classList.add("collision");
+      setTimeout(() => mascot.classList.remove("collision"), 700);
     }
-    function fly() {
-      x += sx; y += sy; sx *= .965; sy = sy * .965 + .2;
-      const maxX = innerWidth - mascot.offsetWidth, maxY = innerHeight - mascot.offsetHeight;
-      if (x < 0 || x > maxX) { x = Math.max(0, Math.min(maxX, x)); sx *= -.7; mascot.classList.add("collision"); setTimeout(() => mascot.classList.remove("collision"), 500); }
-      if (y < 0 || y > maxY) { y = Math.max(0, Math.min(maxY, y)); sy *= -.7; mascot.classList.add("collision"); setTimeout(() => mascot.classList.remove("collision"), 500); }
-      mascot.style.setProperty("left", x + "px", "important");
-      mascot.style.setProperty("top", y + "px", "important");
-      if (Math.abs(sx) + Math.abs(sy) > .7) frame = requestAnimationFrame(fly);
-      else {
-        mascot.style.setProperty("left", x + "px", "important");
-        mascot.style.setProperty("top", y + "px", "important");
-      }
-    }
-    frame = requestAnimationFrame(fly);
   }
   mascot.addEventListener("pointerup", release);
   mascot.addEventListener("pointercancel", release);
