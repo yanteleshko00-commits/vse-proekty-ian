@@ -128,14 +128,39 @@
   const form = chat.querySelector("form");
   let lit = false, taps = 0, tapTimer, drag = null, vx = 0, vy = 0, frame = 0;
 
+  function positionSpeech() {
+    const bounds = mascot.getBoundingClientRect();
+    speech.style.position = "fixed";
+    speech.style.maxWidth = Math.max(120, Math.min(260, window.innerWidth - 24)) + "px";
+    speech.style.left = "0px";
+    speech.style.top = "0px";
+    const bubble = speech.getBoundingClientRect();
+    const gap = 10;
+    let left = bounds.left + bounds.width / 2 < window.innerWidth / 2
+      ? bounds.right + gap
+      : bounds.left - bubble.width - gap;
+    left = Math.max(12, Math.min(left, window.innerWidth - bubble.width - 12));
+    let top = bounds.top - 8;
+    if (top + bubble.height > window.innerHeight - 10) top = window.innerHeight - bubble.height - 10;
+    top = Math.max(10, top);
+    speech.style.left = left + "px";
+    speech.style.top = top + "px";
+  }
+
   function say(text) {
     speech.textContent = text;
-    const bounds = mascot.getBoundingClientRect();
-    mascot.classList.toggle("speech-left", bounds.left < innerWidth * 0.48);
     mascot.classList.add("speak");
+    positionSpeech();
     clearTimeout(mascot._speechTimer);
-    mascot._speechTimer = setTimeout(() => mascot.classList.remove("speak"), 2500);
+    mascot._speechTimer = setTimeout(() => mascot.classList.remove("speak"), 3200);
   }
+
+  window.addEventListener("resize", () => {
+    if (mascot.classList.contains("speak")) positionSpeech();
+  }, { passive: true });
+  window.addEventListener("scroll", () => {
+    if (mascot.classList.contains("speak")) positionSpeech();
+  }, { passive: true });
 
   const emotionNames = ["neutral", "happy", "sad", "surprised", "curious", "angry", "sleepy", "thinking", "love", "excited", "confused", "worried", "proud", "shy", "laugh", "playful", "determined", "relieved", "mischievous", "grateful", "bored", "delighted", "concerned", "amazed"];
   function setEmotion(name, duration = 2300) {
