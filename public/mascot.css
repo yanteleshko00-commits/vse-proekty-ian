@@ -632,3 +632,24 @@ html[data-theme="dark"] #ian-mascot .speech{border-color:rgba(125,198,255,.34)!i
 #ian-mascot-settings .mascot-setting-actions button{border-color:rgba(40,120,240,.18)!important;color:#123a80!important}
 #ian-mascot-settings .mascot-setting-actions button:first-child{background:#2878f0!important;color:#fff!important}
 #ian-mascot-settings .mascot-settings-note{color:#687991!important}
+
+
+/* Выразительная походка во время прокрутки страницы. */
+#ian-mascot.scroll-walk{will-change:transform}
+#ian-mascot.scroll-walk .dog-body{animation:ian-scroll-body .34s ease-in-out infinite!important;transform-origin:60px 78px}
+#ian-mascot.scroll-walk .stick-legs .leg-back-a{animation:ian-scroll-leg-a .34s ease-in-out infinite alternate!important;transform-origin:49px 123px}
+#ian-mascot.scroll-walk .stick-legs .leg-back-b{animation:ian-scroll-leg-b .34s ease-in-out infinite alternate!important;transform-origin:71px 123px}
+#ian-mascot.scroll-walk .stick-arms .arm-left{animation:ian-scroll-arm-a .34s ease-in-out infinite alternate!important;transform-origin:25px 67px}
+#ian-mascot.scroll-walk .stick-arms .arm-right{animation:ian-scroll-arm-b .34s ease-in-out infinite alternate!important;transform-origin:95px 67px}
+#ian-mascot.scroll-walk.scroll-down .dog-body{animation-name:ian-scroll-forward!important}
+#ian-mascot.scroll-walk.scroll-up .dog-body{animation-name:ian-scroll-back!important}
+#ian-mascot.scroll-walk .sparkle{animation:ian-scroll-sparkle .5s ease-in-out infinite alternate;transform-origin:center}
+@keyframes ian-scroll-body{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-8px) rotate(2deg)}}
+@keyframes ian-scroll-forward{0%,100%{transform:translateY(0) rotate(5deg)}50%{transform:translateY(-9px) rotate(-2deg)}}
+@keyframes ian-scroll-back{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-9px) rotate(2deg)}}
+@keyframes ian-scroll-leg-a{from{transform:rotate(-27deg)}to{transform:rotate(25deg)}}
+@keyframes ian-scroll-leg-b{from{transform:rotate(25deg)}to{transform:rotate(-27deg)}}
+@keyframes ian-scroll-arm-a{from{transform:rotate(18deg)}to{transform:rotate(-24deg)}}
+@keyframes ian-scroll-arm-b{from{transform:rotate(-18deg)}to{transform:rotate(24deg)}}
+@keyframes ian-scroll-sparkle{from{opacity:.35;transform:scale(.72) rotate(0)}to{opacity:1;transform:scale(1.18) rotate(18deg)}}
+@media(prefers-reduced-motion:reduce){#ian-mascot.scroll-walk .dog-body,#ian-mascot.scroll-walk .stick-legs .leg,#ian-mascot.scroll-walk .stick-arms .arm,#ian-mascot.scroll-walk .sparkle{animation:none!important}}
