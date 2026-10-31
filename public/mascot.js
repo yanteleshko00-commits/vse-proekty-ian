@@ -278,8 +278,8 @@
     const direction = current > maxLeft - 55 ? -1 : current < 55 ? 1 : (Math.random() > .5 ? 1 : -1);
     const next = Math.max(8, Math.min(maxLeft, current + direction * (34 + Math.random() * 42)));
     mascot.style.transition = "left 1.15s cubic-bezier(.2,.8,.2,1)";
-    mascot.style.left = next + "px";
-    mascot.style.right = "auto";
+    mascot.style.setProperty("left", next + "px", "important");
+    mascot.style.setProperty("right", "auto", "important");
     mascot.classList.add("walk");
     setEmotion("curious", 1300);
     setTimeout(() => mascot.classList.remove("walk"), 1250);
@@ -290,7 +290,7 @@
     if (drag) return;
     const r = mascot.getBoundingClientRect();
     const maxLeft = Math.max(8, window.innerWidth - r.width - 8);
-    if (r.left > maxLeft) mascot.style.left = maxLeft + "px";
+    if (r.left > maxLeft) mascot.style.setProperty("left", maxLeft + "px", "important");
   }, {passive:true});
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) mascot.classList.remove("walk", "run", "happy", "think", "look", "blink", "bird-hop", "bird-flap", "bird-cheer", "bird-fly", "snooze", "dance");
