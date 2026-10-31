@@ -312,3 +312,45 @@
 #ian-mascot.wall-hit.emotion-angry .bear-eyes .eye{transform:scaleY(.88)}
 @keyframes ian-wall-recoil{0%{transform:translateX(0) rotate(0) scale(1)}22%{transform:translateX(calc(var(--bounce-direction,1)*-7px)) rotate(var(--wall-hit-angle,8deg)) scale(.97,1.03)}55%{transform:translateX(calc(var(--bounce-direction,1)*3px)) rotate(-4deg) scale(1.02,.98)}100%{transform:translateX(0) rotate(0) scale(1)}}
 @media(prefers-reduced-motion:reduce){#ian-mascot.wall-hit .dog-body,#ian-mascot.wall-hit .bear-head{animation:none!important}}
+
+
+/* Чёткие реакции на касание: Safari/iOS не должен накладывать серый active-эффект. */
+#ian-mascot,
+#ian-mascot:active,
+#ian-mascot:focus,
+#ian-mascot:focus-visible{
+  -webkit-tap-highlight-color:transparent!important;
+  -webkit-filter:drop-shadow(0 8px 12px #18372625)!important;
+  filter:drop-shadow(0 8px 12px #18372625)!important;
+  opacity:1!important;
+  color-scheme:light;
+  outline:none;
+}
+#ian-mascot:active{background:transparent!important;transform-origin:50% 85%}
+#ian-mascot .dog,
+#ian-mascot:active .dog{filter:none!important;opacity:1!important}
+#ian-mascot.lit .dog,
+#ian-mascot:active.lit .dog{filter:drop-shadow(0 0 9px #ffe36a) drop-shadow(0 0 19px #ffd84d)!important}
+#ian-mascot.emotion-neutral .mouth-neutral{opacity:1}
+#ian-mascot.emotion-determined .bear-eyes .eye{transform:scaleY(.9)}
+#ian-mascot.emotion-relieved .bear-head{transform:rotate(3deg) translateY(1px)}
+#ian-mascot.emotion-mischievous .bear-head{transform:rotate(5deg) translateY(-1px)}
+#ian-mascot.emotion-grateful .bear-head{transform:rotate(-3deg) translateY(-2px)}
+#ian-mascot.emotion-bored .bear-head{transform:rotate(-7deg) translateY(2px)}
+#ian-mascot.emotion-delighted .bear-head{transform:translateY(-3px) rotate(4deg)}
+#ian-mascot.emotion-concerned .bear-eyes .eye{transform:scaleY(1.08)}
+#ian-mascot.emotion-amazed .emotion-stars{opacity:1}
+#ian-mascot.emotion-curious .bear-eyes .eye{transform:scale(1.12)}
+#ian-mascot.emotion-thinking .brow-left{transform:translateY(-3px) rotate(-7deg)}
+#ian-mascot.emotion-thinking .brow-right{transform:translateY(2px) rotate(8deg)}
+#ian-mascot.emotion-relieved .cheeks,
+#ian-mascot.emotion-delighted .cheeks{opacity:.55}
+#ian-mascot.emotion-determined .mouth-neutral,
+#ian-mascot.emotion-curious .mouth-neutral,
+#ian-mascot.emotion-thinking .mouth-neutral{opacity:0}
+#ian-mascot.emotion-thinking .mouth-confused,
+#ian-mascot.emotion-curious .mouth-confused{opacity:1}
+#ian-mascot.emotion-determined .mouth-proud{opacity:1}
+@media(prefers-reduced-motion:reduce){
+  #ian-mascot:active{transform:none}
+}
