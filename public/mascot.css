@@ -210,8 +210,8 @@
 #ian-mascot.motion-enabled.lit .sparkle{animation:bear-sparkle .7s ease-in-out infinite alternate}
 #ian-mascot.collision .dog-body{animation:bear-bonk .42s ease-out 2}
 #ian-mascot.collision .bear-head{animation:bear-shake .35s ease-in-out 3}
-#ian-mascot.motion-enabled.motion-off .dog-body,#ian-mascot.motion-enabled.motion-off .bear-head,#ian-mascot.motion-enabled.motion-off .bear-arms{animation:none!important}
-#ian-mascot:after{content:"🍯";font-size:13px;position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:#fff;border-radius:12px;padding:1px 7px}
+#ian-mascot.motion-off .dog-body,#ian-mascot.motion-off .bear-head,#ian-mascot.motion-off .bear-arms,#ian-mascot.motion-off .leg,#ian-mascot.motion-off .arm{animation:none!important}
+#ian-mascot:after{content:"Мишка";font-size:13px;position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:#fff;border-radius:12px;padding:1px 7px}
 #ian-mascot .speech{right:auto;left:calc(100% + 8px);top:6px}
 #ian-mascot.speech-left .speech{left:auto;right:calc(100% + 8px)}
 #ian-mascot-chat .head{gap:9px}
