@@ -384,3 +384,123 @@
   -webkit-overflow-scrolling:touch;
 }
 #ian-mascot.speak .speech{opacity:1;transform:translateY(0) scale(1)}
+
+
+/* Logo mascot: the real site app icon with expressive, tracking eyes. */
+#ian-mascot .logo-dog{
+  width:100%;
+  height:100%;
+  overflow:visible;
+  filter:drop-shadow(0 7px 12px rgba(12,48,113,.24));
+}
+#ian-mascot .logo-dog-body{
+  position:relative;
+  width:100%;
+  height:100%;
+  transform-origin:50% 55%;
+  border-radius:25%;
+}
+#ian-mascot .site-logo{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  border-radius:25%;
+  -webkit-user-drag:none;
+  pointer-events:none;
+}
+#ian-mascot .logo-eyes{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+#ian-mascot .logo-eyes .eye-wrap{
+  position:absolute;
+  top:40%;
+  width:9px;
+  height:12px;
+  border-radius:50%;
+  background:rgba(255,255,255,.84);
+  box-shadow:0 1px 3px rgba(7,35,86,.22),inset 0 0 0 1px rgba(255,255,255,.9);
+  overflow:hidden;
+}
+#ian-mascot .logo-eyes .eye-wrap:first-child{left:39%}
+#ian-mascot .logo-eyes .eye-wrap:last-child{left:53%}
+#ian-mascot .logo-eyes .eye{
+  position:absolute;
+  left:2px;
+  top:2px;
+  display:block;
+  width:5px;
+  height:7px;
+  border-radius:50%;
+  background:#102440;
+  box-shadow:0 0 1px #07152a;
+  transform-origin:center;
+  translate:var(--gaze-x,0px) var(--gaze-y,0px);
+  transition:transform .16s ease,translate .12s ease;
+}
+#ian-mascot .logo-eyes .eye-shine{
+  position:absolute;
+  z-index:1;
+  left:3px;
+  top:3px;
+  width:2px;
+  height:2px;
+  border-radius:50%;
+  background:#fff;
+  pointer-events:none;
+}
+#ian-mascot .speech{
+  position:fixed!important;
+  z-index:9010;
+  display:block;
+  box-sizing:border-box;
+  width:max-content;
+  max-width:min(260px,calc(100vw - 24px))!important;
+  max-height:min(32vh,190px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  overflow-wrap:anywhere;
+  white-space:normal;
+  padding:11px 15px;
+  line-height:1.38;
+  border:1px solid rgba(255,255,255,.76);
+  border-radius:18px;
+  color:#112542;
+  background:
+    linear-gradient(135deg,rgba(255,255,255,.82),rgba(222,239,255,.48) 52%,rgba(193,220,255,.4));
+  -webkit-backdrop-filter:blur(28px) saturate(190%);
+  backdrop-filter:blur(28px) saturate(190%);
+  box-shadow:
+    0 12px 34px rgba(13,49,105,.18),
+    inset 0 1px 0 rgba(255,255,255,.95),
+    inset 0 -1px 0 rgba(255,255,255,.35);
+  text-shadow:0 1px 0 rgba(255,255,255,.3);
+}
+#ian-mascot .speech::before{
+  content:"";
+  position:absolute;
+  inset:1px 1px auto;
+  height:42%;
+  border-radius:17px 17px 45% 45%;
+  background:linear-gradient(180deg,rgba(255,255,255,.48),transparent);
+  pointer-events:none;
+}
+#ian-mascot.speak .speech{opacity:1;transform:translateY(0) scale(1)}
+html[data-theme="dark"] #ian-mascot .speech{
+  color:#f4f8ff;
+  border-color:rgba(255,255,255,.28);
+  background:linear-gradient(135deg,rgba(37,55,82,.83),rgba(26,48,80,.66));
+  box-shadow:0 12px 34px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.26);
+  text-shadow:none;
+}
+@media(max-width:600px){
+  #ian-mascot .logo-eyes .eye-wrap{width:7px;height:10px}
+  #ian-mascot .logo-eyes .eye{left:1.5px;top:1.5px;width:4px;height:6px}
+  #ian-mascot .logo-eyes .eye-shine{left:2.5px;top:2.5px;width:1.5px;height:1.5px}
+  #ian-mascot .speech{font-size:12px;padding:9px 12px}
+}
+@media(prefers-reduced-motion:reduce){
+  #ian-mascot .logo-eyes .eye{transition:none}
+}
