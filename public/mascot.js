@@ -587,14 +587,15 @@
   function randomIdle() {
     if (!motionEnabled || doNotDisturb || gameActive || document.hidden || mascot.classList.contains("dragging") || chat.classList.contains("open")) return;
     // Idle motion stays in place; the mascot never wanders over page content.
-    const moves = ["look", "blink", "snooze", "happy", "think"];
+    const moves = ["look", "blink", "snooze", "happy", "think", "wiggle", "stretch", "bounce", "peek"];
     const move = moves[Math.floor(Math.random() * moves.length)];
-    mascot.classList.remove("look", "blink", "happy", "think");
+    mascot.classList.remove(...moves);
     void mascot.offsetWidth;
     mascot.classList.add(move);
-    const idleEmotion = ({ look: "curious", think: "thinking", snooze: "sleepy", happy: "happy" })[move] || "neutral";
-    setEmotion(idleEmotion, move === "snooze" ? 2600 : 1450);
-    setTimeout(() => mascot.classList.remove(move), move === "snooze" ? 2600 : 1450);
+    const idleEmotion = ({ look: "curious", think: "thinking", snooze: "sleepy", happy: "happy", peek: "curious", wiggle: "playful", bounce: "excited", stretch: "relieved" })[move] || "neutral";
+    const duration = move === "snooze" ? 2600 : move === "stretch" ? 1900 : 1450;
+    setEmotion(idleEmotion, duration);
+    setTimeout(() => mascot.classList.remove(move), duration);
   }
   idleTimer = setInterval(randomIdle, 4600);
 
