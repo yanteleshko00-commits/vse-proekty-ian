@@ -179,3 +179,53 @@
   #ian-mascot .speech{left:calc(100% + 5px);right:auto;max-width:min(170px,calc(100vw - 160px))}
   #ian-mascot.speech-left .speech{left:auto;right:calc(100% + 5px)}
 }
+
+
+/* Winnie-inspired original honey-bear mascot: independent SVG parts and full XY drag. */
+#ian-mascot{
+  position:fixed!important;left:auto!important;right:12px!important;top:40%!important;bottom:auto!important;
+  width:132px;height:150px;overflow:visible;touch-action:none;cursor:grab;
+  transform-origin:50% 85%;
+}
+#ian-mascot .dog{display:block;width:100%;height:100%;overflow:visible;transform-origin:50% 85%;animation:none}
+#ian-mascot .dog-body{transform-origin:90px 150px}
+#ian-mascot .bear-head{transform-origin:90px 58px}
+#ian-mascot .bear-arms{transform-origin:90px 115px}
+#ian-mascot .arm{transform-box:fill-box;transform-origin:50% 15%}
+#ian-mascot .leg{transform-box:fill-box;transform-origin:50% 5%}
+#ian-mascot.motion-enabled .dog-body{animation:bear-breathe 3.5s ease-in-out infinite}
+#ian-mascot.motion-enabled .bear-head{animation:bear-head 5s ease-in-out infinite}
+#ian-mascot.motion-enabled .bear-arms{animation:bear-arms 4s ease-in-out infinite}
+#ian-mascot.motion-enabled.walk .dog-body{animation:bear-walk .42s ease-in-out infinite}
+#ian-mascot.motion-enabled.walk .leg-back-a{animation:ian-leg-a .42s ease-in-out infinite alternate}
+#ian-mascot.motion-enabled.walk .leg-back-b{animation:ian-leg-b .42s ease-in-out infinite alternate}
+#ian-mascot.motion-enabled.run .dog-body{animation:bear-run .27s ease-in-out infinite}
+#ian-mascot.motion-enabled.happy .dog-body{animation:bear-jump .58s cubic-bezier(.2,.8,.2,1) 2}
+#ian-mascot.motion-enabled.dance .dog-body{animation:bear-dance .48s ease-in-out 3}
+#ian-mascot.motion-enabled.think .bear-head{animation:bear-think 1s ease-in-out infinite}
+#ian-mascot.motion-enabled.look .bear-head{transform:translateX(4px) rotate(4deg)}
+#ian-mascot.motion-enabled.blink .eye{transform:scaleY(.12);transform-box:fill-box;transform-origin:center}
+#ian-mascot.motion-enabled.curious .bear-head{transform:rotate(-5deg) translateY(-2px)}
+#ian-mascot.motion-enabled.snooze .dog-body{animation:bear-snooze 2.4s ease-in-out 1}
+#ian-mascot.motion-enabled.lit .sparkle{animation:bear-sparkle .7s ease-in-out infinite alternate}
+#ian-mascot.collision .dog-body{animation:bear-bonk .42s ease-out 2}
+#ian-mascot.collision .bear-head{animation:bear-shake .35s ease-in-out 3}
+#ian-mascot.motion-enabled.motion-off .dog-body,#ian-mascot.motion-enabled.motion-off .bear-head,#ian-mascot.motion-enabled.motion-off .bear-arms{animation:none!important}
+#ian-mascot:after{content:"🍯";font-size:13px;position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:#fff;border-radius:12px;padding:1px 7px}
+#ian-mascot .speech{right:auto;left:calc(100% + 8px);top:6px}
+#ian-mascot.speech-left .speech{left:auto;right:calc(100% + 8px)}
+#ian-mascot-chat .head{gap:9px}
+@keyframes bear-breathe{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3px) scale(1.012)}}
+@keyframes bear-head{0%,100%{transform:rotate(0)}50%{transform:rotate(2deg) translateY(-1px)}}
+@keyframes bear-arms{0%,100%{transform:rotate(0)}50%{transform:rotate(-2deg)}}
+@keyframes bear-walk{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes bear-run{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-9px) rotate(3deg)}}
+@keyframes bear-jump{0%,100%{transform:translateY(0) scale(1)}45%{transform:translateY(-16px) scale(1.04)}70%{transform:translateY(-7px)}}
+@keyframes bear-dance{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg) translateY(-4px)}75%{transform:rotate(8deg) translateY(-4px)}}
+@keyframes bear-think{0%,100%{transform:rotate(0)}35%{transform:rotate(-5deg)}70%{transform:rotate(4deg)}}
+@keyframes bear-snooze{0%,100%{transform:rotate(0)}25%,75%{transform:rotate(-5deg) translateY(3px)}50%{transform:rotate(-3deg) translateY(5px)}}
+@keyframes bear-bonk{0%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-5px) rotate(-5deg)}75%{transform:translateX(5px) rotate(5deg)}}
+@keyframes bear-shake{0%,100%{transform:rotate(0)}30%{transform:rotate(-9deg)}70%{transform:rotate(9deg)}}
+@keyframes bear-sparkle{to{opacity:.25;transform:scale(.8)}}
+@media(max-width:600px){#ian-mascot{width:104px;height:120px;right:7px!important}#ian-mascot .speech{max-width:min(170px,calc(100vw - 125px))}}
+@media(prefers-reduced-motion:reduce){#ian-mascot.motion-enabled .dog-body,#ian-mascot.motion-enabled .bear-head,#ian-mascot.motion-enabled .bear-arms{animation:none!important}}
