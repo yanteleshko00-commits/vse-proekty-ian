@@ -5,59 +5,18 @@
   mascot.id = "ian-mascot";
   mascot.tabIndex = 0;
   mascot.setAttribute("role", "button");
-  mascot.setAttribute("aria-label", "Медвежонок Винни. Перетащи меня или нажми три раза для лампочки");
+  mascot.setAttribute("aria-label", "Логотип Все проекты #Ian с живыми глазками. Нажми или перетащи");
   mascot.innerHTML = `
-    <div class="speech" id="ian-mascot-speech">Привет! Потяни меня за лапку 🐾</div>
-    <svg class="dog bear-svg" viewBox="0 0 180 190" role="img" aria-label="Медвежонок с горшочком мёда">
-      <defs>
-        <linearGradient id="bearFur" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6d58a"/><stop offset="1" stop-color="#c98a3e"/></linearGradient>
-        <linearGradient id="bearShirt" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e84b3c"/><stop offset="1" stop-color="#b92525"/></linearGradient>
-      </defs>
-      <g class="bear-shadow"><ellipse cx="91" cy="176" rx="54" ry="8" fill="#253b2d" opacity=".13"/></g>
-      <g class="dog-body">
-        <g class="bear-legs"><path class="leg leg-back-a" d="M55 137 Q42 154 49 166 Q57 174 77 168 L81 151Z" fill="#c98a3e"/><path class="leg leg-back-b" d="M102 145 Q105 164 119 169 Q139 175 145 163 Q147 155 126 143Z" fill="#dba653"/></g>
-        <path class="bear-torso" d="M49 83 Q35 107 46 143 Q70 160 119 146 Q137 116 119 83Z" fill="url(#bearFur)" stroke="#a96e32" stroke-width="2"/>
-        <path class="shirt" d="M47 101 Q82 85 124 102 L126 143 Q91 160 49 143Z" fill="url(#bearShirt)" stroke="#8f2824" stroke-width="2"/>
-        <path d="M68 98 Q88 108 107 98" fill="none" stroke="#8bc9a4" stroke-width="3" stroke-linecap="round"/>
-        <path class="shirt-badge" d="M88 119 q-9 -9 -13 -1 q-3 8 13 17 q16 -9 13 -17 q-4 -8 -13 1Z" fill="#e8c46a" stroke="#f9e6a8" stroke-width="1.2"/>
-        <g class="bear-arms"><path class="arm arm-left" d="M51 105 Q28 111 29 133 Q30 145 42 143 Q50 140 53 125Z" fill="#e3b66b" stroke="#a96e32" stroke-width="2"/><path class="arm arm-right" d="M119 105 Q140 108 145 127 Q148 141 135 145 Q124 144 119 128Z" fill="#e3b66b" stroke="#a96e32" stroke-width="2"/></g>
-        <g class="bear-head">
-          <circle cx="49" cy="39" r="17" fill="#d9a052" stroke="#a96e32" stroke-width="2"/><circle cx="127" cy="39" r="17" fill="#d9a052" stroke="#a96e32" stroke-width="2"/>
-          <circle cx="49" cy="39" r="8" fill="#f3d39a"/><circle cx="127" cy="39" r="8" fill="#f3d39a"/>
-          <path d="M48 58 Q48 16 88 15 Q130 15 132 60 Q132 91 91 99 Q49 92 48 58Z" fill="url(#bearFur)" stroke="#a96e32" stroke-width="2"/>
-          <ellipse cx="90" cy="70" rx="25" ry="19" fill="#f7e5c5"/>
-          <ellipse cx="90" cy="63" rx="8" ry="6" fill="#493023"/>
-          <g class="bear-eyes">
-            <g class="eye-wrap"><ellipse class="eye" cx="73" cy="51" rx="4" ry="5.2" fill="#30241d"/><circle class="eye-shine" cx="74.2" cy="49.5" r="1.15" fill="#fff8e9"/></g>
-            <g class="eye-wrap"><ellipse class="eye" cx="107" cy="51" rx="4" ry="5.2" fill="#30241d"/><circle class="eye-shine" cx="108.2" cy="49.5" r="1.15" fill="#fff8e9"/></g>
-          </g>
-          <g class="bear-brows" fill="none" stroke="#8e5a32" stroke-width="2.5" stroke-linecap="round">
-            <path class="brow brow-left" d="M65 40 Q73 35 81 39"/>
-            <path class="brow brow-right" d="M99 39 Q107 35 115 40"/>
-          </g>
-          <g class="face-mouth" fill="none" stroke="#70452d" stroke-width="2.5" stroke-linecap="round">
-            <path class="mouth mouth-neutral" d="M80 80 Q90 86 100 80"/>
-            <path class="mouth mouth-happy" d="M77 77 Q90 96 103 77"/>
-            <path class="mouth mouth-sad" d="M79 86 Q90 75 101 86"/>
-            <ellipse class="mouth mouth-surprised" cx="90" cy="82" rx="5.5" ry="8"/>
-            <path class="mouth mouth-angry" d="M80 84 Q90 78 100 84"/>
-            <path class="mouth mouth-sleepy" d="M82 82 Q90 84 98 82"/>
-            <path class="mouth mouth-confused" d="M83 82 Q91 77 99 84"/>
-            <path class="mouth mouth-worried" d="M80 86 Q90 79 100 86"/>
-            <path class="mouth mouth-proud" d="M80 79 Q91 88 101 78"/>
-            <path class="mouth mouth-shy" d="M84 83 Q90 86 96 83"/>
-            <ellipse class="mouth mouth-laugh" cx="90" cy="83" rx="9" ry="10"/>
-            <path class="mouth mouth-smirk" d="M84 82 Q94 87 101 78"/>
-          </g>
-          <g class="cheeks" fill="#e98f75"><ellipse cx="60" cy="72" rx="7" ry="4"/><ellipse cx="120" cy="72" rx="7" ry="4"/></g>
-          <g class="emotion-tears" aria-hidden="true"><path d="M67 59 Q61 68 67 71 Q73 68 67 59 M113 59 Q107 68 113 71 Q119 68 113 59" fill="#72b9df"/></g>
-          <g class="emotion-stars" aria-hidden="true"><text x="133" y="35" font-size="17" fill="#e7b94f">✦</text><text x="30" y="54" font-size="13" fill="#e7b94f">✦</text></g>
-          <g class="heart-sparkles" aria-hidden="true"><text x="137" y="35" font-size="17" fill="#e65b68">♥</text><text x="31" y="57" font-size="11" fill="#e65b68">♥</text></g>
-        </g>
-        <g class="honey-pot" transform="translate(124 121) rotate(-8)"><path d="M-13 -8 Q-16 1 -12 18 Q0 25 14 17 L12 -8Z" fill="#d99b28" stroke="#9b641b" stroke-width="2"/><rect x="-15" y="-13" width="30" height="7" rx="3" fill="#f1c75b" stroke="#9b641b" stroke-width="1.5"/><path d="M-7 1 Q0 -4 8 1" fill="none" stroke="#fff0ad" stroke-width="2"/><text x="0" y="12" text-anchor="middle" font-size="8" font-weight="800" fill="#70451d">МЁД</text></g>
-        <g class="sparkle"><path d="M24 58v12 M18 64h12 M151 72v10 M146 77h10" stroke="#f5c94b" stroke-width="2.5" stroke-linecap="round"/></g>
-      </g>
-    </svg>`;
+    <div class="speech" id="ian-mascot-speech">Привет! Я оживший логотип сайта 👀</div>
+    <div class="dog logo-dog" role="img" aria-label="Логотип сайта с глазками">
+      <div class="dog-body logo-dog-body">
+        <img class="site-logo" src="/icon-512.png" alt="" draggable="false">
+        <div class="bear-eyes logo-eyes" aria-hidden="true">
+          <span class="eye-wrap"><span class="eye"></span><span class="eye-shine"></span></span>
+          <span class="eye-wrap"><span class="eye"></span><span class="eye-shine"></span></span>
+        </div>
+      </div>
+    </div>`
   document.body.appendChild(mascot);
 
   // Маскот автоматически скрывается, если перекрывает поле, кнопку или другой
@@ -135,12 +94,12 @@
     speech.style.left = "0px";
     speech.style.top = "0px";
     const bubble = speech.getBoundingClientRect();
-    const gap = 10;
+    const gap = 25;
     let left = bounds.left + bounds.width / 2 < window.innerWidth / 2
       ? bounds.right + gap
       : bounds.left - bubble.width - gap;
     left = Math.max(12, Math.min(left, window.innerWidth - bubble.width - 12));
-    let top = bounds.top - 8;
+    let top = bounds.top + bounds.height / 2 - bubble.height / 2;
     if (top + bubble.height > window.innerHeight - 10) top = window.innerHeight - bubble.height - 10;
     top = Math.max(10, top);
     speech.style.left = left + "px";
@@ -161,6 +120,22 @@
   window.addEventListener("scroll", () => {
     if (mascot.classList.contains("speak")) positionSpeech();
   }, { passive: true });
+
+  const logoPupils = mascot.querySelectorAll(".logo-eyes .eye");
+  function trackLogoEyes(event) {
+    const bounds = mascot.getBoundingClientRect();
+    const dx = (event.clientX - (bounds.left + bounds.width / 2)) / Math.max(1, bounds.width / 2);
+    const dy = (event.clientY - (bounds.top + bounds.height / 2)) / Math.max(1, bounds.height / 2);
+    const gazeX = Math.max(-2.2, Math.min(2.2, dx * 2.2));
+    const gazeY = Math.max(-2.2, Math.min(2.2, dy * 2.2));
+    mascot.style.setProperty("--gaze-x", gazeX.toFixed(1) + "px");
+    mascot.style.setProperty("--gaze-y", gazeY.toFixed(1) + "px");
+  }
+  document.addEventListener("pointermove", trackLogoEyes, { passive: true });
+  mascot.addEventListener("pointerleave", () => {
+    mascot.style.setProperty("--gaze-x", "0px");
+    mascot.style.setProperty("--gaze-y", "0px");
+  });
 
   const emotionNames = ["neutral", "happy", "sad", "surprised", "curious", "angry", "sleepy", "thinking", "love", "excited", "confused", "worried", "proud", "shy", "laugh", "playful", "determined", "relieved", "mischievous", "grateful", "bored", "delighted", "concerned", "amazed"];
   function setEmotion(name, duration = 2300) {
