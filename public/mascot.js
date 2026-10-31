@@ -309,20 +309,33 @@
   mascot.addEventListener("pointercancel", release);
   mascot.addEventListener("dragstart", e => e.preventDefault());
 
+  // Если маскот задал вопрос, следующий ответ пользователя продолжает
+  // именно этот разговор через ИИ, а не запускает новый заготовленный сценарий.
+  let awaitingDialogueReply = false;
+  function responseInvitesReply(value) {
+    const text = String(value || "").trim();
+    return /\?\s*$/.test(text) ||
+      /(?:расскажи|напиши|уточни|скажи|какой|какая|какое|какие|что именно|чем могу помочь)[^.!?]*[.!?]?\s*$/i.test(text);
+  }
+
   form.addEventListener("submit", async e => {
     e.preventDefault();
     const question = input.value.trim();
     if (!question || form.dataset.sending === "yes") return;
 
-    const localScenario=findMascotScenario(question);
+    const localScenario = awaitingDialogueReply ? null : findMascotScenario(question);
     if(localScenario) {
       addMessage(question,"user");
       input.value="";
       addMessage(localScenario[1],"bot");
+      awaitingDialogueReply = responseInvitesReply(localScenario[1]);
       playMascotScenario(localScenario[2]);
       say(localScenario[1]);
       return;
     }
+    // Любой ответ на вопрос маскота отправляем в ИИ вместе с историей диалога.
+    const wasContinuingDialogue = awaitingDialogueReply;
+    awaitingDialogueReply = false;
     form.dataset.sending = "yes";
     const sendButton = form.querySelector("button[type='submit']");
     sendButton.disabled = true;
@@ -331,9 +344,9 @@
     input.value = "";
     if (motionEnabled) animate("think", 30000);
     const pending = addMessage("Винни думает…", "bot");
-    const history = Array.from(messages.querySelectorAll(".msg")).slice(-7)
+    const history = Array.from(messages.querySelectorAll(".msg")).slice(-14)
       .map(n => (n.classList.contains("user") ? "Пользователь: " : "Винни: ") + n.textContent).join("\n");
-    const prompt = "Ты — Винни, дружелюбный русскоязычный помощник сайта «Все проекты #Ian». Отвечай коротко и понятно, помогай с сайтом, школьными проектами и презентациями. Не говори, что можешь сам нажимать кнопки или видеть личные данные. Последние сообщения:\n" + history + "\nОтветь на последнее сообщение.";
+    const prompt = "Ты — Винни, дружелюбный русскоязычный помощник сайта «Все проекты #Ian». Отвечай коротко и естественно, помогай с сайтом, школьными проектами и презентациями. Веди настоящий последовательный диалог: учитывай предыдущие реплики, отвечай на смысл последнего сообщения, не начинай разговор заново и не повторяй уже заданный вопрос. Если пользователь отвечает на твой предыдущий вопрос, продолжи эту тему и задай следующий уместный вопрос только если он нужен. Не говори, что можешь сам нажимать кнопки или видеть личные данные. Последние сообщения:\n" + history + "\n" + (wasContinuingDialogue ? "Это продолжение начатого тобой диалога. Ответь с учётом предыдущего вопроса и ответа пользователя. " : "") + "Ответь на последнее сообщение.";
     try {
       const response = await fetch("/api/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -343,6 +356,7 @@
       if (!response.ok) throw new Error(data.error || "Сервер не смог ответить. Попробуй ещё раз.");
       if (typeof data.answer !== "string" || !data.answer.trim()) throw new Error("Сервер вернул пустой ответ.");
       pending.textContent = data.answer || "Попробуй спросить иначе.";
+      awaitingDialogueReply = responseInvitesReply(pending.textContent);
       if (motionEnabled) animate("happy");
       if (motionEnabled) mascot.classList.add("bird-cheer");
       setTimeout(() => mascot.classList.remove("bird-cheer"), 1200);
