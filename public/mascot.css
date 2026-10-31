@@ -295,3 +295,12 @@
 #ian-mascot.emotion-playful .bear-head{transform:rotate(5deg)}
 @keyframes ian-stars-pop{from{transform:scale(.8) rotate(-8deg)}to{transform:scale(1.12) rotate(8deg)}}
 @media(prefers-reduced-motion:reduce){#ian-mascot .cheeks,#ian-mascot .emotion-tears,#ian-mascot .emotion-stars{transition:none!important;animation:none!important}}
+
+/* Новые выразительные состояния Винни */
+#ian-mascot.emotion-determined .bear-head{transform:translateY(-2px) rotate(-2deg)}
+#ian-mascot.emotion-determined .mouth-proud,#ian-mascot.emotion-grateful .mouth-happy,#ian-mascot.emotion-delighted .mouth-laugh,#ian-mascot.emotion-relieved .mouth-happy{opacity:1}
+#ian-mascot.emotion-determined .mouth-neutral,#ian-mascot.emotion-relieved .mouth-neutral,#ian-mascot.emotion-mischievous .mouth-neutral,#ian-mascot.emotion-grateful .mouth-neutral,#ian-mascot.emotion-bored .mouth-neutral,#ian-mascot.emotion-delighted .mouth-neutral,#ian-mascot.emotion-concerned .mouth-neutral,#ian-mascot.emotion-amazed .mouth-neutral{opacity:0}
+#ian-mascot.emotion-mischievous .mouth-smirk{opacity:1}#ian-mascot.emotion-bored .mouth-sleepy{opacity:1}#ian-mascot.emotion-concerned .mouth-worried{opacity:1}#ian-mascot.emotion-amazed .mouth-surprised{opacity:1}
+#ian-mascot.emotion-relieved .bear-eyes .eye{transform:scaleY(.72)}#ian-mascot.emotion-mischievous .brow-right{transform:translateY(-4px) rotate(-13deg)}#ian-mascot.emotion-bored .bear-eyes .eye{transform:scaleY(.42)}#ian-mascot.emotion-concerned .bear-brows .brow{transform:translateY(-3px) rotate(-6deg)}#ian-mascot.emotion-amazed .bear-eyes .eye{transform:scale(1.4)}
+#ian-mascot.emotion-grateful .cheeks,#ian-mascot.emotion-delighted .emotion-stars{opacity:.8}
+#ian-mascot .shirt{filter:saturate(1.08)}#ian-mascot .bear-torso{filter:drop-shadow(0 1px 0 #f5d99c)}
