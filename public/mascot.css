@@ -41,7 +41,6 @@
 @keyframes ian-bird-pop{50%{transform:translateY(-11px) rotate(12deg)}}
 @keyframes ian-tail{to{transform:rotate(20deg)}}
 @media(max-width:600px){#ian-mascot{width:98px;height:92px;right:5px}#ian-mascot .speech{right:86px;max-width:185px}}
-@media(prefers-reduced-motion:reduce){#ian-mascot *,#ian-mascot-chat{animation:none!important;transition:none!important}#ian-mascot .dog{transform:none!important}}
 
 /* Stability and viewport fixes */
 #ian-mascot{max-width:calc(100vw - 12px);max-height:calc(100dvh - 12px)}
@@ -87,5 +86,47 @@
 @keyframes ian-snooze{0%,100%{transform:rotate(0) translateY(0)}18%,72%{transform:rotate(-7deg) translateY(2px)}40%{transform:rotate(-4deg) translateY(4px) scale(.985)}}
 @keyframes ian-dance{0%,100%{transform:rotate(0) translateY(0)}25%{transform:rotate(-8deg) translateY(-5px)}50%{transform:rotate(8deg) translateY(-3px)}75%{transform:rotate(-5deg) translateY(-6px)}}
 @keyframes ian-bird-flight{0%{transform:translate(0,0) scale(1)}35%{transform:translate(-13px,-22px) rotate(-14deg) scale(1.04)}70%{transform:translate(7px,-30px) rotate(10deg)}100%{transform:translate(0,0) scale(1)}}
-@media(prefers-reduced-motion:reduce){#ian-mascot *,#ian-mascot-chat{animation:none!important;transition:none!important}#ian-mascot{transform:none!important}}
 @media(max-width:600px){#ian-mascot-chat .head .motion-toggle{width:32px;height:32px;flex-basis:32px}}
+
+/* Refined original beagle mascot + always-readable motion states */
+#ian-mascot{width:118px;height:104px;right:14px;top:40%;bottom:auto;overflow:visible}
+#ian-mascot .dog{width:100%;height:100%;overflow:visible;animation:none;transform-origin:50% 82%}
+#ian-mascot .dog-body{transform-origin:82px 105px}
+#ian-mascot .ear{transform-box:fill-box;transform-origin:top center}
+#ian-mascot .leg{transform-box:fill-box;transform-origin:50% 0}
+#ian-mascot .tail{transform-box:fill-box;transform-origin:12% 75%}
+#ian-mascot .bird{transform-box:fill-box;transform-origin:50% 85%}
+#ian-mascot.motion-enabled .dog{animation:ian-mascot-breathe 3.2s ease-in-out infinite}
+#ian-mascot.motion-enabled .tail{animation:ian-mascot-tail .58s ease-in-out infinite alternate}
+#ian-mascot.motion-enabled .bird{animation:ian-mascot-bird .95s ease-in-out infinite}
+#ian-mascot.motion-enabled .bird-wing{animation:ian-mascot-wing .7s ease-in-out infinite alternate}
+#ian-mascot.motion-enabled.walk .dog{animation:ian-mascot-walk .42s ease-in-out infinite}
+#ian-mascot.motion-enabled.walk .leg-front-a,#ian-mascot.motion-enabled.run .leg-front-a{animation:ian-leg-a .42s ease-in-out infinite alternate}
+#ian-mascot.motion-enabled.walk .leg-front-b,#ian-mascot.motion-enabled.run .leg-front-b{animation:ian-leg-b .42s ease-in-out infinite alternate}
+#ian-mascot.motion-enabled.walk .leg-back-a,#ian-mascot.motion-enabled.run .leg-back-a{animation:ian-leg-b .42s ease-in-out infinite alternate}
+#ian-mascot.motion-enabled.walk .leg-back-b,#ian-mascot.motion-enabled.run .leg-back-b{animation:ian-leg-a .42s ease-in-out infinite alternate}
+#ian-mascot.motion-enabled.run .dog{animation:ian-mascot-run .28s ease-in-out infinite}
+#ian-mascot.motion-enabled.happy .dog{animation:ian-mascot-hop .56s cubic-bezier(.2,.8,.2,1) 2}
+#ian-mascot.motion-enabled.dance .dog-body{animation:ian-mascot-dance .48s ease-in-out 3}
+#ian-mascot.motion-enabled.snooze .dog-body{animation:ian-mascot-snooze 2.4s ease-in-out 1}
+#ian-mascot.motion-enabled.curious .ear-right{transform:rotate(15deg)}
+#ian-mascot.motion-enabled.look .dog-head{transform:translateX(4px) rotate(3deg)}
+#ian-mascot.motion-enabled.blink .eye{transform:scaleY(.12);transform-box:fill-box;transform-origin:center}
+#ian-mascot.motion-off .dog,#ian-mascot.motion-off .bird,#ian-mascot.motion-off .tail,
+#ian-mascot.motion-off .leg,#ian-mascot.motion-off .bird-wing{animation:none!important}
+@keyframes ian-mascot-breathe{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3px) scale(1.012)}}
+@keyframes ian-mascot-tail{from{transform:rotate(-13deg)}to{transform:rotate(16deg)}}
+@keyframes ian-mascot-bird{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-5px) rotate(5deg)}}
+@keyframes ian-mascot-wing{from{transform:rotate(-5deg)}to{transform:rotate(-42deg)}}
+@keyframes ian-mascot-walk{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes ian-mascot-run{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-8px) rotate(2deg)}}
+@keyframes ian-mascot-hop{0%,100%{transform:translateY(0) scale(1)}45%{transform:translateY(-13px) scale(1.04)}70%{transform:translateY(-7px)}}
+@keyframes ian-mascot-dance{0%,100%{transform:rotate(0)}25%{transform:rotate(-7deg) translateY(-3px)}75%{transform:rotate(7deg) translateY(-3px)}}
+@keyframes ian-mascot-snooze{0%,100%{transform:rotate(0)}30%,70%{transform:rotate(-4deg) translateY(2px)}}
+@keyframes ian-leg-a{from{transform:rotate(-23deg)}to{transform:rotate(23deg)}}
+@keyframes ian-leg-b{from{transform:rotate(23deg)}to{transform:rotate(-23deg)}}
+@media(max-width:600px){
+  #ian-mascot{width:96px;height:84px;right:10px;top:39%}
+  #ian-mascot .speech{right:88px;max-width:min(176px,calc(100vw - 112px))}
+  #ian-mascot.speech-left .speech{left:88px;right:auto}
+}
