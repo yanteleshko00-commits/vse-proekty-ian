@@ -423,6 +423,19 @@ html[data-theme="dark"] .progress{background:#354256!important}
 /* Intro is visible only in installed standalone web-app mode */
 #appSplash{display:none!important}
 html[data-app-mode="standalone"] #appSplash{display:flex!important}
+/* Avoid showing a half-decoded lamp; keep a tiny fallback visible until ready. */
+.lamp-lowres-placeholder{
+  position:absolute;top:47px;left:50%;transform:translateX(-50%);
+  width:112px;height:112px;display:grid;place-items:center;
+  font-size:70px;line-height:1;opacity:.82;
+  filter:grayscale(.7) brightness(.8);
+  image-rendering:pixelated;
+}
+.logo-lamp-image{opacity:0;transition:opacity .18s ease,filter .9s ease,transform .8s cubic-bezier(.2,.8,.2,1)}
+.lamp-image-ready .lamp-lowres-placeholder{opacity:0;visibility:hidden}
+.lamp-low-resolution .logo-lamp-image{image-rendering:pixelated;filter:drop-shadow(0 8px 16px rgba(0,0,0,.28))!important}
+#appSplash.is-lighting .lamp-low-resolution .logo-lamp-image{filter:drop-shadow(0 0 28px rgba(255,231,158,.85))!important}
+.lamp-image-failed .lamp-lowres-placeholder{opacity:1;visibility:visible}
 /* Use the exact site logo artwork for the intro lamp */
 .logo-lamp-image{width:122px;height:122px;object-fit:contain;border-radius:26px;filter:grayscale(1) brightness(.75) saturate(.4) drop-shadow(0 10px 22px rgba(0,0,0,.32));opacity:.68;background:transparent;transition:filter .9s ease,opacity .9s ease,transform .8s cubic-bezier(.2,.8,.2,1)}
 #appSplash.is-lighting .logo-lamp-image{filter:drop-shadow(0 0 35px rgba(255,231,158,.95));opacity:1;transform:translateY(-3px) scale(1.05)}
@@ -439,7 +452,7 @@ html[data-app-mode="standalone"] #appSplash{display:flex!important}
 <div id="appSplash" aria-label="Все проекты #Ian — включи свет" role="dialog" aria-modal="true">
   <div class="lamp-scene" aria-hidden="true">
     <div class="lamp-wire"></div>
-    <img class="lamp-svg logo-lamp-image" src="/icon-512.png" alt="Лампочка из логотипа Все проекты #Ian"><div class="lamp-glow"></div>
+    <span class="lamp-lowres-placeholder" aria-hidden="true">💡</span><img class="lamp-svg logo-lamp-image" src="/icon-512.png" alt="Лампочка из логотипа Все проекты #Ian" decoding="async" fetchpriority="high"><div class="lamp-glow"></div>
   </div>
   <div class="splash-brand">Все проекты <span>#Ian</span></div>
   <p class="splash-prompt">Идея начинается с одного нажатия</p>
@@ -968,6 +981,51 @@ document.addEventListener("DOMContentLoaded",()=>{
     const splash=document.getElementById("appSplash");
     const switchButton=document.getElementById("lampSwitch");
     if(splash&&switchButton){
+      const lampImage=splash.querySelector(".logo-lamp-image");
+      const lampScene=splash.querySelector(".lamp-scene");
+      const connection=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+      const originalLampSrc=lampImage?lampImage.src:"";
+      let lampLoaded=false;
+      let lowResData="";
+      let loadStarted=performance.now();
+      function connectionIsSlow(){
+        if(!connection)return false;
+        const type=String(connection.effectiveType||"").toLowerCase();
+        return !!connection.saveData||type==="slow-2g"||type==="2g"||type==="3g"||
+          (Number(connection.downlink)>0&&Number(connection.downlink)<1.2);
+      }
+      function makeLampLowRes(){
+        if(!lampImage||!lampLoaded||!lowResData)return;
+        lampImage.src=lowResData;
+        lampScene.classList.add("lamp-low-resolution");
+      }
+      function updateLampQuality(){
+        if(connectionIsSlow())makeLampLowRes();
+        else if(lampImage&&lampLoaded){
+          lampScene.classList.remove("lamp-low-resolution");
+          if(lampImage.src!==originalLampSrc)lampImage.src=originalLampSrc;
+        }
+      }
+      if(lampImage){
+        lampImage.style.opacity="0";
+        const finishLampLoad=async function(){
+          try{if(lampImage.decode)await lampImage.decode()}catch(e){}
+          lampLoaded=true;
+          try{
+            const canvas=document.createElement("canvas");
+            canvas.width=36;canvas.height=36;
+            const ctx=canvas.getContext("2d");
+            if(ctx){ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="low";ctx.drawImage(lampImage,0,0,36,36);lowResData=canvas.toDataURL("image/png")}
+          }catch(e){}
+          if(connectionIsSlow()||performance.now()-loadStarted>900)makeLampLowRes();
+          lampImage.style.opacity="1";
+          lampScene.classList.add("lamp-image-ready");
+        };
+        if(lampImage.complete&&lampImage.naturalWidth)finishLampLoad();
+        else lampImage.addEventListener("load",finishLampLoad,{once:true});
+        lampImage.addEventListener("error",function(){lampScene.classList.add("lamp-image-failed")},{once:true});
+      }
+      if(connection&&connection.addEventListener)connection.addEventListener("change",updateLampQuality);
       switchButton.addEventListener("click",function(){
         if(splash.classList.contains("is-lighting"))return;
         switchButton.disabled=true;
