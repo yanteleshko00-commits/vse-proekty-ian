@@ -11,29 +11,29 @@
     <svg class="dog bulb-character" viewBox="0 0 120 154" role="img" aria-label="Живая лампочка с глазами, улыбкой, руками и ногами" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="ianBulbGlass" x1="12%" y1="0%" x2="88%" y2="100%">
-          <stop offset="0" stop-color="#f0fff6"/><stop offset=".48" stop-color="#a9e8c1"/><stop offset="1" stop-color="#18a66a"/>
+          <stop offset="0" stop-color="#f2f7ff"/><stop offset=".48" stop-color="#a7cfff"/><stop offset="1" stop-color="#2878f0"/>
         </linearGradient>
         <linearGradient id="ianBulbBase" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stop-color="#dce5ee"/><stop offset="1" stop-color="#8999aa"/>
         </linearGradient>
       </defs>
       <g class="dog-body">
-        <g class="stick-legs" fill="none" stroke="#168653" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+        <g class="stick-legs" fill="none" stroke="#2878f0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
           <path class="leg leg-back-a" d="M49 123 Q46 134 40 141"/><path class="leg leg-back-b" d="M71 123 Q75 134 82 141"/>
-          <path d="M40 141l-8 1M82 141l8 1" stroke="#273548" stroke-width="5"/>
+          <path d="M40 141l-8 1M82 141l8 1" stroke="#10294b" stroke-width="5"/>
         </g>
-        <g class="stick-arms" fill="none" stroke="#168653" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+        <g class="stick-arms" fill="none" stroke="#2878f0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
           <path class="arm arm-left" d="M25 67 Q12 72 8 87"/><path class="arm arm-right" d="M95 67 Q108 72 112 87"/>
-          <circle cx="8" cy="88" r="3.5" fill="#168653" stroke="none"/><circle cx="112" cy="88" r="3.5" fill="#168653" stroke="none"/>
+          <circle cx="8" cy="88" r="3.5" fill="#2878f0" stroke="none"/><circle cx="112" cy="88" r="3.5" fill="#2878f0" stroke="none"/>
         </g>
         <g class="bear-head">
-          <path class="bulb-glass" d="M60 8C34 8 17 26 17 50c0 17 8 27 18 38 6 6 9 12 10 20h30c1-8 4-14 10-20 10-11 18-21 18-38C103 26 86 8 60 8Z" fill="url(#ianBulbGlass)" stroke="#087546" stroke-width="2.5"/>
+          <path class="bulb-glass" d="M60 8C34 8 17 26 17 50c0 17 8 27 18 38 6 6 9 12 10 20h30c1-8 4-14 10-20 10-11 18-21 18-38C103 26 86 8 60 8Z" fill="url(#ianBulbGlass)" stroke="#123a80" stroke-width="2.5"/>
           <path d="M31 37Q35 22 49 18" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".7"/>
           <g class="bear-eyes" fill="#26364a">
             <ellipse class="eye" cx="47" cy="55" rx="4.3" ry="6.3"/><ellipse class="eye" cx="73" cy="55" rx="4.3" ry="6.3"/>
             <circle cx="45.5" cy="52.5" r="1.6" fill="#fff"/><circle cx="71.5" cy="52.5" r="1.6" fill="#fff"/>
           </g>
-          <g class="bear-brows" fill="none" stroke="#087546" stroke-width="2.4" stroke-linecap="round"><path class="brow brow-left" d="M40 44q7-5 13 0"/><path class="brow brow-right" d="M67 44q7-5 13 0"/></g>
+          <g class="bear-brows" fill="none" stroke="#123a80" stroke-width="2.4" stroke-linecap="round"><path class="brow brow-left" d="M40 44q7-5 13 0"/><path class="brow brow-right" d="M67 44q7-5 13 0"/></g>
           <g class="face-mouth" fill="none" stroke="#17231d" stroke-width="2.8" stroke-linecap="round">
             <path class="mouth mouth-neutral" d="M53 70q7 4 14 0"/>
             <path class="mouth mouth-happy" d="M50 68q10 15 20 0" />
@@ -50,11 +50,11 @@
           <g class="heart-sparkles" fill="#ff7894"><path d="M28 30c-6-7-16 2 0 13 16-11 6-20 0-13Z"/><path d="M94 26c-4-5-11 1 0 9 11-8 4-14 0-9Z"/></g>
         </g>
         <g class="bulb-neck">
-          <path d="M46 105h28v7H46z" fill="#18a66a" stroke="#087546" stroke-width="1.5"/>
-          <path d="M47 112h26v5H47zM49 118h22v5H49z" fill="url(#ianBulbBase)" stroke="#2c9561" stroke-width="1.2"/>
-          <path d="M54 124h12" stroke="#087546" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M46 105h28v7H46z" fill="#2878f0" stroke="#123a80" stroke-width="1.5"/>
+          <path d="M47 112h26v5H47zM49 118h22v5H49z" fill="url(#ianBulbBase)" stroke="#1459c5" stroke-width="1.2"/>
+          <path d="M54 124h12" stroke="#123a80" stroke-width="2.5" stroke-linecap="round"/>
         </g>
-        <g class="sparkle" fill="#b8f0ce"><path d="M8 28l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/><path d="M108 14l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></g>
+        <g class="sparkle" fill="#cbe6ff"><path d="M8 28l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/><path d="M108 14l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></g>
       </g>
     </svg>`;
   document.body.appendChild(mascot);
