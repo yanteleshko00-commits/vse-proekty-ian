@@ -227,7 +227,8 @@
   }
   function openChat() {
     chat.classList.add("open");
-    say("Слушаю тебя!");
+    say(["О, привет! Ты ко мне? 🍯", "Ну наконец-то! Я уже заскучал.", "Привет-привет! Что нового?", "Я тут! Рассказывай, что случилось."][Math.floor(Math.random()*4)]);
+    setEmotion("happy", 1300);
     setTimeout(() => input.focus({ preventScroll: true }), 180);
   }
   function addMessage(text, who) {
@@ -328,6 +329,7 @@
     mascot.classList.add("dragging");
     mascot.setPointerCapture(e.pointerId);
   });
+  let shakeSamples = [], shakeCooldown = 0;
   mascot.addEventListener("pointermove", e => {
     if (!drag || drag.id !== e.pointerId) return;
     const now = performance.now(), dt = Math.max(8, now - drag.time);
@@ -336,6 +338,25 @@
       drag.moved = true;
       clearTimeout(tapTimer);
       taps = 0;
+      setEmotion("surprised", 900);
+      say(["Ой! Меня несут! 😮", "Эй, куда мы отправляемся?", "Ха! Поехали кататься!"][Math.floor(Math.random()*3)]);
+    }
+    if (drag.moved) {
+      const direction = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "r" : "l") : (dy > 0 ? "d" : "u");
+      shakeSamples.push({direction,time:now});
+      shakeSamples = shakeSamples.filter(sample => now-sample.time < 850);
+      let changes = 0;
+      for(let i=1;i<shakeSamples.length;i++) if(shakeSamples[i].direction!==shakeSamples[i-1].direction) changes++;
+      if(changes >= 3 && now-shakeCooldown > 1800) {
+        shakeCooldown = now;
+        shakeSamples = [];
+        setEmotion("confused", 1800);
+        say(["Ой-ой! Голова кругом! 😵", "Аккуратнее, я же не юла!", "Ха-ха! Щекотно, остановись!"][Math.floor(Math.random()*3)]);
+        mascot.classList.remove("collision");
+        void mascot.offsetWidth;
+        mascot.classList.add("collision");
+        setTimeout(()=>mascot.classList.remove("collision"),850);
+      }
     }
     vx = Math.max(-22, Math.min(22, dx / dt * 16));
     vy = Math.max(-22, Math.min(22, dy / dt * 16));
@@ -404,7 +425,15 @@
     if (Math.abs(vx) + Math.abs(vy) < 1.1) {
       vx *= 1.8; vy *= 1.8;
     }
-    say("Ух ты! Лечу! 🍯");
+    const throwSpeed = Math.abs(vx) + Math.abs(vy);
+    if (throwSpeed > 10) {
+      setEmotion("excited", 1500);
+      say(["А-а-а! Полетели-и-и! 🎈", "Уиии! Как быстро!", "Ловите меня! Я в полёте!"][Math.floor(Math.random()*3)]);
+      mascot.classList.add("gliding");
+    } else {
+      setEmotion("playful", 1200);
+      say(["Хи-хи! Прогулка окончена?", "Спасибо за путешествие!", "Поставь меня поудобнее, пожалуйста! 🍯"][Math.floor(Math.random()*3)]);
+    }
     if (motionEnabled) animate("happy", 700);
     frame = requestAnimationFrame(glideAndBounce);
   }
