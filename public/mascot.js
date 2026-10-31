@@ -287,7 +287,9 @@
     if (taps === 3) {
       taps = 0;
       lampToggle();
+      setEmotion(lit ? "delighted" : "curious", 1800);
     } else {
+      setEmotion(taps === 1 ? "curious" : "excited", 650);
       tapTimer = setTimeout(() => {
         if (taps === 1) openChat();
         taps = 0;
