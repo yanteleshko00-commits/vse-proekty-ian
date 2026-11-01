@@ -917,3 +917,17 @@ html[data-theme="dark"] #ian-mascot-speech{
   #ian-mascot.motion-enabled.walk .arm-group,
   #ian-mascot.motion-enabled.scroll-walk .arm-group{animation:none!important}
 }
+
+
+/* Hide only when every safe edge position is occupied; restore automatically. */
+#ian-mascot{
+  transition:opacity .2s ease,visibility .2s ease,left .24s cubic-bezier(.22,.61,.36,1),top .24s cubic-bezier(.22,.61,.36,1)!important;
+}
+#ian-mascot.is-obstructed{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+#ian-mascot:not(.is-obstructed){
+  visibility:visible;
+}
