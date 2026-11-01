@@ -19,12 +19,24 @@
       </defs>
       <g class="dog-body">
         <g class="stick-legs" fill="none" stroke="#2878f0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
-          <path class="leg leg-back-a" d="M49 123 Q46 134 40 141"/><path class="leg leg-back-b" d="M71 123 Q75 134 82 141"/>
-          <path d="M40 141l-8 1M82 141l8 1" stroke="#10294b" stroke-width="5"/>
+          <g class="leg-group leg-left">
+            <path class="leg leg-back-a" d="M49 123 Q46 134 40 141"/>
+            <path class="foot" d="M40 141l-8 1" stroke="#10294b" stroke-width="5"/>
+          </g>
+          <g class="leg-group leg-right">
+            <path class="leg leg-back-b" d="M71 123 Q75 134 82 141"/>
+            <path class="foot" d="M82 141l8 1" stroke="#10294b" stroke-width="5"/>
+          </g>
         </g>
         <g class="stick-arms" fill="none" stroke="#2878f0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
-          <path class="arm arm-left" d="M25 67 Q12 72 8 87"/><path class="arm arm-right" d="M95 67 Q108 72 112 87"/>
-          <circle cx="8" cy="88" r="3.5" fill="#2878f0" stroke="none"/><circle cx="112" cy="88" r="3.5" fill="#2878f0" stroke="none"/>
+          <g class="arm-group arm-left-group">
+            <path class="arm arm-left" d="M25 67 Q12 72 8 87"/>
+            <circle cx="8" cy="88" r="3.5" fill="#2878f0" stroke="none"/>
+          </g>
+          <g class="arm-group arm-right-group">
+            <path class="arm arm-right" d="M95 67 Q108 72 112 87"/>
+            <circle cx="112" cy="88" r="3.5" fill="#2878f0" stroke="none"/>
+          </g>
         </g>
         <g class="bear-head">
           <path class="bulb-glass" d="M60 8C34 8 17 26 17 50c0 17 8 27 18 38 6 6 9 12 10 20h30c1-8 4-14 10-20 10-11 18-21 18-38C103 26 86 8 60 8Z" fill="url(#ianBulbGlass)" stroke="#123a80" stroke-width="2.5"/>
