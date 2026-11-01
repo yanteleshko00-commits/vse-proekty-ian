@@ -192,6 +192,8 @@
   window.addEventListener("resize",scheduleMascotOverlapCheck,{passive:true});
   document.addEventListener("focusin",scheduleMascotOverlapCheck);
   document.addEventListener("focusout",scheduleMascotOverlapCheck);
+  window.visualViewport?.addEventListener("resize",scheduleMascotOverlapCheck,{passive:true});
+  window.visualViewport?.addEventListener("scroll",scheduleMascotOverlapCheck,{passive:true});
   if(window.ResizeObserver){
     const pageObserver=new ResizeObserver(scheduleMascotOverlapCheck);
     pageObserver.observe(document.body);
