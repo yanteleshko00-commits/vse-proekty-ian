@@ -445,7 +445,66 @@ html[data-app-mode="standalone"] #appSplash{display:flex!important}
 @media(max-width:750px){.logo-lamp-image{width:118px;height:118px}.lamp-switch{margin-top:10px}}
 </style>
 
-  <link rel="stylesheet" href="/mascot.css?v=20261101-mascotfix2">
+  <link rel="stylesheet" href="/mascot.css?v=20261101-accordion-mascot3">
+
+<style id="requirements-accordion-v2">
+/* Six independent requirement panels: only the plus control toggles a panel. */
+.checks .check{
+  padding:0!important;min-width:0;overflow:hidden;border:1px solid rgba(40,120,240,.14);
+  border-radius:19px;background:rgba(255,255,255,.86);
+  box-shadow:0 5px 20px rgba(24,57,98,.045);
+  transition:border-color .32s ease,background .32s ease,box-shadow .36s ease,transform .36s cubic-bezier(.2,.8,.2,1);
+}
+.checks .check:hover{border-color:rgba(40,120,240,.3);transform:translateY(-2px);box-shadow:0 12px 26px rgba(24,57,98,.09)}
+.check-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:72px;padding:14px 16px}
+.check-label{display:flex;align-items:center;gap:12px;flex:1;min-width:0;pointer-events:none}
+.checks .check .check-mark{
+  flex:0 0 30px;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;
+  color:#2878f0!important;background:rgba(40,120,240,.10);font-size:14px;font-weight:850;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1),background .3s ease;
+}
+.checks .check .check-title{color:#172b45!important;font-size:15px;font-weight:760;line-height:1.4}
+.check-toggle{
+  flex:0 0 40px;width:40px;height:40px;display:grid;place-items:center;padding:0;
+  border:1px solid rgba(40,120,240,.13);border-radius:50%;
+  color:#2878f0;background:rgba(40,120,240,.075);
+  transition:transform .3s cubic-bezier(.2,.8,.2,1),background .3s ease,border-color .3s ease,box-shadow .3s ease;
+}
+.check-toggle:hover{background:rgba(40,120,240,.14);border-color:rgba(40,120,240,.3)}
+.check-toggle:active{transform:scale(.9)}
+.check-toggle:focus-visible{outline:3px solid rgba(40,120,240,.28);outline-offset:3px}
+.check-plus{position:relative;display:block;width:16px;height:16px}
+.check-plus:before,.check-plus:after{
+  content:"";position:absolute;left:50%;top:50%;width:16px;height:2px;border-radius:2px;
+  background:currentColor;transform:translate(-50%,-50%);transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .22s ease;
+}
+.check-plus:after{transform:translate(-50%,-50%) rotate(90deg)}
+.check-panel{
+  display:grid;grid-template-rows:0fr;opacity:0;visibility:hidden;
+  transition:grid-template-rows .52s cubic-bezier(.22,.8,.25,1),opacity .32s ease,visibility 0s linear .52s;
+}
+.check-panel-inner{min-height:0;overflow:hidden;transform:translateY(-9px);transition:transform .42s cubic-bezier(.2,.8,.2,1)}
+.checks .check .check-panel-inner p{
+  margin:0;padding:1px 18px 19px 58px;border-top:1px solid rgba(40,120,240,.09);
+  color:#526783!important;font-size:14px;line-height:1.65;animation:none!important;
+}
+.checks .check.is-open{
+  border-color:rgba(40,120,240,.32);background:rgba(248,251,255,.96);
+  box-shadow:0 14px 32px rgba(32,87,158,.10);
+}
+.checks .check.is-open .check-mark{background:rgba(40,120,240,.16);transform:scale(1.06)}
+.checks .check.is-open .check-panel{grid-template-rows:1fr;opacity:1;visibility:visible;transition:grid-template-rows .52s cubic-bezier(.22,.8,.25,1),opacity .32s ease,visibility 0s}
+.checks .check.is-open .check-panel-inner{transform:translateY(0)}
+.checks .check.is-open .check-plus:after{transform:translate(-50%,-50%) scaleY(0);opacity:0}
+html[data-theme="dark"] .checks .check{background:rgba(22,34,52,.78);border-color:rgba(124,174,245,.18)}
+html[data-theme="dark"] .checks .check.is-open{background:rgba(28,46,72,.94);border-color:rgba(124,174,245,.42)}
+html[data-theme="dark"] .checks .check .check-title{color:#eef5ff!important}
+html[data-theme="dark"] .checks .check .check-panel-inner p{color:#c2d0e4!important;border-top-color:rgba(124,174,245,.15)}
+html[data-theme="dark"] .check-toggle{color:#9bc4ff;background:rgba(90,147,226,.13);border-color:rgba(124,174,245,.2)}
+@media(max-width:600px){.check-heading{min-height:68px;padding:12px 13px}.checks .check .check-title{font-size:14px}.checks .check .check-panel-inner p{padding:0 15px 17px 55px;font-size:13.5px}.check-toggle{width:38px;height:38px;flex-basis:38px}}
+@media(prefers-reduced-motion:reduce){.checks .check,.check-toggle,.check-plus:before,.check-plus:after,.check-panel,.check-panel-inner,.check-mark{transition:none!important}.checks .check:hover{transform:none}}
+</style>
+
 </head>
 <body>
 
@@ -550,12 +609,90 @@ html[data-app-mode="standalone"] #appSplash{display:flex!important}
 <section><div class="container">
 <h2 class="section-title">🇷🇺 Российские требования</h2><p class="section-subtitle">Основные элементы проекта учитываются в структуре.</p>
 <div class="checks">
-<details class="check"><summary><span>✓</span> Структура проекта</summary><p>Обычно включает титульный лист, введение, основную часть, заключение и список источников. Точный порядок уточни у учителя.</p></details>
-<details class="check"><summary><span>✓</span> Цель и задачи</summary><p>Цель описывает ожидаемый результат, а задачи — конкретные шаги, которые помогут к нему прийти.</p></details>
-<details class="check"><summary><span>✓</span> Презентация</summary><p>Слайды должны кратко раскрывать тему, показывать главные результаты и дополнять выступление, а не дублировать длинный текст.</p></details>
-<details class="check"><summary><span>✓</span> Текст защиты</summary><p>Подготовь короткое выступление: актуальность, цель, методы, результаты, практическая значимость и ответы на вопросы.</p></details>
-<details class="check"><summary><span>✓</span> Источники и литература</summary><p>Указывай только реально использованные материалы: книги, статьи и официальные сайты. Проверь автора, название, дату и ссылку.</p></details>
-<details class="check"><summary><span>✓</span> Связь продукта с темой</summary><p>Практический продукт — например, буклет, памятка, опрос или макет — должен решать задачу проекта и быть описан в работе.</p></details>
+  <article class="check">
+    <div class="check-heading">
+      <div class="check-label">
+        <span class="check-mark" aria-hidden="true">✓</span>
+        <span class="check-title">Структура проекта</span>
+      </div>
+      <button class="check-toggle" type="button" aria-expanded="false" aria-controls="requirement-structure" aria-label="Раскрыть: Структура проекта">
+        <span class="check-plus" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="check-panel" id="requirement-structure" aria-hidden="true" inert>
+      <div class="check-panel-inner"><p>Обычно включает титульный лист, введение, основную часть, заключение и список источников. Точный порядок уточни у учителя.</p></div>
+    </div>
+  </article>
+  <article class="check">
+    <div class="check-heading">
+      <div class="check-label">
+        <span class="check-mark" aria-hidden="true">✓</span>
+        <span class="check-title">Цель и задачи</span>
+      </div>
+      <button class="check-toggle" type="button" aria-expanded="false" aria-controls="requirement-goals" aria-label="Раскрыть: Цель и задачи">
+        <span class="check-plus" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="check-panel" id="requirement-goals" aria-hidden="true" inert>
+      <div class="check-panel-inner"><p>Цель описывает ожидаемый результат, а задачи — конкретные шаги, которые помогут к нему прийти.</p></div>
+    </div>
+  </article>
+  <article class="check">
+    <div class="check-heading">
+      <div class="check-label">
+        <span class="check-mark" aria-hidden="true">✓</span>
+        <span class="check-title">Презентация</span>
+      </div>
+      <button class="check-toggle" type="button" aria-expanded="false" aria-controls="requirement-presentation" aria-label="Раскрыть: Презентация">
+        <span class="check-plus" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="check-panel" id="requirement-presentation" aria-hidden="true" inert>
+      <div class="check-panel-inner"><p>Слайды должны кратко раскрывать тему, показывать главные результаты и дополнять выступление, а не дублировать длинный текст.</p></div>
+    </div>
+  </article>
+  <article class="check">
+    <div class="check-heading">
+      <div class="check-label">
+        <span class="check-mark" aria-hidden="true">✓</span>
+        <span class="check-title">Текст защиты</span>
+      </div>
+      <button class="check-toggle" type="button" aria-expanded="false" aria-controls="requirement-speech" aria-label="Раскрыть: Текст защиты">
+        <span class="check-plus" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="check-panel" id="requirement-speech" aria-hidden="true" inert>
+      <div class="check-panel-inner"><p>Подготовь короткое выступление: актуальность, цель, методы, результаты, практическая значимость и ответы на вопросы.</p></div>
+    </div>
+  </article>
+  <article class="check">
+    <div class="check-heading">
+      <div class="check-label">
+        <span class="check-mark" aria-hidden="true">✓</span>
+        <span class="check-title">Источники и литература</span>
+      </div>
+      <button class="check-toggle" type="button" aria-expanded="false" aria-controls="requirement-sources" aria-label="Раскрыть: Источники и литература">
+        <span class="check-plus" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="check-panel" id="requirement-sources" aria-hidden="true" inert>
+      <div class="check-panel-inner"><p>Указывай только реально использованные материалы: книги, статьи и официальные сайты. Проверь автора, название, дату и ссылку.</p></div>
+    </div>
+  </article>
+  <article class="check">
+    <div class="check-heading">
+      <div class="check-label">
+        <span class="check-mark" aria-hidden="true">✓</span>
+        <span class="check-title">Связь продукта с темой</span>
+      </div>
+      <button class="check-toggle" type="button" aria-expanded="false" aria-controls="requirement-product" aria-label="Раскрыть: Связь продукта с темой">
+        <span class="check-plus" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="check-panel" id="requirement-product" aria-hidden="true" inert>
+      <div class="check-panel-inner"><p>Практический продукт — например, буклет, памятка, опрос или макет — должен решать задачу проекта и быть описан в работе.</p></div>
+    </div>
+  </article>
 </div>
 <p style="margin-top:20px;color:#69766f;font-size:14px">⚠️ Требования конкретной школы рекомендуется проверить отдельно.</p>
 </div></section>
@@ -1040,7 +1177,30 @@ document.addEventListener("DOMContentLoaded",()=>{
 })();
 </script>
 
-  <script src="/mascot.js?v=20261101-mascotfix2" defer></script>
+  <script>
+(() => {
+  const requirements = document.querySelector(".checks");
+  if (!requirements || requirements.dataset.plusOnlyReady === "true") return;
+  requirements.dataset.plusOnlyReady = "true";
+  requirements.addEventListener("click", event => {
+    const button = event.target.closest("button.check-toggle");
+    if (!button || !requirements.contains(button)) return;
+    const item = button.closest(".check");
+    const panelId = button.getAttribute("aria-controls");
+    const panel = panelId ? document.getElementById(panelId) : null;
+    if (!item || !panel) return;
+    const opening = button.getAttribute("aria-expanded") !== "true";
+    button.setAttribute("aria-expanded", String(opening));
+    button.setAttribute("aria-label", (opening ? "Свернуть: " : "Раскрыть: ") +
+      (item.querySelector(".check-title")?.textContent?.trim() || "требование"));
+    item.classList.toggle("is-open", opening);
+    panel.inert = !opening;
+    panel.setAttribute("aria-hidden", String(!opening));
+  });
+})();
+</script>
+
+<script src="/mascot.js?v=20261101-accordion-mascot3" defer></script>
 </body>
 </html>
 
