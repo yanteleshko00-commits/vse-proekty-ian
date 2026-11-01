@@ -804,3 +804,24 @@ html[data-theme="dark"] #ian-mascot-speech{
  #ian-mascot.motion-enabled.scroll-walk .dog-body,
  #ian-mascot.motion-enabled.walk .dog-body{animation:none!important}
 }
+
+
+/* Stable iPhone/desktop docking: keep the mascot out of the middle of the page. */
+#ian-mascot{
+  position:fixed!important;
+  left:auto!important;
+  right:14px!important;
+  top:auto!important;
+  bottom:calc(14px + env(safe-area-inset-bottom,0px))!important;
+  z-index:9000!important;
+}
+@media(max-width:600px){
+  #ian-mascot{
+    left:auto!important;
+    right:10px!important;
+    top:auto!important;
+    bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;
+    width:68px!important;
+    height:66px!important;
+  }
+}
