@@ -71,85 +71,129 @@
     </svg>`;
   document.body.appendChild(mascot);
 
-  // Keep the mascot in a free viewport corner instead of letting it cover text
-  // or controls. A single rAF scheduler prevents repeated layout measurements.
+  // Collision-aware positioning: search along screen edges, not just four
+  // corners. This avoids covering inputs, buttons, pricing cards and text.
   let overlapFrame = 0;
-  const mascotAvoidSelector =
-    "button:not(#ian-mascot button):not(#ian-mascot-chat button),a[href]," +
-    "input:not([type='hidden']),textarea,select,[role='button'],h1,h2,h3,p,label,.price,.badge";
-  function intersectionArea(a,b) {
-    const width = Math.max(0, Math.min(a.right,b.right) - Math.max(a.left,b.left));
-    const height = Math.max(0, Math.min(a.bottom,b.bottom) - Math.max(a.top,b.top));
-    return width * height;
+  let overlapTimer = 0;
+  let lastMascotPosition = null;
+  const mascotAvoidSelector = [
+    "button:not(#ian-mascot button):not(#ian-mascot-chat button)",
+    "a[href]","input:not([type='hidden'])","textarea","select","[role='button']",
+    "h1","h2","h3","p","label","li","summary",".price",".badge",
+    ".card",".tile",".step-card",".feature-card",".price-card",".tariff-card",
+    "[class*='card']","[class*='tile']"
+  ].join(",");
+  function mascotRectAt(point,width,height) {
+    return {left:point.left,top:point.top,right:point.left+width,bottom:point.top+height};
+  }
+  function getMascotOccupiedRatio(point,width,height,targets) {
+    const rect=mascotRectAt(point,width,height);
+    const cols=7, rows=7, padding=7;
+    let occupied=0, samples=0;
+    for(let y=0;y<rows;y++){
+      for(let x=0;x<cols;x++){
+        const px=rect.left+padding+(width-2*padding)*(x+.5)/cols;
+        const py=rect.top+padding+(height-2*padding)*(y+.5)/rows;
+        samples++;
+        let blocked=false;
+        for(const target of targets){
+          const b=target.rect;
+          if(px>=b.left-5&&px<=b.right+5&&py>=b.top-5&&py<=b.bottom+5){
+            blocked=true; break;
+          }
+        }
+        if(blocked) occupied++;
+      }
+    }
+    return occupied/samples;
   }
   function checkMascotOverlap() {
-    if (mascot.classList.contains("dragging") || mascot.classList.contains("game-mode")) return;
-    const width = mascot.offsetWidth || 66;
-    const height = mascot.offsetHeight || 66;
-    const vw = window.innerWidth || document.documentElement.clientWidth;
-    const vh = window.innerHeight || document.documentElement.clientHeight;
-    const margin = 10;
-    const topSafe = Math.min(88, Math.max(64, vh * .1));
-    const bottomSafe = 14;
-    const candidates = [
-      {left:vw-width-margin, top:vh-height-bottomSafe},
-      {left:margin, top:vh-height-bottomSafe},
-      {left:vw-width-margin, top:topSafe},
-      {left:margin, top:topSafe}
-    ].map(p => ({
-      left:Math.max(margin,Math.min(vw-width-margin,p.left)),
-      top:Math.max(margin,Math.min(vh-height-margin,p.top))
-    }));
-    const targets = Array.from(document.querySelectorAll(mascotAvoidSelector)).filter(el => {
-      if (el.closest("#ian-mascot,#ian-mascot-chat") || el.getClientRects().length === 0) return false;
-      const style = window.getComputedStyle(el);
-      return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > .12;
-    });
-    const score = p => {
-      const r = {left:p.left,top:p.top,right:p.left+width,bottom:p.top+height};
-      let total = 0;
-      for (const el of targets) {
-        const b = el.getBoundingClientRect();
-        if (b.bottom <= 0 || b.top >= vh || b.right <= 0 || b.left >= vw) continue;
-        const area = intersectionArea(r,b);
-        if (!area) continue;
-        const interactive = el.matches("button,a[href],input,textarea,select,[role='button']");
-        total += area * (interactive ? 3 : 1);
-      }
-      return total;
+    if(mascot.classList.contains("dragging")||mascot.classList.contains("game-mode")) return;
+    const rect=mascot.getBoundingClientRect();
+    const width=Math.max(48,rect.width||66), height=Math.max(48,rect.height||66);
+    const vw=window.innerWidth||document.documentElement.clientWidth;
+    const vh=window.innerHeight||document.documentElement.clientHeight;
+    const margin=9, topSafe=Math.max(58,Math.min(92,vh*.09));
+    const maxX=Math.max(margin,vw-width-margin), maxY=Math.max(topSafe,vh-height-12);
+    const targets=Array.from(document.querySelectorAll(mascotAvoidSelector)).filter(el=>{
+      if(el.closest("#ian-mascot,#ian-mascot-chat")||el.getClientRects().length===0) return false;
+      const style=getComputedStyle(el);
+      if(style.display==="none"||style.visibility==="hidden"||Number(style.opacity||1)<.15) return false;
+      const b=el.getBoundingClientRect();
+      if(b.width<3||b.height<3||b.bottom<=0||b.top>=vh||b.right<=0||b.left>=vw) return false;
+      return true;
+    }).map(el=>({rect:el.getBoundingClientRect(),interactive:el.matches("button,a[href],input,textarea,select,[role='button']")}));
+
+    const points=[];
+    const addPoint=(x,y)=>{
+      const p={left:Math.round(Math.max(margin,Math.min(maxX,x))),top:Math.round(Math.max(topSafe,Math.min(maxY,y)))};
+      if(!points.some(q=>Math.abs(q.left-p.left)<10&&Math.abs(q.top-p.top)<10)) points.push(p);
     };
-    const currentRect = mascot.getBoundingClientRect();
-    const current = {left:currentRect.left,top:currentRect.top};
-    const currentScore = score(current);
-    if (currentScore < 120) return;
-    let best = candidates[0], bestScore = score(best);
-    for (const candidate of candidates.slice(1)) {
-      const candidateScore = score(candidate);
-      if (candidateScore < bestScore) { best = candidate; bestScore = candidateScore; }
+    // Scan both vertical edges at regular intervals, then the upper/lower rows.
+    const step=Math.max(54,Math.round(height*.82));
+    for(let y=topSafe;y<=maxY;y+=step){
+      addPoint(margin,y);
+      addPoint(maxX,y);
     }
-    if (bestScore >= currentScore) return;
-    if (Math.abs(best.left-current.left) < 12 && Math.abs(best.top-current.top) < 12) return;
-    mascot.style.transition = "left .32s cubic-bezier(.22,.61,.36,1),top .32s cubic-bezier(.22,.61,.36,1)";
-    mascot.style.setProperty("left",Math.round(best.left)+"px","important");
-    mascot.style.setProperty("top",Math.round(best.top)+"px","important");
-    mascot.style.setProperty("right","auto","important");
-    mascot.style.setProperty("bottom","auto","important");
-    mascot.classList.toggle("speech-left",best.left < vw * .48);
-    window.setTimeout(() => { if (!mascot.classList.contains("dragging")) mascot.style.transition = ""; },360);
+    addPoint(margin,maxY); addPoint(maxX,maxY);
+    const horizontalStep=Math.max(64,Math.round(width*.9));
+    for(let x=margin;x<=maxX;x+=horizontalStep){
+      addPoint(x,topSafe); addPoint(x,maxY);
+    }
+
+    const current={left:Math.round(rect.left),top:Math.round(rect.top)};
+    const currentRatio=getMascotOccupiedRatio(current,width,height,targets);
+    // Keep the current spot when it is genuinely clear; this prevents jitter.
+    if(currentRatio<=.035){
+      mascot.classList.remove("is-obstructed");
+      lastMascotPosition=current;
+      return;
+    }
+
+    let best=null,bestRatio=1;
+    for(const point of points){
+      const ratio=getMascotOccupiedRatio(point,width,height,targets);
+      if(ratio<bestRatio){best=point;bestRatio=ratio;}
+      if(ratio===0) break;
+    }
+
+    mascot.style.transition="left .24s cubic-bezier(.22,.61,.36,1),top .24s cubic-bezier(.22,.61,.36,1),opacity .2s ease";
+    if(best&&bestRatio<=.035){
+      // Only move when the alternative is truly clearer; otherwise hide briefly
+      // rather than sit on top of an important control.
+      if(Math.abs(best.left-current.left)>10||Math.abs(best.top-current.top)>10){
+        mascot.style.setProperty("left",best.left+"px","important");
+        mascot.style.setProperty("top",best.top+"px","important");
+        mascot.style.setProperty("right","auto","important");
+        mascot.style.setProperty("bottom","auto","important");
+      }
+      mascot.classList.toggle("speech-left",best.left<vw*.48);
+      mascot.classList.remove("is-obstructed");
+      lastMascotPosition=best;
+    }else{
+      mascot.classList.add("is-obstructed");
+    }
+    clearTimeout(mascot._overlapTransitionTimer);
+    mascot._overlapTransitionTimer=setTimeout(()=>{
+      if(!mascot.classList.contains("dragging")) mascot.style.transition="";
+    },280);
   }
   function scheduleMascotOverlapCheck() {
-    if (overlapFrame) return;
-    overlapFrame = requestAnimationFrame(() => {
-      overlapFrame = 0;
-      checkMascotOverlap();
+    if(overlapFrame) cancelAnimationFrame(overlapFrame);
+    clearTimeout(overlapTimer);
+    // Wait for iOS momentum scrolling to settle, so the mascot does not jump
+    // between corners on every scroll frame.
+    overlapFrame=requestAnimationFrame(()=>{
+      overlapFrame=0;
+      overlapTimer=setTimeout(checkMascotOverlap,140);
     });
   }
-  window.addEventListener("scroll", scheduleMascotOverlapCheck, {passive:true});
-  window.addEventListener("resize", scheduleMascotOverlapCheck, {passive:true});
-  document.addEventListener("focusin", scheduleMascotOverlapCheck);
-  document.addEventListener("focusout", () => requestAnimationFrame(scheduleMascotOverlapCheck));
-  if (window.ResizeObserver) {
-    const pageObserver = new ResizeObserver(scheduleMascotOverlapCheck);
+  window.addEventListener("scroll",scheduleMascotOverlapCheck,{passive:true});
+  window.addEventListener("resize",scheduleMascotOverlapCheck,{passive:true});
+  document.addEventListener("focusin",scheduleMascotOverlapCheck);
+  document.addEventListener("focusout",scheduleMascotOverlapCheck);
+  if(window.ResizeObserver){
+    const pageObserver=new ResizeObserver(scheduleMascotOverlapCheck);
     pageObserver.observe(document.body);
   }
   scheduleMascotOverlapCheck();
