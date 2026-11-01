@@ -616,7 +616,14 @@
     const sideSpace = Math.max(rightSpace, leftSpace);
     let left, top, bubble;
 
-    if (sideSpace >= 205) {
+    if (bounds.top > viewportHeight * .58) {
+      // When the mascot is docked near the bottom, show the bubble above it.
+      bubble = speech.getBoundingClientRect();
+      left = bounds.left + bounds.width / 2 - bubble.width / 2;
+      top = bounds.top - bubble.height - gap;
+      speech.dataset.position = "above";
+      mascot.classList.toggle("speech-left", bounds.left < viewportWidth * .48);
+    } else if (sideSpace >= 205) {
       const sideWidth = Math.min(252, sideSpace);
       speech.style.setProperty("min-width", Math.min(190, sideWidth) + "px", "important");
       speech.style.setProperty("max-width", sideWidth + "px", "important");
@@ -991,16 +998,19 @@
   }
   function glideAndBounce() {
     if (drag || !mascot.isConnected) return;
-    const maxX = Math.max(0, innerWidth - mascot.offsetWidth);
-    const maxY = Math.max(0, innerHeight - mascot.offsetHeight);
-    let x = parseFloat(mascot.style.left) || mascot.getBoundingClientRect().left;
-    let y = parseFloat(mascot.style.top) || mascot.getBoundingClientRect().top;
+    const edge = 8;
+    const maxX = Math.max(edge, innerWidth - mascot.offsetWidth - edge);
+    const maxY = Math.max(edge, innerHeight - mascot.offsetHeight - edge - 8);
+    let x = parseFloat(mascot.style.left);
+    let y = parseFloat(mascot.style.top);
+    if (!Number.isFinite(x)) x = mascot.getBoundingClientRect().left;
+    if (!Number.isFinite(y)) y = mascot.getBoundingClientRect().top;
     let hit = "";
     x += vx;
     y += vy;
-    if (x < 0) { x = 0; vx = Math.abs(vx) * 0.72; hit = "x"; }
+    if (x < edge) { x = edge; vx = Math.abs(vx) * 0.72; hit = "x"; }
     else if (x > maxX) { x = maxX; vx = -Math.abs(vx) * 0.72; hit = "x"; }
-    if (y < 0) { y = 0; vy = Math.abs(vy) * 0.68; hit = hit || "y"; }
+    if (y < edge) { y = edge; vy = Math.abs(vy) * 0.68; hit = hit || "y"; }
     else if (y > maxY) { y = maxY; vy = -Math.abs(vy) * 0.68; hit = hit || "y"; }
     if (hit) {
       showWallImpact(hit);
@@ -1030,8 +1040,8 @@
     cancelAnimationFrame(frame);
     mascot.classList.add("gliding");
     mascot.classList.remove("collision", "wall-hit");
-    mascot.style.setProperty("left", Math.max(0, Math.min(innerWidth - mascot.offsetWidth, x)) + "px", "important");
-    mascot.style.setProperty("top", Math.max(0, Math.min(innerHeight - mascot.offsetHeight, y)) + "px", "important");
+    mascot.style.setProperty("left", Math.max(8, Math.min(innerWidth - mascot.offsetWidth - 8, x)) + "px", "important");
+    mascot.style.setProperty("top", Math.max(8, Math.min(innerHeight - mascot.offsetHeight - 16, y)) + "px", "important");
     if (Math.abs(vx) + Math.abs(vy) < 1.1) {
       vx *= 1.8; vy *= 1.8;
     }
