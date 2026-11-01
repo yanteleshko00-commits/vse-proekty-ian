@@ -59,22 +59,88 @@
     </svg>`;
   document.body.appendChild(mascot);
 
-  // Маскот автоматически скрывается, если перекрывает поле, кнопку или другой
-  // элемент формы. Это особенно важно на узких экранах iPhone.
+  // Keep the mascot in a free viewport corner instead of letting it cover text
+  // or controls. A single rAF scheduler prevents repeated layout measurements.
   let overlapFrame = 0;
-  function checkMascotOverlap() {
-    // Keep the floating mascot visible while scrolling and above form controls.
-    mascot.classList.remove("near-controls");
+  const mascotAvoidSelector =
+    "button:not(#ian-mascot button):not(#ian-mascot-chat button),a[href]," +
+    "input:not([type='hidden']),textarea,select,[role='button'],h1,h2,h3,p,label,.price,.badge";
+  function intersectionArea(a,b) {
+    const width = Math.max(0, Math.min(a.right,b.right) - Math.max(a.left,b.left));
+    const height = Math.max(0, Math.min(a.bottom,b.bottom) - Math.max(a.top,b.top));
+    return width * height;
   }
-  window.addEventListener("scroll", checkMascotOverlap, { passive: true });
-  window.addEventListener("resize", checkMascotOverlap, { passive: true });
-  document.addEventListener("focusin", checkMascotOverlap);
-  document.addEventListener("focusout", () => requestAnimationFrame(checkMascotOverlap));
+  function checkMascotOverlap() {
+    if (mascot.classList.contains("dragging") || mascot.classList.contains("game-mode")) return;
+    const width = mascot.offsetWidth || 66;
+    const height = mascot.offsetHeight || 66;
+    const vw = window.innerWidth || document.documentElement.clientWidth;
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const margin = 10;
+    const topSafe = Math.min(88, Math.max(64, vh * .1));
+    const bottomSafe = 14;
+    const candidates = [
+      {left:vw-width-margin, top:vh-height-bottomSafe},
+      {left:margin, top:vh-height-bottomSafe},
+      {left:vw-width-margin, top:topSafe},
+      {left:margin, top:topSafe}
+    ].map(p => ({
+      left:Math.max(margin,Math.min(vw-width-margin,p.left)),
+      top:Math.max(margin,Math.min(vh-height-margin,p.top))
+    }));
+    const targets = Array.from(document.querySelectorAll(mascotAvoidSelector)).filter(el => {
+      if (el.closest("#ian-mascot,#ian-mascot-chat") || el.getClientRects().length === 0) return false;
+      const style = window.getComputedStyle(el);
+      return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || 1) > .12;
+    });
+    const score = p => {
+      const r = {left:p.left,top:p.top,right:p.left+width,bottom:p.top+height};
+      let total = 0;
+      for (const el of targets) {
+        const b = el.getBoundingClientRect();
+        if (b.bottom <= 0 || b.top >= vh || b.right <= 0 || b.left >= vw) continue;
+        const area = intersectionArea(r,b);
+        if (!area) continue;
+        const interactive = el.matches("button,a[href],input,textarea,select,[role='button']");
+        total += area * (interactive ? 3 : 1);
+      }
+      return total;
+    };
+    const currentRect = mascot.getBoundingClientRect();
+    const current = {left:currentRect.left,top:currentRect.top};
+    const currentScore = score(current);
+    if (currentScore < 120) return;
+    let best = candidates[0], bestScore = score(best);
+    for (const candidate of candidates.slice(1)) {
+      const candidateScore = score(candidate);
+      if (candidateScore < bestScore) { best = candidate; bestScore = candidateScore; }
+    }
+    if (bestScore >= currentScore) return;
+    if (Math.abs(best.left-current.left) < 12 && Math.abs(best.top-current.top) < 12) return;
+    mascot.style.transition = "left .32s cubic-bezier(.22,.61,.36,1),top .32s cubic-bezier(.22,.61,.36,1)";
+    mascot.style.setProperty("left",Math.round(best.left)+"px","important");
+    mascot.style.setProperty("top",Math.round(best.top)+"px","important");
+    mascot.style.setProperty("right","auto","important");
+    mascot.style.setProperty("bottom","auto","important");
+    mascot.classList.toggle("speech-left",best.left < vw * .48);
+    window.setTimeout(() => { if (!mascot.classList.contains("dragging")) mascot.style.transition = ""; },360);
+  }
+  function scheduleMascotOverlapCheck() {
+    if (overlapFrame) return;
+    overlapFrame = requestAnimationFrame(() => {
+      overlapFrame = 0;
+      checkMascotOverlap();
+    });
+  }
+  window.addEventListener("scroll", scheduleMascotOverlapCheck, {passive:true});
+  window.addEventListener("resize", scheduleMascotOverlapCheck, {passive:true});
+  document.addEventListener("focusin", scheduleMascotOverlapCheck);
+  document.addEventListener("focusout", () => requestAnimationFrame(scheduleMascotOverlapCheck));
   if (window.ResizeObserver) {
-    const pageObserver = new ResizeObserver(checkMascotOverlap);
+    const pageObserver = new ResizeObserver(scheduleMascotOverlapCheck);
     pageObserver.observe(document.body);
   }
-  checkMascotOverlap();
+  scheduleMascotOverlapCheck();
 
   const chat = document.createElement("section");
   chat.id = "ian-mascot-chat";
@@ -408,46 +474,10 @@
   }
   function moveNearField(field) {
     if (!field || !isEditableField(field) || field.closest("#ian-mascot-chat")) return;
+    // Follow the active field with the eyes only; never jump into the form.
     activeTypingField = field;
-    const vv = window.visualViewport;
-    const viewLeft = vv?.offsetLeft || 0;
-    const viewTop = vv?.offsetTop || 0;
-    const viewWidth = vv?.width || innerWidth;
-    const viewHeight = vv?.height || innerHeight;
-    const fr = field.getBoundingClientRect();
-    const mr = mascot.getBoundingClientRect();
-    const gap = 10, margin = 8;
-    let x, y;
-
-    // Prefer sitting beside the active field, never on top of the text/caret.
-    const rightSpace = viewLeft + viewWidth - fr.right;
-    const leftSpace = fr.left - viewLeft;
-    if (rightSpace >= mr.width + gap + margin) {
-      x = fr.right + gap;
-      y = fr.top + fr.height / 2 - mr.height / 2;
-    } else if (leftSpace >= mr.width + gap + margin) {
-      x = fr.left - mr.width - gap;
-      y = fr.top + fr.height / 2 - mr.height / 2;
-    } else {
-      // On phones, place it just above the field, within the visible keyboard viewport.
-      x = fr.left + fr.width / 2 - mr.width / 2;
-      const above = fr.top - mr.height - gap;
-      const below = fr.bottom + gap;
-      y = above >= viewTop + margin ? above : below;
-    }
-    x = Math.max(viewLeft + margin, Math.min(x, viewLeft + viewWidth - mr.width - margin));
-    y = Math.max(viewTop + margin, Math.min(y, viewTop + viewHeight - mr.height - margin));
-
-    mascot.classList.remove("walk", "scroll-walk", "scroll-up", "scroll-down", "gliding");
-    mascot.style.transition = "left .58s cubic-bezier(.22,.61,.36,1), top .58s cubic-bezier(.22,.61,.36,1), right .58s cubic-bezier(.22,.61,.36,1), bottom .58s cubic-bezier(.22,.61,.36,1)";
-    mascot.style.setProperty("left", Math.round(x) + "px", "important");
-    mascot.style.setProperty("top", Math.round(y) + "px", "important");
-    mascot.style.setProperty("right", "auto", "important");
-    mascot.style.setProperty("bottom", "auto", "important");
-    mascot.classList.add("walk");
     lookAtField(field);
-    clearTimeout(mascot._focusWalkTimer);
-    mascot._focusWalkTimer = setTimeout(() => mascot.classList.remove("walk"), 900);
+    scheduleMascotOverlapCheck();
   }
   function scheduleFieldFollow(field = activeTypingField) {
     if (!field || document.activeElement !== field) return;
@@ -623,7 +653,7 @@
 
   function say(text) {
     const line = String(text ?? "").trim();
-    if (!line) return;
+    if (!line || chat.classList.contains("open")) return;
 
     speech.textContent = line;
     speech.setAttribute("aria-label", line);
@@ -637,7 +667,7 @@
 
     clearTimeout(mascot._speechTimer);
     // Keep longer replies visible long enough to read without rushing.
-    const visibleFor = Math.min(8200, Math.max(4200, 2500 + line.length * 32));
+    const visibleFor = Math.min(5200, Math.max(2600, 1700 + line.length * 24));
     mascot._speechTimer = setTimeout(() => {
       mascot.classList.remove("speak", "talking");
       speech.classList.remove("is-visible");
@@ -740,75 +770,39 @@
   }
   idleTimer = setInterval(randomIdle, 4600);
 
-  // Небольшие самостоятельные прогулки по свободному нижнему краю экрана.
-  // Не двигаемся, пока человек печатает, перетаскивает персонажа или открыт чат.
+  // Short walking-in-place moments keep the mascot lively without covering content.
   let roamTimer = 0;
   function takeTinyWalk() {
-    if (!motionEnabled || doNotDisturb || gameActive || document.hidden || drag || chat.classList.contains("open") ||
+    if (!motionEnabled || doNotDisturb || gameActive || document.hidden || drag ||
+        chat.classList.contains("open") ||
         document.querySelector("input:focus,textarea:focus,select:focus,[contenteditable='true']:focus")) return;
-    const rect = mascot.getBoundingClientRect();
-    const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
-    const current = Math.max(8, Math.min(maxLeft, rect.left));
-    const direction = current > maxLeft - 55 ? -1 : current < 55 ? 1 : (Math.random() > .5 ? 1 : -1);
-    const next = Math.max(8, Math.min(maxLeft, current + direction * (34 + Math.random() * 42)));
-    mascot.style.transition = "left 1.15s cubic-bezier(.2,.8,.2,1)";
-    mascot.style.setProperty("left", next + "px", "important");
-    mascot.style.setProperty("right", "auto", "important");
     mascot.classList.add("walk");
-    setEmotion("curious", 1300);
-    setTimeout(() => mascot.classList.remove("walk"), 1250);
-    setTimeout(() => { mascot.style.transition = ""; }, 1400);
+    setEmotion("curious", 1000);
+    clearTimeout(mascot._tinyWalkTimer);
+    mascot._tinyWalkTimer = setTimeout(() => mascot.classList.remove("walk"), 950);
   }
   roamTimer = window.setInterval(takeTinyWalk, 14500);
   restartRoamTimer();
 
-  // Во время прокрутки маскот шагает и выбирает разные реплики по направлению.
-  let scrollWalkTimer = 0, scrollSpeechLock = false, previousScrollY = window.scrollY, lastScrollPhrase = "";
-  const scrollPhrases = {
-    down: ["Смотрим, что ниже! 👀", "Пошли дальше!", "Ого, сколько тут всего!", "Исследуем страницу! 🔎", "Не отставай! 😄", "Так-так, что там дальше?", "Кажется, мы что-то ищем!", "Вперёд, к новым разделам!"],
-    up: ["Вернёмся наверх!", "А что было выше?", "Поднимемся и проверим!", "Кажется, мы что-то пропустили!", "Назад к началу! ⬆️", "О, знакомый раздел!"]
-  };
-  function sayScrollPhrase(direction) {
-    const choices = scrollPhrases[direction];
-    let phrase = choices[Math.floor(Math.random() * choices.length)];
-    if (choices.length > 1 && phrase === lastScrollPhrase) phrase = choices[(choices.indexOf(phrase) + 1) % choices.length];
-    lastScrollPhrase = phrase;
-    say(phrase);
-  }
+  // Scrolling triggers a short walking animation in place. Position is stable;
+  // the corner guard chooses another free corner only when content is covered.
+  let scrollWalkTimer = 0, previousScrollY = window.scrollY;
   window.addEventListener("scroll", () => {
     const currentScrollY = window.scrollY;
     const delta = currentScrollY - previousScrollY;
     previousScrollY = currentScrollY;
-    if (Math.abs(delta) < 3 || !motionEnabled || doNotDisturb || document.hidden || drag || gameActive || chat.classList.contains("open")) return;
-    if (activeTypingField && document.activeElement === activeTypingField) {
-      scheduleFieldFollow(activeTypingField);
-      return;
-    }
+    if (Math.abs(delta) < 2 || !motionEnabled || doNotDisturb || document.hidden ||
+        drag || gameActive || chat.classList.contains("open")) return;
     const direction = delta > 0 ? "down" : "up";
-    const rect = mascot.getBoundingClientRect();
-    const maxLeft = Math.max(8, innerWidth - rect.width - 8);
-    const currentLeft = Number.isFinite(rect.left) ? rect.left : maxLeft;
-    // A few short steps along the bottom edge make the page scroll feel like
-    // the mascot is walking with the visitor, instead of only bouncing in place.
-    const step = Math.min(48, Math.max(18, Math.abs(delta) * .16));
-    const nextLeft = Math.max(8, Math.min(maxLeft, currentLeft + (direction === "down" ? step : -step)));
-    mascot.style.transition = "left .62s cubic-bezier(.22,.61,.36,1)";
-    mascot.style.setProperty("left", Math.round(nextLeft) + "px", "important");
-    mascot.style.setProperty("right", "auto", "important");
     mascot.classList.toggle("scroll-down", direction === "down");
     mascot.classList.toggle("scroll-up", direction === "up");
-    mascot.classList.add("scroll-walk", "walk");
-    if (!scrollSpeechLock) {
-      scrollSpeechLock = true;
-      sayScrollPhrase(direction);
-      window.setTimeout(() => { scrollSpeechLock = false; }, 4800);
-    }
+    mascot.classList.add("scroll-walk");
     clearTimeout(scrollWalkTimer);
     scrollWalkTimer = window.setTimeout(() => {
-      mascot.classList.remove("scroll-walk", "scroll-down", "scroll-up", "walk");
-      mascot.style.transition = "";
-    }, 900);
-  }, { passive: true });
+      mascot.classList.remove("scroll-walk","scroll-down","scroll-up");
+    }, 620);
+    scheduleMascotOverlapCheck();
+  }, {passive:true});
   window.addEventListener("resize", () => {
     if (drag) return;
     const r = mascot.getBoundingClientRect();
@@ -834,7 +828,9 @@
   function openChat() {
     chat.classList.add("open");
     setSettingsOpen(false);
-    say(["О, привет! Ты ко мне? 🍯", "Ну наконец-то! Я уже заскучал.", "Привет-привет! Что нового?", "Я тут! Рассказывай, что случилось."][Math.floor(Math.random()*4)]);
+    addMessage(["О, привет! Ты ко мне? 🍯", "Ну наконец-то! Я уже заскучал.", "Привет-привет! Что нового?", "Я тут! Рассказывай, что случилось."][Math.floor(Math.random()*4)], "bot");
+    speech.classList.remove("is-visible");
+    mascot.classList.remove("speak","talking");
     setEmotion("happy", 1300);
     setTimeout(() => input.focus({ preventScroll: true }), 180);
   }
@@ -1166,14 +1162,6 @@
     if (e.target === form) return;
     if (e.target.matches("form")) reactToAction("thinking", "think", "Проверим, всё ли заполнено!");
   }, true);
-  let scrollReactionTimer = 0;
-  window.addEventListener("scroll", () => {
-    if (scrollReactionTimer) return;
-    scrollReactionTimer = window.setTimeout(() => {
-      scrollReactionTimer = 0;
-      reactToAction("curious", "look");
-    }, 900);
-  }, {passive:true});
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") reactToAction("surprised", "look");
     else if (e.key === "Enter" && !e.target.closest("#ian-mascot-chat")) reactToAction("excited", "happy");
