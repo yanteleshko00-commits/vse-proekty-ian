@@ -931,3 +931,90 @@ html[data-theme="dark"] #ian-mascot-speech{
 #ian-mascot:not(.is-obstructed){
   visibility:visible;
 }
+
+
+/* Fixed, always-visible dock. The mascot only moves when the visitor drags it. */
+#ian-mascot{
+  position:fixed!important;left:auto!important;right:14px!important;top:auto!important;
+  bottom:calc(14px + env(safe-area-inset-bottom,0px))!important;
+  width:84px!important;height:108px!important;display:block!important;
+  z-index:9000!important;opacity:1!important;visibility:visible!important;
+  pointer-events:auto!important;overflow:visible!important;
+}
+#ian-mascot.is-obstructed{
+  opacity:1!important;visibility:visible!important;pointer-events:auto!important;
+}
+#ian-mascot .bulb-character{display:block!important;width:100%!important;height:100%!important;overflow:visible!important}
+#ian-mascot .dog-body{transform-origin:60px 121px!important}
+#ian-mascot .leg-group,#ian-mascot .arm-group{transform-box:view-box!important;will-change:transform}
+#ian-mascot .leg-left{transform-origin:49px 123px!important}
+#ian-mascot .leg-right{transform-origin:71px 123px!important}
+#ian-mascot .arm-left-group{transform-origin:25px 67px!important}
+#ian-mascot .arm-right-group{transform-origin:95px 67px!important}
+/* A more readable, connected walk: body, head, arms and opposite legs move together. */
+#ian-mascot.motion-enabled.walk .dog-body,
+#ian-mascot.motion-enabled.scroll-walk .dog-body{
+  animation:bulb-walk-body-v2 .78s cubic-bezier(.37,0,.63,1) infinite!important;
+  transform-origin:60px 118px!important;
+}
+#ian-mascot.motion-enabled.walk .bear-head,
+#ian-mascot.motion-enabled.scroll-walk .bear-head{
+  animation:bulb-walk-head-v2 .78s ease-in-out infinite!important;
+  transform-origin:60px 76px!important;
+}
+#ian-mascot.motion-enabled.walk .leg-left,
+#ian-mascot.motion-enabled.scroll-walk .leg-left{animation:bulb-walk-leg-v2 .78s ease-in-out infinite!important}
+#ian-mascot.motion-enabled.walk .leg-right,
+#ian-mascot.motion-enabled.scroll-walk .leg-right{animation:bulb-walk-leg-v2 .78s ease-in-out infinite -.39s!important}
+#ian-mascot.motion-enabled.walk .arm-left-group,
+#ian-mascot.motion-enabled.scroll-walk .arm-left-group{animation:bulb-walk-arm-v2 .78s ease-in-out infinite -.39s!important}
+#ian-mascot.motion-enabled.walk .arm-right-group,
+#ian-mascot.motion-enabled.scroll-walk .arm-right-group{animation:bulb-walk-arm-v2 .78s ease-in-out infinite!important}
+#ian-mascot.motion-enabled.walk .leg,
+#ian-mascot.motion-enabled.scroll-walk .leg,
+#ian-mascot.motion-enabled.walk .arm,
+#ian-mascot.motion-enabled.scroll-walk .arm{animation:none!important}
+@keyframes bulb-walk-body-v2{
+  0%,100%{transform:translateY(0) rotate(-.5deg)}
+  25%{transform:translateY(-2px) rotate(-1.8deg)}
+  50%{transform:translateY(-6px) rotate(.5deg)}
+  75%{transform:translateY(-2px) rotate(1.8deg)}
+}
+@keyframes bulb-walk-head-v2{
+  0%,100%{transform:rotate(0) translateY(0)}
+  25%{transform:rotate(2deg) translateY(-1px)}
+  50%{transform:rotate(0) translateY(-2px)}
+  75%{transform:rotate(-2deg) translateY(-1px)}
+}
+@keyframes bulb-walk-leg-v2{
+  0%,100%{transform:rotate(-31deg)}
+  25%{transform:rotate(-11deg)}
+  50%{transform:rotate(31deg)}
+  75%{transform:rotate(11deg)}
+}
+@keyframes bulb-walk-arm-v2{
+  0%,100%{transform:rotate(17deg)}
+  25%{transform:rotate(6deg)}
+  50%{transform:rotate(-17deg)}
+  75%{transform:rotate(-6deg)}
+}
+#ian-mascot.motion-enabled.happy .dog-body{animation:bulb-hop-v2 .62s cubic-bezier(.2,.8,.2,1) 2!important}
+#ian-mascot.motion-enabled.dance .dog-body{animation:bulb-dance-v2 .58s ease-in-out 3!important}
+#ian-mascot.motion-enabled.wiggle .dog-body{animation:bulb-wiggle-v2 .5s ease-in-out 2!important}
+#ian-mascot.motion-enabled.stretch .dog-body{animation:bulb-stretch-v2 .95s ease-in-out 2!important}
+@keyframes bulb-hop-v2{0%,100%{transform:translateY(0) scale(1)}36%{transform:translateY(-13px) scale(1.035,.97)}58%{transform:translateY(1px) scale(.97,1.04)}78%{transform:translateY(-4px) scale(1.01,.99)}}
+@keyframes bulb-dance-v2{0%,100%{transform:rotate(0) translateY(0)}25%{transform:rotate(-8deg) translateY(-5px)}50%{transform:rotate(0) translateY(-2px)}75%{transform:rotate(8deg) translateY(-5px)}}
+@keyframes bulb-wiggle-v2{0%,100%{transform:rotate(0)}20%{transform:rotate(-7deg) translateY(-2px)}45%{transform:rotate(7deg)}70%{transform:rotate(-4deg) translateY(-1px)}}
+@keyframes bulb-stretch-v2{0%,100%{transform:scale(1)}35%{transform:scale(1.04,.94) translateY(2px)}70%{transform:scale(.98,1.06) translateY(-3px)}}
+@media(max-width:600px){
+  #ian-mascot{right:8px!important;bottom:calc(10px + env(safe-area-inset-bottom,0px))!important;width:70px!important;height:90px!important}
+  #ian-mascot .speech{max-width:min(220px,calc(100vw - 88px))!important}
+}
+@media(prefers-reduced-motion:reduce){
+  #ian-mascot.motion-enabled.walk .dog-body,#ian-mascot.motion-enabled.scroll-walk .dog-body,
+  #ian-mascot.motion-enabled.walk .bear-head,#ian-mascot.motion-enabled.scroll-walk .bear-head,
+  #ian-mascot.motion-enabled.walk .leg-group,#ian-mascot.motion-enabled.scroll-walk .leg-group,
+  #ian-mascot.motion-enabled.walk .arm-group,#ian-mascot.motion-enabled.scroll-walk .arm-group,
+  #ian-mascot.motion-enabled.happy .dog-body,#ian-mascot.motion-enabled.dance .dog-body,
+  #ian-mascot.motion-enabled.wiggle .dog-body,#ian-mascot.motion-enabled.stretch .dog-body{animation:none!important}
+}
