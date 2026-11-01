@@ -307,7 +307,7 @@
   }
   function restartRoamTimer() {
     if (roamTimer) clearInterval(roamTimer);
-    roamTimer = window.setInterval(takeTinyWalk, Math.round(18000 / Math.max(.6, roamSpeed)));
+    roamTimer = window.setInterval(takeTinyWalk, Math.round(12000 / Math.max(.6, roamSpeed)));
   }
 
   function returnMascotHome() {
@@ -774,8 +774,7 @@
   let roamTimer = 0;
   function takeTinyWalk() {
     if (!motionEnabled || doNotDisturb || gameActive || document.hidden || drag ||
-        chat.classList.contains("open") ||
-        document.querySelector("input:focus,textarea:focus,select:focus,[contenteditable='true']:focus")) return;
+        chat.classList.contains("open")) return;
     mascot.classList.add("walk");
     setEmotion("curious", 1000);
     clearTimeout(mascot._tinyWalkTimer);
@@ -784,8 +783,7 @@
   roamTimer = window.setInterval(takeTinyWalk, 9500);
   restartRoamTimer();
 
-  // Scrolling triggers a short walking animation in place. Position is stable;
-  // the corner guard chooses another free corner only when content is covered.
+  // Scrolling triggers a short walking animation in place. The fixed dock stays visible.
   let scrollWalkTimer = 0, previousScrollY = window.scrollY;
   window.addEventListener("scroll", () => {
     const currentScrollY = window.scrollY;
