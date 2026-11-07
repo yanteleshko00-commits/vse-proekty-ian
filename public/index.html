@@ -559,7 +559,8 @@ html[data-theme="dark"] .check-toggle{color:#9bc4ff;background:rgba(90,147,226,.
 <div class="field"><label for="className">Класс</label><input id="className" type="text" placeholder="9А"></div>
 <div class="field"><label for="school">Школа</label><input id="school" type="text" placeholder="Необязательно"></div>
 <div class="field full"><label for="topic">Тема проекта</label><input id="topic" type="text" placeholder="Например: Снижение расхода электроэнергии"></div>
-<div class="field"><label for="slides">Количество слайдов (от 1 до 100)</label><input id="slides" type="number" min="1" max="100" step="1" value="12" inputmode="numeric" required></div>
+<div class="field"><label for="slides">Количество слайдов (от 7 до 100)</label><input id="slides" type="number" min="7" max="100" step="1" value="12" inputmode="numeric" required></div>
+<div class="field"><label for="productType">Итоговый продукт проекта</label><select id="productType"><option value="">Подобрать автоматически</option><option value="Памятка">Памятка</option><option value="Буклет">Буклет</option><option value="Чек-лист">Чек-лист</option><option value="Мини-гайд">Мини-гайд</option><option value="Карточки">Карточки</option><option value="Инструкция">Инструкция</option></select></div>
 <div class="field"><label for="requirementsFile">Требования школы</label><input id="requirementsFile" type="file" accept=".pdf,.doc,.docx"></div>
 <div class="field full"><label for="requirements">Дополнительные требования</label><textarea id="requirements" placeholder="Например: добавить практическую часть, таблицу, расчёты..."></textarea></div>
 </div>
@@ -816,26 +817,17 @@ function showRestoredProject(){
   result.style.display="block";
 }
 
-function animateProgress(){
+function setGenerationProgress(progress,message){
   const bar=document.getElementById("progressBar");
   const pct=document.getElementById("percent");
   const status=document.getElementById("status");
-  const start=performance.now();
-  progressStarted=start;
-  const stages=[[15,"🔎 Анализируем тему..."],[35,"📝 Создаём текст..."],[55,"🎯 Формируем проектный продукт..."],[75,"📊 Делаем презентацию..."],[90,"🎙️ Готовим защиту..."],[95,"⚙️ Собираем готовые файлы..."]];
-  function frame(now){
-    if(!progressTimer)return;
-    const elapsed=(now-start)/1000;
-    // Плавно идём к 95%, но никогда не зависаем на 92%.
-    const p=Math.min(95,3+92*(1-Math.exp(-elapsed/13)));
-    bar.style.width=p.toFixed(1)+"%";
-    pct.textContent=Math.floor(p)+"%";
-    let text=stages[0][1];
-    for(const stage of stages){if(p>=stage[0])text=stage[1];}
-    status.textContent=text;
-    progressTimer=requestAnimationFrame(frame);
-  }
-  progressTimer=requestAnimationFrame(frame);
+  const value=Math.max(3,Math.min(100,Number(progress)||3));
+  if(bar)bar.style.width=value+"%";
+  if(pct)pct.textContent=Math.floor(value)+"%";
+  if(status&&message)status.textContent=message;
+}
+function animateProgress(){
+  setGenerationProgress(3,"🔎 Проверяем тему и параметры проекта...");
 }
 
 function stopProgress(){
@@ -862,8 +854,8 @@ if(!topic){alert("Введите тему проекта.");document.getElementB
 
 projectData={
  firstName:val("firstName"),lastName:val("lastName"),className:val("className"),
- school:val("school"),topic,slides:Math.max(1,Math.min(100,Math.floor(Number(val("slides"))||12))),
- requirements:val("requirements"),ai:null,files:null,fileErrors:[]
+ school:val("school"),topic,slides:Math.max(7,Math.min(100,Math.floor(Number(val("slides"))||12))),
+ productType:val("productType"),requirements:val("requirements"),ai:null,files:null,fileErrors:[]
 };
 
 const box=document.getElementById("progressBox"),bar=document.getElementById("progressBar"),pct=document.getElementById("percent"),status=document.getElementById("status"),result=document.getElementById("projectResult"),btn=document.getElementById("createButton");
@@ -875,7 +867,7 @@ try{
   const payload={
     firstName:projectData.firstName,lastName:projectData.lastName,className:projectData.className,
     school:projectData.school,topic:projectData.topic,slidesCount:projectData.slides,
-    extraRequirements:projectData.requirements
+    productType:projectData.productType,extraRequirements:projectData.requirements
   };
   const startResponse=await fetch("/api/generate-project/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
   const started=await startResponse.json().catch(()=>({}));
@@ -889,7 +881,7 @@ try{
     if(!poll.ok) throw new Error(state.error||"Не удалось проверить статус фоновой задачи.");
     if(state.status==="completed"){data=state.result;break;}
     if(state.status==="failed"){localStorage.removeItem("vseProektyActiveJob");throw new Error(state.error||"Фоновая генерация завершилась ошибкой.");}
-    status.textContent="⚙️ Сервер продолжает собирать проект. Можно свернуть сайт — задача останется на сервере.";
+    setGenerationProgress(state.progress||3,state.message||"⚙️ Сервер продолжает собирать проект. Можно свернуть сайт — задача останется на сервере.");
   }
   localStorage.removeItem("vseProektyActiveJob");
   if(!data.project) throw new Error("ИИ не вернул проект.");
@@ -1066,10 +1058,11 @@ async function resumeBackgroundJob(){
   let saved;try{saved=JSON.parse(localStorage.getItem("vseProektyActiveJob")||"null");}catch{}
   if(!saved?.jobId)return;
   const status=document.getElementById("status"),box=document.getElementById("progressBox"),bar=document.getElementById("progressBar"),pct=document.getElementById("percent");
-  box.style.display="block";status.textContent="⚙️ Проверяем фоновую задачу...";bar.style.width="95%";pct.textContent="95%";
+  box.style.display="block";setGenerationProgress(3,"⚙️ Проверяем фоновую задачу...");
   try{while(true){
     const r=await fetch("/api/generation-jobs/"+encodeURIComponent(saved.jobId));const state=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(state.error||"Фоновая задача больше недоступна.");
+    setGenerationProgress(state.progress||3,state.message||"⚙️ Проект создаётся на сервере...");
     if(state.status==="completed"){const data=state.result;projectData={...saved.project,ai:data.project,files:data.files||[],fileErrors:data.fileErrors||[]};saveProjectState();localStorage.removeItem("vseProektyActiveJob");showRestoredProject();return;}
     if(state.status==="failed"){localStorage.removeItem("vseProektyActiveJob");throw new Error(state.error||"Не удалось создать проект.");}
     status.textContent="⚙️ Проект создаётся на сервере — можно пока пользоваться телефоном.";await new Promise(resolve=>setTimeout(resolve,2500));
@@ -1200,7 +1193,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 })();
 </script>
 
-<script src="/mascot.js?v=20261101-accordion-mascot3" defer></script>
+<!-- Лампочка-помощник отключена по запросу владельца сайта. -->
 </body>
 </html>
 
