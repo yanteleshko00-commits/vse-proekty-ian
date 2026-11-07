@@ -1208,12 +1208,14 @@ function publicProject(plan) {
     slideCount: plan.slides.length
   };
 }
-async function generateProject(body) {
+async function generateProject(body, onProgress = () => {}) {
   const topic = cleanText(body.topic, 180);
   if (!topic) { const error = new Error('Укажи тему проекта или презентации.'); error.status = 400; throw error; }
   const count = clampInt(body.slidesCount ?? body.slides ?? body.presentationSlides, 7, MAX_SLIDES, 12);
   const theme = inferTheme(topic, body.style || '');
+  onProgress(8, 'project-text', '📝 Создаём текстовую основу проекта...');
   const projectContent = await generateProjectContent(topic, body);
+  onProgress(22, 'presentation', '📊 Формируем структуру и содержание презентации...');
   const payload = {
     topic, requestedSlides: count, projectContent,
     style: body.style || 'современный, профессиональный, соответствующий теме',
@@ -1230,14 +1232,19 @@ async function generateProject(body) {
   const raw = await generateValidatedPresentation(topic, count, payload, PLANNER_INSTRUCTIONS + '\nОБЯЗАТЕЛЬНО опирайся на projectContent из входных данных. Не выдумывай результаты практики.');
   const plan = normalizePlan(raw, topic, count, theme);
   plan.projectContent = projectContent;
+  onProgress(48, 'product', '🧩 Создаём самостоятельный продукт проекта...');
   plan.product = await generateFinalProduct(topic, projectContent, body.productType);
   plan.product.imageBytes = await renderProductImage(plan.product, theme);
+  onProgress(62, 'defense', '🎙️ Готовим речь и ответы для защиты...');
   const defenseMaterial = await generateDefenseMaterial(topic, projectContent, plan, plan.product);
   plan.defense = defenseMaterial.speech;
   plan.projectContent.defenseQuestions = defenseMaterial.questions;
+  onProgress(76, 'images', '🖼️ Подбираем и проверяем изображения для слайдов...');
   await attachImages(plan);
   plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта — готовый материал на основе исследования.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта', isProductSlide: true });
+  onProgress(88, 'files', '📦 Собираем документы, презентацию и ZIP-архив...');
   const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
+  onProgress(98, 'final-check', '🔍 Проверяем готовые файлы...');
   return { project: publicProject(plan), files: built.files, fileErrors: built.fileErrors };
 }
 function asyncRoute(handler) {
@@ -1253,11 +1260,11 @@ app.get('/api/health', (_req, res) => res.json({
 const generationJobs = new Map();
 function pruneGenerationJobs(){const cutoff=Date.now()-30*60*1000;for(const [id,job] of generationJobs)if(job.updatedAt<cutoff&&job.status!=="running")generationJobs.delete(id);}
 app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
-  pruneGenerationJobs();const id=crypto.randomUUID();const job={id,status:'running',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null};generationJobs.set(id,job);
-  Promise.resolve().then(()=>generateProject(req.body||{})).then(result=>{job.status='completed';job.result=result;job.updatedAt=Date.now();}).catch(error=>{job.status='failed';job.error=cleanText(error?.message||'Не удалось создать проект.',1000);job.updatedAt=Date.now();console.error('[background-generation]',id,error?.stack||error);});
-  res.status(202).json({jobId:id,status:'running'});
+  pruneGenerationJobs();const id=crypto.randomUUID();const job={id,status:'running',stage:'starting',progress:3,message:'🔎 Проверяем тему и параметры проекта...',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null};generationJobs.set(id,job);
+  Promise.resolve().then(()=>generateProject(req.body||{},(progress,stage,message)=>{job.progress=progress;job.stage=stage;job.message=message;job.updatedAt=Date.now();})).then(result=>{job.status='completed';job.stage='completed';job.progress=100;job.message='✅ Все материалы готовы!';job.result=result;job.updatedAt=Date.now();}).catch(error=>{job.status='failed';job.stage='failed';job.error=cleanText(error?.message||'Не удалось создать проект.',1000);job.message='❌ Генерация завершилась с ошибкой';job.updatedAt=Date.now();console.error('[background-generation]',id,error?.stack||error);});
+  res.status(202).json({jobId:id,status:'running',progress:3,stage:'starting',message:job.message});
 }));
-app.get('/api/generation-jobs/:id',(req,res)=>{const job=generationJobs.get(req.params.id);if(!job)return res.status(404).json({error:'Задача не найдена. Возможно, сервер перезапускался.'});job.updatedAt=Date.now();res.json({jobId:job.id,status:job.status,result:job.status==='completed'?job.result:undefined,error:job.error});});
+app.get('/api/generation-jobs/:id',(req,res)=>{const job=generationJobs.get(req.params.id);if(!job)return res.status(404).json({error:'Задача не найдена. Возможно, сервер перезапускался.'});job.updatedAt=Date.now();res.json({jobId:job.id,status:job.status,progress:job.progress,stage:job.stage,message:job.message,result:job.status==='completed'?job.result:undefined,error:job.error});});
 
 app.post('/api/generate-project', asyncRoute(async (req, res) => {
   const result = await withTimeout(generateProject(req.body || {}), REQUEST_TIMEOUT_MS, 'Создание проекта');
