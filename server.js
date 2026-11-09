@@ -227,10 +227,13 @@ async function withTimeout(promise, ms, label = 'Операция') {
 }
 function configuredAIProviders() {
   const providers = [];
-  // Try providers with free tiers/free routing before potentially billable providers.
-  if (process.env.GEMINI_API_KEY) providers.push({ name: 'Google Gemini', type: 'gemini', model: process.env.GEMINI_MODEL || 'gemini-3.8-flash' });
-  if (process.env.OPENROUTER_API_KEY) providers.push({ name: 'OpenRouter Free', type: 'openai-compatible', key: process.env.OPENROUTER_API_KEY, baseURL: 'https://openrouter.ai/api/v1', model: 'openrouter/free', freeOnly: true });
+  // Every configured provider is attempted independently in the parallel competition.
+  if (process.env.GEMINI_API_KEY) providers.push({ name: 'Google Gemini', type: 'gemini', key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || 'gemini-3.8-flash' });
+  if (process.env.OPENROUTER_API_KEY) providers.push({ name: 'OpenRouter Free', type: 'openai-compatible', key: process.env.OPENROUTER_API_KEY, baseURL: 'https://openrouter.ai/api/v1', model: process.env.OPENROUTER_MODEL || 'openrouter/free', freeOnly: true });
   if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b' });
+  if (process.env.DEEPSEEK_API_KEY) providers.push({ name: 'DeepSeek', type: 'openai-compatible', key: process.env.DEEPSEEK_API_KEY, baseURL: 'https://api.deepseek.com', model: process.env.DEEPSEEK_MODEL || 'deepseek-flash' });
+  if (process.env.MISTRAL_API_KEY) providers.push({ name: 'Mistral', type: 'openai-compatible', key: process.env.MISTRAL_API_KEY, baseURL: 'https://api.mistral.ai/v1', model: process.env.MISTRAL_MODEL || 'mistral-small-latest' });
+  if (process.env.ANTHROPIC_API_KEY) providers.push({ name: 'Anthropic Claude', type: 'anthropic', key: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5' });
   if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) providers.push({ name: 'Cloudflare Workers AI', type: 'cloudflare', accountId: process.env.CLOUDFLARE_ACCOUNT_ID, key: process.env.CLOUDFLARE_API_TOKEN, model: process.env.CLOUDFLARE_AI_MODEL || '@cf/openai/gpt-oss-120b' });
   if (process.env.OPENAI_API_KEY) providers.push({ name: 'OpenAI', type: 'openai' });
   return providers;
@@ -249,6 +252,25 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
     }, { timeout: requestTimeout }), requestTimeout, 'ИИ ' + provider.name);
     return result.output_text || '';
   }
+  if (provider.type === 'anthropic') {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', signal,
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': provider.key,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: provider.model,
+        max_tokens: 10000,
+        system: instructions,
+        messages: [{ role: 'user', content: input }]
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(provider.name + ': ' + providerErrorMessage(data, response.status));
+    return (Array.isArray(data.content) ? data.content : []).filter(block => block.type === 'text').map(block => block.text || '').join('');
+  }
   if (provider.type === 'gemini') {
     const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(provider.model) + ':generateContent?key=' + encodeURIComponent(process.env.GEMINI_API_KEY);
     const response = await fetch(url, {
@@ -264,12 +286,24 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
     return (data.candidates?.[0]?.content?.parts || []).map(part => part.text || '').join('');
   }
   if (provider.type === 'openai-compatible') {
-    const response = await fetch(provider.baseURL + '/chat/completions', {
-      method: 'POST', signal,
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + provider.key, ...(provider.name === 'OpenRouter Free' ? { 'HTTP-Referer': 'https://vse-proekty-ian.onrender.com', 'X-Title': 'Все проекты #Ian' } : {}) },
-      body: JSON.stringify({ model: provider.model, messages: [{ role: 'system', content: instructions }, { role: 'user', content: input }], max_tokens: 10000, ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) })
+    const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + provider.key,
+      ...(provider.name === 'OpenRouter Free' ? { 'HTTP-Referer': 'https://vse-proekty-ian-1.onrender.com', 'X-Title': 'Все проекты #Ian' } : {}) };
+    const requestBody = { model: provider.model, messages: [{ role: 'system', content: instructions }, { role: 'user', content: input }], max_tokens: 10000,
+      ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) };
+    let response = await fetch(provider.baseURL + '/chat/completions', {
+      method: 'POST', signal, headers, body: JSON.stringify(requestBody)
     });
-    const data = await response.json().catch(() => ({}));
+    let data = await response.json().catch(() => ({}));
+    // OpenRouter's free router can select a model that does not implement JSON mode.
+    // Retry that provider once without response_format; extractJson still validates the result.
+    if (!response.ok && provider.name === 'OpenRouter Free' && jsonMode && [400, 404, 422].includes(response.status)) {
+      const fallbackBody = { ...requestBody };
+      delete fallbackBody.response_format;
+      response = await fetch(provider.baseURL + '/chat/completions', {
+        method: 'POST', signal, headers, body: JSON.stringify(fallbackBody)
+      });
+      data = await response.json().catch(() => ({}));
+    }
     if (!response.ok) throw new Error(provider.name + ': ' + providerErrorMessage(data, response.status));
     return data.choices?.[0]?.message?.content || '';
   }
@@ -305,7 +339,7 @@ async function runAIWithFallback(instructions, input, jsonMode, timeout = REQUES
       console.warn('[AI fallback] ' + provider.name + ' недоступен: ' + message);
     }
   }
-  const error = new Error('Все подключённые ИИ временно недоступны. ' + failures.join(' | '));
+  const error = new Error('Не удалось получить ответ от подключённых нейросетей: ' + failures.join(' | '));
   error.status = 503;
   throw error;
 }
@@ -372,16 +406,17 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   if (!successes.length) {
     const reasons = failures.map(attempt => attempt.provider + ': ' + attempt.error).join(' | ')
       || 'Провайдеры не успели ответить в отведённое время.';
-    if (payload && payload.topic && !payload.currentProject) {
-      console.error('[AI competition] Все провайдеры провалились. Не создаю шаблонную презентацию. Подробности только в Render Logs:', reasons);
-      const error = new Error('Сейчас ни одна из подключённых нейросетей не смогла подготовить корректный ответ. Остальные модели продолжили работу независимо от ошибок отдельных сервисов. Попробуй повторить генерацию чуть позже.');
-      error.status = 503;
-      error.code = 'AI_PROVIDERS_UNAVAILABLE';
-      throw error;
-    }
-    console.error('[AI competition] Все подключённые ИИ недоступны или вернули некорректный JSON. Подробности только в Render Logs:', reasons);
-    const error = new Error('Не удалось получить корректный ответ от подключённых нейросетей. Ошибка отдельного сервиса не останавливает остальные модели. Попробуй ещё раз немного позже.');
+    const safeReasons = failures.map(attempt => {
+      let detail = cleanText(attempt.error || 'неизвестная ошибка', 180);
+      for (const secret of [process.env.OPENAI_API_KEY, process.env.GEMINI_API_KEY, process.env.OPENROUTER_API_KEY, process.env.GROQ_API_KEY, process.env.DEEPSEEK_API_KEY, process.env.MISTRAL_API_KEY, process.env.ANTHROPIC_API_KEY, process.env.CLOUDFLARE_API_TOKEN].filter(Boolean)) {
+        detail = detail.split(secret).join('[ключ скрыт]');
+      }
+      return attempt.provider + ': ' + detail;
+    }).join(' | ');
+    console.error('[AI competition] Ни один провайдер не вернул корректный JSON:', safeReasons);
+    const error = new Error('Не удалось получить корректный ответ. Причины по нейросетям: ' + (safeReasons || 'нет ответов') + '. Ошибка одного сервиса не отменяет результаты остальных. Проверь список подключений в /api/health.');
     error.status = 503;
+    error.code = 'AI_PROVIDERS_UNAVAILABLE';
     throw error;
   }
 
@@ -1252,11 +1287,15 @@ function asyncRoute(handler) {
   return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 }
 
-app.get('/api/health', (_req, res) => res.json({
-  ok: true, service: 'presentation-generator', model: MODEL,
-  aiProviders: configuredAIProviders().map(provider => provider.name),
-  imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true'
-}));
+app.get('/api/health', (_req, res) => {
+  const providers = configuredAIProviders();
+  res.json({
+    ok: true, service: 'presentation-generator', model: MODEL,
+    aiProviders: providers.map(provider => provider.name),
+    aiProviderModels: providers.map(provider => ({ name: provider.name, model: provider.model || MODEL })),
+    imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true'
+  });
+});
 
 const generationJobs = new Map();
 function pruneGenerationJobs(){const cutoff=Date.now()-30*60*1000;for(const [id,job] of generationJobs)if(job.updatedAt<cutoff&&job.status!=="running")generationJobs.delete(id);}
