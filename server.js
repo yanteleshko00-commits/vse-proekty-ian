@@ -240,7 +240,7 @@ function providerErrorMessage(data, status) {
   return cleanText(String(message), 350);
 }
 async function callAIProvider(provider, instructions, input, jsonMode, timeout) {
-  const requestTimeout = Math.min(timeout, 18000);
+  const requestTimeout = Math.min(timeout, 55000);
   const signal = AbortSignal.timeout(requestTimeout);
   if (provider.type === 'openai') {
     const result = await withTimeout(openai.responses.create({
@@ -340,7 +340,7 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   }
 
   // All configured providers start together. A failed provider cannot cancel the others.
-  const perProviderTimeout = Math.max(4000, Math.min(16000, timeout));
+  const perProviderTimeout = Math.max(12000, Math.min(50000, timeout));
   const waveStartedAt = Date.now();
   const attempts = await Promise.all(providers.map(async provider => {
     const startedAt = Date.now();
@@ -373,13 +373,14 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
     const reasons = failures.map(attempt => attempt.provider + ': ' + attempt.error).join(' | ')
       || 'Провайдеры не успели ответить в отведённое время.';
     if (payload && payload.topic && !payload.currentProject) {
-      console.error('[AI competition] Все провайдеры провалились. Не создаю шаблонную презентацию.');
-      const error = new Error('Не удалось получить пригодный ответ от ИИ. Диагностика: ' + reasons + '. Проверь ключи, лимиты и Render Logs.');
+      console.error('[AI competition] Все провайдеры провалились. Не создаю шаблонную презентацию. Подробности только в Render Logs:', reasons);
+      const error = new Error('Сейчас ни одна из подключённых нейросетей не смогла подготовить корректный ответ. Остальные модели продолжили работу независимо от ошибок отдельных сервисов. Попробуй повторить генерацию чуть позже.');
       error.status = 503;
       error.code = 'AI_PROVIDERS_UNAVAILABLE';
       throw error;
     }
-    const error = new Error('Все подключённые ИИ недоступны или вернули некорректный JSON. Диагностика: ' + reasons);
+    console.error('[AI competition] Все подключённые ИИ недоступны или вернули некорректный JSON. Подробности только в Render Logs:', reasons);
+    const error = new Error('Не удалось получить корректный ответ от подключённых нейросетей. Ошибка отдельного сервиса не останавливает остальные модели. Попробуй ещё раз немного позже.');
     error.status = 503;
     throw error;
   }
