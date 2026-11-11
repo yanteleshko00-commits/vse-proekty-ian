@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import OpenAI from 'openai';
-import { Document, Packer, Paragraph, HeadingLevel, TextRun, ImageRun, TableOfContents } from 'docx';
+import { Document, Packer, Paragraph, HeadingLevel, TextRun, ImageRun, TableOfContents, Footer, PageNumber, AlignmentType } from 'docx';
 import PDFDocument from 'pdfkit';
 import PptxGenJS from 'pptxgenjs';
 import archiver from 'archiver';
@@ -1008,6 +1008,17 @@ async function createDocxBuffer(plan) {
     features: { updateFields: true },
     sections: [{
       properties: { page: { margin: { top: 1200, right: 1200, bottom: 1200, left: 1440 } } },
+      footers: {
+        default: new Footer({
+          children: [new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({ text: 'Страница ', font: 'Aptos', size: 16, color: muted }),
+              new TextRun({ children: [PageNumber.CURRENT], font: 'Aptos', size: 16, color: muted })
+            ]
+          })]
+        })
+      },
       children
     }]
   });
