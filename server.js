@@ -35,7 +35,13 @@ const COLORS = {
   it: { bg: '10172A', ink: 'F3F7FF', muted: 'B8C4DA', accent: '6D5DFB', accent2: '28D7C5' },
   eco: { bg: 'F2F7F0', ink: '20382B', muted: '617667', accent: '26734B', accent2: 'B9D9A8' },
   education: { bg: 'F7F3FF', ink: '28223A', muted: '736A83', accent: '7452C8', accent2: 'D6C9FA' },
-  science: { bg: 'F1F7FA', ink: '18313E', muted: '5B7682', accent: '167D9A', accent2: 'A8DCE8' }
+  science: { bg: 'F1F7FA', ink: '18313E', muted: '5B7682', accent: '167D9A', accent2: 'A8DCE8' },
+  history: { bg: 'F7F1E8', ink: '35291F', muted: '806C59', accent: '9A6038', accent2: 'E4C8A8' },
+  geography: { bg: 'EEF5F4', ink: '183B3A', muted: '607C78', accent: '247C78', accent2: 'B7D9D0' },
+  literature: { bg: 'F7F1F4', ink: '3D2734', muted: '806777', accent: '9B466A', accent2: 'E7C4D2' },
+  health: { bg: 'F1F7F7', ink: '18383C', muted: '607A7D', accent: '25818A', accent2: 'B9DFE1' },
+  sport: { bg: 'F7F4ED', ink: '302D22', muted: '77715C', accent: 'C16A27', accent2: 'EBCB91' },
+  art: { bg: 'F5F1FA', ink: '302442', muted: '756785', accent: '7650A8', accent2: 'D8C8ED' }
 };
 
 function cleanText(value, max = 1500) {
@@ -57,11 +63,18 @@ function normalizeText(text, max = 240) {
 }
 function inferTheme(topic, requested = '') {
   const t = `${topic} ${requested}`.toLowerCase();
-  if (/эколог|природ|климат|переработ|зелён|зелен|биолог|растен/.test(t)) return COLORS.eco;
-  if (/it\b|айти|программ|нейросет|искусственн.*интеллект|робот|цифров|кибер/.test(t)) return COLORS.it;
-  if (/бизнес|эконом|финанс|маркетинг|предприним|менеджмент/.test(t)) return COLORS.business;
-  if (/физик|хими|космос|астроном|наук|технолог/.test(t)) return COLORS.science;
-  if (/образован|школ|обучен|истори|литератур|общество/.test(t)) return COLORS.education;
+  // Specific subject families are checked before broader school/science matches.
+  if (/эколог|природ|климат|переработ|зелён|зелен|биолог|растен|животн|океан|лес\b/.test(t)) return COLORS.eco;
+  if (/it\b|айти|программ|нейросет|искусственн.*интеллект|робот|цифров|кибер|компьютер|интернет/.test(t)) return COLORS.it;
+  if (/бизнес|эконом|финанс|маркетинг|предприним|менеджмент|торговл|банк/.test(t)) return COLORS.business;
+  if (/истори|древн|средневек|импери|войн|революц|цивилизац|археолог/.test(t)) return COLORS.history;
+  if (/географ|материк|континент|океан|карт|климатическ.*пояс|населени.*земл/.test(t)) return COLORS.geography;
+  if (/литератур|писател|поэт|роман|повест|стихотвор|драматург|персонаж/.test(t)) return COLORS.literature;
+  if (/медицин|здоров|организм|анатом|питани|гигиен|болезн|иммунитет/.test(t)) return COLORS.health;
+  if (/спорт|футбол|баскетбол|олимпи|трениров|физическ.*культур|атлет/.test(t)) return COLORS.sport;
+  if (/искусств|живопис|архитектур|дизайн|музык|театр|кино|скульптур|худож/.test(t)) return COLORS.art;
+  if (/физик|хими|космос|астроном|наук|технолог|математик/.test(t)) return COLORS.science;
+  if (/образован|школ|обучен|общество|право|государств|социолог/.test(t)) return COLORS.education;
   return COLORS.blue;
 }
 function extractJson(outputText) {
@@ -854,31 +867,130 @@ async function createPptxBuffer(plan) {
   return Buffer.from(await pptx.write({ outputType: 'nodebuffer' }));
 }
 async function createDocxBuffer(plan) {
-  const children = [
-    new Paragraph({ text: plan.title, heading: HeadingLevel.TITLE }),
-    ...(plan.projectContent ? [new Paragraph({ text: 'Проблема', heading: HeadingLevel.HEADING_1 }), new Paragraph(plan.projectContent.problem), new Paragraph({ text: 'Цель', heading: HeadingLevel.HEADING_1 }), new Paragraph(plan.projectContent.goal), new Paragraph({ text: 'Задачи', heading: HeadingLevel.HEADING_1 }), ...plan.projectContent.tasks.map(x => new Paragraph({ text: x, bullet: { level: 0 } })), new Paragraph({ text: 'Теоретическая часть', heading: HeadingLevel.HEADING_1 }), ...plan.projectContent.theory.flatMap(x => [new Paragraph({ text: x.heading, heading: HeadingLevel.HEADING_2 }), new Paragraph(x.text)]), new Paragraph({ text: 'Практическая часть', heading: HeadingLevel.HEADING_1 }), new Paragraph(plan.projectContent.practice.method), ...plan.projectContent.practice.steps.map(x => new Paragraph({ text: x, bullet: { level: 0 } })), new Paragraph(plan.projectContent.practice.result), new Paragraph({ text: 'Заключение', heading: HeadingLevel.HEADING_1 }), new Paragraph(plan.projectContent.conclusion)] : []),
-    new Paragraph({ text: plan.summary || '' }),
-    new Paragraph({ text: 'Содержание презентации', heading: HeadingLevel.HEADING_1 })
-  ];
-  plan.slides.forEach((s, i) => {
-    children.push(new Paragraph({ text: `${i + 1}. ${s.title}`, heading: HeadingLevel.HEADING_2 }));
-    if (s.body) children.push(new Paragraph(s.body));
-    for (const b of s.bullets || []) children.push(new Paragraph({ text: b, bullet: { level: 0 } }));
-    for (const c of s.cards || []) children.push(new Paragraph({ children: [new TextRun({ text: `${c.title}: `, bold: true }), new TextRun(c.text)] }));
-  });
+  const theme = plan.theme || COLORS.blue;
+  const accent = theme.accent || COLORS.blue.accent;
+  const ink = theme.ink || COLORS.blue.ink;
+  const muted = theme.muted || COLORS.blue.muted;
+  const children = [];
+  const title = (text, size = 36) => children.push(new Paragraph({
+    children: [new TextRun({ text: String(text || ''), bold: true, font: 'Aptos Display', size, color: accent })],
+    spacing: { before: 180, after: 180 }
+  }));
+  const heading = text => children.push(new Paragraph({
+    children: [new TextRun({ text: String(text || ''), bold: true, font: 'Aptos Display', size: 28, color: accent })],
+    spacing: { before: 300, after: 120 },
+    keepNext: true
+  }));
+  const subheading = text => children.push(new Paragraph({
+    children: [new TextRun({ text: String(text || ''), bold: true, font: 'Aptos', size: 23, color: ink })],
+    spacing: { before: 180, after: 80 },
+    keepNext: true
+  }));
+  const paragraph = text => {
+    const value = cleanText(text, 5000);
+    if (!value) return;
+    children.push(new Paragraph({
+      children: [new TextRun({ text: value, font: 'Aptos', size: 22, color: ink })],
+      spacing: { after: 140, line: 330 }
+    }));
+  };
+  const bullet = text => {
+    const value = cleanText(text, 1200);
+    if (!value) return;
+    children.push(new Paragraph({
+      children: [new TextRun({ text: value, font: 'Aptos', size: 22, color: ink })],
+      bullet: { level: 0 },
+      spacing: { after: 90, line: 300 }
+    }));
+  };
+
+  children.push(new Paragraph({
+    children: [new TextRun({ text: 'УЧЕБНЫЙ ПРОЕКТ', bold: true, font: 'Aptos', size: 20, color: muted })],
+    spacing: { before: 700, after: 260 },
+    alignment: 'center'
+  }));
+  children.push(new Paragraph({
+    children: [new TextRun({ text: cleanText(plan.title || 'Учебный проект', 180), bold: true, font: 'Aptos Display', size: 42, color: accent })],
+    alignment: 'center',
+    spacing: { after: 300, line: 520 }
+  }));
+  if (plan.summary) children.push(new Paragraph({
+    children: [new TextRun({ text: cleanText(plan.summary, 700), font: 'Aptos', size: 24, color: muted, italics: true })],
+    alignment: 'center',
+    spacing: { after: 500, line: 360 }
+  }));
+  const student = [plan.student?.firstName, plan.student?.lastName].filter(Boolean).join(' ');
+  if (student) paragraph('Автор: ' + student);
+  if (plan.student?.className) paragraph('Класс: ' + plan.student.className);
+  if (plan.student?.school) paragraph('Школа: ' + plan.student.school);
+  children.push(new Paragraph({
+    children: [new TextRun({ text: 'Все проекты #Ian', font: 'Aptos', size: 18, color: muted })],
+    alignment: 'center',
+    spacing: { before: 550, after: 250 }
+  }));
+
+  const content = plan.projectContent;
+  if (content) {
+    heading('Введение');
+    subheading('Актуальность темы'); paragraph(content.relevance);
+    subheading('Проблема исследования'); paragraph(content.problem);
+    subheading('Цель проекта'); paragraph(content.goal);
+    subheading('Задачи проекта'); (content.tasks || []).forEach(bullet);
+    if (content.object) { subheading('Объект исследования'); paragraph(content.object); }
+    if (content.subject) { subheading('Предмет исследования'); paragraph(content.subject); }
+    if (content.hypothesis) { subheading('Гипотеза'); paragraph(content.hypothesis); }
+
+    heading('Теоретическая часть');
+    (content.theory || []).forEach(section => { subheading(section.heading); paragraph(section.text); });
+
+    heading('Практическая часть');
+    if (content.practice?.method) { subheading('Метод'); paragraph(content.practice.method); }
+    if (content.practice?.materials) { subheading('Материалы'); paragraph(content.practice.materials); }
+    if (content.practice?.steps?.length) {
+      subheading('Ход работы');
+      content.practice.steps.forEach((step, index) => paragraph((index + 1) + '. ' + step));
+    }
+    if (content.practice?.result) { subheading('Результат'); paragraph(content.practice.result); }
+    if (content.practice?.limitations) { subheading('Ограничения'); paragraph(content.practice.limitations); }
+    if (content.mainPoints?.length) { heading('Основные положения'); content.mainPoints.forEach(bullet); }
+    heading('Заключение'); paragraph(content.conclusion);
+  } else {
+    heading('Содержание проекта'); paragraph(plan.summary);
+  }
+
   if (plan.product) {
-    children.push(new Paragraph({ text: 'Итоговый продукт проекта: ' + plan.product.format, heading: HeadingLevel.HEADING_1 }));
-    children.push(new Paragraph(plan.product.title));
-    for (const section of plan.product.sections) children.push(new Paragraph({ children: [new TextRun({ text: section.heading + ': ', bold: true }), new TextRun(section.body)] }));
-    for (const item of [...plan.product.steps, ...plan.product.checklist]) children.push(new Paragraph({ text: item, bullet: { level: 0 } }));
+    heading('Итоговый продукт');
+    subheading(plan.product.title || plan.product.format);
+    paragraph(plan.product.subtitle);
+    (plan.product.sections || []).forEach(section => { subheading(section.heading); paragraph(section.body); });
+    (plan.product.steps || []).forEach(bullet);
+    (plan.product.checklist || []).forEach(bullet);
+    paragraph(plan.product.takeaway);
   }
-  if (plan.practicalPart) {
-    children.push(new Paragraph({ text: 'Практическая часть', heading: HeadingLevel.HEADING_1 }));
-    children.push(new Paragraph(plan.practicalPart));
+  if (plan.defense) { heading('Материал для защиты'); paragraph(plan.defense); }
+  if (content?.defenseQuestions?.length) {
+    heading('Возможные вопросы и ответы');
+    content.defenseQuestions.forEach(item => { subheading('Вопрос: ' + item.question); paragraph('Ответ: ' + item.answer); });
   }
-  children.push(new Paragraph({ text: 'Источники', heading: HeadingLevel.HEADING_1 }));
-  for (const src of plan.sources) children.push(new Paragraph(src.url ? `${src.title}: ${src.url}` : src.title));
-  return Packer.toBuffer(new Document({ sections: [{ children }] }));
+  const sources = content?.sources?.length ? content.sources : (plan.sources || []);
+  if (sources.length) {
+    heading('Список источников');
+    sources.forEach((source, index) => {
+      const label = typeof source === 'string' ? source : (source.url ? source.title + ' — ' + source.url : source.title);
+      paragraph((index + 1) + '. ' + label);
+    });
+  }
+
+  const doc = new Document({
+    creator: 'Все проекты #Ian',
+    title: cleanText(plan.title || 'Учебный проект', 180),
+    description: 'Учебный доклад, созданный на сайте «Все проекты #Ian».',
+    sections: [{
+      properties: { page: { margin: { top: 1200, right: 1200, bottom: 1200, left: 1440 } } },
+      children
+    }]
+  });
+  return Packer.toBuffer(doc);
 }
 function createPresentationPdfBuffer(plan) {
   return new Promise((resolve, reject) => {
