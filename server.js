@@ -778,7 +778,7 @@ function buildPptx(plan) {
   plan.slides.forEach((s, i) => {
     const slide = pptx.addSlide();
     const type = i === 0 ? 'cover' : normalizeSlideType(s.type, i);
-    if (s.notes) slide.addNotes(cleanText(s.notes, 1200));
+    if (s.notes || s.imageCredit) slide.addNotes([cleanText(s.notes, 1000), s.imageCredit ? 'Атрибуция изображения: ' + cleanText(s.imageCredit, 700) : ''].filter(Boolean).join('\n\n'));
     const title = s.title || plan.title;
     if (type === 'cover') {
       slide.background = { color: theme.accent };
@@ -790,6 +790,7 @@ function buildPptx(plan) {
       slide.addShape('line', { x: 0.82, y: 5.55, w: 4.5, h: 0, line: { color: 'FFFFFF', transparency: 45, width: 1.2 } });
       addText(slide, 'Все проекты #Ian', 0.82, 5.75, 3.8, 0.32, { fontSize: 11, color: 'FFFFFF' });
       addImageOrPlaceholder(slide, s, 7.05, 1.12, 5.55, 5.0, theme);
+      if (s.imageCredit) addText(slide, s.imageCredit, 7.08, 6.2, 5.2, 0.22, { fontSize: 6.5, color: 'FFFFFF', align: 'right' });
       addText(slide, '01', 11.85, 6.9, 0.55, 0.22, { fontSize: 10, color: 'FFFFFF', align: 'right' });
       return;
     }
@@ -866,6 +867,7 @@ function buildPptx(plan) {
       addBullets(slide, s.bullets, 0.9, 3.45, 7.35, theme, 4);
       addImageOrPlaceholder(slide, s, 8.82, 1.55, 3.7, 4.85, theme);
     }
+    if (s.imageCredit) addText(slide, s.imageCredit, 8.0, 6.48, 4.5, 0.18, { fontSize: 6, color: theme.muted, align: 'right' });
     slide.addShape('line', { x: 0.72, y: 6.78, w: 11.88, h: 0, line: { color: theme.accent2, transparency: 35, width: 0.8 } });
     addText(slide, 'ВСЕ ПРОЕКТЫ #IAN', 0.75, 6.92, 3.6, 0.22, { fontSize: 8, bold: true, color: theme.muted, charSpacing: 1 });
     addSlideNumber(slide, i, plan.slides.length, theme);
@@ -1130,6 +1132,7 @@ function createPresentationPdfBuffer(plan) {
         doc.restore();
       }
 
+      if (slide.imageCredit) doc.fontSize(6).fillColor(color(isCover ? 'FFFFFF' : theme.muted)).text(normalizeText(slide.imageCredit, 220), 48, 480, { width: 760, height: 14, ellipsis: true });
       doc.fontSize(9).fillColor(color(isCover ? 'FFFFFF' : theme.muted)).text(
         `${String(i + 1).padStart(2, '0')} / ${String(plan.slides.length).padStart(2, '0')}`,
         835, 505, { width: 80, align: 'right' }
