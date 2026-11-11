@@ -878,11 +878,13 @@ async function createDocxBuffer(plan) {
     spacing: { before: 180, after: 180 }
   }));
   const heading = text => children.push(new Paragraph({
+    heading: HeadingLevel.HEADING_1,
     children: [new TextRun({ text: String(text || ''), bold: true, font: 'Aptos Display', size: 28, color: accent })],
     spacing: { before: 300, after: 120 },
     keepNext: true
   }));
   const subheading = text => children.push(new Paragraph({
+    heading: HeadingLevel.HEADING_2,
     children: [new TextRun({ text: String(text || ''), bold: true, font: 'Aptos', size: 23, color: ink })],
     spacing: { before: 180, after: 80 },
     keepNext: true
