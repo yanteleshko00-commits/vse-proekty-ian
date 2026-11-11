@@ -14,12 +14,16 @@ test("creates a stable model shared by report and slide exporters", () => {
     topic: "История освоения космоса",
     student: { firstName: "Иван", className: "9" },
     content: { goal: "Изучить этапы", sources: [{ title: "NASA", url: "https://www.nasa.gov/" }] },
+    product: { title: "Памятка" },
+    defense: "Текст выступления",
     slides: [{ title: "Начало", type: "cover" }, { title: "Первый спутник", bullets: ["Запуск в 1957 году"] }]
   });
   assert.equal(model.schemaVersion, 1);
   assert.equal(model.design.category, "history");
   assert.equal(model.slides[1].order, 2);
   assert.equal(model.content.goal, "Изучить этапы");
+  assert.equal(model.product.title, "Памятка");
+  assert.equal(model.defense, "Текст выступления");
   assert.equal(model.student.firstName, "Иван");
   assert.deepEqual(validateProjectModel(model), []);
 });
