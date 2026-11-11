@@ -770,6 +770,7 @@ function buildPptx(plan) {
   plan.slides.forEach((s, i) => {
     const slide = pptx.addSlide();
     const type = i === 0 ? 'cover' : normalizeSlideType(s.type, i);
+    if (s.notes) slide.addNotes(cleanText(s.notes, 1200));
     const title = s.title || plan.title;
     if (type === 'cover') {
       slide.background = { color: theme.accent };
