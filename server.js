@@ -1198,10 +1198,13 @@ function createPdfBuffer(plan) {
     const accent = '#' + theme.accent, ink = '#' + theme.ink, muted = '#' + theme.muted;
     let pageNumber = 1;
     const footer = () => {
+      const previousX = doc.x, previousY = doc.y;
       doc.save();
       doc.fontSize(8).fillColor(muted).text('Все проекты #Ian', 64, 790, { width: 300, lineBreak: false });
       doc.fontSize(8).fillColor(muted).text(String(pageNumber), 470, 790, { width: 60, align: 'right', lineBreak: false });
       doc.restore();
+      doc.x = previousX;
+      doc.y = previousY;
     };
     doc.on('pageAdded', () => { pageNumber += 1; footer(); });
     const heading = value => {
