@@ -1151,46 +1151,118 @@ function createPresentationPdfBuffer(plan) {
 
 function createPdfBuffer(plan) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 48, autoFirstPage: true, info: { Title: plan.title, Author: 'Генератор презентаций' } });
+    const doc = new PDFDocument({
+      size: 'A4', margin: { top: 58, right: 56, bottom: 62, left: 64 },
+      info: { Title: plan.title || 'Учебный доклад', Author: 'Все проекты #Ian' }
+    });
     const chunks = [];
-    doc.on('data', c => chunks.push(c));
+    doc.on('data', chunk => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
-    // PDFKit's built-in fonts do not cover Cyrillic reliably; embed DejaVu Sans.
     if (fs.existsSync(PDF_FONT_PATH)) doc.font(PDF_FONT_PATH);
-    doc.fontSize(24).fillColor('#244B83').text(plan.title);
-    doc.moveDown().fontSize(11).fillColor('#222222').text(plan.summary || '');
-    plan.slides.forEach((s, i) => {
-      doc.addPage();
-      doc.fontSize(10).fillColor('#63718A').text(`СЛАЙД ${i + 1} / ${plan.slides.length}`);
-      doc.moveDown(0.5).fontSize(22).fillColor('#244B83').text(s.title);
-      doc.moveDown().fontSize(12).fillColor('#222222').text(s.body || '');
-      for (const b of s.bullets || []) doc.moveDown(0.4).fontSize(11).text(`• ${b}`);
-      if (s.cards?.length) {
-        doc.moveDown();
-        for (const c of s.cards) doc.fontSize(11).text(`${c.title}: ${c.text}`);
+    const theme = plan.theme || COLORS.blue;
+    const accent = '#' + theme.accent, ink = '#' + theme.ink, muted = '#' + theme.muted;
+    let pageNumber = 1;
+    const footer = () => {
+      doc.save();
+      doc.fontSize(8).fillColor(muted).text('Все проекты #Ian', 64, 790, { width: 300, lineBreak: false });
+      doc.fontSize(8).fillColor(muted).text(String(pageNumber), 470, 790, { width: 60, align: 'right', lineBreak: false });
+      doc.restore();
+    };
+    doc.on('pageAdded', () => { pageNumber += 1; footer(); });
+    const heading = value => {
+      doc.moveDown(0.7);
+      doc.fontSize(18).fillColor(accent).text(cleanText(value, 180), { paragraphGap: 4, keepWithNext: true });
+      doc.moveDown(0.25);
+    };
+    const subheading = value => {
+      doc.moveDown(0.35);
+      doc.fontSize(12).fillColor(ink).text(cleanText(value, 180), { paragraphGap: 3, keepWithNext: true });
+    };
+    const paragraph = value => {
+      const valueText = cleanText(value, 7000);
+      if (!valueText) return;
+      doc.fontSize(10.5).fillColor(ink).text(valueText, { lineGap: 4, paragraphGap: 7, align: 'justify' });
+    };
+    const bullets = values => {
+      for (const value of (Array.isArray(values) ? values : []).filter(Boolean)) {
+        doc.fontSize(10.5).fillColor(ink).text('•  ' + cleanText(value, 1200), { indent: 12, hanging: 4, lineGap: 3, paragraphGap: 4 });
       }
-      if (s.imageCredit) doc.moveDown().fontSize(8).fillColor('#666666').text(`Иллюстрация: ${s.imageCredit}`);
-    });
-    if (plan.projectContent) {
-      doc.addPage().fontSize(22).fillColor('#244B83').text('Полный текст проекта');
-      doc.moveDown().fontSize(14).fillColor('#244B83').text('Проблема');
-      doc.moveDown(0.3).fontSize(11).fillColor('#222222').text(plan.projectContent.problem);
-      doc.moveDown().fontSize(14).fillColor('#244B83').text('Цель и задачи');
-      doc.moveDown(0.3).fontSize(11).fillColor('#222222').text('Цель: ' + plan.projectContent.goal + '\n' + plan.projectContent.tasks.map((x,i)=>(i+1)+'. '+x).join('\n'));
-      doc.moveDown().fontSize(14).fillColor('#244B83').text('Теоретическая часть');
-      for (const section of plan.projectContent.theory) { doc.moveDown(0.3).fontSize(12).fillColor('#244B83').text(section.heading); doc.moveDown(0.2).fontSize(10).fillColor('#222222').text(section.text); }
-      doc.moveDown().fontSize(14).fillColor('#244B83').text('Практическая часть');
-      doc.moveDown(0.3).fontSize(10).fillColor('#222222').text(plan.projectContent.practice.method + '\n' + plan.projectContent.practice.steps.map((x,i)=>(i+1)+'. '+x).join('\n') + '\n' + plan.projectContent.practice.result);
-      doc.moveDown().fontSize(14).fillColor('#244B83').text('Заключение');
-      doc.moveDown(0.3).fontSize(10).fillColor('#222222').text(plan.projectContent.conclusion);
+    };
+
+    doc.rect(0, 0, 595.28, 14).fill(accent);
+    doc.moveDown(5);
+    doc.fontSize(10).fillColor(muted).text('УЧЕБНЫЙ ПРОЕКТ', { characterSpacing: 1.4, align: 'center' });
+    doc.moveDown(1.3);
+    doc.fontSize(27).fillColor(accent).text(cleanText(plan.title || 'Учебный проект', 180), { align: 'center', lineGap: 5 });
+    doc.moveDown(1);
+    doc.fontSize(11).fillColor(muted).text(cleanText(plan.summary || '', 700), { align: 'center', lineGap: 4 });
+    const author = [plan.student?.firstName, plan.student?.lastName].filter(Boolean).join(' ');
+    if (author || plan.student?.className || plan.student?.school) {
+      doc.moveDown(3);
+      doc.fontSize(10).fillColor(ink);
+      if (author) doc.text('Автор: ' + author, { align: 'right' });
+      if (plan.student?.className) doc.text('Класс: ' + plan.student.className, { align: 'right' });
+      if (plan.student?.school) doc.text('Школа: ' + plan.student.school, { align: 'right' });
     }
-    if (plan.practicalPart) {
-      doc.addPage().fontSize(22).fillColor('#244B83').text('Практическая часть');
-      doc.moveDown().fontSize(12).fillColor('#222222').text(plan.practicalPart);
+    doc.moveDown(4);
+    doc.fontSize(9).fillColor(muted).text('Материалы подготовлены на основе единой модели проекта', { align: 'center' });
+    footer();
+
+    doc.addPage();
+    heading('Содержание');
+    const sections = [
+      'Введение', 'Теоретическая часть', 'Практическая часть',
+      'Основные положения', 'Заключение', 'Итоговый продукт', 'Возможные вопросы и ответы', 'Список источников'
+    ];
+    sections.forEach((item, index) => doc.fontSize(10.5).fillColor(ink).text((index + 1) + '.  ' + item, { indent: 8, paragraphGap: 5 }));
+
+    const content = plan.projectContent || {};
+    heading('Введение');
+    subheading('Актуальность темы'); paragraph(content.relevance || plan.summary);
+    subheading('Проблема исследования'); paragraph(content.problem);
+    subheading('Цель проекта'); paragraph(content.goal);
+    if (content.tasks?.length) { subheading('Задачи проекта'); bullets(content.tasks); }
+    if (content.object) { subheading('Объект исследования'); paragraph(content.object); }
+    if (content.subject) { subheading('Предмет исследования'); paragraph(content.subject); }
+    if (content.hypothesis) { subheading('Гипотеза'); paragraph(content.hypothesis); }
+
+    if (content.theory?.length) {
+      heading('Теоретическая часть');
+      content.theory.forEach(section => { subheading(section.heading); paragraph(section.text); });
     }
-    doc.addPage().fontSize(22).fillColor('#244B83').text('Источники');
-    plan.sources.forEach(s => doc.moveDown().fontSize(10).fillColor('#222222').text(s.url ? `${s.title}: ${s.url}` : s.title));
+    if (content.practice && (content.practice.method || content.practice.steps?.length || content.practice.result)) {
+      heading('Практическая часть');
+      if (content.practice.method) { subheading('Метод'); paragraph(content.practice.method); }
+      if (content.practice.materials) { subheading('Материалы'); paragraph(content.practice.materials); }
+      if (content.practice.steps?.length) { subheading('Ход работы'); bullets(content.practice.steps); }
+      if (content.practice.result) { subheading('Результат или планируемый результат'); paragraph(content.practice.result); }
+      if (content.practice.limitations) { subheading('Ограничения'); paragraph(content.practice.limitations); }
+    }
+    if (content.mainPoints?.length) { heading('Основные положения'); bullets(content.mainPoints); }
+    heading('Заключение'); paragraph(content.conclusion || plan.summary);
+
+    if (plan.product) {
+      heading('Итоговый продукт');
+      subheading(plan.product.title || plan.product.format);
+      paragraph(plan.product.subtitle);
+      (plan.product.sections || []).forEach(section => { subheading(section.heading); paragraph(section.body); });
+      bullets(plan.product.steps || []);
+      bullets(plan.product.checklist || []);
+      paragraph(plan.product.takeaway);
+    }
+    if (content.defenseQuestions?.length) {
+      heading('Возможные вопросы и ответы');
+      content.defenseQuestions.forEach(item => { subheading('Вопрос: ' + item.question); paragraph('Ответ: ' + item.answer); });
+    }
+    const sources = content.sources?.length ? content.sources : (plan.sources || []);
+    if (sources.length) {
+      heading('Список источников');
+      sources.forEach((source, index) => {
+        const label = typeof source === 'string' ? source : (source.url ? source.title + ' — ' + source.url : source.title);
+        paragraph((index + 1) + '. ' + label);
+      });
+    }
     doc.end();
   });
 }
