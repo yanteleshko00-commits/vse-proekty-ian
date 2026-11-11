@@ -19,7 +19,7 @@ const MODEL = 'gpt-4.1-mini';
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
 // Keep requests below common hosting/proxy limits; slow image lookups are bounded separately.
 const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 95000);
-const MAX_SLIDES = 100;
+const MAX_SLIDES = 20;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const PDF_FONT_PATH = path.resolve(process.cwd(), 'DejaVuSans.ttf');
 const openai = process.env.OPENAI_API_KEY
