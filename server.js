@@ -96,7 +96,7 @@ function containsCorruptedText(value) {
   return false;
 }
 function normalizeSlideType(type, index) {
-  const allowed = ['cover', 'cards', 'comparison', 'stat', 'process', 'quote', 'image', 'table'];
+  const allowed = ['cover', 'cards', 'comparison', 'stat', 'process', 'timeline', 'divider', 'quote', 'image', 'table'];
   return allowed.includes(type) ? type : (index === 0 ? 'cover' : 'cards');
 }
 
@@ -463,7 +463,7 @@ const PLANNER_INSTRUCTIONS = `
 - Не оставляй пустые слайды и текст-заполнитель. Практическая часть должна предлагать выполнимый метод, а не поддельные результаты.
 ВИЗУАЛЬНАЯ КОНЦЕПЦИЯ:
 - В designDirection задай цельную арт-дирекцию: настроение, визуальный язык, принципы композиции и контраст. colorMood — 2–4 подходящих цвета словами.
-- Используй только type из: cover,cards,comparison,stat,process,quote,image,table.
+- Используй только type из: cover,cards,comparison,stat,process,timeline,divider,quote,image,table.
 - Меняй композиции по смыслу; не используй один type более двух раз подряд.
 - Каждый слайд обязан иметь отдельный imageQuery на английском: конкретная фотографическая сцена по содержанию именно этого слайда (объект + действие/место/условие). Запросы различаются по объекту, ракурсу и сцене. Не используй один общий запрос для всей темы, логотипы, флаги, схемы и изображения с надписями.
 - Для каждого type заполняй нужные поля реальным содержанием.
@@ -487,7 +487,7 @@ function validatePresentationPlan(raw, requestedCount) {
     if (title) titleCounts.set(title, (titleCounts.get(title) || 0) + 1);
     if (title && genericTitle.test(title)) issues.push(`${prefix}: шаблонный заголовок «${slide.title}»`);
     if (/^(?:источники|итоги|выводы|заключение)(?:\s|:|$)/i.test(title)) issues.push(`${prefix}: запрещён пустой финальный слайд с источниками или общим заключением`);
-    const allowedTypes = ['cover', 'cards', 'comparison', 'stat', 'process', 'quote', 'image', 'table'];
+    const allowedTypes = ['cover', 'cards', 'comparison', 'stat', 'process', 'timeline', 'divider', 'quote', 'image', 'table'];
     if (!allowedTypes.includes(String(slide.type || ''))) issues.push(`${prefix}: неподдерживаемый тип макета`);
     const query = cleanText(slide.imageQuery, 180).toLocaleLowerCase('en').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!query) issues.push(`${prefix}: нет собственного imageQuery`);
@@ -801,7 +801,26 @@ function buildPptx(plan) {
     addText(slide, title, 0.72, 0.43, 8.45, 0.78, { fontSize: 27, bold: true, color: theme.ink, fontFace: plan.contentModel?.design?.headingFont || 'Aptos Display', valign: 'mid' });
     slide.addShape('line', { x: 0.72, y: 1.29, w: 11.88, h: 0, line: { color: theme.accent2, transparency: 18, width: 1.1 } });
 
-    if (type === 'cards') {
+    if (type === 'divider') {
+      slide.background = { color: theme.accent };
+      slide.addShape('ellipse', { x: 9.6, y: -0.9, w: 4.1, h: 4.1, fill: { color: 'FFFFFF', transparency: 84 }, line: { color: 'FFFFFF', transparency: 100 } });
+      addText(slide, 'СЛЕДУЮЩИЙ РАЗДЕЛ', 0.9, 1.55, 6.4, 0.35, { fontSize: 11, bold: true, color: 'FFFFFF', charSpacing: 2, fontFace: plan.contentModel?.design?.headingFont || 'Aptos Display' });
+      addText(slide, title, 0.9, 2.15, 7.1, 1.65, { fontSize: 34, bold: true, color: 'FFFFFF', fontFace: plan.contentModel?.design?.headingFont || 'Aptos Display', valign: 'mid' });
+      addText(slide, s.subtitle || s.body, 0.95, 4.25, 6.7, 1.0, { fontSize: 17, color: 'F1F5FF', valign: 'top' });
+      addImageOrPlaceholder(slide, s, 8.4, 2.0, 3.7, 3.7, theme);
+    } else if (type === 'timeline') {
+      const events = (s.steps?.length ? s.steps : s.bullets || []).slice(0, 5);
+      const left = 1.0, right = 8.85, lineY = 3.25;
+      slide.addShape('line', { x: left, y: lineY, w: right - left, h: 0, line: { color: theme.accent, width: 2.5, endArrowType: 'triangle' } });
+      events.forEach((event, index) => {
+        const x = left + (events.length <= 1 ? 0 : index * (right - left) / (events.length - 1));
+        slide.addShape('ellipse', { x: x - 0.13, y: lineY - 0.13, w: 0.26, h: 0.26, fill: { color: theme.accent }, line: { color: 'FFFFFF', width: 1.5 } });
+        const top = index % 2 === 0;
+        addText(slide, String(index + 1).padStart(2, '0'), x - 0.24, top ? 2.0 : 3.72, 0.5, 0.25, { fontSize: 10, bold: true, color: theme.accent, align: 'center' });
+        addText(slide, event, x - 0.68, top ? 2.28 : 4.05, 1.42, 1.0, { fontSize: 10.5, color: theme.ink, align: 'center', valign: 'top' });
+      });
+      addImageOrPlaceholder(slide, s, 9.58, 1.62, 2.95, 4.72, theme);
+    } else if (type === 'cards') {
       const cards = (s.cards || []).slice(0, 4);
       const columns = cards.length <= 2 ? Math.max(1, cards.length) : 2;
       const cardW = 8.45 / columns - 0.14;
