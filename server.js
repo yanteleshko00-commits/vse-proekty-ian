@@ -514,10 +514,10 @@ function validatePresentationPlan(raw, requestedCount) {
          !(Array.isArray(slide.rightItems) && slide.rightItems.filter(Boolean).length >= 2))) {
       issues.push(`${prefix}: сравнение должно содержать минимум два пункта с каждой стороны`);
     }
-    if (type === 'process' &&
+    if (['process', 'timeline'].includes(type) &&
         !(Array.isArray(slide.steps) && slide.steps.filter(Boolean).length >= 2) &&
         !(Array.isArray(slide.bullets) && slide.bullets.filter(Boolean).length >= 3)) {
-      issues.push(`${prefix}: процесс должен содержать шаги`);
+      issues.push(`${prefix}: схема или временная шкала должна содержать минимум два шага`);
     }
     if (type === 'table' && !(Array.isArray(slide.table) && slide.table.filter(row => Array.isArray(row) && row.some(Boolean)).length >= 3)) {
       issues.push(`${prefix}: таблица должна содержать заголовок и две содержательные строки`);
@@ -798,8 +798,10 @@ function buildPptx(plan) {
     slide.background = { color: i % 4 === 2 ? 'FFFFFF' : theme.bg };
     slide.addShape('rect', { x: 0, y: 0, w: 0.12, h: 7.5, fill: { color: theme.accent }, line: { color: theme.accent } });
     slide.addShape('ellipse', { x: 11.55, y: -0.8, w: 2.45, h: 2.45, fill: { color: theme.accent2, transparency: 76 }, line: { color: theme.accent2, transparency: 100 } });
-    addText(slide, title, 0.72, 0.43, 8.45, 0.78, { fontSize: 27, bold: true, color: theme.ink, fontFace: plan.contentModel?.design?.headingFont || 'Aptos Display', valign: 'mid' });
-    slide.addShape('line', { x: 0.72, y: 1.29, w: 11.88, h: 0, line: { color: theme.accent2, transparency: 18, width: 1.1 } });
+    if (type !== 'divider') {
+      addText(slide, title, 0.72, 0.43, 8.45, 0.78, { fontSize: 27, bold: true, color: theme.ink, fontFace: plan.contentModel?.design?.headingFont || 'Aptos Display', valign: 'mid' });
+      slide.addShape('line', { x: 0.72, y: 1.29, w: 11.88, h: 0, line: { color: theme.accent2, transparency: 18, width: 1.1 } });
+    }
 
     if (type === 'divider') {
       slide.background = { color: theme.accent };
