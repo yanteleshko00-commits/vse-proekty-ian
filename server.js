@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import OpenAI from 'openai';
-import { Document, Packer, Paragraph, HeadingLevel, TextRun, ImageRun } from 'docx';
+import { Document, Packer, Paragraph, HeadingLevel, TextRun, ImageRun, TableOfContents } from 'docx';
 import PDFDocument from 'pdfkit';
 import PptxGenJS from 'pptxgenjs';
 import archiver from 'archiver';
@@ -942,6 +942,12 @@ async function createDocxBuffer(plan) {
     alignment: 'center',
     spacing: { before: 550, after: 250 }
   }));
+  children.push(new Paragraph({
+    children: [new TextRun({ text: 'Содержание', bold: true, font: 'Aptos Display', size: 30, color: accent })],
+    pageBreakBefore: true,
+    spacing: { after: 180 }
+  }));
+  children.push(new TableOfContents('Содержание', { hyperlink: true, headingStyleRange: '1-2' }));
 
   const content = plan.projectContent;
   if (content) {
@@ -999,6 +1005,7 @@ async function createDocxBuffer(plan) {
     creator: 'Все проекты #Ian',
     title: cleanText(plan.title || 'Учебный проект', 180),
     description: 'Учебный доклад, созданный на сайте «Все проекты #Ian».',
+    features: { updateFields: true },
     sections: [{
       properties: { page: { margin: { top: 1200, right: 1200, bottom: 1200, left: 1440 } } },
       children
