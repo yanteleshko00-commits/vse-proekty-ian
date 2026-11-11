@@ -506,33 +506,6 @@ html[data-theme="dark"] .check-toggle{color:#9bc4ff;background:rgba(90,147,226,.
 </style>
 
 
-<style id="visme-integration-styles">
-.visme-integration{margin:22px 0;padding:22px;border:1px solid rgba(66,112,220,.22);border-radius:22px;background:linear-gradient(135deg,rgba(74,122,235,.08),rgba(255,255,255,.72));box-shadow:0 12px 34px rgba(31,56,110,.07)}
-.visme-integration h3{margin:0 0 8px;font-size:21px;color:var(--text,#17243a)}
-.visme-integration p{margin:0 0 14px;color:var(--muted,#66738a);line-height:1.55}
-.visme-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:14px 0}
-.visme-open{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 18px;border:0;border-radius:13px;background:#315edb;color:#fff!important;text-decoration:none;font-weight:800;cursor:pointer}
-.visme-import-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin-top:14px}
-.visme-import-row .field{margin:0}
-.visme-import-row input{width:100%;box-sizing:border-box}
-.visme-save{min-height:44px;padding:0 18px;border:0;border-radius:12px;background:#17243a;color:#fff;font-weight:800;cursor:pointer}
-.visme-save:disabled{opacity:.55;cursor:wait}
-.visme-library{display:grid;gap:10px;margin-top:16px}
-.visme-empty{padding:13px;border:1px dashed rgba(100,120,150,.35);border-radius:12px;color:var(--muted,#66738a);font-size:14px}
-.visme-project{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:13px;border:1px solid rgba(100,120,150,.2);border-radius:14px;background:rgba(255,255,255,.65)}
-.visme-project-main{min-width:0}
-.visme-project-main b{display:block;overflow-wrap:anywhere;color:var(--text,#17243a)}
-.visme-project-main small{display:block;margin-top:4px;color:var(--muted,#66738a)}
-.visme-project-actions{display:flex;gap:7px;flex-wrap:wrap}
-.visme-project-actions button{padding:8px 11px;border:1px solid rgba(80,100,130,.25);border-radius:9px;background:transparent;color:var(--text,#17243a);font-weight:700;cursor:pointer}
-.visme-note{font-size:12px!important;margin-top:12px!important}
-[data-theme="dark"] .visme-integration{background:linear-gradient(135deg,rgba(54,91,180,.2),rgba(28,34,47,.92));border-color:rgba(120,153,230,.25)}
-[data-theme="dark"] .visme-project{background:rgba(20,26,38,.75);border-color:rgba(150,165,195,.2)}
-[data-theme="dark"] .visme-project-main b,[data-theme="dark"] .visme-project-actions button{color:#edf2ff}
-[data-theme="dark"] .visme-save{background:#e8edff;color:#17243a}
-@media(max-width:620px){.visme-integration{padding:16px}.visme-import-row{grid-template-columns:1fr}.visme-save{width:100%}.visme-project{align-items:flex-start;flex-direction:column}.visme-project-actions{width:100%}.visme-project-actions button{flex:1}}
-</style>
-
 </head>
 <body>
 
@@ -594,33 +567,6 @@ html[data-theme="dark"] .check-toggle{color:#9bc4ff;background:rgba(90,147,226,.
 </div>
 
 <button class="create-btn" id="createButton" onclick="createProject()">✨ СОЗДАТЬ ПРОЕКТ БЕСПЛАТНО</button>
-
-<section class="visme-integration" id="vismeIntegration" aria-labelledby="vismeHeading">
-  <h3 id="vismeHeading">🎨 Создать проект в Visme</h3>
-  <p>Сделай красивый проект в Visme AI, а затем перенеси готовый файл сюда. Сайт сохранит его в твоей библиотеке на этом устройстве.</p>
-  <div class="visme-actions">
-    <a class="visme-open" href="https://www.visme.co/ru/ii-generatora-dizajn-proektov/" target="_blank" rel="noopener noreferrer">Открыть Visme AI ↗</a>
-    <span style="font-size:13px;color:var(--muted,#66738a)">После создания скачай результат в PDF или PPTX.</span>
-  </div>
-  <div class="visme-import-row">
-    <div class="field">
-      <label for="vismeProjectTitle">Название проекта</label>
-      <input id="vismeProjectTitle" type="text" maxlength="120" placeholder="Например: Экология моего города">
-    </div>
-    <div class="field">
-      <label for="vismeProjectFile">Файл из Visme (PDF или PPTX)</label>
-      <input id="vismeProjectFile" type="file" accept=".pdf,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation">
-    </div>
-  </div>
-  <div class="visme-actions">
-    <button class="visme-save" id="vismeSaveButton" type="button" onclick="saveVismeProject()">Сохранить проект на сайте</button>
-    <span id="vismeImportStatus" role="status" aria-live="polite" style="font-size:13px;color:var(--muted,#66738a)"></span>
-  </div>
-  <div class="visme-library" id="vismeLibrary" aria-live="polite">
-    <div class="visme-empty">Сохранённых проектов Visme пока нет.</div>
-  </div>
-  <p class="visme-note">Важно: сейчас файлы хранятся в памяти браузера на этом устройстве (IndexedDB), а не в облачном аккаунте. Для синхронизации между устройствами понадобится авторизация пользователей и постоянное файловое хранилище.</p>
-</section>
 
 <div class="quick-tools" aria-label="Дополнительные инструменты">
 <button class="tool-tile" onclick="openModal('chatTool')"><span class="tool-icon">💬</span><span><b>Спросить у ChatGPT</b><small>Задать вопрос и получить объяснение</small></span></button>
@@ -1251,101 +1197,6 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 <!-- Лампочка-помощник отключена по запросу владельца сайта. -->
 
-<script id="visme-integration-script">
-(function(){
-  "use strict";
-  const DB_NAME="vseProektyVismeLibrary";
-  const STORE="projects";
-  let dbPromise;
-  function openDb(){
-    if(dbPromise)return dbPromise;
-    dbPromise=new Promise((resolve,reject)=>{
-      if(!("indexedDB" in window)){reject(new Error("Этот браузер не поддерживает локальную библиотеку файлов."));return;}
-      const request=indexedDB.open(DB_NAME,1);
-      request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE,{keyPath:"id"});};
-      request.onsuccess=()=>resolve(request.result);
-      request.onerror=()=>reject(request.error||new Error("Не удалось открыть библиотеку проектов."));
-    });
-    return dbPromise;
-  }
-  async function transaction(mode,action){
-    const db=await openDb();
-    return new Promise((resolve,reject)=>{
-      const tx=db.transaction(STORE,mode),store=tx.objectStore(STORE);
-      let request;
-      try{request=action(store);}catch(error){reject(error);return;}
-      if(request){request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);}
-      else{tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error);}
-    });
-  }
-  function formatSize(bytes){
-    if(bytes<1024*1024)return Math.max(1,Math.round(bytes/1024))+" КБ";
-    return (bytes/1024/1024).toFixed(1)+" МБ";
-  }
-  function safeDate(value){
-    try{return new Date(value).toLocaleString("ru-RU",{dateStyle:"short",timeStyle:"short"});}catch(_){return "";}
-  }
-  async function renderLibrary(){
-    const root=document.getElementById("vismeLibrary");
-    if(!root)return;
-    try{
-      const items=await transaction("readonly",store=>store.getAll());
-      items.sort((a,b)=>b.createdAt-a.createdAt);
-      root.replaceChildren();
-      if(!items.length){const empty=document.createElement("div");empty.className="visme-empty";empty.textContent="Сохранённых проектов Visme пока нет.";root.appendChild(empty);return;}
-      items.forEach(item=>{
-        const card=document.createElement("article");card.className="visme-project";
-        const main=document.createElement("div");main.className="visme-project-main";
-        const title=document.createElement("b");title.textContent=item.title||item.fileName;
-        const meta=document.createElement("small");meta.textContent=(item.format||"Файл")+" · "+formatSize(item.size)+" · "+safeDate(item.createdAt);
-        main.append(title,meta);
-        const actions=document.createElement("div");actions.className="visme-project-actions";
-        const download=document.createElement("button");download.type="button";download.textContent="Скачать";download.addEventListener("click",()=>downloadProject(item.id));
-        const remove=document.createElement("button");remove.type="button";remove.textContent="Удалить";remove.addEventListener("click",()=>deleteProject(item.id));
-        actions.append(download,remove);card.append(main,actions);root.appendChild(card);
-      });
-    }catch(error){
-      root.textContent="Не удалось загрузить библиотеку: "+(error.message||"ошибка хранилища");
-    }
-  }
-  window.saveVismeProject=async function(){
-    const input=document.getElementById("vismeProjectFile"),titleInput=document.getElementById("vismeProjectTitle");
-    const status=document.getElementById("vismeImportStatus"),button=document.getElementById("vismeSaveButton");
-    const file=input&&input.files&&input.files[0];
-    if(!file){status.textContent="Сначала выбери PDF или PPTX, скачанный из Visme.";return;}
-    const name=file.name.toLowerCase();
-    const isPdf=file.type==="application/pdf"||name.endsWith(".pdf");
-    const isPptx=name.endsWith(".pptx")||file.type==="application/vnd.openxmlformats-officedocument.presentationml.presentation";
-    if(!isPdf&&!isPptx){status.textContent="Поддерживаются только PDF и PPTX.";return;}
-    if(file.size===0||file.size>50*1024*1024){status.textContent="Файл пустой или больше 50 МБ. Выбери файл меньшего размера.";return;}
-    button.disabled=true;status.textContent="Сохраняю файл в библиотеку сайта…";
-    try{
-      const item={id:crypto.randomUUID?crypto.randomUUID():String(Date.now())+"-"+Math.random().toString(16).slice(2),title:(titleInput.value||"").trim().slice(0,120)||file.name.replace(/\.(pdf|pptx)$/i,""),fileName:file.name,format:isPdf?"PDF":"PPTX",size:file.size,createdAt:Date.now(),blob:file};
-      await transaction("readwrite",store=>store.put(item));
-      input.value="";status.textContent="Готово! Проект появился в библиотеке ниже.";
-      await renderLibrary();
-    }catch(error){
-      status.textContent="Не удалось сохранить файл. Возможно, в браузере закончилось место: "+(error.message||"ошибка");
-    }finally{button.disabled=false;}
-  };
-  window.downloadProject=async function(id){
-    try{
-      const item=await transaction("readonly",store=>store.get(id));
-      if(!item||!item.blob)throw new Error("Файл не найден в локальной библиотеке.");
-      const url=URL.createObjectURL(item.blob),a=document.createElement("a");
-      a.href=url;a.download=item.fileName||("Visme-проект."+(item.format==="PDF"?"pdf":"pptx"));
-      document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
-    }catch(error){alert(error.message||"Не удалось скачать файл.");}
-  };
-  window.deleteProject=async function(id){
-    if(!confirm("Удалить этот проект из библиотеки на данном устройстве?"))return;
-    try{await transaction("readwrite",store=>store.delete(id));await renderLibrary();}catch(error){alert(error.message||"Не удалось удалить проект.");}
-  };
-  document.addEventListener("DOMContentLoaded",renderLibrary);
-})();
-</script>
-
 </body>
 </html>
-
 
