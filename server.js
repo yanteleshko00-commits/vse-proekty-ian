@@ -773,7 +773,7 @@ function buildPptx(plan) {
   pptx.company = 'Все проекты #Ian';
   pptx.lang = 'ru-RU';
   const theme = plan.theme || COLORS.blue;
-  pptx.theme = { headFontFace: 'Aptos Display', bodyFontFace: 'Aptos', lang: 'ru-RU' };
+  pptx.theme = { headFontFace: plan.contentModel?.design?.headingFont || 'Aptos Display', bodyFontFace: plan.contentModel?.design?.bodyFont || 'Aptos', lang: 'ru-RU' };
 
   plan.slides.forEach((s, i) => {
     const slide = pptx.addSlide();
@@ -785,7 +785,7 @@ function buildPptx(plan) {
       slide.addShape('ellipse', { x: 9.8, y: -1.05, w: 4.2, h: 4.2, fill: { color: 'FFFFFF', transparency: 84 }, line: { color: 'FFFFFF', transparency: 100 } });
       slide.addShape('ellipse', { x: 10.7, y: 0.1, w: 2.4, h: 2.4, fill: { color: theme.accent2, transparency: 28 }, line: { color: theme.accent2, transparency: 100 } });
       addText(slide, 'ТЕМА ИССЛЕДОВАНИЯ', 0.78, 0.72, 5.7, 0.32, { fontSize: 11, bold: true, color: 'FFFFFF', charSpacing: 2.2 });
-      addText(slide, title, 0.78, 1.45, 5.8, 2.3, { fontSize: 34, bold: true, color: 'FFFFFF', valign: 'mid' });
+      addText(slide, title, 0.78, 1.45, 5.8, 2.3, { fontSize: 34, bold: true, color: 'FFFFFF', fontFace: plan.contentModel?.design?.headingFont || 'Aptos Display', valign: 'mid' });
       addText(slide, s.subtitle || s.body || plan.summary, 0.82, 4.08, 5.65, 1.12, { fontSize: 17, color: 'EFF3FF', valign: 'top' });
       slide.addShape('line', { x: 0.82, y: 5.55, w: 4.5, h: 0, line: { color: 'FFFFFF', transparency: 45, width: 1.2 } });
       addText(slide, 'Все проекты #Ian', 0.82, 5.75, 3.8, 0.32, { fontSize: 11, color: 'FFFFFF' });
@@ -798,7 +798,7 @@ function buildPptx(plan) {
     slide.background = { color: i % 4 === 2 ? 'FFFFFF' : theme.bg };
     slide.addShape('rect', { x: 0, y: 0, w: 0.12, h: 7.5, fill: { color: theme.accent }, line: { color: theme.accent } });
     slide.addShape('ellipse', { x: 11.55, y: -0.8, w: 2.45, h: 2.45, fill: { color: theme.accent2, transparency: 76 }, line: { color: theme.accent2, transparency: 100 } });
-    addText(slide, title, 0.72, 0.43, 8.45, 0.78, { fontSize: 27, bold: true, color: theme.ink, valign: 'mid' });
+    addText(slide, title, 0.72, 0.43, 8.45, 0.78, { fontSize: 27, bold: true, color: theme.ink, fontFace: plan.contentModel?.design?.headingFont || 'Aptos Display', valign: 'mid' });
     slide.addShape('line', { x: 0.72, y: 1.29, w: 11.88, h: 0, line: { color: theme.accent2, transparency: 18, width: 1.1 } });
 
     if (type === 'cards') {
@@ -883,20 +883,22 @@ async function createDocxBuffer(plan) {
   const accent = theme.accent || COLORS.blue.accent;
   const ink = theme.ink || COLORS.blue.ink;
   const muted = theme.muted || COLORS.blue.muted;
+  const headingFont = plan.contentModel?.design?.headingFont || 'Aptos Display';
+  const bodyFont = plan.contentModel?.design?.bodyFont || 'Aptos';
   const children = [];
   const title = (text, size = 36) => children.push(new Paragraph({
-    children: [new TextRun({ text: String(text || ''), bold: true, font: 'Aptos Display', size, color: accent })],
+    children: [new TextRun({ text: String(text || ''), bold: true, font: headingFont, size, color: accent })],
     spacing: { before: 180, after: 180 }
   }));
   const heading = text => children.push(new Paragraph({
     heading: HeadingLevel.HEADING_1,
-    children: [new TextRun({ text: String(text || ''), bold: true, font: 'Aptos Display', size: 28, color: accent })],
+    children: [new TextRun({ text: String(text || ''), bold: true, font: headingFont, size: 28, color: accent })],
     spacing: { before: 300, after: 120 },
     keepNext: true
   }));
   const subheading = text => children.push(new Paragraph({
     heading: HeadingLevel.HEADING_2,
-    children: [new TextRun({ text: String(text || ''), bold: true, font: 'Aptos', size: 23, color: ink })],
+    children: [new TextRun({ text: String(text || ''), bold: true, font: bodyFont, size: 23, color: ink })],
     spacing: { before: 180, after: 80 },
     keepNext: true
   }));
@@ -904,7 +906,7 @@ async function createDocxBuffer(plan) {
     const value = cleanText(text, 5000);
     if (!value) return;
     children.push(new Paragraph({
-      children: [new TextRun({ text: value, font: 'Aptos', size: 22, color: ink })],
+      children: [new TextRun({ text: value, font: bodyFont, size: 22, color: ink })],
       spacing: { after: 140, line: 330 }
     }));
   };
@@ -912,24 +914,24 @@ async function createDocxBuffer(plan) {
     const value = cleanText(text, 1200);
     if (!value) return;
     children.push(new Paragraph({
-      children: [new TextRun({ text: value, font: 'Aptos', size: 22, color: ink })],
+      children: [new TextRun({ text: value, font: bodyFont, size: 22, color: ink })],
       bullet: { level: 0 },
       spacing: { after: 90, line: 300 }
     }));
   };
 
   children.push(new Paragraph({
-    children: [new TextRun({ text: 'УЧЕБНЫЙ ПРОЕКТ', bold: true, font: 'Aptos', size: 20, color: muted })],
+    children: [new TextRun({ text: 'УЧЕБНЫЙ ПРОЕКТ', bold: true, font: bodyFont, size: 20, color: muted })],
     spacing: { before: 700, after: 260 },
     alignment: 'center'
   }));
   children.push(new Paragraph({
-    children: [new TextRun({ text: cleanText(plan.title || 'Учебный проект', 180), bold: true, font: 'Aptos Display', size: 42, color: accent })],
+    children: [new TextRun({ text: cleanText(plan.title || 'Учебный проект', 180), bold: true, font: headingFont, size: 42, color: accent })],
     alignment: 'center',
     spacing: { after: 300, line: 520 }
   }));
   if (plan.summary) children.push(new Paragraph({
-    children: [new TextRun({ text: cleanText(plan.summary, 700), font: 'Aptos', size: 24, color: muted, italics: true })],
+    children: [new TextRun({ text: cleanText(plan.summary, 700), font: bodyFont, size: 24, color: muted, italics: true })],
     alignment: 'center',
     spacing: { after: 500, line: 360 }
   }));
@@ -938,12 +940,12 @@ async function createDocxBuffer(plan) {
   if (plan.student?.className) paragraph('Класс: ' + plan.student.className);
   if (plan.student?.school) paragraph('Школа: ' + plan.student.school);
   children.push(new Paragraph({
-    children: [new TextRun({ text: 'Все проекты #Ian', font: 'Aptos', size: 18, color: muted })],
+    children: [new TextRun({ text: 'Все проекты #Ian', font: bodyFont, size: 18, color: muted })],
     alignment: 'center',
     spacing: { before: 550, after: 250 }
   }));
   children.push(new Paragraph({
-    children: [new TextRun({ text: 'Содержание', bold: true, font: 'Aptos Display', size: 30, color: accent })],
+    children: [new TextRun({ text: 'Содержание', bold: true, font: headingFont, size: 30, color: accent })],
     pageBreakBefore: true,
     spacing: { after: 180 }
   }));
@@ -1013,8 +1015,8 @@ async function createDocxBuffer(plan) {
           children: [new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-              new TextRun({ text: 'Страница ', font: 'Aptos', size: 16, color: muted }),
-              new TextRun({ children: [PageNumber.CURRENT], font: 'Aptos', size: 16, color: muted })
+              new TextRun({ text: 'Страница ', font: bodyFont, size: 16, color: muted }),
+              new TextRun({ children: [PageNumber.CURRENT], font: bodyFont, size: 16, color: muted })
             ]
           })]
         })
