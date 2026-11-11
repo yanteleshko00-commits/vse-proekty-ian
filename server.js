@@ -1346,6 +1346,7 @@ function publicProject(plan) {
   return {
     title: plan.title,
     summary: plan.summary,
+    student: plan.student || null,
     projectContent: plan.projectContent || null,
     product: plan.product ? { format: plan.product.format, title: plan.product.title, subtitle: plan.product.subtitle, audience: plan.product.audience, sections: plan.product.sections, steps: plan.product.steps, checklist: plan.product.checklist, takeaway: plan.product.takeaway } : null,
     presentation: plan.slides.map(({ imageBytes, imageMime, imageData, ...s }) => s),
@@ -1380,6 +1381,12 @@ async function generateProject(body, onProgress = () => {}) {
   const raw = await generateValidatedPresentation(topic, count, payload, PLANNER_INSTRUCTIONS + '\nОБЯЗАТЕЛЬНО опирайся на projectContent из входных данных. Не выдумывай результаты практики.');
   const plan = normalizePlan(raw, topic, count, theme);
   plan.projectContent = projectContent;
+  plan.student = {
+    firstName: cleanText(body.firstName, 60),
+    lastName: cleanText(body.lastName, 60),
+    className: cleanText(body.className, 30),
+    school: cleanText(body.school, 100)
+  };
   onProgress(48, 'product', '🧩 Создаём самостоятельный продукт проекта...');
   plan.product = await generateFinalProduct(topic, projectContent, body.productType);
   plan.product.imageBytes = await renderProductImage(plan.product, theme);
@@ -1442,6 +1449,7 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
   const raw = await generateValidatedPresentation(editTopic, count, editPayload, editInstructions);
   const plan = normalizePlan(raw, editTopic, count, inferTheme(project.title || '', ''));
   plan.projectContent = project.projectContent || null;
+  plan.student = project.student || null;
   plan.product = await generateFinalProduct(editTopic, plan.projectContent || { conclusion: plan.summary }, project.product?.format || 'памятка');
   plan.product.imageBytes = await renderProductImage(plan.product, plan.theme);
   const defenseMaterial = await generateDefenseMaterial(editTopic, plan.projectContent || { conclusion: plan.summary }, plan, plan.product);
