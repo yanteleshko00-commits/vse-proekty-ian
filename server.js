@@ -1529,7 +1529,10 @@ app.get('/api/health', (_req, res) => {
 const generationJobs = new Map();
 function pruneGenerationJobs(){const cutoff=Date.now()-30*60*1000;for(const [id,job] of generationJobs)if(job.updatedAt<cutoff&&job.status!=="running")generationJobs.delete(id);}
 app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
-  pruneGenerationJobs();const id=crypto.randomUUID();const job={id,status:'running',stage:'starting',progress:3,message:'🔎 Проверяем тему и параметры проекта...',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null};generationJobs.set(id,job);
+  pruneGenerationJobs();
+  const activeJobs = [...generationJobs.values()].filter(job => job.status === 'running').length;
+  if (activeJobs >= 2) return res.status(429).json({ error: 'Сейчас уже создаются два проекта. Дождись завершения одной генерации и попробуй снова.' });
+  const id=crypto.randomUUID();const job={id,status:'running',stage:'starting',progress:3,message:'🔎 Проверяем тему и параметры проекта...',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null};generationJobs.set(id,job);
   Promise.resolve().then(()=>generateProject(req.body||{},(progress,stage,message)=>{job.progress=progress;job.stage=stage;job.message=message;job.updatedAt=Date.now();})).then(result=>{job.status='completed';job.stage='completed';job.progress=100;job.message='✅ Все материалы готовы!';job.result=result;job.updatedAt=Date.now();}).catch(error=>{job.status='failed';job.stage='failed';job.error=cleanText(error?.message||'Не удалось создать проект.',1000);job.message='❌ Генерация завершилась с ошибкой';job.updatedAt=Date.now();console.error('[background-generation]',id,error?.stack||error);});
   res.status(202).json({jobId:id,status:'running',progress:3,stage:'starting',message:job.message});
 }));
