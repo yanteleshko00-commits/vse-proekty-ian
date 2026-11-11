@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
+import { createProjectModel, applyProjectModel, validateProjectModel } from './lib/project-model.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -1272,7 +1273,11 @@ async function createZip(files) {
 function toFile(name, mime, buffer) {
   return { name, mime, base64: buffer.toString('base64') };
 }
-async function buildFiles(plan) {
+async function buildFiles(inputPlan) {
+  let plan = applyProjectModel(inputPlan);
+  plan.theme = COLORS[plan.contentModel.design.palette] || plan.theme || COLORS.blue;
+  const modelIssues = validateProjectModel(plan.contentModel);
+  if (modelIssues.length) throw new Error('Содержимое проекта не прошло проверку: ' + modelIssues.slice(0, 4).join('; '));
   const specs = [
     { name: 'Итоговый_продукт.pdf', mime: 'application/pdf', create: createProductPdfBuffer },
     { name: 'Итоговый_продукт.png', mime: 'image/png', create: async p => p.product.imageBytes },
@@ -1397,6 +1402,7 @@ async function generateProject(body, onProgress = () => {}) {
   onProgress(76, 'images', '🖼️ Подбираем и проверяем изображения для слайдов...');
   await attachImages(plan);
   plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта — готовый материал на основе исследования.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта', isProductSlide: true });
+  plan.contentModel = createProjectModel({ topic, title: plan.title, summary: plan.summary, student: plan.student, content: plan.projectContent, slides: plan.slides, sources: plan.sources });
   onProgress(88, 'files', '📦 Собираем документы, презентацию и ZIP-архив...');
   const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
   onProgress(98, 'final-check', '🔍 Проверяем готовые файлы...');
@@ -1464,6 +1470,7 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
   });
   await attachImages(plan);
   plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта', isProductSlide: true });
+  plan.contentModel = createProjectModel({ topic: editTopic, title: plan.title, summary: plan.summary, student: plan.student, content: plan.projectContent, slides: plan.slides, sources: plan.sources });
   const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
   res.json({ project: publicProject(plan), files: built.files, fileErrors: built.fileErrors });
 }));
