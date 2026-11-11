@@ -1506,7 +1506,7 @@ async function generateProject(body, onProgress = () => {}) {
   onProgress(76, 'images', '🖼️ Подбираем и проверяем изображения для слайдов...');
   await attachImages(plan);
   plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта — готовый материал на основе исследования.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта', isProductSlide: true });
-  plan.contentModel = createProjectModel({ topic, title: plan.title, summary: plan.summary, student: plan.student, content: plan.projectContent, slides: plan.slides, sources: plan.sources });
+  plan.contentModel = createProjectModel({ topic, title: plan.title, summary: plan.summary, student: plan.student, content: plan.projectContent, product: plan.product, defense: plan.defense, practicalPart: plan.practicalPart, slides: plan.slides, sources: plan.sources });
   onProgress(88, 'files', '📦 Собираем документы, презентацию и ZIP-архив...');
   const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
   onProgress(98, 'final-check', '🔍 Проверяем готовые файлы...');
@@ -1577,7 +1577,7 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
   });
   await attachImages(plan);
   plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта', isProductSlide: true });
-  plan.contentModel = createProjectModel({ topic: editTopic, title: plan.title, summary: plan.summary, student: plan.student, content: plan.projectContent, slides: plan.slides, sources: plan.sources });
+  plan.contentModel = createProjectModel({ topic: editTopic, title: plan.title, summary: plan.summary, student: plan.student, content: plan.projectContent, product: plan.product, defense: plan.defense, practicalPart: plan.practicalPart, slides: plan.slides, sources: plan.sources });
   const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
   res.json({ project: publicProject(plan), files: built.files, fileErrors: built.fileErrors });
 }));
