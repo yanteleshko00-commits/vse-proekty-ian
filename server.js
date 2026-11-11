@@ -569,7 +569,7 @@ async function commonsImage(query, used) {
       url.search = new URLSearchParams({
         action: 'query', generator: 'search', gsrsearch: q,
         gsrnamespace: '6', gsrlimit: '12', prop: 'imageinfo',
-        iiprop: 'url|mime', iiurlwidth: '1400', format: 'json', origin: '*'
+        iiprop: 'url|mime|extmetadata', iiurlwidth: '1400', format: 'json', origin: '*'
       }).toString();
       const res = await withTimeout(fetch(url, {
         headers: { 'User-Agent': 'IanProjectPresentation/1.1 (educational presentation generator; contact: site owner)' },
@@ -596,8 +596,16 @@ async function commonsImage(query, used) {
         if (!candidate || !/^https:\/\/upload\.wikimedia\.org\//i.test(candidate)) continue;
         if (used.has(candidate)) continue;
         if (!['image/jpeg', 'image/png'].includes(info?.mime || '')) continue;
+        const metadata = info.extmetadata || {};
+        const plain = value => cleanText(String(value?.value || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' '), 220);
+        const license = plain(metadata.LicenseShortName);
+        const artist = plain(metadata.Artist);
+        // Do not embed Commons media unless its file page exposes a recognizable license.
+        if (!license) continue;
+        const filePage = 'https://commons.wikimedia.org/wiki/' + encodeURIComponent(String(page.title || '').replace(/ /g, '_'));
+        const credit = [page.title || 'Изображение', artist, license, filePage].filter(Boolean).join(' — ');
         used.add(candidate);
-        return { url: candidate, credit: `${page.title || 'Изображение'} — Wikimedia Commons`, title: page.title || '' };
+        return { url: candidate, credit, title: page.title || '', license, artist, filePage };
       }
     } catch (err) {
       console.warn('Wikimedia search attempt failed:', err.message);
