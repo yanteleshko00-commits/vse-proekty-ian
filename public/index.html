@@ -506,19 +506,56 @@ html[data-theme="dark"] .check-toggle{color:#9bc4ff;background:rgba(90,147,226,.
 </style>
 
 
+
+<style id="lamp-startup-refresh">
+/* Лампочка сама является логотипом и кнопкой запуска */
+#appSplash{background:#03060d!important;color:#eef5ff!important}
+#appSplash:before{background:radial-gradient(circle at 50% 43%,rgba(28,91,190,.17),transparent 35%)!important}
+#appSplash .lamp-switch{
+  width:190px!important;height:220px!important;min-height:220px!important;
+  min-width:190px!important;flex:0 0 220px!important;margin:0!important;padding:0!important;
+  display:grid!important;place-items:center!important;border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;overflow:visible!important;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+#appSplash .lamp-switch:before{display:none!important}
+#appSplash .lamp-scene{height:190px;width:190px;justify-content:center;gap:0;transition:transform .65s cubic-bezier(.2,.8,.2,1)}
+#appSplash .lamp-wire{display:none}
+#appSplash .lamp-svg{width:142px;height:172px;filter:drop-shadow(0 0 15px rgba(25,103,255,.12));transition:filter 1.2s ease,transform 1.2s cubic-bezier(.2,.8,.2,1)}
+#appSplash .lamp-glass{fill:#10264b!important;fill-opacity:.52!important;stroke:#2862b5!important;transition:fill 1.2s ease,fill-opacity 1.2s ease,stroke 1.2s ease}
+#appSplash .lamp-filament{stroke:#315b9b!important;filter:none;transition:stroke 1.1s ease,filter 1.1s ease}
+#appSplash .lamp-glow{top:28px;width:0;height:0;background:#2585ff;filter:blur(38px);opacity:0;transition:width 1.4s ease,height 1.4s ease,opacity 1.2s ease}
+#appSplash .splash-brand{margin-top:3px;color:#e8f1ff}
+#appSplash .splash-brand span{color:#4b9aff}
+#appSplash .splash-prompt{color:#8193ad}
+#appSplash .lamp-switch:focus-visible{outline:2px solid #579cff;outline-offset:8px;border-radius:50%!important}
+#appSplash .lamp-switch:active .lamp-scene{transform:scale(.96)}
+#appSplash.is-lighting{background:#f7fbff!important}
+#appSplash.is-lighting:before{background:radial-gradient(circle at 50% 43%,rgba(63,147,255,.55),transparent 48%)!important}
+#appSplash.is-lighting .lamp-glow{width:470px;height:470px;opacity:.95}
+#appSplash.is-lighting .lamp-svg{transform:scale(1.08);filter:drop-shadow(0 0 48px rgba(65,151,255,.95))}
+#appSplash.is-lighting .lamp-glass{fill:#d9edff!important;fill-opacity:1!important;stroke:#fff!important}
+#appSplash.is-lighting .lamp-filament{stroke:#fff!important;filter:drop-shadow(0 0 9px #fff)}
+#appSplash.is-lighting .splash-brand{color:#10294a}
+#appSplash.is-lighting .splash-prompt{color:#526b8e}
+#appSplash.is-lighting .lamp-switch{opacity:1!important;transform:none!important;pointer-events:none}
+#appSplash.reveal-site{opacity:0;visibility:hidden;pointer-events:none}
+@media(max-width:750px){#appSplash .lamp-switch{width:170px!important;height:200px!important;min-width:170px!important;flex-basis:200px!important}#appSplash .lamp-scene{width:170px;height:175px}#appSplash .lamp-svg{width:132px;height:160px}}
+@media(prefers-reduced-motion:reduce){#appSplash,#appSplash *{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+</style>
+
 </head>
 <body>
 
 <div id="appSplash" aria-label="Все проекты #Ian — включи свет" role="dialog" aria-modal="true">
-  <div class="lamp-scene" aria-hidden="true">
+  <button id="lampSwitch" class="lamp-switch" type="button" aria-label="Включить лампочку и открыть сайт" title="Включить свет">
+  <span class="lamp-scene" aria-hidden="true">
     <div class="lamp-wire"></div>
     <svg class="lamp-svg" viewBox="0 0 122 148" role="img" aria-label="Лампочка" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bulbGlass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f5f8ff" stop-opacity=".9"/><stop offset="1" stop-color="#8d9db5" stop-opacity=".22"/></linearGradient><linearGradient id="bulbMetal" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#d9e0eb"/><stop offset="1" stop-color="#68758a"/></linearGradient></defs><path class="lamp-glass" d="M61 12c-25 0-42 18-42 41 0 17 9 27 20 39 5 5 7 10 8 16h28c1-6 3-11 8-16 11-12 20-22 20-39 0-23-17-41-42-41Z" fill="url(#bulbGlass)" stroke="#c8d5e8" stroke-width="2.5"/><path class="lamp-filament" d="M47 65c4-8 8-12 14-12s10 4 14 12M52 68l5 13h8l5-13M61 53v-9" stroke="#e9edf5" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M47 108h28v8H47zM48 117h26v7H48zM50 126h22v7H50z" fill="url(#bulbMetal)" stroke="#b9c5d6" stroke-width="1.2"/><path d="M54 136h14" stroke="#8794a8" stroke-width="3" stroke-linecap="round"/></svg><div class="lamp-glow"></div>
-  </div>
-  <div class="splash-brand">Все проекты <span>#Ian</span></div>
-  <p class="splash-prompt">Идея начинается с одного нажатия</p>
-  <button id="lampSwitch" class="lamp-switch" type="button" aria-label="Включить лампочку и открыть сайт" title="Включить свет">
-    <span class="switch-button"><i></i></span>
+  </span>
   </button>
+  <div class="splash-brand">Все проекты <span>#Ian</span></div>
+  <p class="splash-prompt">Нажми на лампочку, чтобы начать</p>
 </div>
 
 
