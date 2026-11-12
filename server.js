@@ -24,6 +24,12 @@ const PDF_FONT_PATH = path.resolve(process.cwd(), 'DejaVuSans.ttf');
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: REQUEST_TIMEOUT_MS, maxRetries: 0 })
   : null;
+// Avoid repeatedly calling OpenAI after a confirmed exhausted-quota response.
+let openAIQuotaBlockedUntil = 0;
+function isOpenAIQuotaError(error) {
+  const message = cleanText(error?.message || '', 500).toLowerCase();
+  return Number(error?.status) === 429 && (error?.code === 'insufficient_quota' || /insufficient_quota|exceeded your current quota|billing hard limit|no credits remaining/.test(message));
+}
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '15mb' }));
@@ -228,7 +234,6 @@ async function withTimeout(promise, ms, label = 'Операция') {
 function configuredAIProviders() {
   const providers = [];
   // Every configured provider is attempted independently in the parallel competition.
-  if (process.env.GEMINI_API_KEY) providers.push({ name: 'Google Gemini', type: 'gemini', key: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || 'gemini-3.8-flash' });
   if (process.env.OPENROUTER_API_KEY) providers.push({ name: 'OpenRouter Free', type: 'openai-compatible', key: process.env.OPENROUTER_API_KEY, baseURL: 'https://openrouter.ai/api/v1', model: process.env.OPENROUTER_MODEL || 'openrouter/free', freeOnly: true });
   if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b' });
   if (process.env.DEEPSEEK_API_KEY) providers.push({ name: 'DeepSeek', type: 'openai-compatible', key: process.env.DEEPSEEK_API_KEY, baseURL: 'https://api.deepseek.com', model: process.env.DEEPSEEK_MODEL || 'deepseek-flash' });
@@ -334,6 +339,9 @@ async function runAIWithFallback(instructions, input, jsonMode, timeout = REQUES
       if (!cleanText(output, 12000)) throw new Error(provider.name + ': пустой ответ.');
       return { output, provider: provider.name };
     } catch (error) {
+      if (provider.name === 'OpenAI' && isOpenAIQuotaError(error)) {
+        openAIQuotaBlockedUntil = Date.now() + 15 * 60 * 1000;
+      }
       const message = cleanText(error?.message || 'неизвестная ошибка', 350).replace(/sk-[A-Za-z0-9_-]{16,}/g, '[ключ скрыт]').replace(/Bearer\s+\S+/gi, 'Bearer [скрыт]');
       failures.push(provider.name + ': ' + message);
       console.warn('[AI fallback] ' + provider.name + ' недоступен: ' + message);
@@ -368,9 +376,11 @@ function scoreAIJsonCandidate(parsed, payload) {
 
 async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   const input = 'Return a valid json object matching the requested schema.\nPayload: ' + JSON.stringify(payload);
-  const providers = configuredAIProviders();
+  const providers = configuredAIProviders().filter(provider =>
+    !(provider.name === 'OpenAI' && openAIQuotaBlockedUntil > Date.now())
+  );
   if (!providers.length) {
-    throw new Error('Не подключены API-ключи ИИ. Добавь хотя бы один рабочий API-ключ провайдера в Render.');
+    throw new Error('Нет доступных ИИ-провайдеров: проверь ключи в Render. OpenAI может быть временно пропущен после ошибки исчерпанной квоты.');
   }
 
   // All configured providers start together. A failed provider cannot cancel the others.
@@ -1346,6 +1356,33 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
   plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта', isProductSlide: true });
   const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
   res.json({ project: publicProject(plan), files: built.files, fileErrors: built.fileErrors });
+}));
+
+app.post('/api/suggest-topics', asyncRoute(async (req, res) => {
+  const interests = cleanText(req.body?.interests, 300);
+  const count = clampInt(req.body?.count, 3, 7, 5);
+  const instructions = `Ты — научный руководитель школьных проектов. Предложи оригинальные, исследуемые и подходящие для школьника темы.
+Верни только JSON: {"topics":[{"title":"Название темы","area":"Направление","description":"Почему тема интересна и что можно изучить","question":"Главный исследовательский вопрос"}]}.
+Требования:
+- Ровно ${count} разных тем, без повторов и банальных формулировок.
+- Разнообразные области: общество, технологии, наука, культура, экология, образование и этика.
+- Включай сложные моральные и этические вопросы: справедливость, личная свобода и ответственность, влияние технологий на человека, границы допустимого в науке, моральный выбор. Не навязывай единственно правильное мнение.
+- Тема должна быть посильной для школьного исследования через анализ источников, сравнение аргументов, наблюдение или безопасный опрос.
+- Не предлагай опасные эксперименты, сбор чувствительных личных данных или незаконные действия.
+- Не выдумывай факты и статистику. Пиши по-русски, понятно и конкретно.`;
+  const result = await aiJson(instructions, { interests, count }, 35000);
+  const topics = (Array.isArray(result.topics) ? result.topics : []).map(item => ({
+    title: normalizeText(item?.title || '', 180),
+    area: normalizeText(item?.area || 'Междисциплинарная тема', 80),
+    description: normalizeText(item?.description || '', 280),
+    question: normalizeText(item?.question || '', 240)
+  })).filter(item => item.title && item.description).slice(0, count);
+  if (!topics.length) {
+    const error = new Error('ИИ не вернул подходящие темы. Попробуй ещё раз.');
+    error.status = 503;
+    throw error;
+  }
+  res.json({ topics });
 }));
 
 app.post('/api/chat', asyncRoute(async (req, res) => {
