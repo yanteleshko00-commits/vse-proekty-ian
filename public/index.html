@@ -542,6 +542,19 @@ html[data-theme="dark"] .check-toggle{color:#9bc4ff;background:rgba(90,147,226,.
 #appSplash.reveal-site{opacity:0;visibility:hidden;pointer-events:none}
 @media(max-width:750px){#appSplash .lamp-switch{width:170px!important;height:200px!important;min-width:170px!important;flex-basis:200px!important}#appSplash .lamp-scene{width:170px;height:175px}#appSplash .lamp-svg{width:132px;height:160px}}
 @media(prefers-reduced-motion:reduce){#appSplash,#appSplash *{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+.topic-ai-controls{display:flex;gap:10px;align-items:stretch;margin-top:10px;flex-wrap:wrap}
+.topic-ai-controls input{flex:1 1 210px;min-width:0;min-height:46px;padding:11px 13px;border:1px solid var(--b);border-radius:12px;background:#fff;color:#17231d;font:inherit}
+.topic-ai-controls button{flex:0 1 auto;min-height:46px;padding:11px 15px;border:1px solid rgba(40,120,240,.2);border-radius:12px;background:rgba(40,120,240,.09);color:#2368ca;font-weight:800;cursor:pointer}
+.topic-ai-controls button:disabled{opacity:.55;cursor:wait}
+.topic-suggestions{display:grid;gap:10px;margin-top:12px}
+.topic-suggestion{padding:14px;border:1px solid rgba(40,120,240,.16);border-radius:14px;background:rgba(40,120,240,.035)}
+.topic-suggestion h4{margin:0 0 6px;color:var(--d);font-size:15px}
+.topic-suggestion p{margin:5px 0;color:var(--m);font-size:13px;line-height:1.5}
+.topic-suggestion button{margin-top:8px;padding:9px 12px;border:0;border-radius:9px;background:#2878f0;color:#fff;font-weight:750;cursor:pointer}
+html[data-theme="dark"] .topic-ai-controls input{background:#172235;color:#edf4ff;border-color:#3b506d}
+html[data-theme="dark"] .topic-suggestion{background:rgba(55,105,180,.12);border-color:rgba(124,174,245,.2)}
+html[data-theme="dark"] .topic-suggestion h4{color:#edf4ff}
 </style>
 
 </head>
@@ -596,7 +609,13 @@ html[data-theme="dark"] .check-toggle{color:#9bc4ff;background:rgba(90,147,226,.
 <div class="field"><label for="lastName">Фамилия</label><input id="lastName" type="text" autocomplete="family-name" placeholder="Иванов"></div>
 <div class="field"><label for="className">Класс</label><input id="className" type="text" placeholder="9А"></div>
 <div class="field"><label for="school">Школа</label><input id="school" type="text" placeholder="Необязательно"></div>
-<div class="field full"><label for="topic">Тема проекта</label><input id="topic" type="text" placeholder="Например: Снижение расхода электроэнергии"></div>
+<div class="field full"><label for="topic">Тема проекта</label><input id="topic" type="text" placeholder="Например: Снижение расхода электроэнергии">
+  <div class="topic-ai-controls">
+    <input id="topicInterests" type="text" maxlength="300" placeholder="Направление или интерес (необязательно)">
+    <button id="suggestTopicsButton" type="button" onclick="suggestProjectTopics()">✨ Сгенерировать тему с ИИ</button>
+  </div>
+  <div id="topicSuggestions" class="topic-suggestions" aria-live="polite"></div>
+</div>
 <div class="field"><label for="slides">Количество слайдов (от 7 до 100)</label><input id="slides" type="number" min="7" max="100" step="1" value="12" inputmode="numeric" required></div>
 <div class="field"><label for="productType">Итоговый продукт проекта</label><select id="productType"><option value="">Подобрать автоматически</option><option value="Памятка">Памятка</option><option value="Буклет">Буклет</option><option value="Чек-лист">Чек-лист</option><option value="Мини-гайд">Мини-гайд</option><option value="Карточки">Карточки</option><option value="Инструкция">Инструкция</option></select></div>
 <div class="field"><label for="requirementsFile">Требования школы</label><input id="requirementsFile" type="file" accept=".pdf,.doc,.docx"></div>
@@ -884,6 +903,45 @@ async function generatePicture(){
   if(!prompt){out.style.display="block";out.textContent="Сначала опиши картинку.";return;}
   btn.disabled=true;btn.textContent="Создаю изображение...";out.style.display="block";out.textContent="Генерирую картинку. Это может занять до минуты...";
   try{const r=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Не удалось создать изображение.");out.textContent="Готово!";if(d.image){const img=document.createElement("img");img.alt="Созданное изображение";img.src="data:"+(d.mime||"image/png")+";base64,"+d.image;out.appendChild(img);const a=document.createElement("a");a.href=img.src;a.download=(d.mime==="image/svg+xml"?"Моя_картинка.svg":"Моя_картинка.png");a.textContent="Скачать изображение";a.style.display="inline-block";a.style.marginTop="12px";a.style.fontWeight="800";a.style.color="#123a80";out.appendChild(a);}}catch(e){out.textContent="Ошибка: "+e.message;}finally{btn.disabled=false;btn.textContent="Создать изображение";}
+}
+
+async function suggestProjectTopics(){
+  const button=document.getElementById("suggestTopicsButton");
+  const output=document.getElementById("topicSuggestions");
+  const interests=val("topicInterests");
+  if(!button||!output)return;
+  button.disabled=true;button.textContent="⏳ Подбираю темы...";
+  output.innerHTML='<p class="topic-suggestion">ИИ подбирает разные идеи, включая общественные, моральные и этические вопросы…</p>';
+  try{
+    const response=await fetch("/api/suggest-topics",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({interests,count:5})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.error||"Не удалось сгенерировать темы.");
+    if(!Array.isArray(data.topics)||!data.topics.length)throw new Error("ИИ не вернул список тем.");
+    output.innerHTML=data.topics.map((item,index)=>`
+      <article class="topic-suggestion">
+        <h4>${index+1}. ${esc(item.title)}</h4>
+        <p><b>${esc(item.area)}</b> · ${esc(item.description)}</p>
+        <p><b>Исследовательский вопрос:</b> ${esc(item.question)}</p>
+        <button type="button" data-topic-index="${index}">Выбрать эту тему</button>
+      </article>`).join("");
+    output.querySelectorAll("[data-topic-index]").forEach(button=>{
+      button.addEventListener("click",()=>{
+        const item=data.topics[Number(button.dataset.topicIndex)];
+        if(!item)return;
+        document.getElementById("topic").value=item.title;
+        document.getElementById("topic").focus();
+        output.querySelectorAll(".topic-suggestion").forEach(card=>card.style.borderColor="");
+        button.closest(".topic-suggestion").style.borderColor="#2878f0";
+      });
+    });
+  }catch(error){
+    output.innerHTML='<p class="topic-suggestion">❌ '+esc(error.message||"Ошибка генерации тем.")+'</p>';
+  }finally{
+    button.disabled=false;button.textContent="✨ Сгенерировать тему с ИИ";
+  }
 }
 
 async function createProject(){
