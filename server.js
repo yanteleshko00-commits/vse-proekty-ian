@@ -400,6 +400,12 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
         elapsedMs: Date.now() - startedAt
       };
     } catch (error) {
+      // Parallel presentation generation must also remember exhausted OpenAI quota.
+      // Otherwise every stage retries the same dead key and produces repeated 429 errors.
+      if (provider.name === 'OpenAI' && isOpenAIQuotaError(error)) {
+        openAIQuotaBlockedUntil = Date.now() + 15 * 60 * 1000;
+        console.warn('[AI competition] OpenAI пропущен на 15 минут: исчерпана квота API.');
+      }
       const message = cleanText(error?.message || 'неизвестная ошибка', 350)
         .replace(/sk-[A-Za-z0-9_-]{16,}/g, '[ключ скрыт]')
         .replace(/Bearer\s+\S+/gi, 'Bearer [скрыт]');
