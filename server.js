@@ -1498,17 +1498,41 @@ function asyncRoute(handler) {
   return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 }
 
-app.get('/api/health', (_req, res) => {
+async function inspectGenerationJobStorage() {
+  const configured = Boolean(process.env.GENERATION_JOBS_DIR);
+  try {
+    await fs.promises.mkdir(generationJobStoreDir, { recursive: true });
+    const [storeStat, rootStat] = await Promise.all([
+      fs.promises.stat(generationJobStoreDir),
+      fs.promises.stat(path.parse(generationJobStoreDir).root)
+    ]);
+    const writable = await fs.promises.access(generationJobStoreDir, fs.constants.W_OK).then(() => true).catch(() => false);
+    const mounted = configured && storeStat.dev !== rootStat.dev;
+    return {
+      status: !configured ? 'ephemeral-storage' : mounted ? 'persistent-disk-mounted' : 'path-configured-mount-not-detected',
+      configured, mounted, writable
+    };
+  } catch (error) {
+    return {
+      status: configured ? 'persistent-storage-unavailable' : 'ephemeral-storage',
+      configured, mounted: false, writable: false,
+      error: cleanText(error?.message || error, 180)
+    };
+  }
+}
+app.get('/api/health', asyncRoute(async (_req, res) => {
   const providers = configuredAIProviders();
+  const generationJobStorage = await inspectGenerationJobStorage();
   res.json({
     ok: true, service: 'presentation-generator', model: MODEL,
     aiProviders: providers.map(provider => provider.name),
     aiProviderModels: providers.map(provider => ({ name: provider.name, model: provider.model || MODEL })),
     aiProviderStatus: { geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY), openAIEnabledForText: false },
     imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true',
-    generationJobStorage: process.env.GENERATION_JOBS_DIR ? 'persistent-disk-configured' : 'ephemeral-storage'
+    generationJobStorage: generationJobStorage.status,
+    generationJobStorageWritable: generationJobStorage.writable
   });
-});
+}));
 
 const generationJobs = new Map();
 // Configure GENERATION_JOBS_DIR to a mounted Render persistent disk (for example /var/data/generation-jobs)
