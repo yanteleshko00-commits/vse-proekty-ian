@@ -585,29 +585,108 @@ function validatePresentationPlan(raw, requestedCount) {
 }
 function repairInvalidSlideLayouts(raw) {
   if (!raw || typeof raw !== 'object' || !Array.isArray(raw.slides)) return raw;
-  raw.slides = raw.slides.map((slide) => {
-    if (!slide || typeof slide !== 'object' || slide.type !== 'cards') return slide;
-    const cards = Array.isArray(slide.cards)
-      ? slide.cards.filter(card => cleanText(card?.title, 55) && cleanText(card?.text, 110))
-      : [];
-    if (cards.length >= 2) return slide;
 
-    // A weak cards response should not invalidate the whole presentation.
-    // Preserve any usable card information as bullets and switch to the flexible image layout.
-    const cardBullets = (Array.isArray(slide.cards) ? slide.cards : [])
-      .filter(card => card && (cleanText(card.title, 55) || cleanText(card.text, 110)))
-      .map(card => [cleanText(card.title, 55), cleanText(card.text, 110)].filter(Boolean).join(': '));
-    const existingBullets = Array.isArray(slide.bullets) ? slide.bullets : [];
+  const nonEmpty = value => cleanText(value, 500);
+  const asList = value => Array.isArray(value) ? value.map(nonEmpty).filter(Boolean) : [];
+  const toImageFallback = (slide, additions = []) => {
+    const cardText = (Array.isArray(slide.cards) ? slide.cards : [])
+      .map(card => [nonEmpty(card?.title), nonEmpty(card?.text)].filter(Boolean).join(': '));
+    const tableText = (Array.isArray(slide.table) ? slide.table : [])
+      .filter(Array.isArray).map(row => row.map(nonEmpty).filter(Boolean).join(' — '));
+    const comparisonText = [
+      ...asList(slide.leftItems).map(item => (nonEmpty(slide.leftTitle) || 'Первая сторона') + ': ' + item),
+      ...asList(slide.rightItems).map(item => (nonEmpty(slide.rightTitle) || 'Вторая сторона') + ': ' + item)
+    ];
+    const preserved = [
+      ...asList(slide.bullets), ...asList(slide.steps), ...cardText,
+      ...tableText, ...comparisonText, ...additions
+    ].filter(Boolean);
+    const unique = [...new Set(preserved)];
     return {
       ...slide,
       type: 'image',
-      bullets: [...existingBullets, ...cardBullets].filter(Boolean).slice(0, 4),
-      cards: []
+      bullets: unique.slice(0, 4),
+      cards: [],
+      table: []
     };
+  };
+
+  const slides = raw.slides.map((slide, index) => {
+    if (!slide || typeof slide !== 'object') return slide;
+    const type = normalizeSlideType(slide.type, index);
+    const cards = Array.isArray(slide.cards)
+      ? slide.cards.filter(card => nonEmpty(card?.title) && nonEmpty(card?.text))
+      : [];
+    const tableRows = Array.isArray(slide.table)
+      ? slide.table.filter(row => Array.isArray(row) && row.some(cell => nonEmpty(cell)))
+      : [];
+    const tableIsUsable = tableRows.length >= 3 &&
+      tableRows[0].filter(cell => nonEmpty(cell)).length >= 2 &&
+      tableRows.slice(1, 3).every(row => row.filter(cell => nonEmpty(cell)).length >= 2);
+    const comparisonIsUsable = asList(slide.leftItems).length >= 2 && asList(slide.rightItems).length >= 2;
+    const processIsUsable = asList(slide.steps).length >= 2 || asList(slide.bullets).length >= 3;
+    const statIsUsable = Boolean(nonEmpty(slide.statistic) || nonEmpty(slide.statisticLabel) || nonEmpty(slide.body));
+    let repaired = { ...slide, type };
+
+    if (type === 'cards' && cards.length < 2) {
+      repaired = toImageFallback(repaired);
+    } else if (type === 'table' && !tableIsUsable) {
+      repaired = toImageFallback(repaired);
+    } else if (type === 'comparison' && !comparisonIsUsable) {
+      repaired = toImageFallback(repaired);
+    } else if (type === 'process' && !processIsUsable) {
+      repaired = toImageFallback(repaired);
+    } else if (type === 'stat' && !statIsUsable) {
+      repaired = toImageFallback(repaired);
+    }
+
+    // Keep a usable content block if the model left the generic body empty.
+    const content = [
+      nonEmpty(repaired.body), nonEmpty(repaired.subtitle), nonEmpty(repaired.quote),
+      ...asList(repaired.bullets), ...asList(repaired.steps),
+      ...(Array.isArray(repaired.cards) ? repaired.cards.flatMap(card => [nonEmpty(card?.title), nonEmpty(card?.text)]) : []),
+      ...(Array.isArray(repaired.table) ? repaired.table.flat().map(nonEmpty) : [])
+    ].filter(Boolean);
+    if (content.join(' ').length < 32) {
+      const preserved = [
+        ...asList(repaired.bullets), ...asList(repaired.steps),
+        ...tableRows.flat().map(nonEmpty), ...cards.flatMap(card => [nonEmpty(card.title), nonEmpty(card.text)])
+      ].filter(Boolean);
+      if (preserved.join(' ').length >= 32) {
+        repaired = { ...repaired, type: 'image', bullets: [...new Set(preserved)].slice(0, 4), cards: [], table: [] };
+      }
+    }
+    return repaired;
   });
+
+  // Prevent repeated titles and photo searches from causing avoidable quality-check failures.
+  const seenTitles = new Set();
+  const seenQueries = new Set();
+  for (const [index, slide] of slides.entries()) {
+    if (!slide || typeof slide !== 'object') continue;
+    let title = cleanText(slide.title, 90);
+    const titleKey = title.toLocaleLowerCase('ru');
+    if (!title || seenTitles.has(titleKey) || /^(?:развитие темы|основные элементы|главная идея|актуальность темы|пример из практики|практические аспекты|раздел \d+)$/i.test(title)) {
+      const candidate = normalizeText([
+        slide.body, slide.subtitle, ...(Array.isArray(slide.bullets) ? slide.bullets : []),
+        ...(Array.isArray(slide.steps) ? slide.steps : [])
+      ].map(nonEmpty).find(Boolean) || ('Дополнительный аспект темы ' + (index + 1)), 82);
+      title = seenTitles.has(candidate.toLocaleLowerCase('ru')) ? candidate.slice(0, 72) + ' ' + (index + 1) : candidate;
+      slide.title = title;
+    }
+    seenTitles.add(title.toLocaleLowerCase('ru'));
+
+    let query = cleanText(slide.imageQuery, 180);
+    const queryKey = query.toLocaleLowerCase('en').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!query || seenQueries.has(queryKey)) {
+      query = [query, cleanText(slide.title, 70), 'educational editorial photography'].filter(Boolean).join(' ');
+      slide.imageQuery = normalizeText(query, 180);
+    }
+    seenQueries.add(slide.imageQuery.toLocaleLowerCase('en'));
+  }
+  raw.slides = slides;
   return raw;
 }
-
 async function generateValidatedPresentation(topic, requestedCount, payload, instructions = PLANNER_INSTRUCTIONS) {
   let raw = repairInvalidSlideLayouts(await aiJson(instructions, payload));
   let issues = validatePresentationPlan(raw, requestedCount);
