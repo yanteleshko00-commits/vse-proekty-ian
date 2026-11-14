@@ -316,11 +316,13 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
       method: 'POST', signal, headers, body: JSON.stringify(requestBody)
     });
     let data = await response.json().catch(() => ({}));
+    let retriedWithoutJsonMode = false;
     // OpenRouter's free router can select a model that does not implement JSON mode.
-    // Retry that provider once without response_format; extractJson still validates the result.
+    // Retry at most once without response_format; extractJson still validates the result.
     if (!response.ok && provider.name === 'OpenRouter Free' && jsonMode && [400, 404, 422].includes(response.status)) {
       const fallbackBody = { ...requestBody };
       delete fallbackBody.response_format;
+      retriedWithoutJsonMode = true;
       response = await fetch(provider.baseURL + '/chat/completions', {
         method: 'POST', signal, headers, body: JSON.stringify(fallbackBody)
       });
@@ -334,8 +336,9 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
         : '';
     // Some free routed models return HTTP 200 but no content when JSON mode is requested.
     // Retry once without response_format before treating that provider as unavailable.
-    if ((!response.ok || !output.trim()) && provider.name === 'OpenRouter Free' && jsonMode) {
+    if ((!response.ok || !output.trim()) && provider.name === 'OpenRouter Free' && jsonMode && !retriedWithoutJsonMode) {
       const retryBody = { ...requestBody };
+      retriedWithoutJsonMode = true;
       delete retryBody.response_format;
       response = await fetch(provider.baseURL + '/chat/completions', {
         method: 'POST', signal, headers, body: JSON.stringify(retryBody)
