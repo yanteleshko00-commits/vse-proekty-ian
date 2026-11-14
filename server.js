@@ -666,7 +666,7 @@ function repairInvalidSlideLayouts(raw) {
     if (!slide || typeof slide !== 'object') continue;
     let title = cleanText(slide.title, 90);
     const titleKey = title.toLocaleLowerCase('ru');
-    if (!title || seenTitles.has(titleKey) || /^(?:развитие темы|основные элементы|главная идея|актуальность темы|пример из практики|практические аспекты|раздел \d+)$/i.test(title)) {
+    if (!title || seenTitles.has(titleKey) || /^(?:развитие темы|основные элементы|главная идея|актуальность темы|пример из практики|практические аспекты|раздел \d+)(?:\s|:|$)/i.test(title)) {
       const candidate = normalizeText([
         slide.body, slide.subtitle, ...(Array.isArray(slide.bullets) ? slide.bullets : []),
         ...(Array.isArray(slide.steps) ? slide.steps : [])
@@ -677,12 +677,18 @@ function repairInvalidSlideLayouts(raw) {
     seenTitles.add(title.toLocaleLowerCase('ru'));
 
     let query = cleanText(slide.imageQuery, 180);
-    const queryKey = query.toLocaleLowerCase('en').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+    const normalizeQuery = value => value.toLocaleLowerCase('en').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+    let queryKey = normalizeQuery(query);
     if (!query || seenQueries.has(queryKey)) {
-      query = [query, cleanText(slide.title, 70), 'educational editorial photography'].filter(Boolean).join(' ');
+      query = [query, cleanText(slide.title, 70), 'educational editorial photography', 'slide ' + (index + 1)].filter(Boolean).join(' ');
       slide.imageQuery = normalizeText(query, 180);
+      queryKey = normalizeQuery(slide.imageQuery);
     }
-    seenQueries.add(slide.imageQuery.toLocaleLowerCase('en'));
+    if (seenQueries.has(queryKey)) {
+      slide.imageQuery = normalizeText(slide.imageQuery + ' distinct scene ' + (index + 1), 180);
+      queryKey = normalizeQuery(slide.imageQuery);
+    }
+    seenQueries.add(queryKey);
   }
   raw.slides = slides;
   return raw;
