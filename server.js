@@ -234,6 +234,7 @@ async function withTimeout(promise, ms, label = 'Операция') {
 function configuredAIProviders() {
   const providers = [];
   // Every configured provider is attempted independently in the parallel competition.
+  if (process.env.GEMINI_API_KEY) providers.push({ name: 'Google Gemini', type: 'gemini', model: process.env.GEMINI_MODEL || 'gemini-2.5-flash' });
   if (process.env.OPENROUTER_API_KEY) providers.push({ name: 'OpenRouter Free', type: 'openai-compatible', key: process.env.OPENROUTER_API_KEY, baseURL: 'https://openrouter.ai/api/v1', model: process.env.OPENROUTER_MODEL || 'openrouter/free', freeOnly: true });
   if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b' });
   if (process.env.DEEPSEEK_API_KEY) providers.push({ name: 'DeepSeek', type: 'openai-compatible', key: process.env.DEEPSEEK_API_KEY, baseURL: 'https://api.deepseek.com', model: process.env.DEEPSEEK_MODEL || 'deepseek-flash' });
