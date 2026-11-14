@@ -583,8 +583,33 @@ function validatePresentationPlan(raw, requestedCount) {
   if (slides.length > 1 && imageQueries.size < requiredUniqueQueries) issues.push(`нужно не менее ${requiredUniqueQueries} разных запросов изображений, получено ${imageQueries.size}`);
   return [...new Set(issues)].slice(0, 20);
 }
+function repairInvalidSlideLayouts(raw) {
+  if (!raw || typeof raw !== 'object' || !Array.isArray(raw.slides)) return raw;
+  raw.slides = raw.slides.map((slide) => {
+    if (!slide || typeof slide !== 'object' || slide.type !== 'cards') return slide;
+    const cards = Array.isArray(slide.cards)
+      ? slide.cards.filter(card => cleanText(card?.title, 55) && cleanText(card?.text, 110))
+      : [];
+    if (cards.length >= 2) return slide;
+
+    // A weak cards response should not invalidate the whole presentation.
+    // Preserve any usable card information as bullets and switch to the flexible image layout.
+    const cardBullets = (Array.isArray(slide.cards) ? slide.cards : [])
+      .filter(card => card && (cleanText(card.title, 55) || cleanText(card.text, 110)))
+      .map(card => [cleanText(card.title, 55), cleanText(card.text, 110)].filter(Boolean).join(': '));
+    const existingBullets = Array.isArray(slide.bullets) ? slide.bullets : [];
+    return {
+      ...slide,
+      type: 'image',
+      bullets: [...existingBullets, ...cardBullets].filter(Boolean).slice(0, 4),
+      cards: []
+    };
+  });
+  return raw;
+}
+
 async function generateValidatedPresentation(topic, requestedCount, payload, instructions = PLANNER_INSTRUCTIONS) {
-  let raw = await aiJson(instructions, payload);
+  let raw = repairInvalidSlideLayouts(await aiJson(instructions, payload));
   let issues = validatePresentationPlan(raw, requestedCount);
   if (issues.length) {
     console.warn('[presentation-quality] План не прошёл проверку; запрашиваю исправление:', issues.join('; '));
@@ -594,11 +619,11 @@ async function generateValidatedPresentation(topic, requestedCount, payload, ins
 Ошибки проверки:
 ${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\\n')}
 `;
-    raw = await aiJson(repairInstructions, {
+    raw = repairInvalidSlideLayouts(await aiJson(repairInstructions, {
       topic, requestedSlides: requestedCount, originalRequest: payload,
       previousDraft: raw, validationErrors: issues,
       outputRules: `Верни ровно ${requestedCount} неповторяющихся слайдов и все требуемые поля. Исправь каждую ошибку из validationErrors.`
-    });
+    }));
     issues = validatePresentationPlan(raw, requestedCount);
   }
   if (issues.length) {
