@@ -281,7 +281,7 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
   }
   if (provider.type === 'gemini') {
     // Gemini capacity can vary by model. Try the configured model, then current supported fallbacks.
-    const models = [...new Set([provider.model, 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash-lite'].filter(Boolean))];
+    const models = [...new Set(['gemini-3.8-flash', provider.model, 'gemini-3.7-flash', 'gemini-3.5-flash-lite'].filter(Boolean))];
     let lastError = null;
     for (const model of models) {
       const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(provider.key);
@@ -432,7 +432,7 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   }
 
   // All configured providers start together. A failed provider cannot cancel the others.
-  const perProviderTimeout = Math.max(12000, Math.min(50000, timeout));
+  const perProviderTimeout = Math.max(15000, Math.min(35000, timeout));
   const waveStartedAt = Date.now();
   const attempts = await Promise.all(providers.map(async provider => {
     const startedAt = Date.now();
@@ -1425,11 +1425,28 @@ async function generateProject(body, onProgress = () => {}) {
   if (!topic) { const error = new Error('Укажи тему проекта или презентации.'); error.status = 400; throw error; }
   const count = clampInt(body.slidesCount ?? body.slides ?? body.presentationSlides, 7, MAX_SLIDES, 12);
   const theme = inferTheme(topic, body.style || '');
+
+  // Stage 1: prepare the factual project foundation.
   onProgress(8, 'project-text', '📝 Создаём текстовую основу проекта...');
   const projectContent = await generateProjectContent(topic, body);
-  onProgress(22, 'presentation', '📊 Формируем структуру и содержание презентации...');
+
+  // Stage 2: create and render the actual project product BEFORE planning the slides.
+  onProgress(22, 'product', '🧩 Создаём итоговый продукт проекта...');
+  const product = await generateFinalProduct(topic, projectContent, body.productType);
+  product.imageBytes = await renderProductImage(product, theme);
+  if (!Buffer.isBuffer(product.imageBytes) || !product.imageBytes.length) {
+    throw new Error('Не удалось сохранить изображение итогового продукта. Презентация не будет собрана без него.');
+  }
+
+  // Stage 3: the presentation planner receives the completed product, not a promise to create one later.
+  onProgress(38, 'presentation', '📊 Составляем план презентации с учётом готового продукта...');
   const payload = {
     topic, requestedSlides: count, projectContent,
+    finalProduct: {
+      format: product.format, title: product.title, subtitle: product.subtitle,
+      audience: product.audience, sections: product.sections,
+      steps: product.steps, checklist: product.checklist, takeaway: product.takeaway
+    },
     style: body.style || 'современный, профессиональный, соответствующий теме',
     student: {
       firstName: cleanText(body.firstName, 60),
@@ -1438,25 +1455,43 @@ async function generateProject(body, onProgress = () => {}) {
       school: cleanText(body.school, 100)
     },
     extraRequirements: cleanText(body.extraRequirements || body.requirements, 1200),
-    requiredStructure: ['обложка и введение', 'исследовательский вопрос или проблема', 'факты и объяснения', 'практическая часть или применение', 'содержательное раскрытие темы на последнем слайде'],
-    outputRules: 'Верни ровно requestedSlides слайдов, каждый с конкретным содержанием и собственным imageQuery. Не добавляй фиктивную статистику, результаты, шаблоны или вымышленные ссылки.'
+    requiredStructure: ['обложка и введение', 'исследовательский вопрос или проблема', 'факты и объяснения', 'практическая часть', 'демонстрация готового итогового продукта', 'содержательное раскрытие темы на последнем слайде'],
+    outputRules: 'Верни ровно requestedSlides слайдов, каждый с конкретным содержанием и собственным imageQuery. Свяжи практическую часть с finalProduct. Не добавляй фиктивную статистику, результаты, шаблоны или вымышленные ссылки.'
   };
-  const raw = await generateValidatedPresentation(topic, count, payload, PLANNER_INSTRUCTIONS + '\nОБЯЗАТЕЛЬНО опирайся на projectContent из входных данных. Не выдумывай результаты практики.');
+  const raw = await generateValidatedPresentation(
+    topic, count, payload,
+    PLANNER_INSTRUCTIONS + '\nОБЯЗАТЕЛЬНО опирайся на projectContent и finalProduct. Итоговый продукт уже создан: отрази его реальное название, назначение и содержание. Не выдумывай результаты практики.'
+  );
   const plan = normalizePlan(raw, topic, count, theme);
   plan.projectContent = projectContent;
-  onProgress(48, 'product', '🧩 Создаём самостоятельный продукт проекта...');
-  plan.product = await generateFinalProduct(topic, projectContent, body.productType);
-  plan.product.imageBytes = await renderProductImage(plan.product, theme);
-  onProgress(62, 'defense', '🎙️ Готовим речь и ответы для защиты...');
-  const defenseMaterial = await generateDefenseMaterial(topic, projectContent, plan, plan.product);
+  plan.product = product;
+
+  // Stage 4: write a defense speech against the final slide order and the real product.
+  onProgress(64, 'defense', '🎙️ Готовим речь и ответы комиссии по готовым слайдам...');
+  const defenseMaterial = await generateDefenseMaterial(topic, projectContent, plan, product);
   plan.defense = defenseMaterial.speech;
   plan.projectContent.defenseQuestions = defenseMaterial.questions;
-  onProgress(76, 'images', '🖼️ Подбираем и проверяем изображения для слайдов...');
+
+  // Stage 5: fetch slide-specific photos, then add the exact saved product image.
+  onProgress(78, 'images', '🖼️ Подбираем фотографии для слайдов...');
   await attachImages(plan);
-  plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта — готовый материал на основе исследования.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта', isProductSlide: true });
-  onProgress(88, 'files', '📦 Собираем документы, презентацию и ZIP-архив...');
+  plan.slides.push({
+    type: 'image',
+    title: 'Практический результат: ' + product.title,
+    subtitle: product.format,
+    body: 'Итоговый продукт проекта — готовый материал на основе исследования.',
+    bullets: [product.takeaway, ...product.checklist.slice(0, 2)].filter(Boolean),
+    imageBytes: product.imageBytes, imageMime: 'image/png',
+    imageCredit: 'Итоговый продукт проекта', isProductSlide: true
+  });
+
+  // Stage 6: build deliverables independently so one broken format does not discard the others.
+  onProgress(88, 'files', '📦 Собираем презентацию, документы и ZIP-архив...');
   const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
   onProgress(98, 'final-check', '🔍 Проверяем готовые файлы...');
+  if (!built.files.some(file => file.name === 'Презентация_проекта.pptx' || file.name === 'Презентация_проекта.pdf')) {
+    throw new Error('Не удалось создать ни PPTX, ни PDF презентации. Остальные файлы не будут выданы как полноценный готовый проект.');
+  }
   return { project: publicProject(plan), files: built.files, fileErrors: built.fileErrors };
 }
 function asyncRoute(handler) {
