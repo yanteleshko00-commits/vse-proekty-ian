@@ -238,7 +238,7 @@ function configuredAIProviders() {
   // Every configured provider is attempted independently in the parallel competition.
   if (geminiApiKey) providers.push({ name: 'Google Gemini', type: 'gemini', key: geminiApiKey, model: process.env.GEMINI_MODEL || 'gemini-3.8-flash' });
   if (process.env.OPENROUTER_API_KEY) providers.push({ name: 'OpenRouter Free', type: 'openai-compatible', key: process.env.OPENROUTER_API_KEY, baseURL: 'https://openrouter.ai/api/v1', model: process.env.OPENROUTER_MODEL || 'openrouter/free', freeOnly: true });
-  if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile' });
+  if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b' });
   if (process.env.DEEPSEEK_API_KEY) providers.push({ name: 'DeepSeek', type: 'openai-compatible', key: process.env.DEEPSEEK_API_KEY, baseURL: 'https://api.deepseek.com', model: process.env.DEEPSEEK_MODEL || 'deepseek-flash' });
   if (process.env.MISTRAL_API_KEY) providers.push({ name: 'Mistral', type: 'openai-compatible', key: process.env.MISTRAL_API_KEY, baseURL: 'https://api.mistral.ai/v1', model: process.env.MISTRAL_MODEL || 'mistral-small-latest' });
   if (process.env.ANTHROPIC_API_KEY) providers.push({ name: 'Anthropic Claude', type: 'anthropic', key: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5' });
@@ -280,18 +280,32 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
     return (Array.isArray(data.content) ? data.content : []).filter(block => block.type === 'text').map(block => block.text || '').join('');
   }
   if (provider.type === 'gemini') {
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(provider.model) + ':generateContent?key=' + encodeURIComponent(provider.key);
-    const response = await fetch(url, {
-      method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: instructions }] },
-        contents: [{ role: 'user', parts: [{ text: input }] }],
-        generationConfig: { maxOutputTokens: 10000, ...(jsonMode ? { responseMimeType: 'application/json' } : {}) }
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(provider.name + ': ' + providerErrorMessage(data, response.status));
-    return (data.candidates?.[0]?.content?.parts || []).map(part => part.text || '').join('');
+    // Gemini capacity can vary by model. Try the configured model, then current supported fallbacks.
+    const models = [...new Set([provider.model, 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash-lite'].filter(Boolean))];
+    let lastError = null;
+    for (const model of models) {
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(provider.key);
+      const response = await fetch(url, {
+        method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: instructions }] },
+          contents: [{ role: 'user', parts: [{ text: input }] }],
+          generationConfig: { maxOutputTokens: 10000, ...(jsonMode ? { responseMimeType: 'application/json' } : {}) }
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        lastError = provider.name + ' (' + model + '): ' + providerErrorMessage(data, response.status);
+        // Try another supported model for temporary load, quota-per-model, or unavailable-model errors.
+        if ([404, 429, 500, 502, 503, 504].includes(response.status) || /high demand|overloaded|temporar|resource_exhausted|not available to new users|no longer available/i.test(lastError)) continue;
+        throw new Error(lastError);
+      }
+      const output = (data.candidates?.[0]?.content?.parts || []).map(part => part.text || '').join('').trim();
+      if (output) return output;
+      lastError = provider.name + ' (' + model + '): API returned no text content.';
+      if (data.promptFeedback?.blockReason) lastError += ' Block reason: ' + data.promptFeedback.blockReason;
+    }
+    throw new Error(lastError || provider.name + ': все резервные модели временно недоступны.');
   }
   if (provider.type === 'openai-compatible') {
     const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + provider.key,
@@ -312,8 +326,34 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
       });
       data = await response.json().catch(() => ({}));
     }
+    let message = data.choices?.[0]?.message;
+    let output = typeof message?.content === 'string'
+      ? message.content
+      : Array.isArray(message?.content)
+        ? message.content.map(part => typeof part === 'string' ? part : (part?.text || '')).join('')
+        : '';
+    // Some free routed models return HTTP 200 but no content when JSON mode is requested.
+    // Retry once without response_format before treating that provider as unavailable.
+    if ((!response.ok || !output.trim()) && provider.name === 'OpenRouter Free' && jsonMode) {
+      const retryBody = { ...requestBody };
+      delete retryBody.response_format;
+      response = await fetch(provider.baseURL + '/chat/completions', {
+        method: 'POST', signal, headers, body: JSON.stringify(retryBody)
+      });
+      data = await response.json().catch(() => ({}));
+      message = data.choices?.[0]?.message;
+      output = typeof message?.content === 'string'
+        ? message.content
+        : Array.isArray(message?.content)
+          ? message.content.map(part => typeof part === 'string' ? part : (part?.text || '')).join('')
+          : '';
+    }
     if (!response.ok) throw new Error(provider.name + ': ' + providerErrorMessage(data, response.status));
-    return data.choices?.[0]?.message?.content || '';
+    if (!output.trim()) {
+      const finishReason = data.choices?.[0]?.finish_reason;
+      throw new Error(provider.name + ': пустой ответ от модели' + (finishReason ? ' (finish_reason: ' + finishReason + ')' : '') + '.');
+    }
+    return output;
   }
   if (provider.type === 'cloudflare') {
     const url = 'https://api.cloudflare.com/client/v4/accounts/' + encodeURIComponent(provider.accountId) + '/ai/run/' + provider.model;
