@@ -234,7 +234,7 @@ async function withTimeout(promise, ms, label = 'Операция') {
 function configuredAIProviders() {
   const providers = [];
   // Every configured provider is attempted independently in the parallel competition.
-  if (process.env.GEMINI_API_KEY) providers.push({ name: 'Google Gemini', type: 'gemini', model: process.env.GEMINI_MODEL || 'gemini-2.5-flash' });
+  if (process.env.GEMINI_API_KEY) providers.push({ name: 'Google Gemini', type: 'gemini', model: process.env.GEMINI_MODEL || 'gemini-3.8-flash' });
   if (process.env.OPENROUTER_API_KEY) providers.push({ name: 'OpenRouter Free', type: 'openai-compatible', key: process.env.OPENROUTER_API_KEY, baseURL: 'https://openrouter.ai/api/v1', model: process.env.OPENROUTER_MODEL || 'openrouter/free', freeOnly: true });
   if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b' });
   if (process.env.DEEPSEEK_API_KEY) providers.push({ name: 'DeepSeek', type: 'openai-compatible', key: process.env.DEEPSEEK_API_KEY, baseURL: 'https://api.deepseek.com', model: process.env.DEEPSEEK_MODEL || 'deepseek-flash' });
@@ -348,7 +348,9 @@ async function runAIWithFallback(instructions, input, jsonMode, timeout = REQUES
       console.warn('[AI fallback] ' + provider.name + ' недоступен: ' + message);
     }
   }
-  const error = new Error('Не удалось получить ответ от подключённых нейросетей: ' + failures.join(' | '));
+  const geminiMissing = !providers.some(provider => provider.type === 'gemini') && failures.some(item => item.startsWith('OpenAI:') && /429|quota|credits remaining|insufficient_quota/i.test(item));
+  const hint = geminiMissing ? ' На сервере не подключён Google Gemini: добавь GEMINI_API_KEY в Render → Environment и запусти новый Deploy.' : '';
+  const error = new Error('Не удалось получить ответ от подключённых нейросетей: ' + failures.join(' | ') + hint);
   error.status = 503;
   throw error;
 }
@@ -431,7 +433,9 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
       return attempt.provider + ': ' + detail;
     }).join(' | ');
     console.error('[AI competition] Ни один провайдер не вернул корректный JSON:', safeReasons);
-    const error = new Error('Не удалось получить корректный ответ. Причины по нейросетям: ' + (safeReasons || 'нет ответов') + '. Ошибка одного сервиса не отменяет результаты остальных. Проверь список подключений в /api/health.');
+    const geminiMissing = !providers.some(provider => provider.type === 'gemini') && failures.some(item => item.provider === 'OpenAI' && /429|quota|credits remaining|insufficient_quota/i.test(item.error || ''));
+    const hint = geminiMissing ? ' Google Gemini не подключён на сервере: добавь GEMINI_API_KEY в Render → Environment и выполни Deploy.' : '';
+    const error = new Error('Не удалось получить корректный ответ. Причины по нейросетям: ' + (safeReasons || 'нет ответов') + '. Ошибка одного сервиса не отменяет результаты остальных. Проверь список подключений в /api/health.' + hint);
     error.status = 503;
     error.code = 'AI_PROVIDERS_UNAVAILABLE';
     throw error;
