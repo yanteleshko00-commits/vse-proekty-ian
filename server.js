@@ -513,13 +513,19 @@ const PLANNER_INSTRUCTIONS = `
 - Заголовок до 8 слов, body до 45 слов, не более 4 коротких bullets. Убери повторы, общие слова и длинные абзацы.
 - cards: 2–4 конкретные карточки с уникальными заголовками и объяснениями. comparison: конкретные сопоставимые пункты с обеих сторон. process: 2–5 реальных шагов. stat: число только если оно обосновано; не придумывай цифры. table: заголовок и содержательные строки.
 - Не оставляй пустые слайды и текст-заполнитель. Практическая часть должна предлагать выполнимый метод, а не поддельные результаты.
-ВИЗУАЛЬНАЯ КОНЦЕПЦИЯ:
-- В designDirection задай цельную арт-дирекцию: настроение, визуальный язык, принципы композиции и контраст. colorMood — 2–4 подходящих цвета словами.
+ВИЗУАЛЬНАЯ КОНЦЕПЦИЯ — УРОВЕНЬ СОВРЕМЕННЫХ РЕДАКЦИОННЫХ ПРЕЗЕНТАЦИЙ:
+- Ориентируйся на сильные стороны современных генераторов презентаций: цельная визуальная тема и сюжетность (Gamma), гибкость композиции и работа с визуальными материалами (Canva), автоматическая дисциплина сетки и отступов (Beautiful.ai), аккуратная типографика и последовательность (Pitch). Не копируй чужие шаблоны, интерфейсы, фирменные элементы или конкретные макеты.
+- В designDirection опиши индивидуальную арт-дирекцию именно этой темы: настроение, визуальную метафору, характер фотографии, композиционные принципы, типографику и контраст. colorMood — 2–4 конкретных цвета словами.
+- У презентации должна быть своя «изюминка»: один повторяющийся визуальный мотив, связанный с темой (например, линия маршрута, контур листа, шкала времени, научная сетка, архивная метка). Мотив должен быть тонким и помогать навигации, а не превращаться в декор.
+- Фирменная деталь проекта — тонкий синий навигационный маркер и аккуратная нумерация. Не делай все слайды синими: основной цвет и дополнительные оттенки подбирай по теме, синий используй только как небольшую фирменную подпись.
 - Используй только type из: cover,cards,comparison,stat,process,quote,image,table.
-- Меняй композиции по смыслу; не используй один type более двух раз подряд.
-- Каждый слайд обязан иметь отдельный imageQuery на английском: конкретная фотографическая сцена по содержанию именно этого слайда (объект + действие/место/условие). Запросы различаются по объекту, ракурсу и сцене. Не используй один общий запрос для всей темы, логотипы, флаги, схемы и изображения с надписями.
-- Для каждого type заполняй нужные поля реальным содержанием.
-ПЕРЕД ОТВЕТОМ ПРОВЕРЬ точное число слайдов, уникальность заголовков, содержательность каждого слайда, разные imageQuery, отсутствие шаблонов, вымышленных чисел и фиктивных источников.
+- Планируй разнообразие композиций как арт-директор: полноэкранная фотография с короткой подписью, крупный тезис + визуальное доказательство, асимметричная фотография, карточки, сравнение, процесс, таблица или инфографика. Выбирай макет по смыслу, а не чередуй типы механически. Один type не должен использоваться более двух раз подряд.
+- Не размещай на каждом слайде изображение в одинаковой правой колонке. Чередуй визуальный центр: фото на всю ширину, слева, справа, сверху, крупная фоновая фотография, схема или крупная типографика.
+- Каждый слайд обязан иметь отдельный imageQuery на английском: конкретная фотореалистичная сцена по содержанию именно этого слайда (объект + действие/место/условие + желаемый ракурс). Запросы различаются по объекту, ракурсу и сцене. Не используй один общий запрос для всей темы, логотипы, флаги, клипарт, схемы и изображения с надписями.
+- Фотография должна быть смысловым доказательством тезиса, а не украшением. Если фото неуместно (например, формула, таблица, точное сравнение), предпочитай схему, данные или типографику.
+- Для каждого type заполняй нужные поля реальным содержанием. Не создавай фиктивные статистические карточки и декоративные диаграммы без данных.
+- Заголовок каждого слайда формулируй как конкретную мысль или вывод, а не просто название раздела. Используй заметную типографическую иерархию, короткие подписи, достаточные поля и высокий контраст.
+ПЕРЕД ОТВЕТОМ ПРОВЕРЬ точное число слайдов, уникальность заголовков, содержательность каждого слайда, разные imageQuery, визуальное разнообразие, соответствие фото тезисам, отсутствие шаблонов, вымышленных чисел и фиктивных источников.
 Верни поля: title, summary, designDirection, colorMood, practicalPart, defense, sources [{title,url}], slides [{type,title,subtitle,body,bullets,cards,leftTitle,rightTitle,leftItems,rightItems,steps,quote,statistic,statisticLabel,table,imageQuery,notes}].
 `;
 
@@ -934,16 +940,26 @@ function buildPptx(plan) {
     const type = i === 0 ? 'cover' : normalizeSlideType(s.type, i);
     const title = s.title || plan.title;
     if (type === 'cover') {
-      slide.background = { color: theme.accent };
-      slide.addShape('ellipse', { x: 9.8, y: -1.05, w: 4.2, h: 4.2, fill: { color: 'FFFFFF', transparency: 84 }, line: { color: 'FFFFFF', transparency: 100 } });
-      slide.addShape('ellipse', { x: 10.7, y: 0.1, w: 2.4, h: 2.4, fill: { color: theme.accent2, transparency: 28 }, line: { color: theme.accent2, transparency: 100 } });
-      addText(slide, 'ТЕМА ИССЛЕДОВАНИЯ', 0.78, 0.72, 5.7, 0.32, { fontSize: 11, bold: true, color: 'FFFFFF', charSpacing: 2.2 });
-      addText(slide, title, 0.78, 1.45, 5.8, 2.3, { fontSize: 34, bold: true, color: 'FFFFFF', valign: 'mid' });
-      addText(slide, s.subtitle || s.body || plan.summary, 0.82, 4.08, 5.65, 1.12, { fontSize: 17, color: 'EFF3FF', valign: 'top' });
-      slide.addShape('line', { x: 0.82, y: 5.55, w: 4.5, h: 0, line: { color: 'FFFFFF', transparency: 45, width: 1.2 } });
-      addText(slide, 'Все проекты #Ian', 0.82, 5.75, 3.8, 0.32, { fontSize: 11, color: 'FFFFFF' });
-      addImageOrPlaceholder(slide, s, 7.05, 1.12, 5.55, 5.0, theme);
-      addText(slide, '01', 11.85, 6.9, 0.55, 0.22, { fontSize: 10, color: 'FFFFFF', align: 'right' });
+      if (s.imageBytes) {
+        // Editorial cover: one full-bleed photograph, restrained dark overlay, large readable title.
+        slide.background = { color: '142033' };
+        slide.addImage({ data: `data:${s.imageMime};base64,${s.imageBytes.toString('base64')}`, x: 0, y: 0, w: 13.333, h: 7.5, sizingCrop: true });
+        slide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: '101827', transparency: 34 }, line: { color: '101827', transparency: 100 } });
+        slide.addShape('rect', { x: 0.72, y: 0.82, w: 0.07, h: 5.55, fill: { color: '4E7BFF' }, line: { color: '4E7BFF' } });
+        addText(slide, 'ИССЛЕДОВАНИЕ  /  ВСЕ ПРОЕКТЫ #IAN', 1.05, 0.88, 8.8, 0.34, { fontSize: 10, bold: true, color: 'FFFFFF', charSpacing: 1.8 });
+        addText(slide, title, 1.05, 2.0, 9.8, 2.0, { fontSize: 38, bold: true, color: 'FFFFFF', valign: 'mid', breakLine: false });
+        addText(slide, s.subtitle || s.body || plan.summary, 1.08, 4.35, 8.2, 0.9, { fontSize: 17, color: 'F0F4FC', valign: 'top' });
+        addText(slide, '01  /  ' + String(plan.slides.length).padStart(2, '0'), 11.2, 6.88, 1.2, 0.22, { fontSize: 9, color: 'FFFFFF', align: 'right' });
+      } else {
+        // Deliberate typographic cover when no relevant photograph was found; never fake a photo.
+        slide.background = { color: theme.accent };
+        slide.addShape('rect', { x: 0.72, y: 0.85, w: 0.08, h: 5.75, fill: { color: 'FFFFFF', transparency: 8 }, line: { color: 'FFFFFF', transparency: 100 } });
+        slide.addShape('ellipse', { x: 9.35, y: 0.75, w: 2.7, h: 2.7, fill: { color: theme.accent2, transparency: 28 }, line: { color: theme.accent2, transparency: 100 } });
+        addText(slide, 'ИССЛЕДОВАНИЕ  /  ВСЕ ПРОЕКТЫ #IAN', 1.05, 0.88, 8.8, 0.34, { fontSize: 10, bold: true, color: 'FFFFFF', charSpacing: 1.8 });
+        addText(slide, title, 1.05, 2.0, 8.8, 2.0, { fontSize: 38, bold: true, color: 'FFFFFF', valign: 'mid' });
+        addText(slide, s.subtitle || s.body || plan.summary, 1.08, 4.35, 7.8, 0.9, { fontSize: 17, color: 'F0F4FC', valign: 'top' });
+        addText(slide, '01  /  ' + String(plan.slides.length).padStart(2, '0'), 11.2, 6.88, 1.2, 0.22, { fontSize: 9, color: 'FFFFFF', align: 'right' });
+      }
       return;
     }
 
@@ -1020,7 +1036,9 @@ function buildPptx(plan) {
       addImageOrPlaceholder(slide, s, 8.82, 1.55, 3.7, 4.85, theme);
     }
     slide.addShape('line', { x: 0.72, y: 6.78, w: 11.88, h: 0, line: { color: theme.accent2, transparency: 35, width: 0.8 } });
-    addText(slide, 'ВСЕ ПРОЕКТЫ #IAN', 0.75, 6.92, 3.6, 0.22, { fontSize: 8, bold: true, color: theme.muted, charSpacing: 1 });
+    // Signature navigation marker: a small blue editorial accent, not a competing theme color.
+    slide.addShape('rect', { x: 0.72, y: 6.72, w: Math.max(0.28, 11.88 * ((i + 1) / plan.slides.length)), h: 0.055, fill: { color: '315EDB' }, line: { color: '315EDB', transparency: 100 } });
+    addText(slide, 'ВСЕ ПРОЕКТЫ #IAN  /  ' + String(i + 1).padStart(2, '0'), 0.75, 6.92, 3.6, 0.22, { fontSize: 8, bold: true, color: theme.muted, charSpacing: 1 });
     addSlideNumber(slide, i, plan.slides.length, theme);
   });
   return pptx;
