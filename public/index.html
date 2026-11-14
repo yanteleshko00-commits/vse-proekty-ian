@@ -28,7 +28,7 @@ section{padding:65px 0}.section-title{margin:0 0 10px;font-size:32px;line-height
 .steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px}.step{padding:22px;background:#fff;border:1px solid var(--b);border-radius:18px}.step-number{width:40px;height:40px;display:grid;place-items:center;margin-bottom:15px;border-radius:12px;background:var(--gl);color:var(--gd);font-weight:900}.step h3{margin:0 0 7px}.step p{margin:0;color:var(--m);font-size:14px}
 .generator{background:var(--d);color:#fff}.generator .section-subtitle{color:#b9c6bf}.form{max-width:850px;padding:22px;background:#fff;color:var(--d);border-radius:22px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.field{min-width:0;display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1/-1}.field label{font-size:14px;font-weight:800}
 .field input,.field textarea,.field select{display:block;width:100%;max-width:100%;min-height:52px;padding:14px;border:1px solid #dfe7e2;border-radius:13px;outline:none;background:#fff!important;color:#17231d!important;-webkit-text-fill-color:#17231d!important;caret-color:#18a66a;font:500 17px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;line-height:1.4;-webkit-appearance:none;appearance:none;user-select:text;-webkit-user-select:text;opacity:1}.field textarea{min-height:120px;resize:vertical}.field input::placeholder,.field textarea::placeholder{color:#87938d!important;-webkit-text-fill-color:#87938d!important;opacity:1}.field input:focus,.field textarea:focus,.field select:focus{border:2px solid var(--g);outline:none}.create-btn{width:100%;margin-top:18px;padding:15px}.create-btn:disabled{opacity:.65}
-.progress-box{display:none;margin-top:20px;padding:22px;background:#fff;color:var(--d);border-radius:20px}.progress-top{display:flex;justify-content:space-between;margin-bottom:10px;font-weight:900}.progress{height:12px;overflow:hidden;background:#e7eee9;border-radius:20px}.progress-bar{width:0;height:100%;background:var(--g);border-radius:20px;transition:width .15s}.progress-status{margin-top:14px;color:var(--m)}
+.progress-box{display:none;margin-top:20px;padding:22px;background:#fff;color:var(--d);border-radius:20px}.progress-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;font-weight:900}.reasoning-indicator{display:inline-flex;align-items:center;gap:9px;color:#64748b;font-size:14px;font-weight:700;white-space:nowrap}.reasoning-orb{position:relative;width:22px;height:22px;flex:0 0 22px;animation:reasoning-spin 2.2s linear infinite}.reasoning-orb i{position:absolute;left:9px;top:9px;width:4px;height:4px;border-radius:50%;background:#2878f0;transform:rotate(calc(var(--dot)*36deg)) translateY(-8px);transform-origin:2px 2px;animation:reasoning-pulse 1s ease-in-out infinite;animation-delay:calc(var(--dot)*-0.1s)}@keyframes reasoning-spin{to{transform:rotate(360deg)}}@keyframes reasoning-pulse{0%,100%{opacity:.25;transform:rotate(calc(var(--dot)*36deg)) translateY(-8px) scale(.7)}50%{opacity:1;transform:rotate(calc(var(--dot)*36deg)) translateY(-8px) scale(1.25)}}.reasoning-indicator.done .reasoning-orb{animation:none}.reasoning-indicator.done .reasoning-orb i{animation:none;opacity:.9}.progress{height:12px;overflow:hidden;background:#e7eee9;border-radius:20px}.progress-bar{width:0;height:100%;background:var(--g);border-radius:20px;transition:width .15s}.progress-status{margin-top:14px;color:var(--m)}
 .project-result{display:none;margin-top:20px}.ready{padding:17px;background:#e8f7ef;border:1px solid #cceedd;border-radius:17px}.ready-title{color:var(--gd);font-size:20px;font-weight:900}.project-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}.meta{padding:11px;background:#f5f8f6;border:1px solid var(--b);border-radius:11px;overflow-wrap:anywhere}.meta b{display:block;margin-bottom:3px;color:#718078;font-size:12px}.files{margin-top:12px}.file{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;margin-top:10px;background:#f5f8f6;border-radius:13px}.file>div{min-width:0;overflow-wrap:anywhere}.file small{color:#718078}.file button{flex:0 0 auto;padding:9px 13px;border-radius:9px;background:var(--g);color:#fff;font-weight:700}.download{width:100%;margin-top:12px;padding:14px;border-radius:12px;background:var(--d);color:#fff;font-weight:900}
 .tariffs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.tariff{position:relative;padding:25px;background:#fff;border:1px solid #e0e7e3;border-radius:20px}.tariff.pro{border:2px solid var(--g);transform:translateY(-7px)}.popular-badge{position:absolute;top:0;left:0;right:0;padding:7px;background:var(--g);color:#fff;text-align:center;font-size:12px;font-weight:900}.tariff.pro h3{margin-top:25px}.tariff h3{font-size:25px}.price{margin:10px 0;font-size:35px;font-weight:900}.tariff ul{margin:18px 0;padding:0;list-style:none}.tariff li{margin:9px 0;color:#637169}.tariff li::before{content:"✓ ";color:#4eaa75;font-weight:900}
 /* Animated interaction for Russian requirements accordion */
@@ -625,7 +625,7 @@ html[data-theme="dark"] .topic-input-wrap button{color:#9cc4ff;background:rgba(5
 </div>
 
 <div class="progress-box" id="progressBox">
-<div class="progress-top"><span>Создание проекта</span><span id="percent">0%</span></div>
+<div class="progress-top"><span>Создание проекта</span><span class="reasoning-indicator" id="thinkingIndicator"><span class="reasoning-orb" aria-hidden="true"><i style="--dot:0"></i><i style="--dot:1"></i><i style="--dot:2"></i><i style="--dot:3"></i><i style="--dot:4"></i><i style="--dot:5"></i><i style="--dot:6"></i><i style="--dot:7"></i><i style="--dot:8"></i><i style="--dot:9"></i></span><span id="thinkingLabel">Размышление</span></span></div>
 <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
 <div class="progress-status" id="status">🔎 Анализируем тему...</div>
 
@@ -858,7 +858,7 @@ function showRestoredProject(){
   const result=document.getElementById("projectResult");
   document.getElementById("progressBox").style.display="block";
   document.getElementById("progressBar").style.width="100%";
-  document.getElementById("percent").textContent="100%";
+  setThinkingState("Готово",true);
   document.getElementById("status").textContent=Array.isArray(projectData.fileErrors)&&projectData.fileErrors.length
     ? "⚠️ Проект создан. Не удалось подготовить: "+projectData.fileErrors.map(x=>x.name).join(", ")
     : "✅ Проект готов!";
@@ -870,13 +870,18 @@ function showRestoredProject(){
   result.style.display="block";
 }
 
+function setThinkingState(label="Размышление",done=false){
+  const indicator=document.getElementById("thinkingIndicator");
+  const text=document.getElementById("thinkingLabel");
+  if(text)text.textContent=label;
+  if(indicator)indicator.classList.toggle("done",done);
+}
 function setGenerationProgress(progress,message){
   const bar=document.getElementById("progressBar");
-  const pct=document.getElementById("percent");
   const status=document.getElementById("status");
   const value=Math.max(3,Math.min(100,Number(progress)||3));
   if(bar)bar.style.width=value+"%";
-  if(pct)pct.textContent=Math.floor(value)+"%";
+  setThinkingState("Размышление",false);
   if(status&&message)status.textContent=message;
 }
 function animateProgress(){
@@ -935,9 +940,9 @@ projectData={
  productType:val("productType"),requirements:val("requirements"),ai:null,files:null,fileErrors:[]
 };
 
-const box=document.getElementById("progressBox"),bar=document.getElementById("progressBar"),pct=document.getElementById("percent"),status=document.getElementById("status"),result=document.getElementById("projectResult"),btn=document.getElementById("createButton");
+const box=document.getElementById("progressBox"),bar=document.getElementById("progressBar"),status=document.getElementById("status"),result=document.getElementById("projectResult"),btn=document.getElementById("createButton");
 box.style.display="block";result.style.display="none";btn.disabled=true;btn.textContent="⏳ Создаём проект...";
-bar.style.width="3%";pct.textContent="3%";status.textContent="🔎 Анализируем тему и готовим проект...";
+bar.style.width="3%";setThinkingState("Размышление",false);status.textContent="🔎 Анализируем тему и готовим проект...";
 animateProgress();
 
 try{
@@ -969,7 +974,7 @@ try{
   projectData.fileErrors=Array.isArray(data.fileErrors)?data.fileErrors:[];
   saveProjectState();
   stopProgress();
-  bar.style.transition="width .7s ease";bar.style.width="100%";pct.textContent="100%";status.textContent=projectData.fileErrors.length
+  bar.style.transition="width .7s ease";bar.style.width="100%";setThinkingState("Готово",true);status.textContent=projectData.fileErrors.length
     ? "⚠️ Проект создан. Не удалось подготовить: "+projectData.fileErrors.map(x=>x.name).join(", ")
     : (data.notice ? "✅ "+data.notice : "✅ Проект готов!");
   document.getElementById("readyTopic").textContent="«"+projectData.topic+"»";
@@ -981,7 +986,7 @@ try{
   result.scrollIntoView({behavior:"smooth",block:"nearest"});
 }catch(error){
   stopProgress();
-  bar.style.width="0%";pct.textContent="0%";status.textContent="❌ Не удалось создать проект";
+  bar.style.width="0%";setThinkingState("Ошибка",true);status.textContent="❌ Не удалось создать проект";
   btn.disabled=false;btn.textContent="✨ СОЗДАТЬ ПРОЕКТ";
   alert(error.message||"Ошибка при создании проекта.");
 }
@@ -1134,7 +1139,7 @@ function downloadAll(){downloadFile("Весь_проект.zip");}
 async function resumeBackgroundJob(){
   let saved;try{saved=JSON.parse(localStorage.getItem("vseProektyActiveJob")||"null");}catch{}
   if(!saved?.jobId)return;
-  const status=document.getElementById("status"),box=document.getElementById("progressBox"),bar=document.getElementById("progressBar"),pct=document.getElementById("percent");
+  const status=document.getElementById("status"),box=document.getElementById("progressBox"),bar=document.getElementById("progressBar");
   box.style.display="block";setGenerationProgress(3,"⚙️ Проверяем фоновую задачу...");
   try{while(true){
     const r=await fetch("/api/generation-jobs/"+encodeURIComponent(saved.jobId));const state=await r.json().catch(()=>({}));
