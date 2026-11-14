@@ -545,7 +545,7 @@ function validatePresentationPlan(raw, requestedCount) {
     if (!query) issues.push(`${prefix}: нет собственного imageQuery`);
     if (query) imageQueries.set(query, (imageQueries.get(query) || 0) + 1);
     const parts = [
-      slide.subtitle, slide.body, slide.quote, slide.statisticLabel,
+      slide.subtitle, slide.body, slide.quote, slide.statistic, slide.statisticLabel,
       ...(Array.isArray(slide.bullets) ? slide.bullets : []),
       ...(Array.isArray(slide.steps) ? slide.steps : []),
       ...(Array.isArray(slide.cards) ? slide.cards.flatMap(card => [card?.title, card?.text]) : []),
@@ -642,7 +642,7 @@ function repairInvalidSlideLayouts(raw) {
 
     // Keep a usable content block if the model left the generic body empty.
     const content = [
-      nonEmpty(repaired.body), nonEmpty(repaired.subtitle), nonEmpty(repaired.quote),
+      nonEmpty(repaired.body), nonEmpty(repaired.subtitle), nonEmpty(repaired.quote), nonEmpty(repaired.statistic),
       ...asList(repaired.bullets), ...asList(repaired.steps),
       ...(Array.isArray(repaired.cards) ? repaired.cards.flatMap(card => [nonEmpty(card?.title), nonEmpty(card?.text)]) : []),
       ...(Array.isArray(repaired.table) ? repaired.table.flat().map(nonEmpty) : [])
