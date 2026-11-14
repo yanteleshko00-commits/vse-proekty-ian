@@ -13,7 +13,7 @@ import sharp from 'sharp';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
-// Use a supported OpenAI API model ID; don't let a stale OPENAI_MODEL setting select a non-API product name.
+// Free-tier deployments use temporary local storage; no paid disk is required for normal generation.
 const MODEL = 'gpt-4.1-mini';
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
 // Keep requests below common hosting/proxy limits; slow image lookups are bounded separately.
@@ -1336,7 +1336,7 @@ async function createZip(files) {
 function toFile(name, mime, buffer) {
   return { name, mime, base64: buffer.toString('base64') };
 }
-async function buildFiles(plan) {
+async function buildFiles(plan, onFileReady = async () => {}) {
   const specs = [
     { name: 'Итоговый_продукт.pdf', mime: 'application/pdf', create: createProductPdfBuffer },
     { name: 'Итоговый_продукт.png', mime: 'image/png', create: async p => p.product.imageBytes },
@@ -1367,17 +1367,22 @@ async function buildFiles(plan) {
     },
   ];
 
-  const results = await Promise.allSettled(specs.map(async (spec) => ({
-    ...spec,
-    buffer: await withTimeout(spec.create(plan), 30000, `Файл ${spec.name}`)
-  })));
+  const results = await Promise.allSettled(specs.map(async (spec) => {
+    const buffer = await withTimeout(spec.create(plan), 30000, `Файл ${spec.name}`);
+    const file = toFile(spec.name, spec.mime, buffer);
+    try { await onFileReady(file); }
+    catch (error) {
+      console.warn(`[buildFiles] Не удалось сохранить промежуточный файл ${spec.name}:`, cleanText(error?.message || error, 220));
+    }
+    return { ...spec, buffer, file };
+  }));
 
   const files = [];
   const fileErrors = [];
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
     if (result.status === 'fulfilled' && Buffer.isBuffer(result.value.buffer) && result.value.buffer.length) {
-      files.push(toFile(result.value.name, result.value.mime, result.value.buffer));
+      files.push(result.value.file);
     } else {
       const error = result.status === 'rejected' ? result.reason : new Error('Файл пустой.');
       const message = cleanText(error?.message || 'Неизвестная ошибка создания файла.', 260);
@@ -1393,7 +1398,12 @@ async function buildFiles(plan) {
         buffer: Buffer.from(file.base64, 'base64')
       }));
       const zip = await withTimeout(createZip(zipParts), 10000, 'Создание ZIP');
-      files.push(toFile('Весь_проект.zip', 'application/zip', zip));
+      const zipFile = toFile('Весь_проект.zip', 'application/zip', zip);
+      files.push(zipFile);
+      try { await onFileReady(zipFile); }
+      catch (error) {
+        console.warn('[buildFiles] Не удалось сохранить промежуточный ZIP:', cleanText(error?.message || error, 220));
+      }
     } catch (error) {
       console.error('[buildFiles] Весь_проект.zip:', error?.stack || error);
       fileErrors.push({
@@ -1420,7 +1430,7 @@ function publicProject(plan) {
     slideCount: plan.slides.length
   };
 }
-async function generateProject(body, onProgress = () => {}) {
+async function generateProject(body, onProgress = () => {}, onCheckpoint = async () => {}, onFileReady = async () => {}) {
   const topic = cleanText(body.topic, 180);
   if (!topic) { const error = new Error('Укажи тему проекта или презентации.'); error.status = 400; throw error; }
   const count = clampInt(body.slidesCount ?? body.slides ?? body.presentationSlides, 7, MAX_SLIDES, 12);
@@ -1429,6 +1439,7 @@ async function generateProject(body, onProgress = () => {}) {
   // Stage 1: prepare the factual project foundation.
   onProgress(8, 'project-text', '📝 Создаём текстовую основу проекта...');
   const projectContent = await generateProjectContent(topic, body);
+  await onCheckpoint({ stage: 'project-content', title: topic, projectContent });
 
   // Stage 2: create and render the actual project product BEFORE planning the slides.
   onProgress(22, 'product', '🧩 Создаём итоговый продукт проекта...');
@@ -1437,6 +1448,13 @@ async function generateProject(body, onProgress = () => {}) {
   if (!Buffer.isBuffer(product.imageBytes) || !product.imageBytes.length) {
     throw new Error('Не удалось сохранить изображение итогового продукта. Презентация не будет собрана без него.');
   }
+  await onFileReady(toFile('Итоговый_продукт.png', 'image/png', product.imageBytes), 'project-product');
+  const productCheckpoint = {
+    format: product.format, title: product.title, subtitle: product.subtitle,
+    audience: product.audience, sections: product.sections, steps: product.steps,
+    checklist: product.checklist, takeaway: product.takeaway
+  };
+  await onCheckpoint({ stage: 'product-created', title: topic, projectContent, product: productCheckpoint });
 
   // Stage 3: the presentation planner receives the completed product, not a promise to create one later.
   onProgress(38, 'presentation', '📊 Составляем план презентации с учётом готового продукта...');
@@ -1465,12 +1483,14 @@ async function generateProject(body, onProgress = () => {}) {
   const plan = normalizePlan(raw, topic, count, theme);
   plan.projectContent = projectContent;
   plan.product = product;
+  await onCheckpoint({ stage: 'presentation-plan', project: publicProject(plan) });
 
   // Stage 4: write a defense speech against the final slide order and the real product.
   onProgress(64, 'defense', '🎙️ Готовим речь и ответы комиссии по готовым слайдам...');
   const defenseMaterial = await generateDefenseMaterial(topic, projectContent, plan, product);
   plan.defense = defenseMaterial.speech;
   plan.projectContent.defenseQuestions = defenseMaterial.questions;
+  await onCheckpoint({ stage: 'defense-ready', project: publicProject(plan) });
 
   // Stage 5: fetch slide-specific photos, then add the exact saved product image.
   onProgress(78, 'images', '🖼️ Подбираем фотографии для слайдов...');
@@ -1484,10 +1504,13 @@ async function generateProject(body, onProgress = () => {}) {
     imageBytes: product.imageBytes, imageMime: 'image/png',
     imageCredit: 'Итоговый продукт проекта', isProductSlide: true
   });
+  await onCheckpoint({ stage: 'images-ready', project: publicProject(plan) });
 
   // Stage 6: build deliverables independently so one broken format does not discard the others.
   onProgress(88, 'files', '📦 Собираем презентацию, документы и ZIP-архив...');
-  const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
+  await onCheckpoint({ stage: 'building-files', project: publicProject(plan) });
+  const built = await withTimeout(buildFiles(plan, file => onFileReady(file, 'deliverable')), 55000, 'Сборка файлов');
+  await onCheckpoint({ stage: 'files-built', project: publicProject(plan), fileErrors: built.fileErrors });
   onProgress(98, 'final-check', '🔍 Проверяем готовые файлы...');
   if (!built.files.some(file => file.name === 'Презентация_проекта.pptx' || file.name === 'Презентация_проекта.pdf')) {
     throw new Error('Не удалось создать ни PPTX, ни PDF презентации. Остальные файлы не будут выданы как полноценный готовый проект.');
@@ -1530,26 +1553,44 @@ app.get('/api/health', asyncRoute(async (_req, res) => {
     aiProviderStatus: { geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY), openAIEnabledForText: false },
     imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true',
     generationJobStorage: generationJobStorage.status,
-    generationJobStorageWritable: generationJobStorage.writable
+    generationJobStorageWritable: generationJobStorage.writable,
+    generationJobRecovery: 'best-effort-checkpoints',
+    generationJobRetentionHours: 24
   });
 }));
 
 const generationJobs = new Map();
-// Configure GENERATION_JOBS_DIR to a mounted Render persistent disk (for example /var/data/generation-jobs)
-// to keep running/completed job state and generated files available after process restarts.
+// Free Render mode uses its ephemeral filesystem. Checkpoints improve recovery while the instance
+// remains available, but they cannot survive every deploy, instance recycle, or filesystem reset.
 const generationJobStoreDir = process.env.GENERATION_JOBS_DIR || path.join(os.tmpdir(), 'vse-proekty-ian-generation-jobs');
 const generationJobWrites = new Map();
+
+function generationJobArtifactDir(id) {
+  return path.join(generationJobStoreDir, id + '.artifacts');
+}
+function jobResultSnapshot(result, artifacts = []) {
+  if (!result) return null;
+  const storedNames = new Set(artifacts.map(item => item.name));
+  return {
+    project: result.project,
+    files: (result.files || []).map(file => storedNames.has(file.name)
+      ? { name: file.name, mime: file.mime, storedAsArtifact: true }
+      : { name: file.name, mime: file.mime, base64: file.base64 }),
+    fileErrors: result.fileErrors || []
+  };
+}
 function queuePersistGenerationJob(job) {
   const snapshot = {
     id: job.id, status: job.status, stage: job.stage, progress: job.progress,
     message: job.message, createdAt: job.createdAt, updatedAt: job.updatedAt,
-    result: job.result, error: job.error
+    checkpoint: job.checkpoint || null, artifacts: job.artifacts || [],
+    result: jobResultSnapshot(job.result, job.artifacts || []), error: job.error
   };
   const previous = generationJobWrites.get(job.id) || Promise.resolve();
   const next = previous.catch(() => {}).then(async () => {
     await fs.promises.mkdir(generationJobStoreDir, { recursive: true });
     const target = path.join(generationJobStoreDir, job.id + '.json');
-    const temporary = target + '.tmp';
+    const temporary = target + '.' + crypto.randomUUID() + '.tmp';
     await fs.promises.writeFile(temporary, JSON.stringify(snapshot), 'utf8');
     await fs.promises.rename(temporary, target);
   }).catch(error => {
@@ -1558,48 +1599,112 @@ function queuePersistGenerationJob(job) {
   generationJobWrites.set(job.id, next);
   return next;
 }
+async function persistGenerationArtifact(job, file, source = 'deliverable') {
+  if (!file || typeof file.base64 !== 'string') return;
+  await fs.promises.mkdir(generationJobArtifactDir(job.id), { recursive: true });
+  const storageKey = crypto.createHash('sha256').update(file.name).digest('hex').slice(0, 24) + '.bin';
+  const target = path.join(generationJobArtifactDir(job.id), storageKey);
+  const temporary = target + '.' + crypto.randomUUID() + '.tmp';
+  const bytes = Buffer.from(file.base64, 'base64');
+  await fs.promises.writeFile(temporary, bytes);
+  await fs.promises.rename(temporary, target);
+  const metadata = { storageKey, name: file.name, mime: file.mime, size: bytes.length, source, updatedAt: Date.now() };
+  const existing = (job.artifacts || []).findIndex(item => item.name === file.name);
+  if (!Array.isArray(job.artifacts)) job.artifacts = [];
+  if (existing >= 0) job.artifacts[existing] = metadata;
+  else job.artifacts.push(metadata);
+  job.updatedAt = Date.now();
+  await queuePersistGenerationJob(job);
+}
+async function readGenerationArtifacts(job) {
+  const files = [];
+  for (const item of job.artifacts || []) {
+    if (!/^[a-f0-9]{24}\.bin$/i.test(item.storageKey || '')) continue;
+    try {
+      const buffer = await fs.promises.readFile(path.join(generationJobArtifactDir(job.id), item.storageKey));
+      files.push({ name: item.name, mime: item.mime, base64: buffer.toString('base64') });
+    } catch (error) {
+      console.warn('[generation-job-store] Не удалось прочитать файл задачи:', cleanText(error?.message || error, 180));
+    }
+  }
+  return files;
+}
 async function loadPersistedGenerationJob(id) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   try {
     const raw = await fs.promises.readFile(path.join(generationJobStoreDir, id + '.json'), 'utf8');
     const job = JSON.parse(raw);
     if (!job || job.id !== id) return null;
-    // A process restart cannot safely resume an interrupted provider request.
-    // Preserve the draft/status and report a retryable interruption instead of leaving it "running" forever.
-    if (job.status === 'running') {
+    job.artifacts = Array.isArray(job.artifacts) ? job.artifacts : [];
+    const availableArtifacts = await readGenerationArtifacts(job);
+    const filesByName = new Map(availableArtifacts.map(file => [file.name, file]));
+    if (job.result?.files) {
+      job.result.files = job.result.files.map(file => file.storedAsArtifact
+        ? filesByName.get(file.name)
+        : file).filter(Boolean);
+    }
+    const wasRunning = job.status === 'running';
+    if (wasRunning) {
       job.status = 'interrupted';
       job.stage = 'interrupted';
-      job.message = 'Сервер перезапустился во время генерации. Сохранённое состояние доступно; запусти генерацию повторно.';
+      job.message = 'Сервер перезапустился во время генерации. Доступны только сохранённые этапы и файлы; продолжи генерацию повторно.';
       job.error = job.message;
       job.updatedAt = Date.now();
-      await fs.promises.writeFile(path.join(generationJobStoreDir, id + '.json'), JSON.stringify(job), 'utf8');
     }
     generationJobs.set(id, job);
+    if (wasRunning) await queuePersistGenerationJob(job);
     return job;
   } catch {
     return null;
   }
 }
-function pruneGenerationJobs() {
+async function pruneGenerationJobs() {
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-  for (const [id, job] of generationJobs) {
-    if (job.updatedAt < cutoff && job.status !== 'running') {
-      generationJobs.delete(id);
-      void fs.promises.rm(path.join(generationJobStoreDir, id + '.json'), { force: true }).catch(() => {});
+  try {
+    await fs.promises.mkdir(generationJobStoreDir, { recursive: true });
+    const entries = await fs.promises.readdir(generationJobStoreDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.json')) continue;
+      const id = entry.name.slice(0, -5);
+      if (!/^[0-9a-f-]{36}$/i.test(id)) continue;
+      const cached = generationJobs.get(id);
+      if (cached?.status === 'running') continue;
+      let updatedAt = 0;
+      try {
+        const saved = JSON.parse(await fs.promises.readFile(path.join(generationJobStoreDir, entry.name), 'utf8'));
+        updatedAt = Number(saved.updatedAt) || 0;
+      } catch {}
+      if (!updatedAt) {
+        const stat = await fs.promises.stat(path.join(generationJobStoreDir, entry.name));
+        updatedAt = stat.mtimeMs;
+      }
+      if (updatedAt < cutoff) {
+        generationJobs.delete(id);
+        await fs.promises.rm(path.join(generationJobStoreDir, entry.name), { force: true });
+        await fs.promises.rm(generationJobArtifactDir(id), { recursive: true, force: true });
+      }
     }
+  } catch (error) {
+    console.warn('[generation-job-store] Не удалось очистить старые задачи:', cleanText(error?.message || error, 180));
   }
 }
 app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
-  pruneGenerationJobs();
+  await pruneGenerationJobs();
   const id=crypto.randomUUID();
-  const job={id,status:'running',stage:'starting',progress:3,message:'🔎 Проверяем тему и параметры проекта...',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null};
+  const job={id,status:'running',stage:'starting',progress:3,message:'🔎 Проверяем тему и параметры проекта...',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null,checkpoint:null,artifacts:[]};
   generationJobs.set(id,job);
   void queuePersistGenerationJob(job);
+  const saveCheckpoint = async checkpoint => {
+    job.checkpoint = checkpoint;
+    job.updatedAt = Date.now();
+    await queuePersistGenerationJob(job);
+  };
+  const saveArtifact = (file, source) => persistGenerationArtifact(job, file, source);
   Promise.resolve()
     .then(()=>generateProject(req.body||{},(progress,stage,message)=>{
       job.progress=progress;job.stage=stage;job.message=message;job.updatedAt=Date.now();
       void queuePersistGenerationJob(job);
-    }))
+    }, saveCheckpoint, saveArtifact))
     .then(async result=>{
       job.status='completed';job.stage='completed';job.progress=100;job.message='✅ Все материалы готовы!';job.result=result;job.updatedAt=Date.now();
       await queuePersistGenerationJob(job);
@@ -1615,7 +1720,12 @@ app.get('/api/generation-jobs/:id', asyncRoute(async (req,res)=>{
   const id=req.params.id;
   const job=generationJobs.get(id) || await loadPersistedGenerationJob(id);
   if(!job)return res.status(404).json({error:'Задача не найдена или срок её хранения истёк.'});
-  res.json({jobId:job.id,status:job.status,progress:job.progress,stage:job.stage,message:job.message,result:job.status==='completed'?job.result:undefined,error:job.error});
+  const partialFiles = job.status === 'completed' ? undefined : await readGenerationArtifacts(job);
+  res.json({
+    jobId:job.id,status:job.status,progress:job.progress,stage:job.stage,message:job.message,
+    result:job.status==='completed'?job.result:undefined,
+    checkpoint:job.checkpoint || undefined, partialFiles, error:job.error
+  });
 }));
 
 app.post('/api/generate-project', asyncRoute(async (req, res) => {
