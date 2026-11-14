@@ -55,7 +55,7 @@
 2. Укажи Mount Path: `/var/data`. Для диска выбери минимальный размер, подходящий текущему объёму данных.
 3. В **Environment** добавь `GENERATION_JOBS_DIR=/var/data/generation-jobs`.
 4. Сохрани изменения и дождись Deploy.
-5. Открой `/api/health`: поле `generationJobStorage` должно показывать `persistent-disk-configured`.
+5. Открой `/api/health`: поле `generationJobStorage` должно показывать `persistent-disk-mounted`, а `generationJobStorageWritable` — `true`. Если увидишь `path-configured-mount-not-detected`, переменная задана, но отдельное дисковое хранилище не обнаружено.
 
 **Важно:** по документации Render Persistent Disk доступен только на платных web services/private services/background workers; бесплатный сервис не поддерживает подключение диска. Подключение диска вызывает новый Deploy и короткий период недоступности сервиса. Не меняй тариф и не включай платные услуги без согласования с владельцем аккаунта/родителем.
 
