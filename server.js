@@ -236,9 +236,9 @@ function configuredAIProviders() {
   // Accept the common Google AI Studio environment-variable names.
   const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   // Every configured provider is attempted independently in the parallel competition.
-  if (geminiApiKey) providers.push({ name: 'Google Gemini', type: 'gemini', key: geminiApiKey, model: process.env.GEMINI_MODEL || 'gemini-2.5-flash' });
+  if (geminiApiKey) providers.push({ name: 'Google Gemini', type: 'gemini', key: geminiApiKey, model: process.env.GEMINI_MODEL || 'gemini-3.8-flash' });
   if (process.env.OPENROUTER_API_KEY) providers.push({ name: 'OpenRouter Free', type: 'openai-compatible', key: process.env.OPENROUTER_API_KEY, baseURL: 'https://openrouter.ai/api/v1', model: process.env.OPENROUTER_MODEL || 'openrouter/free', freeOnly: true });
-  if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b' });
+  if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile' });
   if (process.env.DEEPSEEK_API_KEY) providers.push({ name: 'DeepSeek', type: 'openai-compatible', key: process.env.DEEPSEEK_API_KEY, baseURL: 'https://api.deepseek.com', model: process.env.DEEPSEEK_MODEL || 'deepseek-flash' });
   if (process.env.MISTRAL_API_KEY) providers.push({ name: 'Mistral', type: 'openai-compatible', key: process.env.MISTRAL_API_KEY, baseURL: 'https://api.mistral.ai/v1', model: process.env.MISTRAL_MODEL || 'mistral-small-latest' });
   if (process.env.ANTHROPIC_API_KEY) providers.push({ name: 'Anthropic Claude', type: 'anthropic', key: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5' });
@@ -295,7 +295,7 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
   }
   if (provider.type === 'openai-compatible') {
     const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + provider.key,
-      ...(provider.name === 'OpenRouter Free' ? { 'HTTP-Referer': 'https://vse-proekty-ian-1.onrender.com', 'X-Title': 'Все проекты #Ian' } : {}) };
+      ...(provider.name === 'OpenRouter Free' ? { 'HTTP-Referer': 'https://vse-proekty-ian.onrender.com', 'X-Title': 'Vse Proekty Ian' } : {}) };
     const requestBody = { model: provider.model, messages: [{ role: 'system', content: instructions }, { role: 'user', content: input }], max_tokens: 10000,
       ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) };
     let response = await fetch(provider.baseURL + '/chat/completions', {
