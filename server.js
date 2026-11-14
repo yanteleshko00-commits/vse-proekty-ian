@@ -1505,18 +1505,94 @@ app.get('/api/health', (_req, res) => {
     aiProviders: providers.map(provider => provider.name),
     aiProviderModels: providers.map(provider => ({ name: provider.name, model: provider.model || MODEL })),
     aiProviderStatus: { geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY), openAIEnabledForText: false },
-    imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true'
+    imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true',
+    generationJobStorage: process.env.GENERATION_JOBS_DIR ? 'persistent-disk-configured' : 'ephemeral-storage'
   });
 });
 
 const generationJobs = new Map();
-function pruneGenerationJobs(){const cutoff=Date.now()-30*60*1000;for(const [id,job] of generationJobs)if(job.updatedAt<cutoff&&job.status!=="running")generationJobs.delete(id);}
+// Configure GENERATION_JOBS_DIR to a mounted Render persistent disk (for example /var/data/generation-jobs)
+// to keep running/completed job state and generated files available after process restarts.
+const generationJobStoreDir = process.env.GENERATION_JOBS_DIR || path.join(os.tmpdir(), 'vse-proekty-ian-generation-jobs');
+const generationJobWrites = new Map();
+function queuePersistGenerationJob(job) {
+  const snapshot = {
+    id: job.id, status: job.status, stage: job.stage, progress: job.progress,
+    message: job.message, createdAt: job.createdAt, updatedAt: job.updatedAt,
+    result: job.result, error: job.error
+  };
+  const previous = generationJobWrites.get(job.id) || Promise.resolve();
+  const next = previous.catch(() => {}).then(async () => {
+    await fs.promises.mkdir(generationJobStoreDir, { recursive: true });
+    const target = path.join(generationJobStoreDir, job.id + '.json');
+    const temporary = target + '.tmp';
+    await fs.promises.writeFile(temporary, JSON.stringify(snapshot), 'utf8');
+    await fs.promises.rename(temporary, target);
+  }).catch(error => {
+    console.warn('[generation-job-store] Не удалось сохранить задачу:', cleanText(error?.message || error, 220));
+  });
+  generationJobWrites.set(job.id, next);
+  return next;
+}
+async function loadPersistedGenerationJob(id) {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  try {
+    const raw = await fs.promises.readFile(path.join(generationJobStoreDir, id + '.json'), 'utf8');
+    const job = JSON.parse(raw);
+    if (!job || job.id !== id) return null;
+    // A process restart cannot safely resume an interrupted provider request.
+    // Preserve the draft/status and report a retryable interruption instead of leaving it "running" forever.
+    if (job.status === 'running') {
+      job.status = 'interrupted';
+      job.stage = 'interrupted';
+      job.message = 'Сервер перезапустился во время генерации. Сохранённое состояние доступно; запусти генерацию повторно.';
+      job.error = job.message;
+      job.updatedAt = Date.now();
+      await fs.promises.writeFile(path.join(generationJobStoreDir, id + '.json'), JSON.stringify(job), 'utf8');
+    }
+    generationJobs.set(id, job);
+    return job;
+  } catch {
+    return null;
+  }
+}
+function pruneGenerationJobs() {
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  for (const [id, job] of generationJobs) {
+    if (job.updatedAt < cutoff && job.status !== 'running') {
+      generationJobs.delete(id);
+      void fs.promises.rm(path.join(generationJobStoreDir, id + '.json'), { force: true }).catch(() => {});
+    }
+  }
+}
 app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
-  pruneGenerationJobs();const id=crypto.randomUUID();const job={id,status:'running',stage:'starting',progress:3,message:'🔎 Проверяем тему и параметры проекта...',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null};generationJobs.set(id,job);
-  Promise.resolve().then(()=>generateProject(req.body||{},(progress,stage,message)=>{job.progress=progress;job.stage=stage;job.message=message;job.updatedAt=Date.now();})).then(result=>{job.status='completed';job.stage='completed';job.progress=100;job.message='✅ Все материалы готовы!';job.result=result;job.updatedAt=Date.now();}).catch(error=>{job.status='failed';job.stage='failed';job.error=cleanText(error?.message||'Не удалось создать проект.',1000);job.message='❌ Генерация завершилась с ошибкой';job.updatedAt=Date.now();console.error('[background-generation]',id,error?.stack||error);});
+  pruneGenerationJobs();
+  const id=crypto.randomUUID();
+  const job={id,status:'running',stage:'starting',progress:3,message:'🔎 Проверяем тему и параметры проекта...',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null};
+  generationJobs.set(id,job);
+  void queuePersistGenerationJob(job);
+  Promise.resolve()
+    .then(()=>generateProject(req.body||{},(progress,stage,message)=>{
+      job.progress=progress;job.stage=stage;job.message=message;job.updatedAt=Date.now();
+      void queuePersistGenerationJob(job);
+    }))
+    .then(async result=>{
+      job.status='completed';job.stage='completed';job.progress=100;job.message='✅ Все материалы готовы!';job.result=result;job.updatedAt=Date.now();
+      await queuePersistGenerationJob(job);
+    })
+    .catch(async error=>{
+      job.status='failed';job.stage='failed';job.error=cleanText(error?.message||'Не удалось создать проект.',1000);job.message='❌ Генерация завершилась с ошибкой';job.updatedAt=Date.now();
+      await queuePersistGenerationJob(job);
+      console.error('[background-generation]',id,error?.stack||error);
+    });
   res.status(202).json({jobId:id,status:'running',progress:3,stage:'starting',message:job.message});
 }));
-app.get('/api/generation-jobs/:id',(req,res)=>{const job=generationJobs.get(req.params.id);if(!job)return res.status(404).json({error:'Задача не найдена. Возможно, сервер перезапускался.'});job.updatedAt=Date.now();res.json({jobId:job.id,status:job.status,progress:job.progress,stage:job.stage,message:job.message,result:job.status==='completed'?job.result:undefined,error:job.error});});
+app.get('/api/generation-jobs/:id', asyncRoute(async (req,res)=>{
+  const id=req.params.id;
+  const job=generationJobs.get(id) || await loadPersistedGenerationJob(id);
+  if(!job)return res.status(404).json({error:'Задача не найдена или срок её хранения истёк.'});
+  res.json({jobId:job.id,status:job.status,progress:job.progress,stage:job.stage,message:job.message,result:job.status==='completed'?job.result:undefined,error:job.error});
+}));
 
 app.post('/api/generate-project', asyncRoute(async (req, res) => {
   const result = await withTimeout(generateProject(req.body || {}), REQUEST_TIMEOUT_MS, 'Создание проекта');
