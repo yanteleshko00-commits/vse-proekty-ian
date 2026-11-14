@@ -241,7 +241,7 @@ function configuredAIProviders() {
   if (process.env.MISTRAL_API_KEY) providers.push({ name: 'Mistral', type: 'openai-compatible', key: process.env.MISTRAL_API_KEY, baseURL: 'https://api.mistral.ai/v1', model: process.env.MISTRAL_MODEL || 'mistral-small-latest' });
   if (process.env.ANTHROPIC_API_KEY) providers.push({ name: 'Anthropic Claude', type: 'anthropic', key: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5' });
   if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) providers.push({ name: 'Cloudflare Workers AI', type: 'cloudflare', accountId: process.env.CLOUDFLARE_ACCOUNT_ID, key: process.env.CLOUDFLARE_API_TOKEN, model: process.env.CLOUDFLARE_AI_MODEL || '@cf/openai/gpt-oss-120b' });
-  if (process.env.OPENAI_API_KEY) providers.push({ name: 'OpenAI', type: 'openai' });
+  // OpenAI отключён от текстовой генерации проекта; остальные провайдеры работают независимо.
   return providers;
 }
 function providerErrorMessage(data, status) {
@@ -327,7 +327,7 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
 }
 async function runAIWithFallback(instructions, input, jsonMode, timeout = REQUEST_TIMEOUT_MS) {
   const providers = configuredAIProviders();
-  if (!providers.length) throw new Error('Не подключены API-ключи ИИ. Добавь OPENAI_API_KEY и ключи резервных бесплатных провайдеров в Render.');
+  if (!providers.length) throw new Error('Не подключены ИИ-провайдеры. Проверь GEMINI_API_KEY и другие ключи в Render → Environment.');
   const failures = [];
   // Use one shared AI time budget instead of spending 18 seconds on every provider.
   // Otherwise several unavailable providers can outlive the Render request timeout.
