@@ -1658,18 +1658,38 @@ async function loadPersistedGenerationJob(id) {
     return null;
   }
 }
-function pruneGenerationJobs() {
+async function pruneGenerationJobs() {
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-  for (const [id, job] of generationJobs) {
-    if (job.updatedAt < cutoff && job.status !== 'running') {
-      generationJobs.delete(id);
-      void fs.promises.rm(path.join(generationJobStoreDir, id + '.json'), { force: true }).catch(() => {});
-      void fs.promises.rm(generationJobArtifactDir(id), { recursive: true, force: true }).catch(() => {});
+  try {
+    await fs.promises.mkdir(generationJobStoreDir, { recursive: true });
+    const entries = await fs.promises.readdir(generationJobStoreDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.json')) continue;
+      const id = entry.name.slice(0, -5);
+      if (!/^[0-9a-f-]{36}$/i.test(id)) continue;
+      const cached = generationJobs.get(id);
+      if (cached?.status === 'running') continue;
+      let updatedAt = 0;
+      try {
+        const saved = JSON.parse(await fs.promises.readFile(path.join(generationJobStoreDir, entry.name), 'utf8'));
+        updatedAt = Number(saved.updatedAt) || 0;
+      } catch {}
+      if (!updatedAt) {
+        const stat = await fs.promises.stat(path.join(generationJobStoreDir, entry.name));
+        updatedAt = stat.mtimeMs;
+      }
+      if (updatedAt < cutoff) {
+        generationJobs.delete(id);
+        await fs.promises.rm(path.join(generationJobStoreDir, entry.name), { force: true });
+        await fs.promises.rm(generationJobArtifactDir(id), { recursive: true, force: true });
+      }
     }
+  } catch (error) {
+    console.warn('[generation-job-store] Не удалось очистить старые задачи:', cleanText(error?.message || error, 180));
   }
 }
 app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
-  pruneGenerationJobs();
+  await pruneGenerationJobs();
   const id=crypto.randomUUID();
   const job={id,status:'running',stage:'starting',progress:3,message:'🔎 Проверяем тему и параметры проекта...',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null,checkpoint:null,artifacts:[]};
   generationJobs.set(id,job);
