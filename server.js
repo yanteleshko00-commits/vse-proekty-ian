@@ -233,8 +233,10 @@ async function withTimeout(promise, ms, label = 'Операция') {
 }
 function configuredAIProviders() {
   const providers = [];
+  // Accept the common Google AI Studio environment-variable names.
+  const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   // Every configured provider is attempted independently in the parallel competition.
-  if (process.env.GEMINI_API_KEY) providers.push({ name: 'Google Gemini', type: 'gemini', model: process.env.GEMINI_MODEL || 'gemini-3.8-flash' });
+  if (geminiApiKey) providers.push({ name: 'Google Gemini', type: 'gemini', key: geminiApiKey, model: process.env.GEMINI_MODEL || 'gemini-2.5-flash' });
   if (process.env.OPENROUTER_API_KEY) providers.push({ name: 'OpenRouter Free', type: 'openai-compatible', key: process.env.OPENROUTER_API_KEY, baseURL: 'https://openrouter.ai/api/v1', model: process.env.OPENROUTER_MODEL || 'openrouter/free', freeOnly: true });
   if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b' });
   if (process.env.DEEPSEEK_API_KEY) providers.push({ name: 'DeepSeek', type: 'openai-compatible', key: process.env.DEEPSEEK_API_KEY, baseURL: 'https://api.deepseek.com', model: process.env.DEEPSEEK_MODEL || 'deepseek-flash' });
@@ -278,7 +280,7 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
     return (Array.isArray(data.content) ? data.content : []).filter(block => block.type === 'text').map(block => block.text || '').join('');
   }
   if (provider.type === 'gemini') {
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(provider.model) + ':generateContent?key=' + encodeURIComponent(process.env.GEMINI_API_KEY);
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(provider.model) + ':generateContent?key=' + encodeURIComponent(provider.key);
     const response = await fetch(url, {
       method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1314,6 +1316,7 @@ app.get('/api/health', (_req, res) => {
     ok: true, service: 'presentation-generator', model: MODEL,
     aiProviders: providers.map(provider => provider.name),
     aiProviderModels: providers.map(provider => ({ name: provider.name, model: provider.model || MODEL })),
+    aiProviderStatus: { geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY), openAIEnabledForText: false },
     imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true'
   });
 });
