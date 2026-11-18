@@ -1801,6 +1801,29 @@ app.post('/api/suggest-topics', asyncRoute(async (req, res) => {
   res.json({ topic });
 }));
 
+app.post('/api/generate-text', asyncRoute(async (req, res) => {
+  const prompt = cleanText(req.body?.prompt, 5000);
+  const format = cleanText(req.body?.format || 'связный текст', 80);
+  if (!prompt) return res.status(400).json({ error: 'Напиши, какой текст нужно создать.' });
+  const instructions = [
+    'Ты — грамотный русскоязычный автор и редактор.',
+    'Создай готовый текст по запросу пользователя. Учитывай назначение, аудиторию и указанный формат.',
+    'Пиши естественно, понятно и без пустых общих фраз. Соблюдай орфографию и пунктуацию.',
+    'Не выдумывай реальные факты, цифры, цитаты, исследования, ссылки, имена и события.',
+    'Если запрос касается фактов, которых нет во входных данных и которые нельзя проверить, явно обозначь неопределённость или оставь понятную отметку для заполнения.',
+    'Не добавляй вступление о том, что ты ИИ. Верни только готовый текст.'
+  ].join(' ');
+  const result = await runAIWithFallback(
+    instructions,
+    'Формат: ' + format + '\\nЗапрос: ' + prompt,
+    false,
+    50000
+  );
+  const generatedText = cleanText(result.output, 16000);
+  if (!generatedText) return res.status(502).json({ error: 'ИИ не вернул готовый текст. Попробуй изменить запрос.' });
+  res.json({ text: generatedText, provider: result.provider });
+}));
+
 app.post('/api/chat', asyncRoute(async (req, res) => {
   const question = cleanText(req.body?.question, 2000);
   if (!question) return res.status(400).json({ error: 'Напиши вопрос.' });
