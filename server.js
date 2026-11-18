@@ -938,10 +938,12 @@ function addImageOrPlaceholder(slide, s, x, y, w, h, theme) {
         slide.addShape('roundRect', { x: ix + iw * 0.08 + col * (cell + 0.08), y: iy + ih * 0.12 + row * (cell + 0.14), w: cell, h: cell, rectRadius: 0.06, fill: { color: active ? accent : pale }, line: { color: 'FFFFFF', transparency: 100 } });
       }
     } else {
-      slide.addShape('line', { x: ix + iw * 0.08, y: iy + ih * 0.82, w: iw * 0.28, h: -ih * 0.42, line: { color: accent, width: 3 } });
-      slide.addShape('line', { x: ix + iw * 0.36, y: iy + ih * 0.40, w: iw * 0.24, h: ih * 0.22, line: { color: pale, width: 3 } });
-      slide.addShape('line', { x: ix + iw * 0.60, y: iy + ih * 0.62, w: iw * 0.28, h: -ih * 0.48, line: { color: accent, width: 3 } });
-      for (const [px, py] of [[0.36, 0.40], [0.60, 0.62], [0.88, 0.14]]) slide.addShape('ellipse', { x: ix + iw * px - 0.08, y: iy + ih * py - 0.08, w: 0.16, h: 0.16, fill: { color: accent }, line: { color: accent } });
+      const bars = [0.38, 0.68, 0.5, 0.86];
+      bars.forEach((height, index) => {
+        const bx = ix + iw * (0.12 + index * 0.2);
+        slide.addShape('roundRect', { x: bx, y: iy + ih * (0.88 - height), w: iw * 0.12, h: ih * height, rectRadius: 0.06, fill: { color: index % 2 ? pale : accent }, line: { color: 'FFFFFF', transparency: 100 } });
+      });
+      slide.addShape('line', { x: ix + iw * 0.08, y: iy + ih * 0.9, w: iw * 0.84, h: 0, line: { color: accent, width: 1.5 } });
     }
   }
 }
@@ -1314,12 +1316,14 @@ function createPresentationPdfBuffer(plan) {
           // Photo-led layouts deliberately change composition and image position from slide to slide.
           const layout = i % 3;
           const items = slide.bullets || [];
-          if (slide.imageBytes && layout === 1) {
-            drawPhoto(slide, 48, 142, 340, 300);
+          if (layout === 1) {
+            if (slide.imageBytes) drawPhoto(slide, 48, 142, 340, 300);
+            else drawArtFallback(48, 142, 340, 300, i, slide);
             drawText(slide.body || slide.subtitle, 425, 145, 455, 90, 18, theme.ink, { max: 250 });
             drawBullets(items, 425, 255, 450, 4, 15);
-          } else if (slide.imageBytes && layout === 2) {
-            drawPhoto(slide, 48, 132, 864, 205);
+          } else if (layout === 2) {
+            if (slide.imageBytes) drawPhoto(slide, 48, 132, 864, 205);
+            else drawArtFallback(48, 132, 864, 205, i, slide);
             drawText(slide.body || slide.subtitle, 52, 351, 840, 42, 15, theme.ink, { max: 240 });
             items.slice(0, 4).forEach((item, index) => {
               const x = 55 + (index % 2) * 425;
