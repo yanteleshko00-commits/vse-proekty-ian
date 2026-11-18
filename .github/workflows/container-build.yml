@@ -45,6 +45,7 @@ jobs:
           trap cleanup EXIT
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:3000/api/health > /tmp/health.json; then
+              node -e 'const h = JSON.parse(require("node:fs").readFileSync("/tmp/health.json", "utf8")); if (h.ok !== true || h.generationJobStorageWritable !== true || h.generationJobStorage !== "path-configured-mount-not-detected") { console.error("Unexpected health response:", h); process.exit(1); }'
               cat /tmp/health.json
               exit 0
             fi
