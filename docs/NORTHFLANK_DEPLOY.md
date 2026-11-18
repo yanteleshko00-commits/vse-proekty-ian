@@ -18,8 +18,9 @@
 3. Подключает репозиторий `yanteleshko00-commits/vse-proekty-ian`.
 4. Для первого теста выбирает ветку `deploy/container-ready`. После проверки и отдельного решения можно использовать `main`.
 5. Тип сборки: **Dockerfile**. Путь: `/Dockerfile`. Build context: корень репозитория.
-6. Проверяет публичный HTTP-порт **3000**. В Dockerfile он указан через `EXPOSE 3000`; сервер привязан к `0.0.0.0`.
-7. На первом этапе оставляет **1 instance**.
+6. В `Configure → Networking` добавляет порт **3000**, протокол **HTTP**, доступность **Public**. В Dockerfile он указан через `EXPOSE 3000`; сервер привязан к `0.0.0.0`.
+7. В `Configure → Health checks` добавляет HTTP readiness check: порт **3000**, путь `/api/health`, initial delay **25 s**, interval **30 s**, timeout **5 s**, failure threshold **3**. Northflank принимает HTTP-проверку при статусе ответа 200–399.
+8. На первом этапе оставляет **1 instance**.
 
 ## Переменные окружения
 
