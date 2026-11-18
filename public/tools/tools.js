@@ -5,7 +5,8 @@
     image: { title:"Сделать картинку", description:"Опиши изображение, которое хочешь получить. Чем понятнее описание, тем точнее результат.", label:"Опиши изображение", placeholder:"Например: реалистичный горный пейзаж на рассвете, мягкий свет, без текста и логотипов.", button:"Создать изображение", status:"Создаю изображение…", endpoint:"/api/generate-image" },
     ask: { title:"Спросить ИИ", description:"Задай вопрос, попроси объяснить тему или помочь разобраться в сложной задаче.", label:"Твой вопрос", placeholder:"Например: объясни закон Ома простыми словами и приведи пример.", button:"Отправить вопрос", status:"Готовлю ответ…", endpoint:"/api/chat" },
     topic: { title:"Придумать тему", description:"Получи идею школьного проекта, которую можно исследовать и раскрыть на практике.", label:"Интересы или предмет (необязательно)", placeholder:"Например: биология, технологии, экология, история или мои увлечения.", button:"Подобрать тему", status:"Подбираю тему…", endpoint:"/api/suggest-topics" },
-    defense: { title:"Подготовиться к защите", description:"Составь план выступления и потренируйся отвечать на вопросы комиссии.", label:"Тема проекта и что уже известно", placeholder:"Например: Влияние сна на память. В проекте я изучил режим сна и способы улучшить подготовку ко сну.", button:"Подготовить защиту", status:"Готовлю речь и вопросы…", endpoint:"/api/chat" }
+    defense: { title:"Подготовиться к защите", description:"Составь план выступления и потренируйся отвечать на вопросы комиссии.", label:"Тема проекта и что уже известно", placeholder:"Например: Влияние сна на память. В проекте я изучил режим сна и способы улучшить подготовку ко сну.", button:"Подготовить защиту", status:"Готовлю речь и вопросы…", endpoint:"/api/chat" },
+    project: { title:"Создать проект", description:"Подготовь текст проекта, презентацию и материалы для защиты.", endpoint:"/#generator" }
   };
 
   try {
@@ -37,7 +38,7 @@
   mount.innerHTML = `
     <form class="tool-panel" id="toolForm">
       <label class="tool-label" for="toolPrompt">${config.label}</label>
-      <textarea class="tool-input" id="toolPrompt" maxlength="5000" placeholder="${config.placeholder}" required></textarea>
+      <textarea class="tool-input" id="toolPrompt" maxlength="5000" placeholder="${config.placeholder}"></textarea>
       <p class="tool-hint">${currentTool === "topic" ? "Можно оставить поле пустым, чтобы получить случайную идею." : "Не добавляй пароли, личные данные или другую конфиденциальную информацию."}</p>
       <button class="tool-primary" id="toolRun" type="submit">${config.button} <span aria-hidden="true">→</span></button>
       <div class="tool-status" id="toolStatus" role="status" aria-live="polite"></div>
