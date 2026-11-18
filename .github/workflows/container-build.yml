@@ -88,7 +88,7 @@ jobs:
           docker rm -f "$CONTAINER" >/dev/null
           start_container
           wait_for_health
-          docker exec "$CONTAINER" sh -c 'test -s "/app/data/generation-jobs/$JOB_ID.json"'
+          docker exec "$CONTAINER" test -s "/app/data/generation-jobs/$JOB_ID.json"
           curl --fail --silent "http://127.0.0.1:3000/api/generation-jobs/$JOB_ID" > /tmp/recovered-job.json
           node -e 'const j = JSON.parse(require("node:fs").readFileSync("/tmp/recovered-job.json", "utf8")); if (j.status !== "completed" || j.result?.project?.title !== "CI recovery test") { console.error("Persisted job was not recovered:", j); process.exit(1); }'
           echo "Persisted generation job was recovered after container recreation."
