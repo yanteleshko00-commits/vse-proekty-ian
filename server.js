@@ -520,6 +520,7 @@ const PLANNER_INSTRUCTIONS = `
 - Фирменная деталь проекта — тонкий синий навигационный маркер и аккуратная нумерация. Не делай все слайды синими: основной цвет и дополнительные оттенки подбирай по теме, синий используй только как небольшую фирменную подпись.
 - Используй только type из: cover,cards,comparison,stat,process,quote,image,table.
 - Планируй разнообразие композиций как арт-директор: полноэкранная фотография с короткой подписью, крупный тезис + визуальное доказательство, асимметричная фотография, карточки, сравнение, процесс, таблица или инфографика. Выбирай макет по смыслу, а не чередуй типы механически. Один type не должен использоваться более двух раз подряд.
+- Если подходящий структурный макет не получается заполнить, используй image, но не повторяй одну и ту же позицию фотографии и композицию: чередуй фото справа, слева и широкой горизонтальной полосой. Не заполняй пустое место повторяющейся абстрактной картинкой из кругов.
 - Не размещай на каждом слайде изображение в одинаковой правой колонке. Чередуй визуальный центр: фото на всю ширину, слева, справа, сверху, крупная фоновая фотография, схема или крупная типографика.
 - Каждый слайд обязан иметь отдельный imageQuery на английском: конкретная фотореалистичная сцена по содержанию именно этого слайда (объект + действие/место/условие + желаемый ракурс). Запросы различаются по объекту, ракурсу и сцене. Не используй один общий запрос для всей темы, логотипы, флаги, клипарт, схемы и изображения с надписями.
 - Фотография должна быть смысловым доказательством тезиса, а не украшением. Если фото неуместно (например, формула, таблица, точное сравнение), предпочитай схему, данные или типографику.
@@ -536,6 +537,7 @@ function validatePresentationPlan(raw, requestedCount) {
   if (raw.slides.length !== requestedCount) issues.push(`нужно ровно ${requestedCount} слайдов, получено ${raw.slides.length}`);
   const slides = raw.slides.slice(0, requestedCount);
   const titleCounts = new Map(), imageQueries = new Map(), repeatedBodies = new Map();
+  let previousType = '', consecutiveTypeCount = 0;
   const genericTitle = /^(?:развитие темы|основные элементы|главная идея|актуальность темы|пример из практики|практические аспекты|раздел \d+)(?:\s|:|$)/i;
   slides.forEach((slide, index) => {
     const prefix = `слайд ${index + 1}`;
@@ -547,6 +549,10 @@ function validatePresentationPlan(raw, requestedCount) {
     if (/^(?:источники|итоги|выводы|заключение)(?:\s|:|$)/i.test(title)) issues.push(`${prefix}: запрещён пустой финальный слайд с источниками или общим заключением`);
     const allowedTypes = ['cover', 'cards', 'comparison', 'stat', 'process', 'quote', 'image', 'table'];
     if (!allowedTypes.includes(String(slide.type || ''))) issues.push(`${prefix}: неподдерживаемый тип макета`);
+    const currentType = String(slide.type || '');
+    consecutiveTypeCount = currentType === previousType ? consecutiveTypeCount + 1 : 1;
+    previousType = currentType;
+    if (currentType !== 'image' && consecutiveTypeCount > 2) issues.push(`${prefix}: один и тот же тип макета повторяется более двух раз подряд`);
     const query = cleanText(slide.imageQuery, 180).toLocaleLowerCase('en').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
     if (!query) issues.push(`${prefix}: нет собственного imageQuery`);
     if (query) imageQueries.set(query, (imageQueries.get(query) || 0) + 1);
@@ -696,6 +702,17 @@ function repairInvalidSlideLayouts(raw) {
     }
     seenQueries.add(queryKey);
   }
+  let previousLayout = '', repeatedLayoutCount = 0;
+  for (const slide of slides) {
+    if (!slide || typeof slide !== 'object') continue;
+    repeatedLayoutCount = slide.type === previousLayout ? repeatedLayoutCount + 1 : 1;
+    if (slide.type !== 'image' && repeatedLayoutCount > 2) {
+      slide.type = 'image';
+      repeatedLayoutCount = 1;
+    }
+    previousLayout = slide.type;
+  }
+
   raw.slides = slides;
   return raw;
 }
@@ -905,10 +922,29 @@ function addImageOrPlaceholder(slide, s, x, y, w, h, theme) {
       slide.addShape('line', { x: xx + 0.12, y: yy + ch * 0.58, w: cw * 0.5, h: 0, line: { color: pale, width: 2 } });
     }
   } else {
-    const offset = (seed % 5) * 0.045;
-    slide.addShape('ellipse', { x: ix + iw * (0.08 + offset), y: iy + ih * 0.08, w: iw * 0.72, h: ih * 0.72, fill: { color: accent, transparency: 18 }, line: { color: accent, transparency: 100 } });
-    slide.addShape('ellipse', { x: ix + iw * (0.4 - offset), y: iy + ih * 0.22, w: iw * 0.48, h: ih * 0.6, fill: { color: pale, transparency: 12 }, line: { color: pale, transparency: 100 } });
-    slide.addShape('roundRect', { x: ix + iw * 0.16, y: iy + ih * 0.52, w: iw * 0.65, h: ih * 0.25, rectRadius: 0.1, fill: { color: 'FFFFFF', transparency: 8 }, line: { color: 'FFFFFF', transparency: 65, width: 1 } });
+    const variant = seed % 4;
+    if (variant === 0) {
+      slide.addShape('rect', { x: ix, y: iy + ih * 0.08, w: iw * 0.24, h: ih * 0.82, fill: { color: pale }, line: { color: pale, transparency: 100 } });
+      slide.addShape('rect', { x: ix + iw * 0.34, y: iy + ih * 0.08, w: iw * 0.13, h: ih * 0.82, fill: { color: accent }, line: { color: accent, transparency: 100 } });
+      for (let row = 0; row < 3; row++) slide.addShape('line', { x: ix + iw * 0.55, y: iy + ih * (0.26 + row * 0.24), w: iw * (0.25 + (row % 2) * 0.12), h: 0, line: { color: row === 1 ? accent : pale, width: 3 } });
+    } else if (variant === 1) {
+      slide.addShape('ellipse', { x: ix + iw * 0.16, y: iy + ih * 0.12, w: iw * 0.65, h: ih * 0.65, fill: { color: pale }, line: { color: pale, transparency: 100 } });
+      slide.addShape('ellipse', { x: ix + iw * 0.36, y: iy + ih * 0.32, w: iw * 0.25, h: ih * 0.25, fill: { color: accent }, line: { color: accent, transparency: 100 } });
+      slide.addShape('line', { x: ix + iw * 0.12, y: iy + ih * 0.88, w: iw * 0.76, h: 0, line: { color: accent, width: 2 } });
+    } else if (variant === 2) {
+      const cell = Math.min(iw * 0.18, ih * 0.22);
+      for (let row = 0; row < 3; row++) for (let col = 0; col < 4; col++) {
+        const active = (row * 4 + col + seed) % 5 === 0;
+        slide.addShape('roundRect', { x: ix + iw * 0.08 + col * (cell + 0.08), y: iy + ih * 0.12 + row * (cell + 0.14), w: cell, h: cell, rectRadius: 0.06, fill: { color: active ? accent : pale }, line: { color: 'FFFFFF', transparency: 100 } });
+      }
+    } else {
+      const bars = [0.38, 0.68, 0.5, 0.86];
+      bars.forEach((height, index) => {
+        const bx = ix + iw * (0.12 + index * 0.2);
+        slide.addShape('roundRect', { x: bx, y: iy + ih * (0.88 - height), w: iw * 0.12, h: ih * height, rectRadius: 0.06, fill: { color: index % 2 ? pale : accent }, line: { color: 'FFFFFF', transparency: 100 } });
+      });
+      slide.addShape('line', { x: ix + iw * 0.08, y: iy + ih * 0.9, w: iw * 0.84, h: 0, line: { color: accent, width: 1.5 } });
+    }
   }
 }
 function addBullets(slide, items, x, y, w, theme, max = 4) {
@@ -1027,9 +1063,25 @@ function buildPptx(plan) {
       }));
       addImageOrPlaceholder(slide, s, 9.58, 1.58, 2.95, 4.7, theme);
     } else if (type === 'image') {
-      addImageOrPlaceholder(slide, s, 0.75, 1.55, 5.75, 4.85, theme);
-      addText(slide, s.body || s.subtitle, 6.85, 1.68, 5.3, 1.52, { fontSize: 19, color: theme.ink, valign: 'top' });
-      addBullets(slide, s.bullets, 6.9, 3.45, 5.1, theme, 4);
+      const imageLayout = i % 3;
+      if (imageLayout === 1) {
+        addText(slide, s.body || s.subtitle, 0.85, 1.68, 5.25, 1.42, { fontSize: 19, color: theme.ink, valign: 'top' });
+        addBullets(slide, s.bullets, 0.9, 3.25, 5.0, theme, 4);
+        addImageOrPlaceholder(slide, s, 6.35, 1.55, 6.15, 4.85, theme);
+      } else if (imageLayout === 2) {
+        addImageOrPlaceholder(slide, s, 0.75, 1.55, 11.75, 2.9, theme);
+        addText(slide, s.body || s.subtitle, 0.9, 4.58, 11.0, 0.55, { fontSize: 15, color: theme.ink, valign: 'top' });
+        (s.bullets || []).slice(0, 4).forEach((item, index) => {
+          const col = index % 2, row = Math.floor(index / 2);
+          const x = 0.95 + col * 5.85, y = 5.25 + row * 0.62;
+          slide.addShape('ellipse', { x, y: y + 0.13, w: 0.1, h: 0.1, fill: { color: theme.accent }, line: { color: theme.accent } });
+          addText(slide, item, x + 0.2, y, 5.45, 0.48, { fontSize: 11, color: theme.ink, valign: 'mid' });
+        });
+      } else {
+        addImageOrPlaceholder(slide, s, 0.75, 1.55, 5.75, 4.85, theme);
+        addText(slide, s.body || s.subtitle, 6.85, 1.68, 5.3, 1.52, { fontSize: 19, color: theme.ink, valign: 'top' });
+        addBullets(slide, s.bullets, 6.9, 3.45, 5.1, theme, 4);
+      }
     } else {
       addText(slide, s.body || s.subtitle, 0.85, 1.62, 7.5, 1.55, { fontSize: 19, color: theme.ink, valign: 'top' });
       addBullets(slide, s.bullets, 0.9, 3.45, 7.35, theme, 4);
@@ -1080,130 +1132,215 @@ function createPresentationPdfBuffer(plan) {
       size: [960, 540],
       margin: 0,
       autoFirstPage: false,
-      info: { Title: `${plan.title} — презентация`, Author: 'Все проекты #Ian' }
+      info: { Title: String(plan.title || '') + ' — презентация', Author: 'Все проекты #Ian' }
     });
     const chunks = [];
     doc.on('data', chunk => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    // Embed a Unicode font so Russian text renders correctly in generated PDFs.
     if (fs.existsSync(PDF_FONT_PATH)) doc.font(PDF_FONT_PATH);
     const theme = plan.theme || COLORS.blue;
-    const color = value => `#${String(value || 'FFFFFF').replace(/^#/, '')}`;
+    const hex = value => '#' + String(value || 'FFFFFF').replace(/^#/, '');
+    const safe = (value, max = 250) => normalizeText(value || '', max);
+    const drawText = (value, x, y, w, h, size, fill, opts = {}) => {
+      if (!value) return;
+      const { max = 320, align } = opts;
+      doc.fontSize(size).fillColor(hex(fill)).text(safe(value, max), x, y, {
+        width: w, height: h, ellipsis: true, lineGap: 2, ...(align ? { align } : {})
+      });
+    };
+    const drawBullets = (items, x, y, w, max = 4, size = 15) => {
+      let top = y;
+      for (const item of (items || []).filter(Boolean).slice(0, max)) {
+        doc.circle(x + 5, top + 10, 4).fill(hex(theme.accent));
+        drawText(item, x + 20, top, w - 20, 46, size, theme.ink, { max: 150 });
+        top += 53;
+      }
+      return top;
+    };
+    const drawPhoto = (slide, x, y, w, h) => {
+      if (!slide.imageBytes) return false;
+      doc.save();
+      try {
+        doc.roundedRect(x - 5, y - 5, w + 10, h + 10, 12).fill('#FFFFFF');
+        doc.image(slide.imageBytes, x, y, { fit: [w, h], align: 'center', valign: 'center' });
+        doc.restore();
+        if (slide.imageCredit) drawText(slide.imageCredit, x, y + h + 7, w, 20, 8, theme.muted, { max: 110 });
+        return true;
+      } catch (error) {
+        doc.restore();
+        console.warn('PDF image embed failed:', error.message);
+        return false;
+      }
+    };
+    const drawArtFallback = (x, y, w, h, variant, slide) => {
+      // Distinct editorial motifs replace the old identical two-circle placeholder.
+      const ink = hex(theme.accent), pale = hex(theme.accent2), white = '#FFFFFF';
+      doc.save();
+      doc.roundedRect(x, y, w, h, 18).fill(white);
+      if (variant % 4 === 0) {
+        doc.rect(x + 22, y + 22, w * 0.22, h - 44).fill(pale);
+        doc.rect(x + w * 0.34, y + 22, w * 0.12, h * 0.72).fill(ink);
+        doc.rect(x + w * 0.52, y + h * 0.2, w * 0.38, h * 0.13).fill(pale);
+        doc.rect(x + w * 0.52, y + h * 0.42, w * 0.29, h * 0.13).fill(ink);
+        doc.rect(x + w * 0.52, y + h * 0.64, w * 0.34, h * 0.13).fill(pale);
+      } else if (variant % 4 === 1) {
+        doc.moveTo(x + 24, y + h * 0.78).lineTo(x + w * 0.42, y + 24).lineTo(x + w * 0.58, y + 24).lineTo(x + w - 24, y + h * 0.78).lineTo(x + w - 24, y + h - 24).lineTo(x + 24, y + h - 24).closePath().fill(pale);
+        doc.circle(x + w * 0.5, y + h * 0.48, Math.min(w, h) * 0.17).fill(ink);
+        doc.circle(x + w * 0.5, y + h * 0.48, Math.min(w, h) * 0.08).fill(white);
+      } else if (variant % 4 === 2) {
+        const gap = 9, cell = Math.min((w - 56) / 4, (h - 60) / 3);
+        for (let row = 0; row < 3; row++) for (let col = 0; col < 4; col++) {
+          const active = (row * 4 + col + variant) % 5 === 0;
+          doc.roundedRect(x + 24 + col * (cell + gap), y + 28 + row * (cell + gap), cell, cell, 6)
+            .fill(active ? ink : pale);
+        }
+        doc.rect(x + 24, y + h - 34, w * 0.45, 6).fill(ink);
+      } else {
+        doc.rect(x + 24, y + 24, w - 48, 8).fill(pale);
+        doc.rect(x + 24, y + 48, w * 0.62, 8).fill(ink);
+        doc.moveTo(x + 24, y + h * 0.78).lineTo(x + w * 0.36, y + h * 0.42).lineTo(x + w * 0.58, y + h * 0.64).lineTo(x + w - 24, y + h * 0.24)
+          .lineWidth(5).strokeColor(ink).stroke();
+        doc.circle(x + w * 0.36, y + h * 0.42, 7).fill(ink);
+        doc.circle(x + w * 0.58, y + h * 0.64, 7).fill(ink);
+      }
+      const mark = safe(slide.title, 1).slice(0, 1);
+      if (mark) drawText(mark, x + w - 62, y + h - 94, 42, 72, 54, theme.accent, { max: 1, align: 'right' });
+      doc.restore();
+    };
+    const drawCard = (card, x, y, w, h, index) => {
+      doc.roundedRect(x, y, w, h, 12).fill('#FFFFFF');
+      doc.rect(x, y, 5, h).fill(hex(index % 2 ? theme.accent2 : theme.accent));
+      drawText(card.title || 'Ключевой пункт', x + 18, y + 14, w - 32, 34, 15, theme.accent, { max: 55 });
+      drawText(card.text || '', x + 18, y + 54, w - 34, h - 66, 12, theme.ink, { max: 145 });
+    };
 
     for (const [i, slide] of plan.slides.entries()) {
       doc.addPage({ size: [960, 540], margin: 0 });
-      const isCover = slide.type === 'cover';
-      const isQuote = slide.type === 'quote';
-      const slideBg = (i % 4 === 2 && !isCover && !isQuote) ? theme.accent2 : theme.bg;
-      doc.rect(0, 0, 960, 540).fill(isCover ? color(theme.accent) : color(slideBg));
-      if (!isCover) {
-        doc.rect(0, 0, 12, 540).fill(color(theme.accent));
-        // Soft layered glass-like shapes in the background, kept behind slide content.
-        if (!isQuote) {
-          doc.circle(910, 28, 118).fill(color('FFFFFF')).opacity(0.32);
-          doc.circle(930, 62, 42).fill(color(theme.accent2)).opacity(0.7);
-          doc.moveTo(48, 92).lineTo(912, 92).lineWidth(1).strokeColor(color(theme.accent2)).strokeOpacity(0.85).stroke();
-        }
-      }
+      const isCover = i === 0 || slide.type === 'cover';
+      const type = isCover ? 'cover' : String(slide.type || 'image');
+      const variant = i % 4;
 
       if (isCover) {
-        doc.fontSize(13).fillColor('#FFFFFF').text('ПРЕЗЕНТАЦИЯ', 50, 48, { width: 430 });
-        doc.fontSize(34).fillColor('#FFFFFF').text(normalizeText(slide.title || plan.title, 95), 50, 108, {
-          width: slide.imageBytes ? 510 : 820,
-          height: 150,
-          ellipsis: true
-        });
-        doc.fontSize(17).fillColor('#F1F5FF').text(normalizeText(slide.subtitle || slide.body || plan.summary, 240), 52, 290, {
-          width: slide.imageBytes ? 470 : 780,
-          height: 100,
-          ellipsis: true
-        });
-      } else if (slide.type === 'quote') {
-        doc.fontSize(12).fillColor(color(theme.ink)).text('КЛЮЧЕВАЯ МЫСЛЬ', 48, 55, { width: 800 });
-        doc.fontSize(28).fillColor(color(theme.ink)).text(normalizeText(slide.quote || slide.body || slide.title, 250), 48, 125, {
-          width: 820,
-          height: 230,
-          ellipsis: true
-        });
-        if (slide.subtitle) doc.fontSize(15).fillColor(color(theme.ink)).text(normalizeText(slide.subtitle, 150), 50, 400, { width: 780, height: 55, ellipsis: true });
+        if (slide.imageBytes) {
+          doc.rect(0, 0, 960, 540).fill('#142033');
+          try { doc.image(slide.imageBytes, 0, 0, { fit: [960, 540], align: 'center', valign: 'center' }); } catch (error) { console.warn('Cover image failed:', error.message); }
+          doc.save();
+          doc.fillOpacity(0.48).rect(0, 0, 960, 540).fill('#101827');
+          doc.restore();
+        } else {
+          doc.rect(0, 0, 960, 540).fill(hex(theme.accent));
+          doc.rect(635, 0, 325, 540).fill(hex(theme.accent2));
+          doc.circle(795, 250, 150).lineWidth(2).strokeColor('#FFFFFF').stroke();
+          doc.circle(795, 250, 104).lineWidth(2).strokeColor('#FFFFFF').stroke();
+          doc.rect(710, 420, 210, 8).fill('#FFFFFF');
+          doc.rect(710, 445, 150, 8).fill('#FFFFFF');
+        }
+        doc.rect(48, 58, 7, 390).fill('#FFFFFF');
+        drawText('ПРЕЗЕНТАЦИЯ  /  ВСЕ ПРОЕКТЫ #IAN', 82, 64, 760, 26, 12, 'FFFFFF', { max: 80 });
+        drawText(slide.title || plan.title, 82, 160, 780, 150, 39, 'FFFFFF', { max: 100 });
+        drawText(slide.subtitle || slide.body || plan.summary, 85, 335, 680, 75, 17, 'F1F5FF', { max: 220 });
       } else {
-        doc.fontSize(27).fillColor(color(theme.ink)).text(normalizeText(slide.title || plan.title, 100), 45, 33, {
-          width: slide.imageBytes ? 570 : 850,
-          height: 68,
-          ellipsis: true
-        });
+        const bg = (variant === 2) ? 'FFFFFF' : (variant === 1 ? theme.accent2 : theme.bg);
+        doc.rect(0, 0, 960, 540).fill(hex(bg));
+        doc.rect(0, 0, 12, 540).fill(hex(theme.accent));
+        doc.rect(48, 104, 864, 1).fill(hex(theme.accent2));
+        doc.circle(925, 18, 68).fill('#FFFFFF');
+        drawText(slide.title || plan.title, 48, 34, 850, 62, 27, theme.ink, { max: 100 });
 
-        const contentWidth = slide.imageBytes ? 535 : 850;
-        let y = 120;
-        if (slide.statistic) {
-          doc.fontSize(34).fillColor(color(theme.accent)).text(normalizeText(slide.statistic, 50), 48, y, { width: contentWidth, height: 62, ellipsis: true });
-          y += 72;
-        }
-        const intro = slide.body || slide.statisticLabel || slide.subtitle || '';
-        if (intro) {
-          doc.fontSize(17).fillColor(color(theme.ink)).text(normalizeText(intro, 310), 48, y, {
-            width: contentWidth,
-            height: 92,
-            ellipsis: true
+        if (type === 'cards') {
+          const cards = (slide.cards || []).filter(card => card.title || card.text).slice(0, 4);
+          const fallbackCards = cards.length ? cards : (slide.bullets || []).slice(0, 4).map(text => ({
+            title: safe(text, 44), text: safe(text, 140)
+          }));
+          const areaW = slide.imageBytes ? 600 : 864;
+          const cardW = (areaW - 18) / 2;
+          fallbackCards.forEach((card, index) => {
+            const x = 48 + (index % 2) * (cardW + 18);
+            const y = 132 + Math.floor(index / 2) * 170;
+            drawCard(card, x, y, cardW, 148, index);
           });
-          y += 105;
-        }
-
-        const bulletItems = slide.type === 'comparison'
-          ? [...(slide.leftItems || []).slice(0, 2), ...(slide.rightItems || []).slice(0, 2)]
-          : slide.type === 'process'
-            ? (slide.steps || []).slice(0, 4)
-            : (slide.bullets || []).slice(0, 4);
-        for (const item of bulletItems) {
-          if (y > 440) break;
-          doc.circle(54, y + 8, 4).fill(color(theme.accent));
-          doc.fontSize(14).fillColor(color(theme.ink)).text(normalizeText(item, 140), 68, y, {
-            width: contentWidth - 20,
-            height: 44,
-            ellipsis: true
+          if (slide.imageBytes) drawPhoto(slide, 690, 145, 215, 300);
+          else if (!fallbackCards.length) drawArtFallback(690, 145, 215, 300, i, slide);
+        } else if (type === 'comparison') {
+          const panelY = 138, panelH = 320;
+          const panelW = slide.imageBytes ? 300 : 405;
+          const panelGap = slide.imageBytes ? 20 : 20;
+          for (let side = 0; side < 2; side++) {
+            const x = 48 + side * (panelW + panelGap);
+            doc.roundedRect(x, panelY, panelW, panelH, 14).fill('#FFFFFF');
+            doc.roundedRect(x + 16, panelY + 16, panelW - 32, 48, 8).fill(hex(side ? theme.accent2 : theme.accent));
+            drawText(side ? slide.rightTitle : slide.leftTitle, x + 29, panelY + 28, panelW - 58, 26, 15, side ? theme.ink : 'FFFFFF', { max: 55 });
+            drawBullets(side ? slide.rightItems : slide.leftItems, x + 24, panelY + 88, panelW - 48, 4, 14);
+          }
+          if (slide.imageBytes) drawPhoto(slide, 710, 145, 195, 285);
+        } else if (type === 'stat') {
+          drawText(slide.statistic || slide.statisticLabel || slide.body || slide.title, 58, 148, 490, 145, 43, theme.accent, { max: 90 });
+          drawText(slide.statisticLabel || slide.body || slide.subtitle, 62, 315, 455, 95, 18, theme.ink, { max: 230 });
+          if (slide.imageBytes) drawPhoto(slide, 575, 142, 330, 300);
+          else drawArtFallback(575, 142, 330, 300, i, slide);
+        } else if (type === 'process') {
+          const steps = (slide.steps?.length ? slide.steps : slide.bullets || []).slice(0, 5);
+          const count = Math.max(1, steps.length);
+          const startX = 78, span = 800, gap = count > 1 ? span / (count - 1) : 0;
+          doc.moveTo(startX, 245).lineTo(startX + span, 245).lineWidth(3).strokeColor(hex(theme.accent2)).stroke();
+          steps.forEach((step, index) => {
+            const x = startX + gap * index;
+            doc.circle(x, 245, 20).fill(hex(theme.accent));
+            drawText(String(index + 1), x - 9, 235, 18, 20, 12, 'FFFFFF', { max: 2, align: 'center' });
+            const labelX = Math.max(48, Math.min(760, x - 72));
+            drawText(step, labelX, 290, 150, 108, 13, theme.ink, { max: 130, align: 'center' });
           });
-          y += 48;
-        }
-
-        if (slide.cards?.length && y < 430) {
-          for (const card of slide.cards.slice(0, 2)) {
-            doc.roundedRect(48, y, Math.min(contentWidth, 500), 55, 8).fill(color('FFFFFF'));
-            doc.fontSize(12).fillColor(color(theme.accent)).text(normalizeText(card.title, 55), 60, y + 7, { width: Math.min(contentWidth, 475), height: 18, ellipsis: true });
-            doc.fontSize(10).fillColor(color(theme.ink)).text(normalizeText(card.text, 115), 60, y + 27, { width: Math.min(contentWidth, 475), height: 20, ellipsis: true });
-            y += 62;
+          if (slide.imageBytes) drawPhoto(slide, 700, 405, 205, 70);
+        } else if (type === 'quote') {
+          drawText('“', 48, 110, 100, 135, 110, theme.accent, { max: 1 });
+          drawText(slide.quote || slide.body || slide.title, 105, 148, slide.imageBytes ? 520 : 740, 220, 30, theme.ink, { max: 245 });
+          drawText(slide.subtitle, 110, 390, 510, 45, 14, theme.muted, { max: 140 });
+          if (slide.imageBytes) drawPhoto(slide, 680, 145, 225, 285);
+        } else if (type === 'table') {
+          const rows = (slide.table || []).slice(0, 6);
+          const cols = Math.max(1, ...rows.map(row => row.length));
+          const tableW = slide.imageBytes ? 590 : 864;
+          const colW = tableW / Math.min(4, cols);
+          rows.forEach((row, rowIndex) => {
+            const y = 138 + rowIndex * 51;
+            row.slice(0, 4).forEach((cell, colIndex) => {
+              const x = 48 + colIndex * colW;
+              doc.rect(x, y, colW, 48).fill(rowIndex === 0 ? hex(theme.accent) : (colIndex === 0 ? hex(theme.accent2) : '#FFFFFF'));
+              drawText(cell, x + 8, y + 9, colW - 16, 30, 11, rowIndex === 0 ? 'FFFFFF' : theme.ink, { max: 70 });
+            });
+          });
+          if (slide.imageBytes) drawPhoto(slide, 690, 150, 215, 290);
+        } else {
+          // Photo-led layouts deliberately change composition and image position from slide to slide.
+          const layout = i % 3;
+          const items = slide.bullets || [];
+          if (layout === 1) {
+            if (slide.imageBytes) drawPhoto(slide, 48, 142, 340, 300);
+            else drawArtFallback(48, 142, 340, 300, i, slide);
+            drawText(slide.body || slide.subtitle, 425, 145, 455, 90, 18, theme.ink, { max: 250 });
+            drawBullets(items, 425, 255, 450, 4, 15);
+          } else if (layout === 2) {
+            if (slide.imageBytes) drawPhoto(slide, 48, 132, 864, 185);
+            else drawArtFallback(48, 132, 864, 185, i, slide);
+            drawText(slide.body || slide.subtitle, 52, 338, 840, 34, 14, theme.ink, { max: 240 });
+            items.slice(0, 4).forEach((item, index) => {
+              const x = 55 + (index % 2) * 425;
+              const y = 386 + Math.floor(index / 2) * 48;
+              doc.circle(x + 4, y + 9, 3).fill(hex(theme.accent));
+              drawText(item, x + 16, y, 395, 32, 11, theme.ink, { max: 125 });
+            });
+          } else {
+            drawText(slide.body || slide.subtitle, 55, 142, slide.imageBytes ? 520 : 570, 110, 19, theme.ink, { max: 270 });
+            drawBullets(items, 58, 275, slide.imageBytes ? 520 : 760, 4, 15);
+            if (slide.imageBytes) drawPhoto(slide, 650, 145, 255, 300);
+            else drawArtFallback(650, 145, 255, 300, i, slide);
           }
         }
       }
 
-      if (slide.imageBytes) {
-        try {
-          const x = isCover ? 605 : 625;
-          const y = isCover ? 95 : 130;
-          const w = isCover ? 300 : 285;
-          const h = isCover ? 340 : 265;
-          doc.roundedRect(x - 8, y - 8, w + 16, h + 16, 12).fill(color(isCover ? 'FFFFFF' : theme.accent2));
-          doc.image(slide.imageBytes, x, y, { fit: [w, h], align: 'center', valign: 'center' });
-        } catch (error) {
-          console.warn('PDF image embed failed:', error.message);
-        }
-      } else if (!isCover && slide.type !== 'quote') {
-        // Topic-oriented editorial illustration fallback when a real photo could not be fetched.
-        doc.save();
-        doc.roundedRect(625, 135, 280, 255, 26).fill(color('FFFFFF'));
-        doc.circle(770, 245, 82).fill(color(theme.accent2));
-        doc.circle(810, 210, 37).fill(color(theme.accent));
-        doc.roundedRect(665, 310, 190, 18, 9).fill(color(theme.bg));
-        doc.roundedRect(665, 341, 145, 12, 6).fill(color(theme.accent2));
-        doc.roundedRect(665, 365, 165, 10, 5).fill(color(theme.accent));
-        doc.restore();
-      }
-
-      doc.fontSize(9).fillColor(color(isCover ? 'FFFFFF' : theme.muted)).text(
-        `${String(i + 1).padStart(2, '0')} / ${String(plan.slides.length).padStart(2, '0')}`,
-        835, 505, { width: 80, align: 'right' }
-      );
+      drawText(String(i + 1).padStart(2, '0') + ' / ' + String(plan.slides.length).padStart(2, '0'), 825, 505, 85, 18, 9, isCover ? 'FFFFFF' : theme.muted, { max: 16, align: 'right' });
     }
     doc.end();
   });
