@@ -1322,12 +1322,12 @@ function createPresentationPdfBuffer(plan) {
             drawText(slide.body || slide.subtitle, 425, 145, 455, 90, 18, theme.ink, { max: 250 });
             drawBullets(items, 425, 255, 450, 4, 15);
           } else if (layout === 2) {
-            if (slide.imageBytes) drawPhoto(slide, 48, 132, 864, 205);
-            else drawArtFallback(48, 132, 864, 205, i, slide);
-            drawText(slide.body || slide.subtitle, 52, 351, 840, 42, 15, theme.ink, { max: 240 });
+            if (slide.imageBytes) drawPhoto(slide, 48, 132, 864, 185);
+            else drawArtFallback(48, 132, 864, 185, i, slide);
+            drawText(slide.body || slide.subtitle, 52, 338, 840, 34, 14, theme.ink, { max: 240 });
             items.slice(0, 4).forEach((item, index) => {
               const x = 55 + (index % 2) * 425;
-              const y = 405 + Math.floor(index / 2) * 38;
+              const y = 386 + Math.floor(index / 2) * 48;
               doc.circle(x + 4, y + 9, 3).fill(hex(theme.accent));
               drawText(item, x + 16, y, 395, 32, 11, theme.ink, { max: 125 });
             });
