@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { Readable } from 'node:stream';
 import sharp from 'sharp';
 
 const app = express();
@@ -34,6 +35,113 @@ function isOpenAIQuotaError(error) {
 app.disable('x-powered-by');
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+
+
+/*
+ * Optional MacBook generation worker.
+ * Render remains the public website and proxies only generation API routes.
+ * The Mac worker accepts those routes only with a shared bearer token.
+ */
+const MAC_WORKER_MODE = process.env.MAC_WORKER_MODE === 'true';
+const MAC_WORKER_TOKEN = process.env.MAC_WORKER_TOKEN || '';
+if (MAC_WORKER_MODE && MAC_WORKER_TOKEN.length < 32) {
+  throw new Error('MAC_WORKER_MODE=true requires MAC_WORKER_TOKEN with at least 32 characters.');
+}
+
+function isMacGenerationRoute(method, pathname) {
+  if (method === 'GET' && pathname === '/api/health') return true;
+  if (method === 'POST' && [
+    '/api/generate-project/start',
+    '/api/generate-project',
+    '/api/edit-project',
+    '/api/suggest-topics',
+    '/api/chat'
+  ].includes(pathname)) return true;
+  return method === 'GET' && /^\/api\/generation-jobs\/[0-9a-f-]{36}$/i.test(pathname);
+}
+
+function hasValidMacWorkerToken(req) {
+  const supplied = String(req.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  const expected = MAC_WORKER_TOKEN;
+  if (!expected || supplied.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
+}
+
+// On the Mac: require the private worker token for every generation endpoint.
+app.use((req, res, next) => {
+  if (!MAC_WORKER_MODE || !isMacGenerationRoute(req.method, req.path)) return next();
+  if (!hasValidMacWorkerToken(req)) {
+    return res.status(401).json({ error: 'Требуется авторизация генератора.' });
+  }
+  next();
+});
+
+// On Render: forward only known generation endpoints to the Mac through Cloudflare Access.
+// The browser never receives either the worker token or Cloudflare service-token secrets.
+app.use(async (req, res, next) => {
+  const workerUrl = String(process.env.MAC_GENERATOR_URL || '').trim();
+  if (!workerUrl || !isMacGenerationRoute(req.method, req.path)) return next();
+
+  const workerToken = process.env.MAC_WORKER_TOKEN || '';
+  const accessClientId = process.env.CF_ACCESS_CLIENT_ID || '';
+  const accessClientSecret = process.env.CF_ACCESS_CLIENT_SECRET || '';
+  if (workerToken.length < 32 || !accessClientId || !accessClientSecret) {
+    return res.status(503).json({
+      error: 'Удалённый генератор настроен не полностью. Проверь секретные переменные Render.'
+    });
+  }
+
+  let target;
+  try {
+    target = new URL(req.originalUrl, workerUrl.endsWith('/') ? workerUrl : workerUrl + '/');
+    if (target.protocol !== 'https:') throw new Error('HTTPS is required');
+  } catch {
+    return res.status(503).json({ error: 'Некорректный адрес удалённого генератора.' });
+  }
+
+  const controller = new AbortController();
+  const timeoutMs = req.method === 'GET' && req.path.startsWith('/api/generation-jobs/')
+    ? 25000
+    : 240000;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const headers = {
+      'Authorization': 'Bearer ' + workerToken,
+      'CF-Access-Client-Id': accessClientId,
+      'CF-Access-Client-Secret': accessClientSecret,
+      'Accept': req.get('accept') || 'application/json'
+    };
+    if (!['GET', 'HEAD'].includes(req.method)) {
+      headers['Content-Type'] = req.get('content-type') || 'application/json';
+    }
+    const response = await fetch(target, {
+      method: req.method,
+      headers,
+      body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body ?? {}),
+      signal: controller.signal
+    });
+    res.status(response.status);
+    for (const headerName of ['content-type', 'cache-control']) {
+      const value = response.headers.get(headerName);
+      if (value) res.setHeader(headerName, value);
+    }
+    if (!response.body) return res.end();
+    Readable.fromWeb(response.body).pipe(res);
+  } catch (error) {
+    if (!res.headersSent) {
+      const timedOut = error?.name === 'AbortError';
+      res.status(timedOut ? 504 : 503).json({
+        error: timedOut
+          ? 'Генератор на Mac не ответил вовремя.'
+          : 'Не удалось связаться с генератором на Mac. Проверь, включён ли компьютер и работает ли туннель.'
+      });
+    } else {
+      res.end();
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+});
 
 const COLORS = {
   blue: { bg: 'F3F6FC', ink: '18243A', muted: '63718A', accent: '315EDB', accent2: 'AFC5FF' },
