@@ -1067,8 +1067,14 @@ function buildPptx(plan) {
         addBullets(slide, s.bullets, 0.9, 3.25, 5.0, theme, 4);
         addImageOrPlaceholder(slide, s, 6.35, 1.55, 6.15, 4.85, theme);
       } else if (imageLayout === 2) {
-        addImageOrPlaceholder(slide, s, 0.75, 1.55, 11.75, 3.55, theme);
-        addText(slide, s.body || s.subtitle, 0.9, 5.25, 7.7, 0.8, { fontSize: 17, color: theme.ink, valign: 'top' });
+        addImageOrPlaceholder(slide, s, 0.75, 1.55, 11.75, 2.9, theme);
+        addText(slide, s.body || s.subtitle, 0.9, 4.58, 11.0, 0.55, { fontSize: 15, color: theme.ink, valign: 'top' });
+        (s.bullets || []).slice(0, 4).forEach((item, index) => {
+          const col = index % 2, row = Math.floor(index / 2);
+          const x = 0.95 + col * 5.85, y = 5.25 + row * 0.62;
+          slide.addShape('ellipse', { x, y: y + 0.13, w: 0.1, h: 0.1, fill: { color: theme.accent }, line: { color: theme.accent } });
+          addText(slide, item, x + 0.2, y, 5.45, 0.48, { fontSize: 11, color: theme.ink, valign: 'mid' });
+        });
       } else {
         addImageOrPlaceholder(slide, s, 0.75, 1.55, 5.75, 4.85, theme);
         addText(slide, s.body || s.subtitle, 6.85, 1.68, 5.3, 1.52, { fontSize: 19, color: theme.ink, valign: 'top' });
@@ -1256,15 +1262,17 @@ function createPresentationPdfBuffer(plan) {
           if (slide.imageBytes) drawPhoto(slide, 690, 145, 215, 300);
           else if (!fallbackCards.length) drawArtFallback(690, 145, 215, 300, i, slide);
         } else if (type === 'comparison') {
-          const panelY = 138, panelH = 320, panelW = 405;
+          const panelY = 138, panelH = 320;
+          const panelW = slide.imageBytes ? 300 : 405;
+          const panelGap = slide.imageBytes ? 20 : 20;
           for (let side = 0; side < 2; side++) {
-            const x = 48 + side * 425;
+            const x = 48 + side * (panelW + panelGap);
             doc.roundedRect(x, panelY, panelW, panelH, 14).fill('#FFFFFF');
             doc.roundedRect(x + 16, panelY + 16, panelW - 32, 48, 8).fill(hex(side ? theme.accent2 : theme.accent));
             drawText(side ? slide.rightTitle : slide.leftTitle, x + 29, panelY + 28, panelW - 58, 26, 15, side ? theme.ink : 'FFFFFF', { max: 55 });
             drawBullets(side ? slide.rightItems : slide.leftItems, x + 24, panelY + 88, panelW - 48, 4, 14);
           }
-          if (slide.imageBytes) drawPhoto(slide, 725, 145, 180, 285);
+          if (slide.imageBytes) drawPhoto(slide, 710, 145, 195, 285);
         } else if (type === 'stat') {
           drawText(slide.statistic || slide.statisticLabel || slide.body || slide.title, 58, 148, 490, 145, 43, theme.accent, { max: 90 });
           drawText(slide.statisticLabel || slide.body || slide.subtitle, 62, 315, 455, 95, 18, theme.ink, { max: 230 });
@@ -1311,8 +1319,14 @@ function createPresentationPdfBuffer(plan) {
             drawText(slide.body || slide.subtitle, 425, 145, 455, 90, 18, theme.ink, { max: 250 });
             drawBullets(items, 425, 255, 450, 4, 15);
           } else if (slide.imageBytes && layout === 2) {
-            drawPhoto(slide, 48, 132, 864, 245);
-            drawText(slide.body || slide.subtitle, 52, 397, 840, 42, 16, theme.ink, { max: 240 });
+            drawPhoto(slide, 48, 132, 864, 205);
+            drawText(slide.body || slide.subtitle, 52, 351, 840, 42, 15, theme.ink, { max: 240 });
+            items.slice(0, 4).forEach((item, index) => {
+              const x = 55 + (index % 2) * 425;
+              const y = 405 + Math.floor(index / 2) * 38;
+              doc.circle(x + 4, y + 9, 3).fill(hex(theme.accent));
+              drawText(item, x + 16, y, 395, 32, 11, theme.ink, { max: 125 });
+            });
           } else {
             drawText(slide.body || slide.subtitle, 55, 142, slide.imageBytes ? 520 : 570, 110, 19, theme.ink, { max: 270 });
             drawBullets(items, 58, 275, slide.imageBytes ? 520 : 760, 4, 15);
