@@ -281,6 +281,30 @@ header,.header,.site-header{background:rgba(245,250,255,.30)!important;-webkit-b
 @media(max-width:750px){body{background-attachment:scroll}.step,.tariff,.check,.info-box,.result-card,.glass-card,.form,.progress-box,.ready,.file,.modal-content{-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%)}.field input,.field textarea,.field select{font-size:16px!important}}
 @media(prefers-reduced-motion:reduce){.tariff,.step,.check,.file,.form,.progress-box{animation:none!important}}
 
+
+
+/* Six standalone AI tool destinations */
+.tool-hub{margin:28px 0 0;padding:30px;border:1px solid rgba(71,119,190,.18);border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.92),rgba(239,245,255,.82));box-shadow:0 18px 50px rgba(32,67,123,.08);backdrop-filter:blur(18px)}
+.tool-hub-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px}
+.tool-hub-head h2{margin:0;color:#18243a;font-size:clamp(23px,4vw,30px);letter-spacing:-.5px}
+.tool-hub-head p{margin:6px 0 0;color:#64748b;font-size:15px}
+.tool-hub-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.tool-hub-card{position:relative;display:flex;min-height:150px;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:14px;padding:20px;text-decoration:none;color:#18243a;background:rgba(255,255,255,.78);border:1px solid rgba(77,119,185,.18);border-radius:20px;box-shadow:0 6px 18px rgba(32,67,123,.045);transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
+.tool-hub-card:hover{transform:translateY(-4px);border-color:rgba(49,94,219,.42);box-shadow:0 14px 28px rgba(32,67,123,.11)}
+.tool-hub-card:focus-visible{outline:3px solid #4779ed;outline-offset:3px}
+.tool-hub-card-top{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px}
+.tool-hub-icon{display:grid;width:46px;height:46px;place-items:center;border-radius:15px;background:linear-gradient(145deg,#edf3ff,#dfeaff);font-size:24px}
+.tool-hub-arrow{color:#4774d4;font-size:22px;font-weight:700}
+.tool-hub-card b{display:block;font-size:17px;line-height:1.25}
+.tool-hub-card small{display:block;margin-top:5px;color:#64748b;font-size:13px;line-height:1.4}
+html[data-theme="dark"] .tool-hub{background:linear-gradient(145deg,rgba(26,35,50,.96),rgba(22,31,47,.88));border-color:rgba(130,164,224,.18)}
+html[data-theme="dark"] .tool-hub-head h2{color:#edf3ff}
+html[data-theme="dark"] .tool-hub-head p,html[data-theme="dark"] .tool-hub-card small{color:#aab8ce}
+html[data-theme="dark"] .tool-hub-card{background:rgba(31,43,62,.85);border-color:rgba(130,164,224,.18);color:#edf3ff}
+html[data-theme="dark"] .tool-hub-icon{background:linear-gradient(145deg,#293c5b,#24324a)}
+@media(max-width:760px){.tool-hub{padding:22px}.tool-hub-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tool-hub-card{min-height:142px;padding:16px}}
+@media(max-width:480px){.tool-hub{padding:18px;margin-top:22px}.tool-hub-grid{gap:10px}.tool-hub-card{min-height:136px;padding:14px;border-radius:16px}.tool-hub-icon{width:40px;height:40px;font-size:21px}.tool-hub-card b{font-size:15px}.tool-hub-card small{font-size:12px}}
+
 </style>
 
 <style id="mobile-no-zoom">
@@ -764,6 +788,24 @@ html[data-theme="dark"] .topic-input-wrap button{color:#9cc4ff;background:rgba(5
 <div class="bottom"><div class="container">
 <div class="support"><div><h3>Нужна помощь?</h3><p>Напишите нам в Telegram 💬</p></div><button onclick="window.open('https://t.me/vseproekty_bot','_blank')">Поддержка → Telegram</button></div>
 <div class="phone-tile" onclick="openModal('phone')">📱 Как добавить сайт на телефон?</div>
+
+<div class="tool-hub" aria-labelledby="toolHubTitle">
+  <div class="tool-hub-head">
+    <div>
+      <h2 id="toolHubTitle">Инструменты ИИ</h2>
+      <p>Выбери нужный инструмент. Каждый откроется на отдельной странице.</p>
+    </div>
+  </div>
+  <div class="tool-hub-grid">
+    <a class="tool-hub-card" href="/tools/text.html"><span class="tool-hub-card-top"><span class="tool-hub-icon">📝</span><span class="tool-hub-arrow">↗</span></span><span><b>Создать текст</b><small>Статья, письмо, описание или идея</small></span></a>
+    <a class="tool-hub-card" href="/tools/image.html"><span class="tool-hub-card-top"><span class="tool-hub-icon">🎨</span><span class="tool-hub-arrow">↗</span></span><span><b>Сделать картинку</b><small>Изображение по твоему описанию</small></span></a>
+    <a class="tool-hub-card" href="/tools/ask.html"><span class="tool-hub-card-top"><span class="tool-hub-icon">💬</span><span class="tool-hub-arrow">↗</span></span><span><b>Спросить ИИ</b><small>Ответы, объяснения и помощь</small></span></a>
+    <a class="tool-hub-card" href="/tools/topic.html"><span class="tool-hub-card-top"><span class="tool-hub-icon">💡</span><span class="tool-hub-arrow">↗</span></span><span><b>Придумать тему</b><small>Подбор идеи для школьного проекта</small></span></a>
+    <a class="tool-hub-card" href="/tools/project.html"><span class="tool-hub-card-top"><span class="tool-hub-icon">📊</span><span class="tool-hub-arrow">↗</span></span><span><b>Создать проект</b><small>Текст, презентация и материалы</small></span></a>
+    <a class="tool-hub-card" href="/tools/defense.html"><span class="tool-hub-card-top"><span class="tool-hub-icon">🎙️</span><span class="tool-hub-arrow">↗</span></span><span><b>Подготовиться к защите</b><small>Речь и вопросы комиссии</small></span></a>
+  </div>
+</div>
+
 </div></div>
 
 <div class="modal" id="info"><div class="modal-content"><button class="close" onclick="closeModal('info')">×</button><h2>Из чего состоит индивидуальный проект?</h2>
