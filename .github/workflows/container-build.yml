@@ -30,26 +30,46 @@ jobs:
           load: true
           tags: vse-proekty-ian:ci
 
-      - name: Run container smoke test
+      - name: Test container health and volume persistence
         run: |
           set -eu
-          docker run -d --name vse-proekty-ian-smoke \
-            -p 3000:3000 \
-            -e PORT=3000 \
-            -e GENERATION_JOBS_DIR=/app/data/generation-jobs \
-            vse-proekty-ian:ci
+          VOLUME=vse-proekty-ian-smoke-volume
+          CONTAINER=vse-proekty-ian-smoke
           cleanup() {
-            docker logs vse-proekty-ian-smoke || true
-            docker rm -f vse-proekty-ian-smoke >/dev/null 2>&1 || true
+            docker logs "$CONTAINER" || true
+            docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+            docker volume rm "$VOLUME" >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:3000/api/health > /tmp/health.json; then
-              node -e 'const h = JSON.parse(require("node:fs").readFileSync("/tmp/health.json", "utf8")); if (h.ok !== true || h.generationJobStorageWritable !== true || h.generationJobStorage !== "path-configured-mount-not-detected") { console.error("Unexpected health response:", h); process.exit(1); }'
-              cat /tmp/health.json
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Container did not become healthy in 60 seconds."
-          exit 1
+
+          docker volume create "$VOLUME" >/dev/null
+          start_container() {
+            docker run -d --name "$CONTAINER" \
+              -p 3000:3000 \
+              -e PORT=3000 \
+              -e GENERATION_JOBS_DIR=/app/data/generation-jobs \
+              -v "$VOLUME:/app/data/generation-jobs" \
+              vse-proekty-ian:ci
+          }
+          wait_for_health() {
+            for attempt in $(seq 1 30); do
+              if curl --fail --silent http://127.0.0.1:3000/api/health > /tmp/health.json; then
+                node -e 'const h = JSON.parse(require("node:fs").readFileSync("/tmp/health.json", "utf8")); if (h.ok !== true || h.generationJobStorageWritable !== true || h.generationJobStorage !== "persistent-disk-mounted") { console.error("Unexpected health response:", h); process.exit(1); }'
+                cat /tmp/health.json
+                return 0
+              fi
+              sleep 2
+            done
+            echo "Container did not become healthy with a mounted volume in 60 seconds."
+            return 1
+          }
+
+          start_container
+          wait_for_health
+          docker exec "$CONTAINER" sh -c 'printf "persisted" > /app/data/generation-jobs/.ci-persistence-check'
+
+          docker rm -f "$CONTAINER" >/dev/null
+          start_container
+          wait_for_health
+          docker exec "$CONTAINER" sh -c 'test "$(cat /app/data/generation-jobs/.ci-persistence-check)" = "persisted"'
+          echo "Persistent volume data survived container recreation."
