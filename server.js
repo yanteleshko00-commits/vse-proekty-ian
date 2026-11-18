@@ -125,9 +125,22 @@ app.use(async (req, res, next) => {
       const value = response.headers.get(headerName);
       if (value) res.setHeader(headerName, value);
     }
-    if (!response.body) return res.end();
-    Readable.fromWeb(response.body).pipe(res);
+    if (!response.body) {
+      clearTimeout(timer);
+      return res.end();
+    }
+    res.on('finish', () => clearTimeout(timer));
+    res.on('close', () => clearTimeout(timer));
+    const bodyStream = Readable.fromWeb(response.body);
+    bodyStream.on('error', error => {
+      clearTimeout(timer);
+      console.error('[mac-generator-proxy] Ошибка потока ответа:', cleanText(error?.message || error, 180));
+      if (!res.headersSent) res.status(502).json({ error: 'Не удалось получить файл от генератора на Mac.' });
+      else res.destroy();
+    });
+    bodyStream.pipe(res);
   } catch (error) {
+    clearTimeout(timer);
     if (!res.headersSent) {
       const timedOut = error?.name === 'AbortError';
       res.status(timedOut ? 504 : 503).json({
@@ -138,8 +151,6 @@ app.use(async (req, res, next) => {
     } else {
       res.end();
     }
-  } finally {
-    clearTimeout(timer);
   }
 });
 
