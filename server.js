@@ -251,7 +251,7 @@ function providerErrorMessage(data, status) {
   return cleanText(String(message), 350);
 }
 async function callAIProvider(provider, instructions, input, jsonMode, timeout) {
-  const requestTimeout = Math.min(timeout, 55000);
+  const requestTimeout = Math.min(timeout, 50000);
   const signal = AbortSignal.timeout(requestTimeout);
   if (provider.type === 'openai') {
     const result = await withTimeout(openai.responses.create({
@@ -310,7 +310,8 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
   if (provider.type === 'openai-compatible') {
     const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + provider.key,
       ...(provider.name === 'OpenRouter Free' ? { 'HTTP-Referer': 'https://vse-proekty-ian.onrender.com', 'X-Title': 'Vse Proekty Ian' } : {}) };
-    const requestBody = { model: provider.model, messages: [{ role: 'system', content: instructions }, { role: 'user', content: input }], max_tokens: 10000,
+    const groqOutputBudget = provider.name === 'Groq' ? Math.max(1200, Math.min(3000, 7600 - Math.ceil(input.length / 3.5))) : 10000;
+    const requestBody = { model: provider.model, messages: [{ role: 'system', content: instructions }, { role: 'user', content: input }], max_tokens: groqOutputBudget,
       ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) };
     let response = await fetch(provider.baseURL + '/chat/completions', {
       method: 'POST', signal, headers, body: JSON.stringify(requestBody)
@@ -432,7 +433,7 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   }
 
   // All configured providers start together. A failed provider cannot cancel the others.
-  const perProviderTimeout = Math.max(15000, Math.min(35000, timeout));
+  const perProviderTimeout = Math.max(25000, Math.min(50000, timeout));
   const waveStartedAt = Date.now();
   const attempts = await Promise.all(providers.map(async provider => {
     const startedAt = Date.now();
