@@ -49,7 +49,6 @@ if (MAC_WORKER_MODE && MAC_WORKER_TOKEN.length < 32) {
 }
 
 function isMacGenerationRoute(method, pathname) {
-  if (method === 'GET' && pathname === '/api/health') return true;
   if (method === 'POST' && [
     '/api/generate-project/start',
     '/api/generate-project',
@@ -58,6 +57,10 @@ function isMacGenerationRoute(method, pathname) {
     '/api/chat'
   ].includes(pathname)) return true;
   return method === 'GET' && /^\/api\/generation-jobs\/[0-9a-f-]{36}$/i.test(pathname);
+}
+
+function isMacWorkerProtectedRoute(method, pathname) {
+  return isMacGenerationRoute(method, pathname) || (method === 'GET' && pathname === '/api/health');
 }
 
 function hasValidMacWorkerToken(req) {
@@ -69,7 +72,7 @@ function hasValidMacWorkerToken(req) {
 
 // On the Mac: require the private worker token for every generation endpoint.
 app.use((req, res, next) => {
-  if (!MAC_WORKER_MODE || !isMacGenerationRoute(req.method, req.path)) return next();
+  if (!MAC_WORKER_MODE || !isMacWorkerProtectedRoute(req.method, req.path)) return next();
   if (!hasValidMacWorkerToken(req)) {
     return res.status(401).json({ error: 'Требуется авторизация генератора.' });
   }
