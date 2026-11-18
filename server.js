@@ -922,10 +922,27 @@ function addImageOrPlaceholder(slide, s, x, y, w, h, theme) {
       slide.addShape('line', { x: xx + 0.12, y: yy + ch * 0.58, w: cw * 0.5, h: 0, line: { color: pale, width: 2 } });
     }
   } else {
-    const offset = (seed % 5) * 0.045;
-    slide.addShape('ellipse', { x: ix + iw * (0.08 + offset), y: iy + ih * 0.08, w: iw * 0.72, h: ih * 0.72, fill: { color: accent, transparency: 18 }, line: { color: accent, transparency: 100 } });
-    slide.addShape('ellipse', { x: ix + iw * (0.4 - offset), y: iy + ih * 0.22, w: iw * 0.48, h: ih * 0.6, fill: { color: pale, transparency: 12 }, line: { color: pale, transparency: 100 } });
-    slide.addShape('roundRect', { x: ix + iw * 0.16, y: iy + ih * 0.52, w: iw * 0.65, h: ih * 0.25, rectRadius: 0.1, fill: { color: 'FFFFFF', transparency: 8 }, line: { color: 'FFFFFF', transparency: 65, width: 1 } });
+    const variant = seed % 4;
+    if (variant === 0) {
+      slide.addShape('rect', { x: ix, y: iy + ih * 0.08, w: iw * 0.24, h: ih * 0.82, fill: { color: pale }, line: { color: pale, transparency: 100 } });
+      slide.addShape('rect', { x: ix + iw * 0.34, y: iy + ih * 0.08, w: iw * 0.13, h: ih * 0.82, fill: { color: accent }, line: { color: accent, transparency: 100 } });
+      for (let row = 0; row < 3; row++) slide.addShape('line', { x: ix + iw * 0.55, y: iy + ih * (0.26 + row * 0.24), w: iw * (0.25 + (row % 2) * 0.12), h: 0, line: { color: row === 1 ? accent : pale, width: 3 } });
+    } else if (variant === 1) {
+      slide.addShape('ellipse', { x: ix + iw * 0.16, y: iy + ih * 0.12, w: iw * 0.65, h: ih * 0.65, fill: { color: pale }, line: { color: pale, transparency: 100 } });
+      slide.addShape('ellipse', { x: ix + iw * 0.36, y: iy + ih * 0.32, w: iw * 0.25, h: ih * 0.25, fill: { color: accent }, line: { color: accent, transparency: 100 } });
+      slide.addShape('line', { x: ix + iw * 0.12, y: iy + ih * 0.88, w: iw * 0.76, h: 0, line: { color: accent, width: 2 } });
+    } else if (variant === 2) {
+      const cell = Math.min(iw * 0.18, ih * 0.22);
+      for (let row = 0; row < 3; row++) for (let col = 0; col < 4; col++) {
+        const active = (row * 4 + col + seed) % 5 === 0;
+        slide.addShape('roundRect', { x: ix + iw * 0.08 + col * (cell + 0.08), y: iy + ih * 0.12 + row * (cell + 0.14), w: cell, h: cell, rectRadius: 0.06, fill: { color: active ? accent : pale }, line: { color: 'FFFFFF', transparency: 100 } });
+      }
+    } else {
+      slide.addShape('line', { x: ix + iw * 0.08, y: iy + ih * 0.82, w: iw * 0.28, h: -ih * 0.42, line: { color: accent, width: 3 } });
+      slide.addShape('line', { x: ix + iw * 0.36, y: iy + ih * 0.40, w: iw * 0.24, h: ih * 0.22, line: { color: pale, width: 3 } });
+      slide.addShape('line', { x: ix + iw * 0.60, y: iy + ih * 0.62, w: iw * 0.28, h: -ih * 0.48, line: { color: accent, width: 3 } });
+      for (const [px, py] of [[0.36, 0.40], [0.60, 0.62], [0.88, 0.14]]) slide.addShape('ellipse', { x: ix + iw * px - 0.08, y: iy + ih * py - 0.08, w: 0.16, h: 0.16, fill: { color: accent }, line: { color: accent } });
+    }
   }
 }
 function addBullets(slide, items, x, y, w, theme, max = 4) {
@@ -1044,9 +1061,19 @@ function buildPptx(plan) {
       }));
       addImageOrPlaceholder(slide, s, 9.58, 1.58, 2.95, 4.7, theme);
     } else if (type === 'image') {
-      addImageOrPlaceholder(slide, s, 0.75, 1.55, 5.75, 4.85, theme);
-      addText(slide, s.body || s.subtitle, 6.85, 1.68, 5.3, 1.52, { fontSize: 19, color: theme.ink, valign: 'top' });
-      addBullets(slide, s.bullets, 6.9, 3.45, 5.1, theme, 4);
+      const imageLayout = i % 3;
+      if (imageLayout === 1) {
+        addText(slide, s.body || s.subtitle, 0.85, 1.68, 5.25, 1.42, { fontSize: 19, color: theme.ink, valign: 'top' });
+        addBullets(slide, s.bullets, 0.9, 3.25, 5.0, theme, 4);
+        addImageOrPlaceholder(slide, s, 6.35, 1.55, 6.15, 4.85, theme);
+      } else if (imageLayout === 2) {
+        addImageOrPlaceholder(slide, s, 0.75, 1.55, 11.75, 3.55, theme);
+        addText(slide, s.body || s.subtitle, 0.9, 5.25, 7.7, 0.8, { fontSize: 17, color: theme.ink, valign: 'top' });
+      } else {
+        addImageOrPlaceholder(slide, s, 0.75, 1.55, 5.75, 4.85, theme);
+        addText(slide, s.body || s.subtitle, 6.85, 1.68, 5.3, 1.52, { fontSize: 19, color: theme.ink, valign: 'top' });
+        addBullets(slide, s.bullets, 6.9, 3.45, 5.1, theme, 4);
+      }
     } else {
       addText(slide, s.body || s.subtitle, 0.85, 1.62, 7.5, 1.55, { fontSize: 19, color: theme.ink, valign: 'top' });
       addBullets(slide, s.bullets, 0.9, 3.45, 7.35, theme, 4);
@@ -1191,7 +1218,9 @@ function createPresentationPdfBuffer(plan) {
         if (slide.imageBytes) {
           doc.rect(0, 0, 960, 540).fill('#142033');
           try { doc.image(slide.imageBytes, 0, 0, { fit: [960, 540], align: 'center', valign: 'center' }); } catch (error) { console.warn('Cover image failed:', error.message); }
-          doc.rect(0, 0, 960, 540).fill('#101827');
+          doc.save();
+          doc.fillOpacity(0.48).rect(0, 0, 960, 540).fill('#101827');
+          doc.restore();
         } else {
           doc.rect(0, 0, 960, 540).fill(hex(theme.accent));
           doc.rect(635, 0, 325, 540).fill(hex(theme.accent2));
