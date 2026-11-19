@@ -240,6 +240,17 @@ async function argoshaReply(req, res) {
   return send(res, 502, JSON.stringify({ error: 'Сервис ИИ временно недоступен.' }), { 'Content-Type': 'application/json; charset=utf-8' });
 }
 
+async function authApi(path, payload) {
+  const response = await fetch(authBase + '/v1/auth/' + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(15000)
+  });
+  const data = await response.json().catch(() => ({}));
+  return { response, data };
+}
+
 const server = http.createServer(async (req, res) => {
   const base = appUrl(req);
   let url;
@@ -254,6 +265,37 @@ const server = http.createServer(async (req, res) => {
       argoshaConfigured: Boolean(process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY),
       authService: authBase
     }), { 'Content-Type': 'application/json; charset=utf-8' });
+  }
+
+  if (url.pathname.startsWith('/api/auth/') && req.method === 'POST') {
+    let body;
+    try { body = await readJson(req, 8000); } catch {
+      return send(res, 400, JSON.stringify({ error: 'invalid_request' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    }
+    const action = url.pathname.slice('/api/auth/'.length);
+    if (!['register', 'verify-email', 'login'].includes(action)) {
+      return send(res, 404, JSON.stringify({ error: 'not_found' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    }
+    try {
+      const { response, data } = await authApi(action, body);
+      if (!response.ok) return send(res, response.status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8' });
+      if (action === 'login') {
+        const cookies = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [response.headers.get('set-cookie') || ''];
+        const sessionCookie = cookies.map(value => value.split(';')[0]).find(value => value.startsWith('ecosystem_session='));
+        if (!sessionCookie) return send(res, 502, JSON.stringify({ error: 'session_creation_failed', message: 'Сервис аккаунтов не вернул сессию. Попробуйте ещё раз.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+        const meResponse = await fetch(authBase + '/v1/me', { headers: { Cookie: sessionCookie }, signal: AbortSignal.timeout(10000) });
+        const me = await meResponse.json().catch(() => ({}));
+        if (!meResponse.ok || !me.user) return send(res, 502, JSON.stringify({ error: 'session_verification_failed', message: 'Не удалось проверить созданную сессию.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+        return send(res, 200, JSON.stringify({ ok: true, user: me.user }), {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Set-Cookie': cookie('nexora_session', makeSessionCookie(me.user), 604800)
+        });
+      }
+      return send(res, response.status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8' });
+    } catch (error) {
+      console.error('NEXORA auth proxy failed:', action, error.message);
+      return send(res, 502, JSON.stringify({ error: 'auth_service_unavailable', message: 'Сервис аккаунтов временно недоступен. Попробуйте позже.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    }
   }
 
   if (url.pathname === '/auth/start' && req.method === 'GET') return startLogin(req, res);
