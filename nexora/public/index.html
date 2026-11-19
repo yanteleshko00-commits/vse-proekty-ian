@@ -45,6 +45,10 @@ h1 span{color:var(--blue)}
 .tile-top{background-position:center 45%;transition:filter .35s,background-position .5s}
 .tile:hover .tile-top{background-position:center 50%}
 .tile:active{transform:scale(.985)}
+ .tile.reveal-ready{opacity:0;transform:translateY(34px) scale(.975);transition:opacity .72s ease,transform .82s cubic-bezier(.2,.75,.25,1);transition-delay:var(--reveal-delay,0ms);will-change:opacity,transform}
+.tile.reveal-ready.is-visible{opacity:1;transform:translateY(0) scale(1)}
+.tile.reveal-ready.is-visible:hover{transform:translateY(-5px)}
+@media(prefers-reduced-motion:reduce){.tile.reveal-ready{opacity:1;transform:none;transition:none;will-change:auto}}
 .tile-top{position:absolute;inset:0;z-index:0;width:auto;height:auto;display:block;margin:0;border-radius:inherit;background-color:#233957;background-size:cover;background-position:center;color:transparent;font-size:0;box-shadow:none;overflow:hidden}.tile-top:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,22,44,.04) 0%,rgba(9,22,44,.08) 34%,rgba(7,17,36,.92) 100%)}
 .tile:nth-child(1) .tile-top{background-image:url("https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=1400&q=90")}
 .tile:nth-child(2) .tile-top{background-image:url("https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=1400&q=90")}
@@ -209,6 +213,24 @@ h1 span{color:var(--blue)}
     localStorage.setItem('nexora-theme',dark?'dark':'light');
     updateThemeIcon();
   });
+
+  var revealTiles=document.querySelectorAll('.grid .tile');
+  if(revealTiles.length&&'IntersectionObserver' in window&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    var revealObserver=new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          entry.target.classList.add('is-visible');
+        }else{
+          entry.target.classList.remove('is-visible');
+        }
+      });
+    },{threshold:0.14,rootMargin:'0px 0px -6% 0px'});
+    revealTiles.forEach(function(tile,index){
+      tile.classList.add('reveal-ready');
+      tile.style.setProperty('--reveal-delay',(index%2)*110+'ms');
+      revealObserver.observe(tile);
+    });
+  }
 
   var modal=document.getElementById('modal-backdrop');
   var title=document.getElementById('modal-title');
