@@ -122,6 +122,54 @@ h1 span{color:var(--blue)}
 @media(max-width:520px){.argosha-launcher{width:62px;height:62px;right:17px;bottom:max(17px,env(safe-area-inset-bottom))}.argosha-panel{inset:auto 8px max(8px,env(safe-area-inset-bottom));width:auto;height:min(690px,calc(100dvh - 16px));border-radius:26px;transform:translateY(18px) scale(.98);transform-origin:bottom center}.argosha-panel.open{transform:translateY(0) scale(1)}}
 @media(prefers-reduced-motion:reduce){.argosha-launcher,.argosha-mini-orb,.argosha-launcher:before,.argosha-typing i{animation:none!important}.argosha-panel{transition:none}}
 
+
+/* Visual polish: photo-forward cards, one-time reveal, iOS 27 Siri-inspired Argosha */
+.tile:before{background:transparent}
+.tile-top:after{background:linear-gradient(180deg,rgba(5,13,29,.02) 0%,rgba(5,13,29,.04) 35%,rgba(5,13,29,.78) 100%)}
+.tile{min-height:300px;padding:25px;border-radius:27px;box-shadow:0 22px 55px rgba(10,27,57,.23),0 1px 0 rgba(255,255,255,.28) inset}
+.tile-top{background-size:cover;background-position:center 42%;transform:scale(1.001)}
+.tile:hover .tile-top{transform:scale(1.045);transition:transform .8s cubic-bezier(.2,.7,.2,1),filter .35s}
+.tile h3{font-size:21px;letter-spacing:-.035em;text-shadow:0 2px 16px rgba(0,0,0,.42)}
+.tile p{max-width:330px;font-size:13px;line-height:1.6;color:rgba(255,255,255,.94);text-shadow:0 2px 12px rgba(0,0,0,.55)}
+.tile .status{top:17px;right:17px;padding:7px 11px;border:1px solid rgba(255,255,255,.3);border-radius:22px;background:rgba(8,14,28,.42);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.tile.reveal-ready{opacity:0;transform:translateY(38px) scale(.97);transition:opacity .75s ease,transform .85s cubic-bezier(.18,.72,.22,1);transition-delay:var(--reveal-delay,0ms);will-change:opacity,transform}
+.tile.reveal-ready.is-visible{opacity:1;transform:translateY(0) scale(1)}
+.tile.reveal-ready.is-visible:hover{transform:translateY(-5px)}
+@media(max-width:760px){.tile{min-height:255px;padding:16px;border-radius:22px}.tile h3{font-size:17px}.tile p{font-size:12px}}
+@media(max-width:420px){.tile{min-height:240px;padding:13px}.tile h3{font-size:15px}.tile p{font-size:11px}}
+/* iOS 27 Siri visual language: dark glass capsule with a living multicolour light core */
+.argosha-launcher{right:max(22px,env(safe-area-inset-right));bottom:max(22px,env(safe-area-inset-bottom));width:112px;height:54px;border:1px solid transparent;border-radius:28px;padding:0 15px;display:flex;align-items:center;justify-content:center;gap:9px;background:linear-gradient(145deg,rgba(25,28,40,.96),rgba(4,7,15,.98)) padding-box,conic-gradient(from 0deg,rgba(255,255,255,.7),rgba(80,143,255,.9),rgba(205,104,255,.72),rgba(255,177,111,.68),rgba(255,255,255,.7)) border-box;box-shadow:0 10px 32px rgba(0,0,0,.3),0 0 26px rgba(99,124,255,.16),inset 0 1px 0 rgba(255,255,255,.14);animation:siri-capsule-idle 5s ease-in-out infinite;overflow:visible}
+.argosha-launcher:before{inset:-3px;border-radius:32px;background:conic-gradient(from 0deg,rgba(65,137,255,.3),rgba(195,92,255,.34),rgba(255,169,105,.28),rgba(77,190,255,.34),rgba(65,137,255,.3));filter:blur(13px);opacity:.72;animation:siri-edge 8s linear infinite}
+.argosha-launcher:after{display:none}
+.argosha-launcher:hover{transform:translateY(-2px) scale(1.035)}
+.argosha-launcher[aria-expanded=true]{transform:translateY(8px) scale(.92);opacity:0}
+.argosha-launcher.thinking{animation:siri-thinking 1.25s ease-in-out infinite}
+.argosha-launcher.speaking{animation:siri-speaking 1.7s ease-in-out infinite}
+.argosha-launcher.listening{animation:siri-listening 1s ease-in-out infinite}
+.siri-glow{position:relative;display:block;width:25px;height:25px;flex:0 0 25px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 5%,#d8e8ff 10%,#76b9ff 22%,#6d69ff 39%,#c17cff 56%,#ffbb83 73%,rgba(20,24,42,.95) 100%);box-shadow:0 0 11px rgba(104,151,255,.7),0 0 24px rgba(167,108,255,.35),inset 0 0 7px rgba(255,255,255,.65);filter:saturate(1.12);animation:siri-core 4.5s ease-in-out infinite}
+.siri-glow:before,.siri-glow:after{content:"";position:absolute;inset:-5px;border-radius:50%;background:conic-gradient(from 10deg,transparent 0 12%,rgba(126,190,255,.9) 20%,transparent 35%,rgba(219,143,255,.85) 53%,transparent 68%,rgba(255,190,130,.8) 83%,transparent 94%);filter:blur(5px);animation:siri-edge 3.6s linear infinite}
+.siri-glow:after{inset:3px;background:radial-gradient(ellipse at 35% 28%,rgba(255,255,255,.9),transparent 52%);filter:blur(2px);animation:none}
+.siri-label{position:relative;color:rgba(255,255,255,.96);font-size:13px;font-weight:720;letter-spacing:.01em;text-shadow:0 1px 8px rgba(0,0,0,.5)}
+.argosha-panel{background:rgba(8,11,20,.91)!important;color:#f5f6ff!important;border:1px solid rgba(166,181,226,.24);box-shadow:0 30px 100px rgba(0,0,0,.48),0 0 55px rgba(95,118,255,.12),inset 0 1px 0 rgba(255,255,255,.1);backdrop-filter:blur(42px) saturate(145%);-webkit-backdrop-filter:blur(42px) saturate(145%)}
+.argosha-head{border-bottom-color:rgba(188,197,228,.12)}
+.argosha-mini-orb{background:radial-gradient(circle at 35% 25%,#fff 0 4%,#d9e7ff 10%,#78baff 23%,#786bff 42%,#c47cff 60%,#f6b77e 78%,#111526 100%);box-shadow:0 0 17px rgba(111,151,255,.55),0 0 30px rgba(187,110,255,.2),inset 0 0 0 1px rgba(255,255,255,.7)}
+.argosha-head-copy span{color:#a6aec6!important}
+.argosha-close{background:rgba(255,255,255,.08)!important;color:#f5f6ff;border-color:rgba(255,255,255,.13)}
+.argosha-message{background:rgba(255,255,255,.075)!important;color:#eef1ff;border-color:rgba(255,255,255,.1);box-shadow:0 6px 24px rgba(0,0,0,.14)}
+.argosha-message.user{background:linear-gradient(135deg,rgba(70,107,220,.95),rgba(118,83,195,.92))!important;color:#fff;border-color:rgba(255,255,255,.18)}
+.argosha-input{background:rgba(255,255,255,.075)!important;color:#fff!important;border-color:rgba(255,255,255,.16)}
+.argosha-input::placeholder{color:#8d96b0}
+.argosha-suggestions button{background:rgba(112,135,255,.12);color:#c5ceff;border-color:rgba(153,166,255,.22)}
+.argosha-action{background:linear-gradient(120deg,#627fff,#a16be9);color:#fff}
+@keyframes siri-capsule-idle{0%,100%{box-shadow:0 10px 32px rgba(0,0,0,.3),0 0 22px rgba(99,124,255,.14),inset 0 1px 0 rgba(255,255,255,.14)}50%{box-shadow:0 12px 36px rgba(0,0,0,.34),0 0 32px rgba(155,105,255,.22),inset 0 1px 0 rgba(255,255,255,.2)}}
+@keyframes siri-edge{to{transform:rotate(360deg)}}
+@keyframes siri-core{0%,100%{transform:scale(.96);filter:hue-rotate(0deg) saturate(1.05)}50%{transform:scale(1.08);filter:hue-rotate(28deg) saturate(1.3)}}
+@keyframes siri-thinking{0%,100%{transform:scale(.96);filter:brightness(.88)}50%{transform:scale(1.06);filter:brightness(1.35)}}
+@keyframes siri-speaking{0%,100%{transform:scale(1)}30%{transform:scale(1.1,.94)}65%{transform:scale(.96,1.08)}}
+@keyframes siri-listening{0%,100%{box-shadow:0 10px 32px rgba(0,0,0,.3),0 0 20px rgba(89,143,255,.25)}50%{box-shadow:0 10px 36px rgba(0,0,0,.3),0 0 38px rgba(162,105,255,.42),0 0 58px rgba(80,160,255,.2)}}
+@media(max-width:520px){.argosha-launcher{right:16px;bottom:max(16px,env(safe-area-inset-bottom));width:106px;height:50px}.argosha-panel{background:rgba(7,10,18,.96)!important}}
+@media(prefers-reduced-motion:reduce){.argosha-launcher,.siri-glow,.siri-glow:before,.argosha-launcher:before{animation:none!important}}
+
 </style>
 </head>
 <body>
@@ -252,8 +300,7 @@ h1 span{color:var(--blue)}
       entries.forEach(function(entry){
         if(entry.isIntersecting){
           entry.target.classList.add('is-visible');
-        }else{
-          entry.target.classList.remove('is-visible');
+          revealObserver.unobserve(entry.target);
         }
       });
     },{threshold:0.14,rootMargin:'0px 0px -6% 0px'});
@@ -329,7 +376,7 @@ h1 span{color:var(--blue)}
 })();
 </script>
 
-<button class="argosha-launcher" id="argosha-launcher" type="button" aria-label="Открыть Аргошу" aria-expanded="false"></button>
+<button class="argosha-launcher" id="argosha-launcher" type="button" aria-label="Открыть Аргошу" aria-expanded="false"><span class="siri-glow" aria-hidden="true"></span><span class="siri-label">Аргоша</span></button>
 <section class="argosha-panel" id="argosha-panel" aria-label="Чат с Аргошей" aria-hidden="true">
   <header class="argosha-head"><div class="argosha-mini-orb" aria-hidden="true"></div><div class="argosha-head-copy"><strong>Аргоша</strong><span id="argosha-status">ИИ-помощник NEXORA</span></div><button class="argosha-close" id="argosha-close" type="button" aria-label="Закрыть">×</button></header>
   <div class="argosha-messages" id="argosha-messages" aria-live="polite"><div class="argosha-message assistant">Привет! Я Аргоша, помощник NEXORA. Расскажи, что хочешь сделать, и я подскажу подходящий инструмент.</div></div>
