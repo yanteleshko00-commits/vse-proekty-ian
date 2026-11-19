@@ -553,6 +553,43 @@ html[data-theme="dark"] .topic-input-wrap button{color:#9cc4ff;background:rgba(5
 @media(max-width:520px){.topic-input-wrap{flex-direction:column}.topic-input-wrap button{width:100%;min-height:44px}}
 </style>
 
+<style id="lobby-home-style">
+.lobby{position:relative;isolation:isolate;min-height:calc(100svh - 76px);padding:clamp(54px,8vw,100px) 18px 64px;overflow:hidden;background:radial-gradient(ellipse at 12% 8%,rgba(102,164,255,.20),transparent 36%),radial-gradient(ellipse at 88% 20%,rgba(114,191,255,.16),transparent 32%),linear-gradient(145deg,#f7faff 0%,#eef4fc 54%,#f8fbff 100%)}
+.lobby:before,.lobby:after{content:"";position:absolute;z-index:-1;border:1px solid rgba(255,255,255,.82);border-radius:50%;pointer-events:none}
+.lobby:before{width:430px;height:430px;right:-190px;top:-230px;box-shadow:0 0 90px rgba(68,135,235,.08)}
+.lobby:after{width:300px;height:300px;left:-190px;bottom:-190px;box-shadow:0 0 90px rgba(68,135,235,.08)}
+.lobby-inner{width:100%;max-width:1000px;margin:0 auto}
+.lobby-eyebrow{display:flex;align-items:center;gap:9px;margin-bottom:22px;color:#6b7d96;font-size:11px;font-weight:850;letter-spacing:.16em}
+.lobby-status-dot{width:8px;height:8px;border-radius:50%;background:#3985ee;box-shadow:0 0 0 5px rgba(57,133,238,.11)}
+.lobby-greeting{margin:0;color:#17263e;font-size:clamp(34px,6vw,58px);font-weight:780;line-height:1.08;letter-spacing:-.055em}
+.lobby-name{color:#347be0}
+.lobby-subtitle{margin:14px 0 38px;color:#667892;font-size:clamp(18px,2.5vw,23px);font-weight:520;letter-spacing:-.025em}
+.lobby-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.lobby-card{display:flex;align-items:flex-start;gap:18px;min-width:0;min-height:176px;padding:25px;text-align:left;border:1px solid rgba(255,255,255,.92);border-radius:25px;background:linear-gradient(145deg,rgba(255,255,255,.88),rgba(255,255,255,.60));box-shadow:0 12px 38px rgba(35,72,125,.075),inset 0 1px 0 #fff;color:#17263e;cursor:pointer;transition:transform .24s cubic-bezier(.2,.8,.2,1),box-shadow .24s ease,border-color .24s ease}
+.lobby-card:hover{transform:translateY(-4px);border-color:rgba(74,139,231,.35);box-shadow:0 20px 46px rgba(35,92,170,.13),inset 0 1px 0 #fff}
+.lobby-card:active{transform:scale(.985)}
+.lobby-card-primary{background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(232,242,255,.84));border-color:rgba(111,163,235,.42)}
+.lobby-card-icon{display:grid;place-items:center;flex:0 0 54px;width:54px;height:54px;border-radius:18px;background:linear-gradient(145deg,#5ca0ff,#286ed5);color:#fff;font-size:29px;font-weight:700;box-shadow:0 8px 18px rgba(45,116,220,.22),inset 0 1px 0 rgba(255,255,255,.45)}
+.lobby-card-icon>span{transform:translateY(-1px)}
+.lobby-card-icon.math-icon{background:linear-gradient(145deg,#42b6a0,#178b80);font-size:30px}
+.lobby-card-icon.study-icon{background:linear-gradient(145deg,#a58af6,#7255d6);font-size:28px}
+.lobby-card-icon.image-icon{background:linear-gradient(145deg,#f1b45e,#e18a36);font-size:34px}
+.lobby-card-copy{display:flex;flex-direction:column;align-items:flex-start;min-width:0;min-height:122px}
+.lobby-card-copy b{margin:1px 0 7px;font-size:20px;font-weight:780;letter-spacing:-.035em}
+.lobby-card-copy small{color:#708099;font-size:14px;line-height:1.5}
+.lobby-card-copy em{display:inline-flex;align-items:center;gap:8px;margin-top:auto;padding-top:17px;color:#347be0;font-size:13px;font-style:normal;font-weight:780}
+.lobby-card-copy em span{font-size:17px;transition:transform .2s ease}
+.lobby-card:hover .lobby-card-copy em span{transform:translate(3px,-2px)}
+.lobby-bottom{display:flex;align-items:center;gap:11px;margin-top:31px;color:#91a0b5;font-size:12px;font-weight:600}
+.lobby-bottom-mark{color:#4389e8;font-size:17px}.lobby-bottom-line{height:1px;flex:1;background:linear-gradient(90deg,rgba(119,151,192,.24),transparent)}
+html[data-theme="dark"] .lobby{background:radial-gradient(ellipse at 12% 8%,rgba(53,111,204,.20),transparent 36%),radial-gradient(ellipse at 88% 20%,rgba(48,119,182,.16),transparent 32%),linear-gradient(145deg,#101827,#131e30 58%,#111a29)}
+html[data-theme="dark"] .lobby-greeting{color:#f0f5ff}html[data-theme="dark"] .lobby-subtitle,html[data-theme="dark"] .lobby-eyebrow{color:#9aabc5}
+html[data-theme="dark"] .lobby-card{background:linear-gradient(145deg,rgba(35,49,70,.91),rgba(26,39,59,.84));border-color:rgba(160,185,220,.16);color:#f0f5ff;box-shadow:0 14px 38px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.08)}
+html[data-theme="dark"] .lobby-card-primary{background:linear-gradient(135deg,rgba(39,65,100,.95),rgba(29,48,75,.88));border-color:rgba(100,157,236,.34)}
+html[data-theme="dark"] .lobby-card-copy small{color:#a8b7ce}html[data-theme="dark"] .lobby-bottom{color:#71829d}
+@media(max-width:680px){.lobby{min-height:calc(100svh - 64px);padding:48px 14px 42px}.lobby-eyebrow{margin-bottom:18px;font-size:10px}.lobby-subtitle{margin:11px 0 27px}.lobby-grid{grid-template-columns:1fr;gap:12px}.lobby-card{min-height:142px;padding:19px;border-radius:21px;gap:15px}.lobby-card-icon{flex-basis:48px;width:48px;height:48px;border-radius:16px}.lobby-card-copy{min-height:105px}.lobby-card-copy b{font-size:18px}.lobby-card-copy small{font-size:13px}.lobby-card-copy em{padding-top:12px}.lobby-bottom{margin-top:24px;font-size:11px}}
+@media(prefers-reduced-motion:reduce){.lobby-card,.lobby-card-copy em span{transition:none!important}}
+</style>
 </head>
 <body>
 
@@ -580,13 +617,32 @@ html[data-theme="dark"] .topic-input-wrap button{color:#9cc4ff;background:rgba(5
 <a class="auth-entry" href="https://ecosystem-auth-service.onrender.com/login" aria-label="Войти или зарегистрироваться"><span aria-hidden="true">↗</span> Войти</a>
 </div></header>
 
-<section class="hero"><div class="container"><div class="hero-content">
-<div class="badge">🎁 Первая генерация — бесплатно</div>
-<h1>Создай свой <span class="green">индивидуальный проект</span></h1>
-<p>Текст + проектный продукт + презентация + защита — всё в одном готовом проекте.</p>
-<button class="main-btn" onclick="go('generator')">✨ СОЗДАТЬ ПРОЕКТ БЕСПЛАТНО</button>
-<div class="free-note">Ты вводишь тему один раз — сайт собирает весь проект целиком.</div>
-</div></div></section>
+<main class="lobby" id="lobby">
+  <div class="lobby-inner">
+    <div class="lobby-eyebrow"><span class="lobby-status-dot"></span> ТВОЁ ПРОСТРАНСТВО ДЛЯ ИДЕЙ</div>
+    <h1 class="lobby-greeting">Здравствуйте<span id="lobbyGreetingComma">!</span> <span class="lobby-name" id="lobbyUserName"></span></h1>
+    <p class="lobby-subtitle">Что мы можем создать сегодня?</p>
+    <div class="lobby-grid">
+      <button class="lobby-card lobby-card-primary" type="button" onclick="go('generator')">
+        <span class="lobby-card-icon"><span>✦</span></span>
+        <span class="lobby-card-copy"><b>Все проекты</b><small>Создать проект, презентацию, доклад или документ</small><em>Открыть инструменты <span>↗</span></em></span>
+      </button>
+      <button class="lobby-card" type="button" onclick="openMathHelper()">
+        <span class="lobby-card-icon math-icon">∑</span>
+        <span class="lobby-card-copy"><b>Решить задачу</b><small>Математика с условием, подробным решением и ответом</small><em>Решить задачу <span>↗</span></em></span>
+      </button>
+      <button class="lobby-card" type="button" onclick="openStudyHelper()">
+        <span class="lobby-card-icon study-icon">▤</span>
+        <span class="lobby-card-copy"><b>Помощь с уроками</b><small>Объяснения тем, подготовка к контрольным и упражнения</small><em>Начать заниматься <span>↗</span></em></span>
+      </button>
+      <button class="lobby-card" type="button" onclick="openModal('imageTool')">
+        <span class="lobby-card-icon image-icon">✧</span>
+        <span class="lobby-card-copy"><b>Создать изображение</b><small>Иллюстрации и картинки по твоему описанию</small><em>Создать картинку <span>↗</span></em></span>
+      </button>
+    </div>
+    <div class="lobby-bottom"><span class="lobby-bottom-mark">✦</span><span>Одна экосистема. Много полезных инструментов.</span><span class="lobby-bottom-line"></span></div>
+  </div>
+</main>
 
 <section id="how"><div class="container">
 <h2 class="section-title">Как это работает?</h2><p class="section-subtitle">Всего несколько шагов до готового проекта.</p>
@@ -793,6 +849,29 @@ let projectData=null;
 let progressTimer=null;
 let progressStarted=0;
 
+let chatMode="general";
+function openMathHelper(){
+  chatMode="math";
+  const title=document.querySelector("#chatTool h2");
+  const description=document.querySelector("#chatTool .modal-content>p");
+  const field=document.getElementById("chatQuestion");
+  if(title)title.textContent="∑ Решить задачу по математике";
+  if(description)description.textContent="Вставь условие задачи. Я оформлю решение по шагам: дано, найти, решение и ответ.";
+  if(field)field.placeholder="Вставь сюда полное условие задачи...";
+  const output=document.getElementById("chatAnswer");if(output){output.style.display="none";output.textContent="";}
+  openModal("chatTool");
+}
+function openStudyHelper(){
+  chatMode="study";
+  const title=document.querySelector("#chatTool h2");
+  const description=document.querySelector("#chatTool .modal-content>p");
+  const field=document.getElementById("chatQuestion");
+  if(title)title.textContent="📚 Помощь с уроками";
+  if(description)description.textContent="Напиши тему или вопрос. Объясню простыми словами и помогу разобраться.";
+  if(field)field.placeholder="Например: объясни теорему Пифагора...";
+  const output=document.getElementById("chatAnswer");if(output){output.style.display="none";output.textContent="";}
+  openModal("chatTool");
+}
 function go(id){document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"});}
 function openModal(id){document.getElementById(id).style.display="flex";document.body.style.overflow="hidden";}
 function closeModal(id){document.getElementById(id).style.display="none";if(![...document.querySelectorAll(".modal")].some(x=>x.style.display==="flex"))document.body.style.overflow="";}
@@ -894,8 +973,11 @@ function stopProgress(){
 }
 
 async function askChatGPT(){
-  const question=val("chatQuestion");const out=document.getElementById("chatAnswer");const btn=document.getElementById("chatSend");
-  if(!question){out.style.display="block";out.textContent="Сначала напиши вопрос.";return;}
+  const rawQuestion=val("chatQuestion");const out=document.getElementById("chatAnswer");const btn=document.getElementById("chatSend");
+  if(!rawQuestion){out.style.display="block";out.textContent="Сначала напиши вопрос.";return;}
+  const question=chatMode==="math"
+    ? "Ты — внимательный учитель математики. Реши задачу по данному условию. Обязательно оформи ответ на русском языке по структуре: «Дано», «Найти», «Решение» с понятными пошаговыми вычислениями и формулами, затем «Ответ». Не придумывай отсутствующие данные. Если условие неполное или неоднозначное, сначала укажи, чего не хватает. Условие задачи: "+rawQuestion
+    : chatMode==="study" ? "Помоги школьнику разобраться в теме. Объясняй простым и точным языком, по шагам, с коротким примером. Вопрос: "+rawQuestion : rawQuestion;
   btn.disabled=true;btn.textContent="Думаю...";out.style.display="block";out.textContent="Готовлю ответ...";
   try{const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Не удалось получить ответ.");out.textContent=d.answer||"Ответ не получен.";}catch(e){out.textContent="Ошибка: "+e.message;}finally{btn.disabled=false;btn.textContent="Отправить вопрос";}
 }
