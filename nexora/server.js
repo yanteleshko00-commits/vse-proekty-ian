@@ -273,7 +273,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 400, JSON.stringify({ error: 'invalid_request' }), { 'Content-Type': 'application/json; charset=utf-8' });
     }
     const action = url.pathname.slice('/api/auth/'.length);
-    if (!['register', 'verify-email', 'login'].includes(action)) {
+    if (!['register', 'resend-verification', 'verify-email', 'login'].includes(action)) {
       return send(res, 404, JSON.stringify({ error: 'not_found' }), { 'Content-Type': 'application/json; charset=utf-8' });
     }
     try {
@@ -281,7 +281,7 @@ const server = http.createServer(async (req, res) => {
       if (!response.ok) return send(res, response.status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8' });
       if (action === 'login') {
         const cookies = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [response.headers.get('set-cookie') || ''];
-        const sessionCookie = cookies.map(value => value.split(';')[0]).find(value => value.startsWith('ecosystem_session='));
+        const sessionCookie = cookies.map(value => value.split(';')[0]).find(value => /^[^=]+=/.test(value));
         if (!sessionCookie) return send(res, 502, JSON.stringify({ error: 'session_creation_failed', message: 'Сервис аккаунтов не вернул сессию. Попробуйте ещё раз.' }), { 'Content-Type': 'application/json; charset=utf-8' });
         const meResponse = await fetch(authBase + '/v1/me', { headers: { Cookie: sessionCookie }, signal: AbortSignal.timeout(10000) });
         const me = await meResponse.json().catch(() => ({}));
