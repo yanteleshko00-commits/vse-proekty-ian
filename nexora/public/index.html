@@ -170,6 +170,33 @@ h1 span{color:var(--blue)}
 @media(max-width:520px){.argosha-launcher{right:16px;bottom:max(16px,env(safe-area-inset-bottom));width:106px;height:50px}.argosha-panel{background:rgba(7,10,18,.96)!important}}
 @media(prefers-reduced-motion:reduce){.argosha-launcher,.siri-glow,.siri-glow:before,.argosha-launcher:before{animation:none!important}}
 
+
+
+/* Compact Argosha panel */
+.argosha-panel{
+  width:min(350px,calc(100vw - 28px));
+  height:min(520px,calc(100dvh - 40px));
+  border-radius:25px;
+}
+.argosha-head{gap:10px;padding:14px 15px 12px}
+.argosha-mini-orb{width:36px;height:36px;flex-basis:36px}
+.argosha-head-copy strong{font-size:14px}
+.argosha-head-copy span{font-size:11px}
+.argosha-messages{padding:13px 12px 10px;gap:9px}
+.argosha-message{max-width:91%;padding:10px 12px;font-size:12px;line-height:1.48;border-radius:15px}
+.argosha-suggestions{gap:6px;padding:0 12px 9px}
+.argosha-suggestions button{padding:7px 9px;font-size:10px}
+.argosha-compose{gap:7px;padding:9px 10px max(10px,env(safe-area-inset-bottom))}
+.argosha-input{padding:10px 12px;font-size:12px;max-height:88px;border-radius:15px}
+.argosha-send{width:39px;height:39px;flex-basis:39px;border-radius:13px}
+.argosha-launcher{width:96px;height:48px;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));gap:7px;padding:0 12px}
+.siri-glow{width:22px;height:22px;flex-basis:22px}
+.siri-label{font-size:12px}
+@media(max-width:520px){
+  .argosha-launcher{width:92px;height:46px;right:13px;bottom:max(13px,env(safe-area-inset-bottom))}
+  .argosha-panel{inset:auto 8px max(8px,env(safe-area-inset-bottom));width:auto;height:min(540px,calc(100dvh - 16px));border-radius:23px}
+}
+
 </style>
 </head>
 <body>
