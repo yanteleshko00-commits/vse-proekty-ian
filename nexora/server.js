@@ -261,7 +261,8 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/auth/logout' && req.method === 'POST') {
     return redirect(res, '/', { 'Set-Cookie': cookie('nexora_session', '', 0) });
   }
-  if (url.pathname === '/api/argosha' && req.method === 'POST') return argoshaReply(req, res);\n\n  if (url.pathname === '/api/me' && req.method === 'GET') {
+  if (url.pathname === '/api/argosha' && req.method === 'POST') return argoshaReply(req, res);
+  if (url.pathname === '/api/me' && req.method === 'GET') {
     const user = readSession(req);
     if (!user) return send(res, 401, JSON.stringify({ error: 'not_signed_in' }), { 'Content-Type': 'application/json; charset=utf-8' });
     return send(res, 200, JSON.stringify({ user }), { 'Content-Type': 'application/json; charset=utf-8' });
@@ -293,7 +294,7 @@ const server = http.createServer(async (req, res) => {
       const html = await readFile(join(publicDir, 'index.html'));
       return send(res, 200, html, {
         'Content-Type': 'text/html; charset=utf-8',
-        'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+        'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://images.unsplash.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'",
         'Referrer-Policy': 'strict-origin-when-cross-origin'
       });
     } catch (error) {
