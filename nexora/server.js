@@ -15,6 +15,7 @@ const production = process.env.NODE_ENV === 'production';
 
 function appUrl(req) {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
+  if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '');
   const proto = req.headers['x-forwarded-proto'] || (production ? 'https' : 'http');
   return proto + '://' + req.headers.host;
 }
@@ -154,7 +155,7 @@ const server = http.createServer(async (req, res) => {
   try { url = new URL(req.url, base); } catch { return send(res, 400, 'Bad Request'); }
 
   if (url.pathname === '/health') {
-    const ready = Boolean(clientSecret.length >= 32 && sessionSecret.length >= 32 && process.env.APP_URL);
+    const ready = Boolean(clientSecret.length >= 32 && sessionSecret.length >= 32 && (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || req.headers.host));
     return send(res, 200, JSON.stringify({
       ok: true,
       service: 'nexora-lobby',
