@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f7fc">
+<meta name="description" content="NEXORA — единое пространство инструментов для учёбы и творчества.">
+<title>NEXORA — главное лобби</title>
+<style>
+:root{color-scheme:light;--bg:#f4f7fc;--surface:rgba(255,255,255,.68);--surface-strong:rgba(255,255,255,.88);--line:rgba(90,116,155,.15);--ink:#14213a;--muted:#77839a;--blue:#3478f6;--blue2:#65a3ff;--shadow:0 18px 55px rgba(42,74,125,.10);--soft:rgba(53,121,246,.09)}
+:root[data-theme=dark]{color-scheme:dark;--bg:#0a1020;--surface:rgba(25,36,59,.72);--surface-strong:rgba(25,36,59,.94);--line:rgba(164,190,238,.13);--ink:#edf3ff;--muted:#98a7c3;--blue:#70a7ff;--blue2:#397ef3;--shadow:0 20px 60px rgba(0,0,0,.28);--soft:rgba(90,150,255,.13)}
+*{box-sizing:border-box}
+html{min-height:100%;scroll-behavior:smooth}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 8% 0%,rgba(107,166,255,.18),transparent 34%),radial-gradient(ellipse at 95% 24%,rgba(146,184,255,.17),transparent 30%),var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:background .25s,color .25s}
+button,a{font:inherit;-webkit-tap-highlight-color:transparent}
+button{cursor:pointer}
+.shell{width:min(1120px,calc(100% - 40px));margin:0 auto}
+.topbar{position:sticky;top:0;z-index:20;padding:14px 0;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%)}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);font-weight:850;letter-spacing:.02em;font-size:19px}
+.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(145deg,rgba(255,255,255,.92),rgba(215,231,255,.55));border:1px solid rgba(90,150,255,.22);box-shadow:0 7px 22px rgba(54,123,246,.13)}
+.brand-mark svg{width:27px;height:27px;filter:drop-shadow(0 2px 5px rgba(52,120,246,.25))}
+.actions{display:flex;align-items:center;gap:9px}
+.icon-button,.login-button{height:42px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);backdrop-filter:blur(18px);transition:.2s}
+.icon-button{width:42px;display:grid;place-items:center;font-size:17px}
+.login-button{padding:0 16px;font-weight:720;text-decoration:none;display:flex;align-items:center;gap:8px}
+.icon-button:hover,.login-button:hover{transform:translateY(-2px);border-color:rgba(66,132,255,.38)}
+.profile{display:none;align-items:center;gap:9px;padding:5px 12px 5px 6px;border:1px solid var(--line);border-radius:16px;background:var(--surface);font-size:13px;font-weight:700}
+.avatar{width:31px;height:31px;display:grid;place-items:center;border-radius:11px;background:linear-gradient(145deg,#75adff,#3478f6);color:white}
+.hero{padding:72px 0 34px;text-align:center}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border:1px solid var(--line);border-radius:30px;background:var(--surface);color:var(--blue);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.pulse{width:7px;height:7px;border-radius:50%;background:#3985ff;box-shadow:0 0 0 4px rgba(57,133,255,.12)}
+h1{margin:20px 0 8px;font-size:clamp(34px,6vw,56px);line-height:1.08;letter-spacing:-.045em}
+h1 span{color:var(--blue)}
+.hero-copy{margin:0;color:var(--muted);font-size:clamp(15px,2vw,18px)}
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:38px 0 17px}
+.section-head h2{margin:0;font-size:20px;letter-spacing:-.025em}
+.section-head p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.tile{position:relative;min-height:190px;overflow:hidden;display:flex;flex-direction:column;align-items:flex-start;padding:22px;text-align:left;color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:25px;background:var(--surface);backdrop-filter:blur(22px) saturate(145%);-webkit-backdrop-filter:blur(22px) saturate(145%);box-shadow:var(--shadow);transition:transform .24s cubic-bezier(.2,.8,.2,1),border-color .24s,background .24s}
+.tile:before{content:"";position:absolute;width:170px;height:170px;right:-72px;top:-85px;border-radius:50%;background:radial-gradient(circle,rgba(87,151,255,.17),transparent 70%);pointer-events:none}
+.tile:hover{transform:translateY(-5px);border-color:rgba(67,135,255,.38);background:var(--surface-strong)}
+.tile:active{transform:scale(.985)}
+.tile-top{width:46px;height:46px;display:grid;place-items:center;border-radius:16px;background:var(--soft);color:var(--blue);font-size:22px;margin-bottom:18px}
+.tile h3{margin:0 0 7px;font-size:18px;letter-spacing:-.02em}
+.tile p{margin:0;max-width:270px;color:var(--muted);font-size:13px;line-height:1.55}
+.tile-bottom{margin-top:auto;padding-top:15px;display:flex;align-items:center;gap:7px;color:var(--blue);font-size:12px;font-weight:800}
+.status{position:absolute;right:16px;top:16px;padding:6px 9px;border-radius:20px;background:var(--soft);color:var(--blue);font-size:10px;font-weight:800}
+.status.ready{background:rgba(31,181,128,.10);color:#19a879}
+.extra{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-top:13px}
+.extra.show{display:grid;animation:rise .3s ease both}
+.mini-tile{padding:17px;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink);text-align:left}
+.mini-tile b{display:block;font-size:14px}.mini-tile span{display:block;margin-top:4px;color:var(--muted);font-size:12px}
+.more-row{display:flex;justify-content:center;margin:22px 0 8px}
+.more-button{padding:11px 17px;border:1px solid var(--line);border-radius:13px;background:var(--surface);color:var(--muted);font-size:13px;font-weight:750}
+.footer{display:flex;justify-content:space-between;gap:14px;padding:38px 0 26px;margin-top:26px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+.modal-backdrop{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(10,20,42,.38);backdrop-filter:blur(9px)}
+.modal-backdrop.open{display:flex;animation:fade .18s ease both}
+.modal{width:min(420px,100%);padding:25px;border:1px solid var(--line);border-radius:25px;background:var(--surface-strong);box-shadow:0 25px 80px rgba(0,0,0,.2);animation:rise .22s ease both}
+.modal h3{margin:0 0 8px;font-size:21px}.modal p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:22px}
+.modal-actions button{padding:10px 15px;border:1px solid var(--line);border-radius:12px;background:var(--soft);color:var(--blue);font-weight:750}
+@keyframes rise{from{opacity:0;transform:translateY(9px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media(max-width:760px){.shell{width:min(100% - 28px,560px)}.hero{padding:58px 0 25px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.tile{min-height:185px;padding:17px;border-radius:21px}.tile h3{font-size:16px}.tile p{font-size:12px}.tile-top{width:42px;height:42px;margin-bottom:14px}.extra{grid-template-columns:repeat(2,minmax(0,1fr))}.section-head{margin-top:30px}.footer{flex-direction:column}}
+@media(max-width:420px){.grid{grid-template-columns:1fr}.tile{min-height:155px}.tile-top{margin-bottom:11px}.hero{padding-top:45px}.login-button{padding:0 11px;font-size:12px}.profile{font-size:11px}.extra{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="shell topbar-inner">
+    <a class="brand" href="/" aria-label="NEXORA — главная">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none">
+          <path d="M11 21.2c-.8-1.7-3.2-3.3-3.2-7.1a8.2 8.2 0 0 1 16.4 0c0 3.8-2.4 5.4-3.2 7.1-.4.8-.5 1.6-.5 2.3H11.5c0-.7-.1-1.5-.5-2.3Z" fill="#438BFA" fill-opacity=".18" stroke="#3478F6" stroke-width="1.8"/>
+          <path d="M12.1 24.2h7.8M12.8 27h6.4M16 1.9v3M4.1 7.2l2.2 1.4M27.9 7.2l-2.2 1.4" stroke="#3478F6" stroke-width="1.8" stroke-linecap="round"/>
+          <path d="M13 14.2c.5-1.7 1.5-2.5 3-2.7" stroke="#3478F6" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span>NEXORA</span>
+    </a>
+    <div class="actions">
+      <div class="profile" id="profile"><span class="avatar" id="avatar">N</span><span id="profile-name">Профиль</span></div>
+      <button class="icon-button" id="theme-toggle" type="button" aria-label="Сменить тему">☾</button>
+      <a class="login-button" id="login-link" href="/auth/start">Войти в NEXORA ID <span aria-hidden="true">↗</span></a>
+      <form id="logout-form" action="/auth/logout" method="post" style="display:none"><button class="login-button" type="submit">Выйти</button></form>
+    </div>
+  </div>
+</header>
+
+<main class="shell">
+  <section class="hero">
+    <div class="eyebrow"><span class="pulse"></span> одно пространство для идей</div>
+    <h1 id="greeting">Здравствуйте!<br><span>Что создадим сегодня?</span></h1>
+    <p class="hero-copy">Выберите инструмент и переходите от идеи к результату.</p>
+  </section>
+
+  <div class="section-head">
+    <div><h2>Ваши инструменты</h2><p>Всё необходимое собрано в одном месте</p></div>
+  </div>
+
+  <section class="grid" aria-label="Основные инструменты">
+    <a class="tile" href="https://vse-proekty-ian-1.onrender.com/" target="_blank" rel="noopener">
+      <span class="status ready">Доступно</span>
+      <span class="tile-top">✦</span>
+      <h3>Сделать проект</h3>
+      <p>Презентации, школьные проекты, доклады и документы.</p>
+      <span class="tile-bottom">Открыть инструмент <span>↗</span></span>
+    </a>
+    <button class="tile" type="button" data-tool="math">
+      <span class="status">Скоро</span>
+      <span class="tile-top">∑</span>
+      <h3>Решить задачу</h3>
+      <p>Математика с понятным решением и школьным оформлением.</p>
+      <span class="tile-bottom">Открыть <span>→</span></span>
+    </button>
+    <button class="tile" type="button" data-tool="chat">
+      <span class="status">Скоро</span>
+      <span class="tile-top">◌</span>
+      <h3>Спросить ChatGPT</h3>
+      <p>Объяснения, идеи и помощь с вопросами в одном чате.</p>
+      <span class="tile-bottom">Открыть <span>→</span></span>
+    </button>
+    <button class="tile" type="button" data-tool="image">
+      <span class="status">Скоро</span>
+      <span class="tile-top">▧</span>
+      <h3>Создать картинку</h3>
+      <p>Генерация изображений по вашему описанию.</p>
+      <span class="tile-bottom">Открыть <span>→</span></span>
+    </button>
+    <button class="tile" type="button" data-tool="lesson">
+      <span class="status">Скоро</span>
+      <span class="tile-top">⌘</span>
+      <h3>Подготовиться к уроку</h3>
+      <p>Конспект, определения, примеры и вопросы для повторения.</p>
+      <span class="tile-bottom">Открыть <span>→</span></span>
+    </button>
+    <button class="tile" type="button" data-tool="text">
+      <span class="status">Скоро</span>
+      <span class="tile-top">¶</span>
+      <h3>Создать текст</h3>
+      <p>Сочинение, эссе, письмо, доклад и другие форматы.</p>
+      <span class="tile-bottom">Открыть <span>→</span></span>
+    </button>
+  </section>
+
+  <div class="more-row"><button class="more-button" id="more-button" type="button">Все инструменты ↓</button></div>
+  <section class="extra" id="extra-tools" aria-label="Дополнительные инструменты">
+    <div class="mini-tile"><b>Создать тест</b><span>В разработке</span></div>
+    <div class="mini-tile"><b>Карточки для запоминания</b><span>В разработке</span></div>
+    <div class="mini-tile"><b>Проверить работу</b><span>В разработке</span></div>
+    <div class="mini-tile"><b>Перевести текст</b><span>В разработке</span></div>
+    <div class="mini-tile"><b>Работа с PDF</b><span>В разработке</span></div>
+    <div class="mini-tile"><b>Планировщик</b><span>В разработке</span></div>
+  </section>
+
+  <footer class="footer"><span>NEXORA · единое пространство инструментов</span><span>Всё начинается с идеи.</span></footer>
+</main>
+
+<div class="modal-backdrop" id="modal-backdrop" role="presentation">
+  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h3 id="modal-title">Инструмент готовится</h3>
+    <p id="modal-copy">Этот инструмент появится в NEXORA в одном из следующих обновлений.</p>
+    <div class="modal-actions"><button id="modal-close" type="button">Понятно</button></div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  var savedTheme=localStorage.getItem('nexora-theme');
+  if(savedTheme==='dark')root.setAttribute('data-theme','dark');
+  var themeButton=document.getElementById('theme-toggle');
+  function updateThemeIcon(){themeButton.textContent=root.getAttribute('data-theme')==='dark'?'☀':'☾';}
+  updateThemeIcon();
+  themeButton.addEventListener('click',function(){
+    var dark=root.getAttribute('data-theme')!=='dark';
+    if(dark)root.setAttribute('data-theme','dark');else root.removeAttribute('data-theme');
+    localStorage.setItem('nexora-theme',dark?'dark':'light');
+    updateThemeIcon();
+  });
+
+  var modal=document.getElementById('modal-backdrop');
+  var title=document.getElementById('modal-title');
+  var copy=document.getElementById('modal-copy');
+  var labels={
+    math:['Решить задачу','Инструмент для решения задач ещё подключается. Здесь появится ввод условия, выбор класса и оформление решения по школьным требованиям.'],
+    chat:['Спросить ChatGPT','Чат подключается к общей системе ИИ. Здесь можно будет задавать вопросы и получать объяснения.'],
+    image:['Создать картинку','Генератор изображений находится в разработке.'],
+    lesson:['Подготовиться к уроку','Здесь появятся конспекты с объяснениями, определениями, примерами и самопроверкой.'],
+    text:['Создать текст','Здесь можно будет задать тему, тип текста, стиль и объём через компактные настройки под полем ввода.']
+  };
+  document.querySelectorAll('[data-tool]').forEach(function(button){
+    button.addEventListener('click',function(){
+      var item=labels[button.getAttribute('data-tool')];
+      title.textContent=item[0];
+      copy.textContent=item[1];
+      modal.classList.add('open');
+    });
+  });
+  function closeModal(){modal.classList.remove('open');}
+  document.getElementById('modal-close').addEventListener('click',closeModal);
+  modal.addEventListener('click',function(event){if(event.target===modal)closeModal();});
+  document.addEventListener('keydown',function(event){if(event.key==='Escape')closeModal();});
+
+  var more=document.getElementById('more-button');
+  var extras=document.getElementById('extra-tools');
+  more.addEventListener('click',function(){
+    var opened=extras.classList.toggle('show');
+    more.textContent=opened?'Скрыть дополнительные инструменты ↑':'Все инструменты ↓';
+  });
+
+  var params=new URLSearchParams(location.search);
+  if(params.get('login')==='failed'){
+    title.textContent='Не удалось войти';
+    copy.textContent='Проверьте настройки NEXORA ID и попробуйте ещё раз.';
+    modal.classList.add('open');
+    history.replaceState({},'',location.pathname);
+  }
+
+  fetch('/api/me',{credentials:'same-origin'}).then(function(response){
+    if(!response.ok)throw new Error('not_signed_in');
+    return response.json();
+  }).then(function(data){
+    var user=data.user;
+    if(!user||!user.name)return;
+    document.getElementById('greeting').innerHTML='Здравствуйте, <span></span>!<br><span>Что создадим сегодня?</span>';
+    document.querySelector('#greeting span').textContent=user.name;
+    document.getElementById('profile-name').textContent=user.name;
+    document.getElementById('avatar').textContent=user.name.trim().charAt(0).toUpperCase();
+    document.getElementById('profile').style.display='flex';
+    document.getElementById('login-link').style.display='none';
+    document.getElementById('logout-form').style.display='block';
+  }).catch(function(){});
+})();
+</script>
+</body>
+</html>
