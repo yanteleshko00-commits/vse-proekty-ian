@@ -41,12 +41,13 @@ function signature(value) {
   return crypto.createHmac('sha256', sessionSecret).update(value).digest('base64url');
 }
 
-function makeSessionCookie(user) {
+function makeSessionCookie(user, usage = null, packages = null) {
   const payload = Buffer.from(JSON.stringify({
     id: user.id,
     name: user.name,
     email: user.email,
-    usage: user.usage || null,
+    usage: usage || user.usage || null,
+    packages: packages || user.packages || null,
     issuedAt: Date.now()
   })).toString('base64url');
   return payload + '.' + signature(payload);
@@ -138,7 +139,7 @@ async function finishLogin(req, res, url) {
     }
     const headers = {
       'Set-Cookie': [
-        cookie('nexora_session', makeSessionCookie(data.user), 604800),
+        cookie('nexora_session', makeSessionCookie(data.user, data.usage, data.packages), 604800),
         cookie('nexora_oauth', '', 0)
       ]
     };
@@ -288,7 +289,7 @@ const server = http.createServer(async (req, res) => {
         if (!meResponse.ok || !me.user) return send(res, 502, JSON.stringify({ error: 'session_verification_failed', message: 'Не удалось проверить созданную сессию.' }), { 'Content-Type': 'application/json; charset=utf-8' });
         return send(res, 200, JSON.stringify({ ok: true, user: me.user }), {
           'Content-Type': 'application/json; charset=utf-8',
-          'Set-Cookie': cookie('nexora_session', makeSessionCookie(me.user), 604800)
+          'Set-Cookie': cookie('nexora_session', makeSessionCookie(me.user, me.usage, me.packages), 604800)
         });
       }
       return send(res, response.status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8' });
@@ -307,7 +308,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/me' && req.method === 'GET') {
     const user = readSession(req);
     if (!user) return send(res, 401, JSON.stringify({ error: 'not_signed_in' }), { 'Content-Type': 'application/json; charset=utf-8' });
-    return send(res, 200, JSON.stringify({ user }), { 'Content-Type': 'application/json; charset=utf-8' });
+    return send(res, 200, JSON.stringify({ user, usage: user.usage || null, packages: user.packages || null }), { 'Content-Type': 'application/json; charset=utf-8' });
   }
 
   if (url.pathname.startsWith('/docs/') && req.method === 'GET') {
