@@ -251,6 +251,7 @@ const server = http.createServer(async (req, res) => {
       ok: true,
       service: 'nexora-lobby',
       oauthConfigured: ready,
+      argoshaConfigured: Boolean(process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY),
       authService: authBase
     }), { 'Content-Type': 'application/json; charset=utf-8' });
   }
