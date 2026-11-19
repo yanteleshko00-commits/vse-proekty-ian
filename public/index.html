@@ -13,10 +13,10 @@
 
 <!-- Настройки для iPhone -->
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Все проекты #Ian">
+<meta name="apple-mobile-web-app-title" content="Генератор проектов">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-<title>Все проекты #Ian</title>
+<title>Генератор проектов | Все проекты #Ian</title>
 
 <style>
 :root{--g:#18a66a;--gd:#087546;--gl:#e8f7ef;--d:#17231d;--m:#69766f;--bg:#f5f7f6;--w:#fff;--b:#dfe7e2}
@@ -593,20 +593,8 @@ html[data-theme="dark"] .lobby-card-copy small{color:#a8b7ce}html[data-theme="da
 </head>
 <body>
 
-<div id="appSplash" aria-label="Все проекты #Ian — включи свет" role="dialog" aria-modal="true">
-  <button id="lampSwitch" class="lamp-switch" type="button" aria-label="Включить лампочку и открыть сайт" title="Включить свет">
-  <span class="lamp-scene" aria-hidden="true">
-    <div class="lamp-wire"></div>
-    <svg class="lamp-svg" viewBox="0 0 122 148" role="img" aria-label="Лампочка" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bulbGlass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f5f8ff" stop-opacity=".9"/><stop offset="1" stop-color="#8d9db5" stop-opacity=".22"/></linearGradient><linearGradient id="bulbMetal" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#d9e0eb"/><stop offset="1" stop-color="#68758a"/></linearGradient></defs><path class="lamp-glass" d="M61 12c-25 0-42 18-42 41 0 17 9 27 20 39 5 5 7 10 8 16h28c1-6 3-11 8-16 11-12 20-22 20-39 0-23-17-41-42-41Z" fill="url(#bulbGlass)" stroke="#c8d5e8" stroke-width="2.5"/><path class="lamp-filament" d="M47 65c4-8 8-12 14-12s10 4 14 12M52 68l5 13h8l5-13M61 53v-9" stroke="#e9edf5" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M47 108h28v8H47zM48 117h26v7H48zM50 126h22v7H50z" fill="url(#bulbMetal)" stroke="#b9c5d6" stroke-width="1.2"/><path d="M54 136h14" stroke="#8794a8" stroke-width="3" stroke-linecap="round"/></svg><div class="lamp-glow"></div>
-  </span>
-  </button>
-  <div class="splash-brand">Все проекты <span>#Ian</span></div>
-  <p class="splash-prompt">Нажми на лампочку, чтобы начать</p>
-</div>
-
-
 <header><div class="container hi">
-<div class="logo"><img class="logo-app-icon" src="/icon-512.png" alt="Иконка Все проекты"><span>Все проекты #Ian</span></div>
+<a class="logo" href="/" aria-label="Генератор проектов"><img class="logo-app-icon" src="/icon-512.png" alt="Иконка Все проекты"><span>Генератор проектов</span></a>
 <nav class="nav">
 <button onclick="go('how')">Как это работает</button>
 <button onclick="go('tariffs')">Тарифы</button>
@@ -616,33 +604,6 @@ html[data-theme="dark"] .lobby-card-copy small{color:#a8b7ce}html[data-theme="da
 <button id="themeToggle" class="theme-toggle" type="button" aria-label="Включить тёмную тему" title="Переключить тему"><span id="themeIcon">🌙</span><span class="theme-label">Тема</span></button>
 <a class="auth-entry" href="https://ecosystem-auth-service.onrender.com/login" aria-label="Войти или зарегистрироваться"><span aria-hidden="true">↗</span> Войти</a>
 </div></header>
-
-<main class="lobby" id="lobby">
-  <div class="lobby-inner">
-    <div class="lobby-eyebrow"><span class="lobby-status-dot"></span> ТВОЁ ПРОСТРАНСТВО ДЛЯ ИДЕЙ</div>
-    <h1 class="lobby-greeting">Здравствуйте<span id="lobbyGreetingComma">!</span> <span class="lobby-name" id="lobbyUserName"></span></h1>
-    <p class="lobby-subtitle">Что мы можем создать сегодня?</p>
-    <div class="lobby-grid">
-      <button class="lobby-card lobby-card-primary" type="button" onclick="go('generator')">
-        <span class="lobby-card-icon"><span>✦</span></span>
-        <span class="lobby-card-copy"><b>Все проекты</b><small>Создать проект, презентацию, доклад или документ</small><em>Открыть инструменты <span>↗</span></em></span>
-      </button>
-      <button class="lobby-card" type="button" onclick="openMathHelper()">
-        <span class="lobby-card-icon math-icon">∑</span>
-        <span class="lobby-card-copy"><b>Решить задачу</b><small>Математика с условием, подробным решением и ответом</small><em>Решить задачу <span>↗</span></em></span>
-      </button>
-      <button class="lobby-card" type="button" onclick="openStudyHelper()">
-        <span class="lobby-card-icon study-icon">▤</span>
-        <span class="lobby-card-copy"><b>Помощь с уроками</b><small>Объяснения тем, подготовка к контрольным и упражнения</small><em>Начать заниматься <span>↗</span></em></span>
-      </button>
-      <button class="lobby-card" type="button" onclick="openModal('imageTool')">
-        <span class="lobby-card-icon image-icon">✧</span>
-        <span class="lobby-card-copy"><b>Создать изображение</b><small>Иллюстрации и картинки по твоему описанию</small><em>Создать картинку <span>↗</span></em></span>
-      </button>
-    </div>
-    <div class="lobby-bottom"><span class="lobby-bottom-mark">✦</span><span>Одна экосистема. Много полезных инструментов.</span><span class="lobby-bottom-line"></span></div>
-  </div>
-</main>
 
 <section id="how"><div class="container">
 <h2 class="section-title">Как это работает?</h2><p class="section-subtitle">Всего несколько шагов до готового проекта.</p>
@@ -654,7 +615,7 @@ html[data-theme="dark"] .lobby-card-copy small{color:#a8b7ce}html[data-theme="da
 </div></div></section>
 
 <section class="generator" id="generator"><div class="container">
-<h2 class="section-title">✨ Создать проект</h2><p class="section-subtitle">Файлы создаются прямо в браузере.</p>
+<h2 class="section-title">✨ Создать проект</h2><p class="section-subtitle">Создай школьный проект, презентацию и комплект материалов в одном месте.</p>
 <div class="form">
 <div class="grid">
 <div class="field"><label for="firstName">Имя</label><input id="firstName" type="text" autocomplete="given-name" placeholder="Иван"></div>
@@ -675,11 +636,6 @@ html[data-theme="dark"] .lobby-card-copy small{color:#a8b7ce}html[data-theme="da
 </div>
 
 <button class="create-btn" id="createButton" onclick="createProject()">✨ СОЗДАТЬ ПРОЕКТ БЕСПЛАТНО</button>
-
-<div class="quick-tools" aria-label="Дополнительные инструменты">
-<button class="tool-tile" onclick="openModal('chatTool')"><span class="tool-icon">💬</span><span><b>Спросить у ChatGPT</b><small>Задать вопрос и получить объяснение</small></span></button>
-<button class="tool-tile" onclick="openModal('imageTool')"><span class="tool-icon">🎨</span><span><b>Сгенерировать картинку</b><small>Создать изображение по описанию</small></span></button>
-</div>
 
 <div class="progress-box" id="progressBox">
 <div class="progress-top"><span>Создание проекта</span><span class="reasoning-indicator" id="thinkingIndicator"><span class="reasoning-orb" aria-hidden="true"><i style="--dot:0"></i><i style="--dot:1"></i><i style="--dot:2"></i><i style="--dot:3"></i><i style="--dot:4"></i><i style="--dot:5"></i><i style="--dot:6"></i><i style="--dot:7"></i><i style="--dot:8"></i><i style="--dot:9"></i></span><span id="thinkingLabel">Размышление</span></span></div>
@@ -840,9 +796,6 @@ html[data-theme="dark"] .lobby-card-copy small{color:#a8b7ce}html[data-theme="da
 <button class="menu-btn" onclick="closeModal('menu');go('tariffs')">💳 Тарифы</button>
 <button class="menu-btn" onclick="closeModal('menu');openModal('info')">ⓘ Информация</button>
 </div></div>
-
-<div class="modal" id="chatTool"><div class="modal-content"><button class="close" onclick="closeModal('chatTool')">×</button><h2>💬 Спросить у ChatGPT</h2><p style="color:var(--m)">Задай вопрос — ответ появится здесь.</p><div class="tool-form"><textarea id="chatQuestion" placeholder="Например: объясни фотосинтез простыми словами..."></textarea><button class="create-btn" id="chatSend" onclick="askChatGPT()">Отправить вопрос</button></div><div class="tool-output" id="chatAnswer"></div></div></div>
-<div class="modal" id="imageTool"><div class="modal-content"><button class="close" onclick="closeModal('imageTool')">×</button><h2>🎨 Сгенерировать картинку</h2><p style="color:var(--m)">Опиши изображение, которое хочешь создать.</p><div class="tool-form"><textarea id="imagePrompt" placeholder="Например: реалистичный горный пейзаж на рассвете, без текста..."></textarea><button class="create-btn" id="imageSend" onclick="generatePicture()">Создать изображение</button></div><div class="tool-output" id="imageAnswer"></div></div></div>
 
 <script>
 let projectData=null;
