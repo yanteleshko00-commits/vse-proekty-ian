@@ -175,6 +175,27 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, JSON.stringify({ user }), { 'Content-Type': 'application/json; charset=utf-8' });
   }
 
+  if (url.pathname.startsWith('/docs/') && req.method === 'GET') {
+    const allowedDocs = new Set([
+      'how-it-works.pdf', 'faq.pdf', 'articles.pdf',
+      'public-offer.pdf', 'cookie-policy.pdf', 'privacy-policy.pdf',
+      'terms-of-use.pdf', 'contact.pdf'
+    ]);
+    const fileName = url.pathname.slice('/docs/'.length);
+    if (!allowedDocs.has(fileName)) return send(res, 404, 'Not Found');
+    try {
+      const pdf = await readFile(join(publicDir, 'docs', fileName));
+      return send(res, 200, pdf, {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'inline; filename="' + fileName + '"',
+        'Cache-Control': 'public, max-age=300'
+      });
+    } catch (error) {
+      console.error('NEXORA PDF read failed:', fileName, error.message);
+      return send(res, 503, 'Документ временно недоступен. Повторите попытку позже.');
+    }
+  }
+
   if (url.pathname === '/' || url.pathname === '/index.html') {
     try {
       const html = await readFile(join(publicDir, 'index.html'));
