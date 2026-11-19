@@ -15,8 +15,6 @@ services:
         value: https://ecosystem-auth-service.onrender.com
       - key: OAUTH_CLIENT_ID
         value: nexora
-      - key: APP_URL
-        sync: false
       - key: OAUTH_CLIENT_SECRET
         sync: false
       - key: SESSION_SECRET
