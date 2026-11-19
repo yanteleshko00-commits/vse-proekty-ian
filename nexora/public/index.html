@@ -41,14 +41,17 @@ h1 span{color:var(--blue)}
 .tile{position:relative;min-height:270px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;padding:22px;text-align:left;color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.2);border-radius:25px;background:#17243c;box-shadow:0 18px 48px rgba(18,39,76,.2);transition:transform .24s cubic-bezier(.2,.8,.2,1),border-color .24s,filter .24s;isolation:isolate}
 .tile:before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(7,18,38,.04) 5%,rgba(7,18,38,.12) 35%,rgba(7,18,38,.88) 100%);pointer-events:none;transition:background .24s}
 .tile:hover{transform:translateY(-5px);border-color:rgba(255,255,255,.55);filter:saturate(1.12) brightness(1.04)}
+.tile:hover .tile-top{background-size:cover;filter:saturate(1.2) contrast(1.04)}
+.tile-top{background-position:center 45%;transition:filter .35s,background-position .5s}
+.tile:hover .tile-top{background-position:center 50%}
 .tile:active{transform:scale(.985)}
 .tile-top{position:absolute;inset:0;z-index:0;width:auto;height:auto;display:block;margin:0;border-radius:inherit;background-color:#233957;background-size:cover;background-position:center;color:transparent;font-size:0;box-shadow:none;overflow:hidden}.tile-top:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,22,44,.04) 0%,rgba(9,22,44,.08) 34%,rgba(7,17,36,.92) 100%)}
-.tile:nth-child(1) .tile-top{background-image:url("https://images.unsplash.com/photo-1455390582262-044c5081b5e7?auto=format&fit=crop&w=1100&q=88")}
-.tile:nth-child(2) .tile-top{background-image:url("https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=1100&q=88")}
-.tile:nth-child(3) .tile-top{background-image:url("https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1100&q=88")}
-.tile:nth-child(4) .tile-top{background-image:url("https://images.unsplash.com/photo-1547891654-e66ed7ebb968?auto=format&fit=crop&w=1100&q=88")}
-.tile:nth-child(5) .tile-top{background-image:url("https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1100&q=88")}
-.tile:nth-child(6) .tile-top{background-image:url("https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=1100&q=88")}.tile h3{position:relative;z-index:2;margin:0 0 7px;color:#fff;font-size:19px;letter-spacing:-.02em;text-shadow:0 2px 12px rgba(0,0,0,.3)}
+.tile:nth-child(1) .tile-top{background-image:url("https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=1400&q=90")}
+.tile:nth-child(2) .tile-top{background-image:url("https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=1400&q=90")}
+.tile:nth-child(3) .tile-top{background-image:url("https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1400&q=90")}
+.tile:nth-child(4) .tile-top{background-image:url("https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1400&q=90")}
+.tile:nth-child(5) .tile-top{background-image:url("https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1400&q=90")}
+.tile:nth-child(6) .tile-top{background-image:url("https://images.unsplash.com/photo-1455390582262-044c5081b5e7?auto=format&fit=crop&w=1400&q=90")}.tile h3{position:relative;z-index:2;margin:0 0 7px;color:#fff;font-size:19px;letter-spacing:-.02em;text-shadow:0 2px 12px rgba(0,0,0,.3)}
 .tile p{position:relative;z-index:2;margin:0;max-width:290px;color:rgba(255,255,255,.88);font-size:13px;line-height:1.55;text-shadow:0 1px 8px rgba(0,0,0,.3)}
 .tile-bottom{position:relative;z-index:2;margin-top:13px;padding:9px 12px;display:flex;align-items:center;gap:7px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:800;backdrop-filter:blur(12px)}
 .status{position:absolute;z-index:3;right:16px;top:16px;padding:6px 9px;border:1px solid rgba(255,255,255,.24);border-radius:20px;background:rgba(12,25,48,.42);color:#fff;font-size:10px;font-weight:800;backdrop-filter:blur(12px)}
