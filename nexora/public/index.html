@@ -158,15 +158,6 @@ h1 span{color:var(--blue)}
     </button>
   </section>
 
-  <div class="more-row"><button class="more-button" id="more-button" type="button">Все инструменты ↓</button></div>
-  <section class="extra" id="extra-tools" aria-label="Дополнительные инструменты">
-    <div class="mini-tile"><b>Создать тест</b><span>В разработке</span></div>
-    <div class="mini-tile"><b>Карточки для запоминания</b><span>В разработке</span></div>
-    <div class="mini-tile"><b>Проверить работу</b><span>В разработке</span></div>
-    <div class="mini-tile"><b>Перевести текст</b><span>В разработке</span></div>
-    <div class="mini-tile"><b>Работа с PDF</b><span>В разработке</span></div>
-    <div class="mini-tile"><b>Планировщик</b><span>В разработке</span></div>
-  </section>
 
   <footer class="footer" aria-label="Информация о NEXORA">
     <div class="footer-grid">
@@ -271,13 +262,6 @@ h1 span{color:var(--blue)}
   document.getElementById('modal-close').addEventListener('click',closeModal);
   modal.addEventListener('click',function(event){if(event.target===modal)closeModal();});
   document.addEventListener('keydown',function(event){if(event.key==='Escape')closeModal();});
-
-  var more=document.getElementById('more-button');
-  var extras=document.getElementById('extra-tools');
-  more.addEventListener('click',function(){
-    var opened=extras.classList.toggle('show');
-    more.textContent=opened?'Скрыть дополнительные инструменты ↑':'Все инструменты ↓';
-  });
 
   var params=new URLSearchParams(location.search);
   if(params.get('login')==='failed'){
