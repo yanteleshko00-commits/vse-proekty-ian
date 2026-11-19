@@ -149,6 +149,97 @@ async function finishLogin(req, res, url) {
   }
 }
 
+
+const argoshaRate = new Map();
+function allowArgosha(req) {
+  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+  const now = Date.now();
+  const recent = (argoshaRate.get(ip) || []).filter(time => now - time < 60000);
+  if (recent.length >= 12) return false;
+  recent.push(now);
+  argoshaRate.set(ip, recent);
+  if (argoshaRate.size > 1000) {
+    for (const [key, times] of argoshaRate) if (!times.some(time => now - time < 60000)) argoshaRate.delete(key);
+  }
+  return true;
+}
+async function readJson(req, limit = 12000) {
+  let raw = '';
+  for await (const chunk of req) {
+    raw += chunk;
+    if (Buffer.byteLength(raw) > limit) throw new Error('payload_too_large');
+  }
+  return JSON.parse(raw || '{}');
+}
+async function argoshaReply(req, res) {
+  if (!allowArgosha(req)) return send(res, 429, JSON.stringify({ error: 'Слишком много сообщений. Подожди минуту.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+  const providers = [];
+  if (process.env.OPENROUTER_API_KEY) providers.push({
+    name: 'OpenRouter',
+    url: 'https://openrouter.ai/api/v1/chat/completions',
+    key: process.env.OPENROUTER_API_KEY,
+    model: process.env.ARGOSHA_OPENROUTER_MODEL || 'openai/gpt-4o-mini'
+  });
+  if (process.env.GROQ_API_KEY) providers.push({
+    name: 'Groq',
+    url: 'https://api.groq.com/openai/v1/chat/completions',
+    key: process.env.GROQ_API_KEY,
+    model: process.env.ARGOSHA_GROQ_MODEL || 'llama-3.3-70b-versatile'
+  });
+  if (!providers.length) return send(res, 503, JSON.stringify({ error: 'argosha_not_configured' }), { 'Content-Type': 'application/json; charset=utf-8' });
+  let body;
+  try { body = await readJson(req); } catch (error) {
+    return send(res, error.message === 'payload_too_large' ? 413 : 400, JSON.stringify({ error: 'Некорректное сообщение.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+  }
+  const messages = Array.isArray(body.messages) ? body.messages.slice(-10) : [];
+  const clean = messages.filter(item => item && ['user','assistant'].includes(item.role) && typeof item.content === 'string')
+    .map(item => ({ role: item.role, content: item.content.slice(0, 1200) }));
+  if (!clean.length || clean[clean.length - 1].role !== 'user') return send(res, 400, JSON.stringify({ error: 'Напиши сообщение Аргоше.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+  const system = `Ты Аргоша, ИИ-помощник сайта NEXORA. Отвечай на русском, дружелюбно, ясно и без лишней воды. Помогай понять запрос и выбрать инструмент. Доступные инструменты:
+- проект или презентация: https://vse-proekty-ian-1.onrender.com/ (это единственный сейчас доступный инструмент);
+- решить задачу, чат, создать картинку, подготовиться к уроку, создать текст: пока не подключены. Не говори, что они уже работают; честно объясни это и предложи доступный вариант, если уместно.
+Если просят презентацию/школьный проект/доклад, предложи ссылку на генератор.
+Не проси пароли, коды подтверждения, платёжные данные или личные документы. Не помогай с опасными действиями, оружием, обходом блокировок, вредом себе или другим, сексуальным контентом. Для медицинских и других важных вопросов советуй обратиться к взрослому, которому пользователь доверяет, или специалисту.
+Верни строго JSON без Markdown: {"reply":"короткий ответ пользователю","action":null} или {"reply":"...","action":{"label":"Перейти к созданию проекта","url":"https://vse-proekty-ian-1.onrender.com/","external":true}}. URL действия разрешён только ровно этот адрес. Не создавай действие для инструментов со статусом «Скоро».`;
+  let lastError;
+  for (const provider of providers) {
+    try {
+      const response = await fetch(provider.url, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + provider.key, 'Content-Type': 'application/json', 'HTTP-Referer': appUrl(req), 'X-Title': 'NEXORA Argosha' },
+        body: JSON.stringify({
+          model: provider.model,
+          temperature: 0.55,
+          max_tokens: 450,
+          response_format: { type: 'json_object' },
+          messages: [{ role: 'system', content: system }, ...clean]
+        }),
+        signal: AbortSignal.timeout(18000)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(provider.name + ' HTTP ' + response.status);
+      const raw = data.choices?.[0]?.message?.content;
+      if (typeof raw !== 'string') throw new Error('empty_ai_response');
+      let parsed;
+      try { parsed = JSON.parse(raw); } catch {
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('invalid_ai_json');
+        parsed = JSON.parse(match[0]);
+      }
+      const reply = String(parsed.reply || 'Я не смог сформулировать ответ. Попробуй перефразировать.').slice(0, 1800);
+      let action = null;
+      if (parsed.action && parsed.action.url === 'https://vse-proekty-ian-1.onrender.com/') {
+        action = { label: String(parsed.action.label || 'Перейти к созданию проекта').slice(0, 70), url: 'https://vse-proekty-ian-1.onrender.com/', external: true };
+      }
+      return send(res, 200, JSON.stringify({ reply, action, provider: provider.name }), { 'Content-Type': 'application/json; charset=utf-8' });
+    } catch (error) {
+      lastError = error;
+      console.error('Argosha provider failed:', provider.name, error.message);
+    }
+  }
+  return send(res, 502, JSON.stringify({ error: 'Сервис ИИ временно недоступен.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+}
+
 const server = http.createServer(async (req, res) => {
   const base = appUrl(req);
   let url;
@@ -169,7 +260,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/auth/logout' && req.method === 'POST') {
     return redirect(res, '/', { 'Set-Cookie': cookie('nexora_session', '', 0) });
   }
-  if (url.pathname === '/api/me' && req.method === 'GET') {
+  if (url.pathname === '/api/argosha' && req.method === 'POST') return argoshaReply(req, res);\n\n  if (url.pathname === '/api/me' && req.method === 'GET') {
     const user = readSession(req);
     if (!user) return send(res, 401, JSON.stringify({ error: 'not_signed_in' }), { 'Content-Type': 'application/json; charset=utf-8' });
     return send(res, 200, JSON.stringify({ user }), { 'Content-Type': 'application/json; charset=utf-8' });
