@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     rootDir: nexora
-    buildCommand: npm install
+    buildCommand: npm install && python3 -m pip install --user reportlab && python3 generate_pdfs.py
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
