@@ -54,17 +54,17 @@ h1 span{color:var(--blue)}
 .mini-tile b{display:block;font-size:14px}.mini-tile span{display:block;margin-top:4px;color:var(--muted);font-size:12px}
 .more-row{display:flex;justify-content:center;margin:22px 0 8px}
 .more-button{padding:11px 17px;border:1px solid var(--line);border-radius:13px;background:var(--surface);color:var(--muted);font-size:13px;font-weight:750}
-.documentation{margin:30px 0 0;padding:22px;border:1px solid var(--line);border-radius:24px;background:var(--surface);backdrop-filter:blur(20px);box-shadow:var(--shadow)}.documentation h2{margin:0 0 9px;font-size:19px}.documentation p{margin:7px 0;color:var(--muted);font-size:13px;line-height:1.65}.documentation strong{color:var(--ink)}.footer{display:flex;justify-content:space-between;gap:14px;padding:26px 0;margin-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+.documentation{margin:30px 0 0;padding:22px;border:1px solid var(--line);border-radius:24px;background:var(--surface);backdrop-filter:blur(20px);box-shadow:var(--shadow)}.documentation h2{margin:0 0 9px;font-size:19px}.documentation p{margin:7px 0;color:var(--muted);font-size:13px;line-height:1.65}.documentation strong{color:var(--ink)}.footer{display:block;padding:30px 0 26px;margin-top:28px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}.footer-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px;padding-bottom:26px}.footer-col h3{margin:0 0 13px;color:var(--ink);font-size:13px;letter-spacing:.01em}.footer-links{display:grid;gap:10px}.footer-link{width:max-content;max-width:100%;padding:0;border:0;background:none;color:var(--muted);text-align:left;text-decoration:none;font-size:12px;line-height:1.5;transition:color .18s}.footer-link:hover{color:var(--blue)}.footer-bottom{display:flex;justify-content:space-between;gap:14px;padding-top:18px;border-top:1px solid var(--line)}.footer-note{max-width:560px;color:var(--muted);font-size:11px;line-height:1.6}
 .modal-backdrop{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(10,20,42,.38);backdrop-filter:blur(9px)}
 .modal-backdrop.open{display:flex;animation:fade .18s ease both}
-.modal{width:min(420px,100%);padding:25px;border:1px solid var(--line);border-radius:25px;background:var(--surface-strong);box-shadow:0 25px 80px rgba(0,0,0,.2);animation:rise .22s ease both}
-.modal h3{margin:0 0 8px;font-size:21px}.modal p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+.modal{width:min(560px,100%);max-height:min(78vh,720px);overflow:auto;padding:25px;border:1px solid var(--line);border-radius:25px;background:var(--surface-strong);box-shadow:0 25px 80px rgba(0,0,0,.2);animation:rise .22s ease both}
+.modal h3{margin:0 0 8px;font-size:21px}.modal p{margin:0 0 10px;color:var(--muted);font-size:14px;line-height:1.65}.modal ul{margin:8px 0 12px;padding-left:20px;color:var(--muted);font-size:14px;line-height:1.7}.modal a{color:var(--blue)}
 .modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:22px}
 .modal-actions button{padding:10px 15px;border:1px solid var(--line);border-radius:12px;background:var(--soft);color:var(--blue);font-weight:750}
 @keyframes rise{from{opacity:0;transform:translateY(9px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
-@media(max-width:760px){.shell{width:min(100% - 28px,560px)}.hero{padding:58px 0 25px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.tile{min-height:245px;padding:14px;border-radius:21px}.tile h3{font-size:16px}.tile p{font-size:12px}.tile-top{height:100px;margin-bottom:13px}.extra{grid-template-columns:repeat(2,minmax(0,1fr))}.section-head{margin-top:30px}.footer{flex-direction:column}}
-@media(max-width:420px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tile{min-height:235px;padding:12px}.tile h3{font-size:14px}.tile p{font-size:11px}.tile-top{height:82px;margin-bottom:11px}.hero{padding-top:45px}.login-button{padding:0 11px;font-size:12px}.profile{font-size:11px}.extra{grid-template-columns:1fr}}
+@media(max-width:760px){.footer-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}.footer-bottom{flex-direction:column}.shell{width:min(100% - 28px,560px)}.hero{padding:58px 0 25px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.tile{min-height:245px;padding:14px;border-radius:21px}.tile h3{font-size:16px}.tile p{font-size:12px}.tile-top{height:100px;margin-bottom:13px}.extra{grid-template-columns:repeat(2,minmax(0,1fr))}.section-head{margin-top:30px}.footer{flex-direction:column}}
+@media(max-width:420px){.footer-grid{grid-template-columns:1fr 1fr;gap:20px 12px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tile{min-height:235px;padding:12px}.tile h3{font-size:14px}.tile p{font-size:11px}.tile-top{height:82px;margin-bottom:11px}.hero{padding-top:45px}.login-button{padding:0 11px;font-size:12px}.profile{font-size:11px}.extra{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -156,7 +156,25 @@ h1 span{color:var(--blue)}
     <div class="mini-tile"><b>Планировщик</b><span>В разработке</span></div>
   </section>
 
-  <section class="documentation" id="documentation" aria-labelledby="documentation-title"><h2 id="documentation-title">Документация NEXORA</h2><p><strong>О проекте.</strong> NEXORA — единое пространство цифровых инструментов для учёбы, творчества и повседневных задач. Главная страница объединяет отдельные сервисы в одном понятном интерфейсе.</p><p><strong>Основные разделы.</strong> Создание проектов, решение задач, интеллектуальный чат, генерация изображений, подготовка к урокам и создание текстов. Доступность каждого инструмента отмечена на его карточке.</p><p><strong>Автор проекта:</strong> Ян Телешко.</p><p><strong>Поддержка и развитие.</strong> Функции добавляются постепенно. Статус «Скоро» означает, что инструмент пока находится в разработке.</p></section><footer class="footer"><span>NEXORA · единое пространство инструментов</span><span>Всё начинается с идеи.</span></footer>
+  <section class="documentation" id="documentation" aria-labelledby="documentation-title"><h2 id="documentation-title">Документация NEXORA</h2><p><strong>О проекте.</strong> NEXORA — единое пространство цифровых инструментов для учёбы, творчества и повседневных задач. Главная страница объединяет отдельные сервисы в одном понятном интерфейсе.</p><p><strong>Основные разделы.</strong> Создание проектов, решение задач, интеллектуальный чат, генерация изображений, подготовка к урокам и создание текстов. Доступность каждого инструмента отмечена на его карточке.</p><p><strong>Автор проекта:</strong> Ян Телешко.</p><p><strong>Поддержка и развитие.</strong> Функции добавляются постепенно. Статус «Скоро» означает, что инструмент пока находится в разработке.</p></section><footer class="footer" aria-label="Информация о NEXORA">
+    <div class="footer-grid">
+      <div class="footer-col"><h3>NEXORA</h3><div class="footer-links">
+        <button class="footer-link" type="button" data-footer="how">Как это работает</button>
+        <button class="footer-link" type="button" data-footer="faq">Частые вопросы</button>
+        <button class="footer-link" type="button" data-footer="articles">Статьи</button>
+      </div></div>
+      <div class="footer-col"><h3>Документы</h3><div class="footer-links">
+        <button class="footer-link" type="button" data-footer="offer">Публичная оферта</button>
+        <button class="footer-link" type="button" data-footer="cookies">Политика cookie</button>
+        <button class="footer-link" type="button" data-footer="privacy">Политика конфиденциальности</button>
+      </div></div>
+      <div class="footer-col"><h3>Связь</h3><div class="footer-links">
+        <button class="footer-link" type="button" data-footer="contact">Связаться с нами</button>
+        <a class="footer-link" href="https://t.me/vseproekty_bot" target="_blank" rel="noopener">Поддержка в Telegram ↗</a>
+      </div></div>
+    </div>
+    <div class="footer-bottom"><span>NEXORA · единое пространство инструментов</span><span>Всё начинается с идеи.</span></div>
+  </footer>
 </main>
 
 <div class="modal-backdrop" id="modal-backdrop" role="presentation">
@@ -199,6 +217,23 @@ h1 span{color:var(--blue)}
       var item=labels[button.getAttribute('data-tool')];
       title.textContent=item[0];
       copy.textContent=item[1];
+      modal.classList.add('open');
+    });
+  });
+  var footerContent={
+    how:['Как это работает','<p>NEXORA объединяет отдельные цифровые инструменты в одном пространстве.</p><ul><li>Выберите нужную плитку на главной странице.</li><li>Откройте инструмент и следуйте его подсказкам.</li><li>Проверяйте отметку доступности: «Доступно» означает, что инструмент работает, а «Скоро» — что он ещё разрабатывается.</li></ul><p>Для персонального входа используется NEXORA ID. Не вводите пароль на сторонних страницах.</p>'],
+    faq:['Частые вопросы','<p><strong>Почему некоторые инструменты помечены «Скоро»?</strong><br>Они ещё разрабатываются и пока не принимают запросы.</p><p><strong>Нужно ли создавать отдельный аккаунт для каждого инструмента?</strong><br>Цель NEXORA — единый вход через NEXORA ID там, где он поддерживается.</p><p><strong>Почему тема изменилась?</strong><br>По умолчанию NEXORA следует настройкам оформления устройства. Ручной выбор темы сохраняется в браузере.</p>'],
+    articles:['Статьи','<p><strong>Знакомство с NEXORA</strong><br>Главная страница — это лобби: отсюда можно перейти к учебным и творческим инструментам.</p><p><strong>Как выбрать подходящий инструмент</strong><br>Начните с результата, который хотите получить: проект, объяснение, изображение или текст. Затем откройте соответствующую плитку.</p><p>Новые материалы будут появляться по мере развития проекта.</p>'],
+    offer:['Публичная оферта','<p><strong>Информационный статус.</strong> Этот раздел пока является предварительной информацией, а не опубликованной юридически проверенной офертой.</p><p>NEXORA предоставляет доступ к цифровым инструментам. Конкретные условия использования, оплаты (если она появится), возвратов, ограничения ответственности и реквизиты оператора должны быть утверждены владельцем сервиса до публикации действующей оферты.</p><p>До заполнения и проверки этих сведений не рассматривайте этот текст как договор или предложение заключить договор.</p>'],
+    cookies:['Политика cookie','<p>NEXORA может использовать техническое хранилище браузера для сохранения выбранной темы оформления и работы пользовательской сессии.</p><p>Эти данные помогают запомнить настройки и поддерживать вход в аккаунт. Очистка данных сайта в браузере может сбросить настройки темы и завершить сессию.</p><p>Перед публичным запуском необходимо дополнить этот раздел точным перечнем используемых cookie и сроками их хранения после проверки всех подключённых сервисов.</p>'],
+    privacy:['Политика конфиденциальности','<p>Не публикуйте в NEXORA и не отправляйте через формы лишние личные сведения. Для работы аккаунта могут обрабатываться данные, необходимые для входа и предоставления функций, например имя и адрес электронной почты.</p><p>Окончательная политика должна указывать оператора данных, цели и правовые основания обработки, сроки хранения, получателей данных, порядок обращений и применимые права пользователей. Эти сведения нужно подтвердить до публикации юридически действующей версии.</p>'],
+    contact:['Связаться с нами','<p>По вопросам работы сервисов можно обратиться в Telegram:</p><p><a href="https://t.me/vseproekty_bot" target="_blank" rel="noopener">Открыть бот поддержки ↗</a></p><p><a href="https://t.me/vse_proekty" target="_blank" rel="noopener">Канал проекта ↗</a></p><p>Укажите, какой инструмент использовали, что произошло и приложите скриншот без паролей и личных документов.</p>']
+  };
+  document.querySelectorAll('[data-footer]').forEach(function(button){
+    button.addEventListener('click',function(){
+      var item=footerContent[button.getAttribute('data-footer')];
+      title.textContent=item[0];
+      copy.innerHTML=item[1];
       modal.classList.add('open');
     });
   });
