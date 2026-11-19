@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: nexora-lobby
+    runtime: node
+    plan: free
+    rootDir: nexora
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AUTH_PUBLIC_URL
+        value: https://ecosystem-auth-service.onrender.com
+      - key: OAUTH_CLIENT_ID
+        value: nexora
+      - key: APP_URL
+        sync: false
+      - key: OAUTH_CLIENT_SECRET
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
