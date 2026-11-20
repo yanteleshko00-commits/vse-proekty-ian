@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
+import { designProduct } from './productDesigner.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -134,6 +135,14 @@ async function generateFinalProduct(topic, projectContent, requestedFormat='') {
   return product;
 }
 async function renderProductImage(product,theme) {
+  try {
+    return await designProduct(product, theme, aiJson);
+  } catch (error) {
+    console.warn('[product-design] Используется резервный SVG-шаблон:', cleanText(error?.message || error, 300));
+    return renderProductImageFallback(product, theme);
+  }
+}
+async function renderProductImageFallback(product,theme) {
   const accent='#'+(theme?.accent||COLORS.blue.accent),ink='#'+(theme?.ink||COLORS.blue.ink),muted='#'+(theme?.muted||COLORS.blue.muted),pale='#'+(theme?.accent2||COLORS.blue.accent2);
   const chunks=[];let y=330;
   for(const section of product.sections.slice(0,4)){
