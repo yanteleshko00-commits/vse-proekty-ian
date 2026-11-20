@@ -397,7 +397,7 @@ const server = http.createServer(async (req, res) => {
         await finalizeArgoshaUsage(reservationId, 'failure');
         return send(res, upstream.status || 502, JSON.stringify({ error: data.error || 'Генератор не смог принять задачу. Попробуй позже.' }), { 'Content-Type': 'application/json; charset=utf-8' });
       }
-      await finalizeArgoshaUsage(reservationId, 'success');
+      await finalizeArgoshaUsage(reservationId, 'success').catch(error => console.error('Argosha usage finalization failed:', error.message));
       return send(res, 202, JSON.stringify({ jobId: data.jobId, status: data.status || 'running', progress: data.progress || 3, message: data.message || 'Генерация запущена.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     } catch (error) {
       if (reservationId) await finalizeArgoshaUsage(reservationId, 'failure').catch(finalizeError => console.error('Argosha usage refund failed:', finalizeError.message));
