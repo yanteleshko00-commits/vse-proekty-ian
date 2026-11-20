@@ -105,6 +105,8 @@ async function startLogin(req, res) {
     device_id: deviceToken,
     device_signature: deviceSignature
   });
+  const requestedMode = new URL(req.url, appUrl(req)).searchParams.get('mode');
+  if (requestedMode === 'register') params.set('mode', 'register');
   const oauthCookie = Buffer.from(JSON.stringify({ state, verifier, redirectUri })).toString('base64url');
   const cookieHeaders = [cookie('nexora_oauth', oauthCookie, 300)];
   if (!cookies.ecosystem_device) cookieHeaders.push(cookie('ecosystem_device', deviceToken, 315360000));
@@ -371,7 +373,9 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/auth/start' && req.method === 'GET') return startLogin(req, res);
   if (url.pathname === '/auth/callback' && req.method === 'GET') return finishLogin(req, res, url);
   if (url.pathname === '/auth/logout' && req.method === 'POST') {
-    return redirect(res, '/', { 'Set-Cookie': cookie('nexora_session', '', 0) });
+    const target = authBase + '/logout?client_id=' + encodeURIComponent(clientId) +
+      '&return_to=' + encodeURIComponent(appUrl(req));
+    return redirect(res, target, { 'Set-Cookie': cookie('nexora_session', '', 0) });
   }
   if (url.pathname === '/api/argosha/generate' && req.method === 'POST') {
     const account = readSession(req);
