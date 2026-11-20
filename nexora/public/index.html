@@ -255,6 +255,79 @@ h1 span{color:var(--blue)}
 .account-top{display:flex;align-items:center;gap:13px;margin-bottom:20px}.account-avatar{width:48px;height:48px;display:grid;place-items:center;border-radius:16px;background:linear-gradient(145deg,#75adff,#3478f6);color:white;font-size:20px;font-weight:800}.account-top h2{margin:0;font-size:20px;letter-spacing:-.03em}.account-top p{margin:4px 0 0;color:var(--muted);font-size:12px;overflow-wrap:anywhere}.account-close{margin-left:auto;width:34px;height:34px;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--ink);font-size:20px}
 .usage-card{padding:17px;border:1px solid var(--line);border-radius:18px;background:var(--soft)}.usage-row{display:flex;justify-content:space-between;gap:12px;align-items:center}.usage-row strong{font-size:14px}.usage-value{font-size:24px;font-weight:850;color:var(--blue);font-variant-numeric:tabular-nums}.usage-note{margin:7px 0 0;color:var(--muted);font-size:11px;line-height:1.5}.account-packages{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}.account-package{padding:12px;border:1px solid var(--line);border-radius:15px;background:var(--surface);text-align:center}.account-package b{display:block;font-size:12px}.account-package span{display:block;margin-top:5px;color:var(--blue);font-size:18px;font-weight:850}.account-package small{display:block;margin-top:2px;color:var(--muted);font-size:10px}
 @media(max-width:760px){.recent-list{grid-template-columns:repeat(2,minmax(0,1fr))}.plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:420px){.discovery{padding:10px 12px}.discovery-count{font-size:10px}.recent-list{grid-template-columns:1fr}.plan-card{padding:14px}.plan-count{font-size:24px}.account-card{padding:20px 17px}.account-packages{gap:6px}.account-package{padding:10px 5px}}
+
+/* NEXORA visual refinement: restrained editorial interface */
+:root{
+ --bg:#f6f7f9;--surface:rgba(255,255,255,.82);--surface-strong:#fff;
+ --line:rgba(25,42,68,.10);--ink:#172235;--muted:#778296;
+ --blue:#2868d8;--blue2:#6d9ce8;--shadow:0 12px 34px rgba(24,43,72,.07);
+ --soft:rgba(40,104,216,.075)
+}
+:root[data-theme=dark]{
+ --bg:#10151e;--surface:rgba(27,35,48,.88);--surface-strong:#1b2330;
+ --line:rgba(205,218,238,.11);--ink:#edf2fa;--muted:#9aa7b9;
+ --blue:#80adff;--blue2:#4c83e4;--shadow:0 16px 42px rgba(0,0,0,.22);
+ --soft:rgba(105,157,244,.12)
+}
+@media(prefers-color-scheme:dark){
+ :root:not([data-theme=light]){--bg:#10151e;--surface:rgba(27,35,48,.88);--surface-strong:#1b2330;--line:rgba(205,218,238,.11);--ink:#edf2fa;--muted:#9aa7b9;--blue:#80adff;--blue2:#4c83e4;--shadow:0 16px 42px rgba(0,0,0,.22);--soft:rgba(105,157,244,.12)}
+}
+body{background:var(--bg);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.012em}
+.topbar{padding:11px 0;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.brand{font-size:17px;letter-spacing:.055em;font-weight:800}
+.brand-mark{width:38px;height:38px;border-radius:12px;background:var(--surface-strong);box-shadow:0 2px 8px rgba(20,42,75,.06);border-color:var(--line)}
+.icon-button,.login-button{height:40px;border-radius:12px;box-shadow:none;backdrop-filter:none}
+.login-button{background:var(--ink);color:var(--bg);border-color:var(--ink);font-size:12px}
+:root[data-theme=dark] .login-button{background:#e9f0fb;color:#172235;border-color:#e9f0fb}
+.hero{padding:68px 0 28px;text-align:left;max-width:790px}
+.eyebrow{padding:0;border:0;background:none;border-radius:0;font-size:10px;letter-spacing:.12em;color:var(--muted)}
+.pulse{width:6px;height:6px;box-shadow:none}
+h1{max-width:720px;margin:17px 0 12px;font-size:clamp(38px,6vw,62px);line-height:1.02;letter-spacing:-.06em;font-weight:760}
+h1 span{color:var(--blue)}
+.hero-copy{max-width:500px;font-size:15px;line-height:1.65}
+.discovery{max-width:620px;margin:16px 0 30px;border-radius:12px;background:var(--surface-strong);box-shadow:0 2px 9px rgba(24,43,72,.035);backdrop-filter:none;padding:12px 14px}
+.section-head{margin:42px 0 16px}
+.section-head h2{font-size:19px;letter-spacing:-.035em}
+.section-subtitle{font-size:12px;line-height:1.55}
+.grid{gap:15px}
+.tile{min-height:292px;padding:24px;border-radius:18px;border:1px solid rgba(255,255,255,.22);box-shadow:0 10px 26px rgba(14,31,58,.12);transition:transform .25s ease,box-shadow .25s ease}
+.tile:before{background:linear-gradient(180deg,rgba(7,18,38,.02) 0%,rgba(7,18,38,.10) 40%,rgba(7,17,36,.82) 100%)}
+.tile:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(14,31,58,.17)}
+.tile h3{font-size:20px;font-weight:700;letter-spacing:-.035em}
+.tile p{max-width:340px;font-size:13px;line-height:1.6}
+.status{top:17px;right:17px;padding:6px 9px;border-radius:8px;background:rgba(17,29,47,.55);font-size:10px;letter-spacing:.015em}
+.status.ready{background:rgba(18,112,82,.88)}
+.recent-section,.plans-section{margin-top:52px}
+.recent-item{border-radius:13px;background:var(--surface-strong);box-shadow:0 2px 9px rgba(24,43,72,.025)}
+.recent-item:hover{transform:translateY(-2px)}
+.recent-icon{border-radius:10px}
+.recent-view-all,.more-button{border-radius:10px}
+.plan-grid{gap:10px}
+.plan-card{border-radius:15px;background:var(--surface-strong);box-shadow:none;padding:17px}
+.plan-card.featured{background:var(--surface-strong);border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.plan-count{font-size:29px;letter-spacing:-.06em}
+.footer{margin-top:48px;padding-top:27px}
+.footer-col h3{font-size:12px}
+.footer-link{font-size:12px}
+.modal,.account-card{border-radius:18px;box-shadow:0 18px 60px rgba(0,0,0,.17)}
+.notification-panel{border-radius:17px;box-shadow:0 16px 44px rgba(13,32,68,.16)}
+@media(max-width:760px){
+ .hero{padding:52px 0 22px}
+ .grid{gap:11px}
+ .tile{min-height:250px;padding:16px;border-radius:16px}
+ .tile h3{font-size:17px}
+ .recent-section,.plans-section{margin-top:40px}
+}
+@media(max-width:420px){
+ .hero{padding-top:42px}
+ h1{font-size:38px}
+ .hero-copy{font-size:13px}
+ .tile{min-height:224px;padding:13px}
+ .tile h3{font-size:15px}
+ .status{top:11px;right:11px;padding:5px 7px;font-size:9px}
+ .login-button{font-size:11px}
+}
+
 </style>
 </head>
 <body>
