@@ -168,7 +168,31 @@ const ARGOSHA_TOOLS = [
 ];
 const ARGOSHA_PROJECT_URL = 'https://vse-proekty-ian-1.onrender.com/';
 const PROJECT_GENERATOR_BASE = (process.env.PROJECT_GENERATOR_URL || 'https://vse-proekty-ian-1.onrender.com').replace(/\/$/, '');
+const authServiceApiKey = process.env.AUTH_SERVICE_API_KEY || '';
+const authServiceClientId = process.env.AUTH_SERVICE_CLIENT_ID || 'nexora';
 
+async function reserveArgoshaUsage(userId, idempotencyKey) {
+  if (!authServiceApiKey) throw Object.assign(new Error('Для запуска Аргоши нужно добавить AUTH_SERVICE_API_KEY в переменные Render NEXORA.'), { status: 503 });
+  const response = await fetch(authBase + '/v1/internal/usage/reserve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-service-id': authServiceClientId, 'x-service-api-key': authServiceApiKey },
+    body: JSON.stringify({ userId, idempotencyKey }),
+    signal: AbortSignal.timeout(12000)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw Object.assign(new Error(data.message || (data.error === 'no_credits' ? 'Бесплатные генерации закончились. Выберите пакет NEXORA.' : 'Не удалось проверить лимит генераций.')), { status: response.status });
+  return data.reservationId;
+}
+async function finalizeArgoshaUsage(reservationId, outcome) {
+  if (!reservationId || !authServiceApiKey) return;
+  const response = await fetch(authBase + '/v1/internal/usage/' + encodeURIComponent(reservationId) + '/finalize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-service-id': authServiceClientId, 'x-service-api-key': authServiceApiKey },
+    body: JSON.stringify({ outcome }),
+    signal: AbortSignal.timeout(12000)
+  });
+  if (!response.ok) throw new Error('Не удалось завершить учёт генерации: HTTP ' + response.status);
+}
 const argoshaRate = new Map();
 function allowArgosha(req) {
   const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
@@ -350,7 +374,8 @@ const server = http.createServer(async (req, res) => {
     return redirect(res, '/', { 'Set-Cookie': cookie('nexora_session', '', 0) });
   }
   if (url.pathname === '/api/argosha/generate' && req.method === 'POST') {
-    if (!readSession(req)) return send(res, 401, JSON.stringify({ error: 'Войдите в NEXORA ID, чтобы запускать генерацию.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    const account = readSession(req);
+    if (!account) return send(res, 401, JSON.stringify({ error: 'Войдите в NEXORA ID, чтобы запускать генерацию.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     if (!allowArgosha(req)) return send(res, 429, JSON.stringify({ error: 'Слишком много запросов. Подожди минуту.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     let body;
     try { body = await readJson(req, 5000); } catch {
@@ -358,7 +383,9 @@ const server = http.createServer(async (req, res) => {
     }
     const topic = typeof body.topic === 'string' ? body.topic.trim().slice(0, 180) : '';
     if (topic.length < 3) return send(res, 400, JSON.stringify({ error: 'Укажи тему проекта.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    let reservationId = null;
     try {
+      reservationId = await reserveArgoshaUsage(account.id, crypto.randomUUID());
       const upstream = await fetch(PROJECT_GENERATOR_BASE + '/api/generate-project/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -366,11 +393,17 @@ const server = http.createServer(async (req, res) => {
         signal: AbortSignal.timeout(20000)
       });
       const data = await upstream.json().catch(() => ({}));
-      if (!upstream.ok || !data.jobId) return send(res, upstream.status || 502, JSON.stringify({ error: data.error || 'Генератор не смог принять задачу. Попробуй позже.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+      if (!upstream.ok || !data.jobId) {
+        await finalizeArgoshaUsage(reservationId, 'failure');
+        return send(res, upstream.status || 502, JSON.stringify({ error: data.error || 'Генератор не смог принять задачу. Попробуй позже.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+      }
+      await finalizeArgoshaUsage(reservationId, 'success');
       return send(res, 202, JSON.stringify({ jobId: data.jobId, status: data.status || 'running', progress: data.progress || 3, message: data.message || 'Генерация запущена.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     } catch (error) {
+      if (reservationId) await finalizeArgoshaUsage(reservationId, 'failure').catch(finalizeError => console.error('Argosha usage refund failed:', finalizeError.message));
       console.error('Argosha generation start failed:', error.message);
-      return send(res, 502, JSON.stringify({ error: 'Не удалось связаться с генератором проектов. Он может запускаться после паузы Render.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+      const status = Number(error.status) >= 400 && Number(error.status) < 600 ? Number(error.status) : 502;
+      return send(res, status, JSON.stringify({ error: error.message || 'Не удалось связаться с генератором проектов.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     }
   }
   if (url.pathname.startsWith('/api/argosha/generation/') && req.method === 'GET') {
