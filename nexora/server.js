@@ -167,6 +167,7 @@ const ARGOSHA_TOOLS = [
   { id: 'text', name: 'Создать текст', status: 'coming_soon', description: 'Отдельный генератор текстов.' }
 ];
 const ARGOSHA_PROJECT_URL = 'https://vse-proekty-ian-1.onrender.com/';
+const PROJECT_GENERATOR_BASE = (process.env.PROJECT_GENERATOR_URL || 'https://vse-proekty-ian-1.onrender.com').replace(/\/$/, '');
 
 const argoshaRate = new Map();
 function allowArgosha(req) {
@@ -231,8 +232,9 @@ ${JSON.stringify(ARGOSHA_TOOLS)}
 - Отвечай кратко, но полезно. Не повторяй каталог целиком без необходимости.
 
 ФОРМАТ:
-Верни строго JSON без Markdown: {"reply":"ответ пользователю","action":null} или {"reply":"ответ пользователю","action":{"toolId":"project","label":"Перейти к созданию проекта"}}.
-Создавай action только для toolId="project". Не придумывай URL: сервер сам добавит единственную разрешённую ссылку. Ответ должен быть понятен и без кнопки.`;
+Если пользователь прямо просит создать/сделать школьный проект, презентацию или доклад и тема уже известна из текущего сообщения или контекста, запусти генерацию: action={"type":"generate_project","topic":"точная тема","slidesCount":12}. Если тема неизвестна, сначала задай один вопрос о теме и не запускай генерацию. Если пользователь лишь спрашивает, как сделать проект или куда перейти, верни action={"toolId":"project","label":"Открыть генератор проектов"}.
+Верни строго JSON без Markdown: {"reply":"ответ пользователю","action":null} или {"reply":"...","action":{"type":"generate_project","topic":"...","slidesCount":12}} или {"reply":"...","action":{"toolId":"project","label":"Открыть генератор проектов"}}.
+Не запускай генерацию по расплывчатому запросу без темы. Сервер проверит action и сам свяжется с генератором. Ответ должен быть понятен и без кнопки.`;
   let lastError;
   for (const provider of providers) {
     try {
@@ -260,7 +262,10 @@ ${JSON.stringify(ARGOSHA_TOOLS)}
       }
       const reply = String(parsed.reply || 'Я не смог сформулировать ответ. Попробуй перефразировать.').slice(0, 1800);
       let action = null;
-      if (parsed.action && parsed.action.toolId === 'project' && ARGOSHA_TOOLS.some(tool => tool.id === 'project' && tool.status === 'available')) {
+      if (parsed.action?.type === 'generate_project' && ARGOSHA_TOOLS.some(tool => tool.id === 'project' && tool.status === 'available')) {
+        const topic = String(parsed.action.topic || '').trim().slice(0, 180);
+        if (topic.length >= 3) action = { type: 'generate_project', topic, slidesCount: Math.min(30, Math.max(7, Number(parsed.action.slidesCount) || 12)) };
+      } else if (parsed.action && parsed.action.toolId === 'project' && ARGOSHA_TOOLS.some(tool => tool.id === 'project' && tool.status === 'available')) {
         action = { label: String(parsed.action.label || 'Перейти к созданию проекта').slice(0, 70), url: ARGOSHA_PROJECT_URL, external: true, toolId: 'project' };
       }
       return send(res, 200, JSON.stringify({ reply, action, provider: provider.name }), { 'Content-Type': 'application/json; charset=utf-8' });
@@ -343,6 +348,43 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/auth/callback' && req.method === 'GET') return finishLogin(req, res, url);
   if (url.pathname === '/auth/logout' && req.method === 'POST') {
     return redirect(res, '/', { 'Set-Cookie': cookie('nexora_session', '', 0) });
+  }
+  if (url.pathname === '/api/argosha/generate' && req.method === 'POST') {
+    if (!readSession(req)) return send(res, 401, JSON.stringify({ error: 'Войдите в NEXORA ID, чтобы запускать генерацию.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    if (!allowArgosha(req)) return send(res, 429, JSON.stringify({ error: 'Слишком много запросов. Подожди минуту.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    let body;
+    try { body = await readJson(req, 5000); } catch {
+      return send(res, 400, JSON.stringify({ error: 'Некорректные параметры проекта.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    }
+    const topic = typeof body.topic === 'string' ? body.topic.trim().slice(0, 180) : '';
+    if (topic.length < 3) return send(res, 400, JSON.stringify({ error: 'Укажи тему проекта.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    try {
+      const upstream = await fetch(PROJECT_GENERATOR_BASE + '/api/generate-project/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, slidesCount: Math.min(30, Math.max(7, Number(body.slidesCount) || 12)) }),
+        signal: AbortSignal.timeout(20000)
+      });
+      const data = await upstream.json().catch(() => ({}));
+      if (!upstream.ok || !data.jobId) return send(res, upstream.status || 502, JSON.stringify({ error: data.error || 'Генератор не смог принять задачу. Попробуй позже.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+      return send(res, 202, JSON.stringify({ jobId: data.jobId, status: data.status || 'running', progress: data.progress || 3, message: data.message || 'Генерация запущена.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    } catch (error) {
+      console.error('Argosha generation start failed:', error.message);
+      return send(res, 502, JSON.stringify({ error: 'Не удалось связаться с генератором проектов. Он может запускаться после паузы Render.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    }
+  }
+  if (url.pathname.startsWith('/api/argosha/generation/') && req.method === 'GET') {
+    if (!readSession(req)) return send(res, 401, JSON.stringify({ error: 'Войдите в NEXORA ID, чтобы смотреть ход генерации.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    const jobId = url.pathname.slice('/api/argosha/generation/'.length);
+    if (!/^[0-9a-f-]{36}$/i.test(jobId)) return send(res, 400, JSON.stringify({ error: 'Некорректный номер задачи.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    try {
+      const upstream = await fetch(PROJECT_GENERATOR_BASE + '/api/generation-jobs/' + jobId, { signal: AbortSignal.timeout(15000) });
+      const data = await upstream.json().catch(() => ({}));
+      return send(res, upstream.status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8' });
+    } catch (error) {
+      console.error('Argosha generation status failed:', error.message);
+      return send(res, 502, JSON.stringify({ error: 'Не удалось получить статус генерации.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    }
   }
   if (url.pathname === '/api/argosha/tools' && req.method === 'GET') {
     return send(res, 200, JSON.stringify({ tools: ARGOSHA_TOOLS.map(({ id, name, status, description }) => ({ id, name, status, description })) }), { 'Content-Type': 'application/json; charset=utf-8' });
