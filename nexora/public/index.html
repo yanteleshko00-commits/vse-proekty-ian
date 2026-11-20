@@ -221,6 +221,16 @@ h1 span{color:var(--blue)}
 .recent-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .recent-item{display:flex;align-items:center;gap:12px;min-width:0;padding:15px;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink);text-decoration:none;transition:transform .2s,border-color .2s}.recent-item:hover{transform:translateY(-3px);border-color:rgba(65,132,255,.38)}
 .recent-icon{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:13px;background:var(--soft);color:var(--blue);font-size:18px}.recent-item strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.recent-item span{display:block;margin-top:3px;color:var(--muted);font-size:11px}.recent-empty{padding:17px;border:1px dashed var(--line);border-radius:17px;color:var(--muted);font-size:13px;text-align:center}
+.recent-view-all{display:none;margin:14px auto 0;padding:10px 17px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--blue);font:inherit;font-size:13px;font-weight:750;cursor:pointer;transition:transform .2s,border-color .2s}
+.recent-view-all:hover{transform:translateY(-2px);border-color:rgba(65,132,255,.45)}
+.recent-history-list{display:grid;gap:9px;max-height:min(58dvh,520px);overflow:auto;padding-right:3px}
+.recent-history-row{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);text-align:left;cursor:pointer}
+.recent-history-row:hover{border-color:rgba(65,132,255,.4)}
+.recent-history-copy{min-width:0;flex:1}
+.recent-history-copy strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.recent-history-copy small{display:block;margin-top:4px;color:var(--muted);font-size:11px}
+.recent-history-arrow{color:var(--blue);font-size:18px}
+
 .plan-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.plan-card{padding:18px;border:1px solid var(--line);border-radius:20px;background:var(--surface);box-shadow:0 10px 28px rgba(35,75,135,.05)}.plan-card.featured{border-color:rgba(63,130,250,.42);background:linear-gradient(145deg,var(--surface-strong),var(--soft))}.plan-card h3{margin:0 0 7px;font-size:14px}.plan-count{font-size:27px;font-weight:850;letter-spacing:-.05em;color:var(--blue)}.plan-card p{margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.5}.plan-caption{margin:12px 0 0;color:var(--muted);font-size:11px;line-height:1.55}
 .profile{cursor:pointer;color:var(--ink);font:inherit}.account-backdrop{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(8,17,36,.45);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}.account-backdrop.open{display:flex;animation:fade .2s ease both}
 .account-card{width:min(500px,100%);max-height:88dvh;overflow:auto;padding:25px;border:1px solid var(--line);border-radius:26px;background:var(--surface-strong);box-shadow:0 28px 90px rgba(0,0,0,.24);animation:rise .24s ease both}
@@ -308,6 +318,7 @@ h1 span{color:var(--blue)}
   <section class="recent-section" aria-labelledby="recent-heading">
     <div class="section-head"><div><h2 id="recent-heading">Недавние инструменты</h2><p class="section-subtitle">Быстрый возврат к тому, что вы открывали на этом устройстве.</p></div></div>
     <div class="recent-list" id="recent-list"><div class="recent-empty">Здесь появятся недавно открытые инструменты.</div></div>
+    <button class="recent-view-all" id="recent-view-all" type="button">Посмотреть все</button>
   </section>
   <section class="plans-section" aria-labelledby="plans-heading">
     <div class="section-head"><div><h2 id="plans-heading">Возможности NEXORA ID</h2><p class="section-subtitle">Бесплатные запросы и пакеты дополнительных генераций.</p></div></div>
@@ -340,6 +351,13 @@ h1 span{color:var(--blue)}
     <div class="footer-bottom"><span>NEXORA · единое пространство инструментов</span><span class="footer-bottom-note"><button class="footer-link footer-doc-link" type="button" data-footer="how">Документация</button><span aria-hidden="true"> · </span>Всё начинается с идеи.</span></div>
   </footer>
 </main>
+
+<div class="account-backdrop" id="recent-backdrop" role="presentation">
+ <section class="account-card" role="dialog" aria-modal="true" aria-labelledby="recent-modal-heading">
+  <div class="account-top"><div><h2 id="recent-modal-heading">История использований</h2><p>Последние открытые инструменты на этом устройстве</p></div><button class="account-close" id="recent-close" type="button" aria-label="Закрыть">×</button></div>
+  <div class="recent-history-list" id="recent-history-list"></div>
+ </section>
+</div>
 
 <div class="account-backdrop" id="account-backdrop" role="presentation">
  <section class="account-card" role="dialog" aria-modal="true" aria-labelledby="account-heading">
@@ -409,19 +427,39 @@ h1 span{color:var(--blue)}
     searchCount.textContent=query?visible+' из '+allTiles.length:'6 инструментов';
   });
   var recentKey='nexora-recent-tools';
-  function readRecent(){try{return JSON.parse(localStorage.getItem(recentKey)||'[]').filter(function(x){return x&&typeof x.title==='string'&&typeof x.id==='string'}).slice(0,4)}catch(e){return[]}}
+  function readRecent(){try{return JSON.parse(localStorage.getItem(recentKey)||'[]').filter(function(x){return x&&typeof x.title==='string'&&typeof x.id==='string'}).slice(0,50)}catch(e){return[]}}
+  function recentDate(item){if(!item.usedAt)return 'Недавно открывали';var d=new Date(item.usedAt);return isNaN(d.getTime())?'Недавно открывали':d.toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+  function makeRecentLink(item){var link=document.createElement('a');link.className='recent-item';link.href=item.href||'#';if(item.external){link.target='_blank';link.rel='noopener'}
+    var icon=document.createElement('span');icon.className='recent-icon';icon.textContent=item.icon||'✦';
+    var copy=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('span');strong.textContent=item.title;small.textContent=recentDate(item);copy.appendChild(strong);copy.appendChild(small);link.appendChild(icon);link.appendChild(copy);
+    if(item.id!=='project')link.addEventListener('click',function(e){e.preventDefault();var tile=document.querySelector('[data-tool="'+item.id+'"]');if(tile)tile.click()});
+    return link;
+  }
   function renderRecent(){
     var host=document.getElementById('recent-list'),items=readRecent();host.textContent='';
-    if(!items.length){var empty=document.createElement('div');empty.className='recent-empty';empty.textContent='Здесь появятся недавно открытые инструменты.';host.appendChild(empty);return}
-    items.forEach(function(item){
-      var link=document.createElement('a');link.className='recent-item';link.href=item.href||'#';if(item.external){link.target='_blank';link.rel='noopener'}
+    if(!items.length){var empty=document.createElement('div');empty.className='recent-empty';empty.textContent='Здесь появятся недавно открытые инструменты.';host.appendChild(empty)}
+    else items.slice(0,3).forEach(function(item){host.appendChild(makeRecentLink(item))});
+    var viewAll=document.getElementById('recent-view-all');viewAll.style.display=items.length>3?'block':'none';
+  }
+  function renderRecentHistory(){
+    var host=document.getElementById('recent-history-list'),items=readRecent();host.textContent='';
+    if(!items.length){var empty=document.createElement('div');empty.className='recent-empty';empty.textContent='История пока пуста.';host.appendChild(empty);return}
+    items.forEach(function(item){var row=document.createElement('button');row.type='button';row.className='recent-history-row';
       var icon=document.createElement('span');icon.className='recent-icon';icon.textContent=item.icon||'✦';
-      var copy=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('span');strong.textContent=item.title;small.textContent=item.subtitle||'Недавно открывали';copy.appendChild(strong);copy.appendChild(small);link.appendChild(icon);link.appendChild(copy);
-      if(item.id!=='project')link.addEventListener('click',function(e){e.preventDefault();var tile=document.querySelector('[data-tool="'+item.id+'"]');if(tile)tile.click()});
-      host.appendChild(link);
+      var copy=document.createElement('span');copy.className='recent-history-copy';var strong=document.createElement('strong');strong.textContent=item.title;var small=document.createElement('small');small.textContent=(item.subtitle||'Инструмент NEXORA')+' · '+recentDate(item);copy.appendChild(strong);copy.appendChild(small);
+      var arrow=document.createElement('span');arrow.className='recent-history-arrow';arrow.textContent='›';row.appendChild(icon);row.appendChild(copy);row.appendChild(arrow);
+      row.addEventListener('click',function(){closeRecentHistory();if(item.id==='project'){if(item.href)window.open(item.href,'_blank','noopener')}else{var tile=document.querySelector('[data-tool="'+item.id+'"]');if(tile)tile.click()}});
+      host.appendChild(row);
     });
   }
-  function rememberTool(item){var items=readRecent().filter(function(x){return x.id!==item.id});items.unshift(item);localStorage.setItem(recentKey,JSON.stringify(items.slice(0,4)));renderRecent()}
+  var recentBackdrop=document.getElementById('recent-backdrop');
+  function openRecentHistory(){renderRecentHistory();recentBackdrop.classList.add('open');document.body.style.overflow='hidden'}
+  function closeRecentHistory(){recentBackdrop.classList.remove('open');document.body.style.overflow=''}
+  document.getElementById('recent-view-all').addEventListener('click',openRecentHistory);
+  document.getElementById('recent-close').addEventListener('click',closeRecentHistory);
+  recentBackdrop.addEventListener('click',function(e){if(e.target===recentBackdrop)closeRecentHistory()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&recentBackdrop.classList.contains('open'))closeRecentHistory()});
+  function rememberTool(item){item.usedAt=new Date().toISOString();var items=readRecent();items.unshift(item);localStorage.setItem(recentKey,JSON.stringify(items.slice(0,50)));renderRecent()}
   document.querySelector('[data-tool="project"]').addEventListener('click',function(){rememberTool({id:'project',title:'Сделать проект',subtitle:'Генератор проектов',icon:'✦',href:this.href,external:true})});
   document.querySelectorAll('.grid [data-tool]:not([data-tool="project"])').forEach(function(tile){tile.addEventListener('click',function(){rememberTool({id:tile.dataset.tool,title:tile.querySelector('h3').textContent,subtitle:'Инструмент NEXORA',icon:tile.querySelector('.tile-top').textContent,href:'#'})})});
   renderRecent();
