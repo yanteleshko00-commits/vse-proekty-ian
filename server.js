@@ -717,7 +717,7 @@ async function generateValidatedPresentation(topic, requestedCount, payload, ins
 
 РЕЖИМ ИСПРАВЛЕНИЯ: предыдущий JSON не прошёл автоматическую проверку. Верни ПОЛНЫЙ исправленный JSON, а не список изменений. Сохрани тему и точное количество слайдов. Исправь каждую проблему, не маскируй нехватку текста шаблонами.
 Ошибки проверки:
-${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\\n')}
+${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
 `;
     raw = repairInvalidSlideLayouts(await aiJson(repairInstructions, {
       topic, requestedSlides: requestedCount, originalRequest: payload,
