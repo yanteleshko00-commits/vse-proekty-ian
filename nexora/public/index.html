@@ -711,10 +711,42 @@ h1 span{color:var(--blue)}
  function setOpen(open){panel.classList.toggle('open',open);panel.setAttribute('aria-hidden',String(!open));launcher.setAttribute('aria-expanded',String(open));if(open){launcher.classList.add('listening');setTimeout(()=>input.focus(),250)}else{launcher.classList.remove('listening','thinking','speaking')}}
  launcher.addEventListener('click',()=>setOpen(true));close.addEventListener('click',()=>setOpen(false));
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.classList.contains('open'))setOpen(false)});
+ async function startProjectGeneration(action){
+  const progressNode=document.createElement('div');progressNode.className='argosha-message assistant';progressNode.textContent='Подготавливаю запуск генератора…';messages.appendChild(progressNode);messages.scrollTop=messages.scrollHeight;
+  try{
+   const start=await fetch('/api/argosha/generate',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({topic:action.topic,slidesCount:action.slidesCount||12})});
+   const started=await start.json().catch(()=>({}));
+   if(!start.ok)throw new Error(started.error||'Не удалось запустить генератор.');
+   progressNode.textContent='Генерация запущена. Проверяю ход работы…';
+   let finalData=null;
+   for(let attempt=0;attempt<150;attempt++){
+    await new Promise(resolve=>setTimeout(resolve,2000));
+    const response=await fetch('/api/argosha/generation/'+encodeURIComponent(started.jobId),{credentials:'same-origin'});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.error||'Не удалось проверить ход генерации.');
+    progressNode.textContent=(data.message||'Создаём материалы…')+(Number.isFinite(Number(data.progress))?' · '+Math.round(Number(data.progress))+'%':'');
+    if(data.status==='completed'){finalData=data;break}
+    if(['failed','interrupted'].includes(data.status))throw new Error(data.error||data.message||'Генерация прервана.');
+   }
+   if(!finalData)throw new Error('Генерация заняла слишком много времени. Проверь результат в генераторе проектов.');
+   progressNode.textContent='Готово! Файлы проекта можно скачать ниже.';
+   const files=finalData.result&&Array.isArray(finalData.result.files)?finalData.result.files:[];
+   if(!files.length){progressNode.textContent='Проект создан, но список файлов не получен. Открой генератор проектов для проверки.';return}
+   files.forEach(file=>{
+    if(!file||typeof file.base64!=='string')return;
+    const binary=atob(file.base64),bytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+    const blob=new Blob([bytes],{type:file.mime||'application/octet-stream'}),link=document.createElement('a');
+    link.className='argosha-action';link.href=URL.createObjectURL(blob);link.download=file.name||'Материал проекта';link.textContent='↓ '+(file.name||'Скачать файл');link.style.display='flex';link.style.width='fit-content';link.style.marginTop='8px';progressNode.appendChild(link);
+   });
+   if(!progressNode.querySelector('a'))progressNode.textContent='Проект готов, но файлы не удалось подготовить для скачивания. Открой генератор проектов.';
+   messages.scrollTop=messages.scrollHeight;
+  }catch(error){progressNode.textContent='Не получилось завершить генерацию: '+error.message}
+ }
  function addMessage(text,who,action){const node=document.createElement('div');node.className='argosha-message '+who;node.textContent=text;if(action&&action.url){const a=document.createElement('a');a.className='argosha-action';a.href=action.url;a.textContent=action.label||'Перейти к инструменту';if(action.external){a.target='_blank';a.rel='noopener'}node.appendChild(document.createElement('br'));node.appendChild(a)}messages.appendChild(node);messages.scrollTop=messages.scrollHeight}
  function typing(show){let old=messages.querySelector('.argosha-typing');if(show&&!old){old=document.createElement('div');old.className='argosha-message assistant argosha-typing';old.innerHTML='<i></i><i></i><i></i>';messages.appendChild(old)}if(!show&&old)old.remove();messages.scrollTop=messages.scrollHeight}
  async function submit(text){text=(text||input.value).trim();if(!text||send.disabled)return;input.value='';input.style.height='auto';suggestions.style.display='none';addMessage(text,'user');history.push({role:'user',content:text});history=history.slice(-10);send.disabled=true;status.textContent='Обдумываю запрос…';launcher.classList.remove('listening');launcher.classList.add('thinking');typing(true);
-  try{const response=await fetch('/api/argosha',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({messages:history})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Не удалось получить ответ.');typing(false);launcher.classList.remove('thinking');launcher.classList.add('speaking');status.textContent='Отвечаю';addMessage(data.reply||'Не получилось сформировать ответ.', 'assistant',data.action);history.push({role:'assistant',content:data.reply||''});setTimeout(()=>{launcher.classList.remove('speaking');status.textContent='ИИ-помощник NEXORA'},1800);
+  try{const response=await fetch('/api/argosha',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({messages:history})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Не удалось получить ответ.');typing(false);launcher.classList.remove('thinking');launcher.classList.add('speaking');status.textContent='Отвечаю';addMessage(data.reply||'Не получилось сформировать ответ.', 'assistant',data.action);if(data.action&&data.action.type==='generate_project')void startProjectGeneration(data.action);history.push({role:'assistant',content:data.reply||''});setTimeout(()=>{launcher.classList.remove('speaking');status.textContent='ИИ-помощник NEXORA'},1800);
   }catch(error){typing(false);launcher.classList.remove('thinking');status.textContent='ИИ-помощник NEXORA';addMessage(error.message==='argosha_not_configured'?'Аргоша пока не подключён к ИИ. Владелец сайта должен добавить ключ провайдера в переменные Render.':'Сейчас не получилось связаться с ИИ. Попробуй немного позже.','assistant')}
   finally{send.disabled=false;input.focus()}
  }
