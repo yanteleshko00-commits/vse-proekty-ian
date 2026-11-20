@@ -241,10 +241,13 @@ async function argoshaReply(req, res) {
   return send(res, 502, JSON.stringify({ error: 'Сервис ИИ временно недоступен.' }), { 'Content-Type': 'application/json; charset=utf-8' });
 }
 
-async function authApi(path, payload) {
+async function authApi(path, payload, req) {
+  const headers = { 'Content-Type': 'application/json' };
+  const deviceToken = parseCookies(req).ecosystem_device;
+  if (deviceToken) headers.Cookie = 'ecosystem_device=' + encodeURIComponent(deviceToken);
   const response = await fetch(authBase + '/v1/auth/' + path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(15000)
   });
@@ -278,7 +281,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 404, JSON.stringify({ error: 'not_found' }), { 'Content-Type': 'application/json; charset=utf-8' });
     }
     try {
-      const { response, data } = await authApi(action, body);
+      const { response, data } = await authApi(action, body, req);
       if (!response.ok) return send(res, response.status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8' });
       if (action === 'login') {
         const cookies = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [response.headers.get('set-cookie') || ''];
@@ -292,7 +295,13 @@ const server = http.createServer(async (req, res) => {
           'Set-Cookie': cookie('nexora_session', makeSessionCookie(me.user, me.usage, me.packages), 604800)
         });
       }
-      return send(res, response.status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8' });
+      const headers = { 'Content-Type': 'application/json; charset=utf-8' };
+      if (action === 'register') {
+        const cookies = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [response.headers.get('set-cookie') || ''];
+        const deviceCookie = cookies.find(value => /^ecosystem_device=/.test(value));
+        if (deviceCookie) headers['Set-Cookie'] = deviceCookie;
+      }
+      return send(res, response.status, JSON.stringify(data), headers);
     } catch (error) {
       console.error('NEXORA auth proxy failed:', action, error.message);
       return send(res, 502, JSON.stringify({ error: 'auth_service_unavailable', message: 'Сервис аккаунтов временно недоступен. Попробуйте позже.' }), { 'Content-Type': 'application/json; charset=utf-8' });
