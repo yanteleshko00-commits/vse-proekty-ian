@@ -136,7 +136,7 @@ async function generateFinalProduct(topic, projectContent, requestedFormat='') {
 }
 async function renderProductImage(product,theme) {
   try {
-    return await designProduct(product, theme, aiJson);
+    return await designProduct(product, theme, aiJson, critiqueProductScreenshot);
   } catch (error) {
     console.warn('[product-design] Используется резервный SVG-шаблон:', cleanText(error?.message || error, 300));
     return renderProductImageFallback(product, theme);
@@ -508,6 +508,78 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
     + '/' + providers.length + ', общая длительность=' + (Date.now() - waveStartedAt) + 'ms.');
   return winner.parsed;
 }
+async function critiqueProductScreenshot(png, product) {
+  const provider = configuredAIProviders().find(item => item.type === 'gemini' && item.key);
+  if (!provider) return null;
+
+  try {
+    const jpeg = await sharp(png)
+      .resize({ width: 900, withoutEnlargement: true })
+      .jpeg({ quality: 78 })
+      .toBuffer();
+
+    const system = 'Ты строгий арт-директор печатных учебных материалов. Оцени скриншот A4-страницы: читаемость, типографическую иерархию, визуальный баланс, композицию, свободное пространство, соответствие теме и аккуратность. Оценивается дизайн, а не фактология. Верни только JSON формата {"score":число от 1 до 10,"issues":[{"where":"область макета","fix":"конкретная визуальная правка"}]}. Не хвали. До 4 важных правок. Если серьёзных проблем нет, верни пустой issues. Это учебный материал для печати, не веб-страница.';
+    const user = 'Оцени итоговый продукт "' + cleanText(product?.title || 'Учебный материал', 100) +
+      '" в формате "' + cleanText(product?.format || 'памятка', 40) +
+      '". Предложи только конкретные улучшения макета.';
+
+    const response = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/' +
+        encodeURIComponent(provider.model || 'gemini-3.8-flash') + ':generateContent',
+      {
+        method: 'POST',
+        signal: AbortSignal.timeout(8000),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': provider.key
+        },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: system }] },
+          contents: [{
+            role: 'user',
+            parts: [
+              { text: user },
+              { inlineData: { mimeType: 'image/jpeg', data: jpeg.toString('base64') } }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 1400,
+            responseMimeType: 'application/json'
+          }
+        })
+      }
+    );
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error?.message || 'Gemini HTTP ' + response.status);
+
+    const output = (data.candidates?.[0]?.content?.parts || [])
+      .map(part => part.text || '').join('').trim();
+    if (!output) return null;
+
+    const parsed = extractJson(output);
+    const score = Number(parsed.score);
+    if (!Number.isFinite(score)) return null;
+
+    const issues = (Array.isArray(parsed.issues) ? parsed.issues : [])
+      .slice(0, 4)
+      .map(item => {
+        if (typeof item === 'string') return cleanText(item, 300);
+        return {
+          where: cleanText(item?.where || 'макет', 100),
+          fix: cleanText(item?.fix || '', 300)
+        };
+      })
+      .filter(item => typeof item === 'string' ? item.length > 0 : item.fix.length > 0);
+
+    return { score: Math.max(1, Math.min(10, score)), issues };
+  } catch (error) {
+    console.warn('[product-design] Gemini-критик недоступен:', cleanText(error?.message || error, 220));
+    return null;
+  }
+}
+
 const PLANNER_INSTRUCTIONS = `
 Ты — редактор школьных презентаций, исследователь и профессиональный арт-директор. Верни только один валидный JSON-объект, без Markdown и комментариев.
 ЦЕЛЬ: подготовить содержательную презентацию, которую ученик сможет понять и защитить. Это не набор карточек с общими словами. Сначала продумай сюжетную линию, затем напиши каждый слайд как отдельный законченный смысловой шаг.
