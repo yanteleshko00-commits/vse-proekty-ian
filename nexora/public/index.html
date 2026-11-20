@@ -27,6 +27,23 @@ button{cursor:pointer}
 .icon-button{width:42px;display:grid;place-items:center;font-size:17px}
 .login-button{padding:0 16px;font-weight:720;text-decoration:none;display:flex;align-items:center;gap:8px}
 .icon-button:hover,.login-button:hover{transform:translateY(-2px);border-color:rgba(66,132,255,.38)}
+.notification-wrap{position:relative;display:flex;align-items:center}
+.notification-button{position:relative}
+.notification-dot{position:absolute;top:5px;right:5px;min-width:16px;height:16px;padding:0 4px;display:grid;place-items:center;border:2px solid var(--bg);border-radius:20px;background:#ef5265;color:#fff;font-size:9px;font-weight:850;line-height:1}
+.notification-panel{position:absolute;top:calc(100% + 13px);right:0;z-index:95;width:min(360px,calc(100vw - 28px));max-height:min(520px,70dvh);overflow:auto;padding:16px;border:1px solid var(--line);border-radius:21px;background:var(--surface-strong);box-shadow:0 22px 65px rgba(13,32,68,.22);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);opacity:0;transform:translateY(-7px) scale(.98);pointer-events:none;transition:opacity .2s,transform .2s}
+.notification-panel.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+.notification-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.notification-head strong{font-size:15px}
+.notification-read-all{padding:5px 0;border:0;background:none;color:var(--blue);font-size:11px;font-weight:750}
+.notification-entry{display:flex;gap:11px;padding:12px 2px;border-top:1px solid var(--line)}
+.notification-entry:first-child{border-top:0}
+.notification-entry.unread .notification-copy:after{content:"Новое";display:inline-block;margin-top:6px;padding:3px 7px;border-radius:20px;background:var(--soft);color:var(--blue);font-size:9px;font-weight:800}
+.notification-symbol{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:12px;background:var(--soft);color:var(--blue);font-size:16px}
+.notification-copy{min-width:0;flex:1}
+.notification-copy b{display:block;font-size:12px}
+.notification-copy p{margin:4px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+.notification-empty{padding:20px 8px;color:var(--muted);font-size:12px;text-align:center}
+@media(max-width:520px){.notification-panel{position:fixed;top:72px;right:12px;width:min(360px,calc(100vw - 24px))}}
 .profile{display:none;align-items:center;gap:9px;padding:5px 12px 5px 6px;border:1px solid var(--line);border-radius:16px;background:var(--surface);font-size:13px;font-weight:700}
 .avatar{width:31px;height:31px;display:grid;place-items:center;border-radius:11px;background:linear-gradient(145deg,#75adff,#3478f6);color:white}
 .hero{padding:72px 0 34px;text-align:center}
@@ -256,6 +273,13 @@ h1 span{color:var(--blue)}
     <div class="actions">
       <div class="profile" id="profile"><span class="avatar" id="avatar">N</span><span id="profile-name">Профиль</span></div>
       <button class="icon-button" id="theme-toggle" type="button" aria-label="Сменить тему">☾</button>
+      <div class="notification-wrap" id="notification-wrap">
+        <button class="icon-button notification-button" id="notification-toggle" type="button" aria-label="Уведомления" aria-expanded="false" aria-controls="notification-panel">♧<span class="notification-dot" id="notification-count">3</span></button>
+        <section class="notification-panel" id="notification-panel" aria-label="Уведомления">
+          <div class="notification-head"><strong>Уведомления</strong><button class="notification-read-all" id="notification-read-all" type="button">Прочитать все</button></div>
+          <div id="notification-list"></div>
+        </section>
+      </div>
       <a class="login-button" id="login-link" href="/auth/start">Войти в NEXORA ID <span aria-hidden="true">↗</span></a>
       <form id="logout-form" action="/auth/logout" method="post" style="display:none"><button class="login-button" type="submit">Выйти</button></form>
     </div>
@@ -408,6 +432,36 @@ h1 span{color:var(--blue)}
   var savedTheme=localStorage.getItem('nexora-theme');
   if(savedTheme==='dark'||savedTheme==='light')root.setAttribute('data-theme',savedTheme);
   var themeButton=document.getElementById('theme-toggle');
+  (function(){
+    var toggle=document.getElementById('notification-toggle'),panel=document.getElementById('notification-panel'),wrap=document.getElementById('notification-wrap'),list=document.getElementById('notification-list'),count=document.getElementById('notification-count'),readAll=document.getElementById('notification-read-all');
+    var notices=[
+      {id:'recent-history-2026-11-20',icon:'◷',title:'История использований обновлена',body:'Теперь можно открыть полный список последних 50 запусков инструментов.'},
+      {id:'recent-photos-2026-11-20',icon:'▧',title:'Фотографии в недавних инструментах',body:'Карточки недавних инструментов теперь показывают изображения соответствующих плиток.'},
+      {id:'nexora-welcome-2026-11-20',icon:'✦',title:'Добро пожаловать в NEXORA',body:'Здесь собраны инструменты для учёбы, проектов и творчества. Новые функции будут появляться в этом центре.'}
+    ];
+    var storageKey='nexora-read-notifications';
+    function readIds(){try{return JSON.parse(localStorage.getItem(storageKey)||'[]')}catch(e){return[]}}
+    function update(){
+      var read=readIds(),unread=notices.filter(function(n){return read.indexOf(n.id)<0}).length;
+      count.textContent=unread>9?'9+':String(unread);count.style.display=unread?'grid':'none';
+      list.textContent='';
+      if(!notices.length){var empty=document.createElement('div');empty.className='notification-empty';empty.textContent='Пока нет уведомлений.';list.appendChild(empty);return}
+      notices.forEach(function(n){
+        var entry=document.createElement('article');entry.className='notification-entry'+(read.indexOf(n.id)<0?' unread':'');
+        var symbol=document.createElement('span');symbol.className='notification-symbol';symbol.textContent=n.icon;
+        var copy=document.createElement('div');copy.className='notification-copy';
+        var title=document.createElement('b');title.textContent=n.title;
+        var body=document.createElement('p');body.textContent=n.body;
+        copy.appendChild(title);copy.appendChild(body);entry.appendChild(symbol);entry.appendChild(copy);list.appendChild(entry);
+      });
+    }
+    function setOpen(open){panel.classList.toggle('open',open);toggle.setAttribute('aria-expanded',String(open))}
+    toggle.addEventListener('click',function(){var open=!panel.classList.contains('open');setOpen(open);if(open){localStorage.setItem(storageKey,JSON.stringify(notices.map(function(n){return n.id}).filter(function(id){return readIds().indexOf(id)>=0})));}});
+    readAll.addEventListener('click',function(){localStorage.setItem(storageKey,JSON.stringify(notices.map(function(n){return n.id})));update()});
+    document.addEventListener('click',function(e){if(!wrap.contains(e.target))setOpen(false)});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')setOpen(false)});
+    update();
+  })();
   function isDark(){return root.getAttribute('data-theme')==='dark'||(!root.hasAttribute('data-theme')&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);}
   function updateThemeIcon(){themeButton.textContent=isDark()?'☀':'☾';}
   updateThemeIcon();
