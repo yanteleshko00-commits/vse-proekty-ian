@@ -14,6 +14,70 @@ import { designProduct } from './productDesigner.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
+const AUTH_PUBLIC_URL = (process.env.AUTH_PUBLIC_URL || 'https://ecosystem-auth-service.onrender.com').replace(/\/$/, '');
+const OAUTH_CLIENT_ID = process.env.OAUTH_CLIENT_ID || 'projects-ian';
+const OAUTH_CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET || '';
+const PROJECT_SESSION_SECRET = process.env.PROJECT_SESSION_SECRET || '';
+const PROJECT_SESSION_COOKIE = 'projects_ian_session';
+const PROJECT_OAUTH_COOKIE = 'projects_ian_oauth';
+const PROJECT_SITE_URL = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || 'https://vse-proekty-ian-1.onrender.com').replace(/\/$/, '');
+const PROJECT_SESSION_TTL = 7 * 24 * 60 * 60;
+
+function projectCookieOptions(maxAge) {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: maxAge * 1000
+  };
+}
+function readRequestCookie(req, name) {
+  for (const part of String(req.headers.cookie || '').split(';')) {
+    const index = part.indexOf('=');
+    if (index < 0 || part.slice(0, index).trim() !== name) continue;
+    try { return decodeURIComponent(part.slice(index + 1).trim()); } catch { return null; }
+  }
+  return null;
+}
+function projectSessionSignature(payload) {
+  return crypto.createHmac('sha256', PROJECT_SESSION_SECRET).update(payload).digest('base64url');
+}
+function createProjectSession(user, usage, packages) {
+  const payload = Buffer.from(JSON.stringify({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    usage: usage || null,
+    packages: packages || null,
+    expiresAt: Date.now() + PROJECT_SESSION_TTL * 1000
+  })).toString('base64url');
+  return payload + '.' + projectSessionSignature(payload);
+}
+function readProjectSession(req) {
+  if (PROJECT_SESSION_SECRET.length < 32) return null;
+  const token = readRequestCookie(req, PROJECT_SESSION_COOKIE);
+  if (!token) return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const expected = Buffer.from(projectSessionSignature(parts[0]));
+  const actual = Buffer.from(parts[1]);
+  if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) return null;
+  try {
+    const user = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
+    if (!user.id || !user.name || !user.email || !Number.isFinite(user.expiresAt) || Date.now() > user.expiresAt) return null;
+    return user;
+  } catch {
+    return null;
+  }
+}
+function projectOAuthReady() {
+  return OAUTH_CLIENT_SECRET.length >= 32 && PROJECT_SESSION_SECRET.length >= 32;
+}
+function secureRandomToken(bytes = 32) {
+  return crypto.randomBytes(bytes).toString('base64url');
+}
+
 // Free-tier deployments use temporary local storage; no paid disk is required for normal generation.
 const MODEL = 'gpt-4.1-mini';
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
@@ -1907,6 +1971,88 @@ app.post('/api/generate-image', asyncRoute(async (req, res) => {
   if (!image) return res.status(502).json({ error: 'Модель не вернула изображение.' });
   res.json({ image, mime: 'image/png' });
 }));
+
+app.get('/auth/start', (req, res) => {
+  if (!projectOAuthReady()) {
+    return res.status(503).send('Вход через NEXORA ID пока не настроен. Владелец сайта должен добавить OAuth-переменные в Render.');
+  }
+  const state = secureRandomToken(32);
+  const verifier = secureRandomToken(48);
+  const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+  const redirectUri = PROJECT_SITE_URL + '/auth/callback';
+  const oauthPayload = Buffer.from(JSON.stringify({ state, verifier, redirectUri })).toString('base64url');
+  res.cookie(PROJECT_OAUTH_COOKIE, oauthPayload, projectCookieOptions(300));
+
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: OAUTH_CLIENT_ID,
+    redirect_uri: redirectUri,
+    state,
+    code_challenge: challenge,
+    code_challenge_method: 'S256'
+  });
+  res.redirect(302, AUTH_PUBLIC_URL + '/oauth/authorize?' + params.toString());
+});
+
+app.get('/auth/callback', asyncRoute(async (req, res) => {
+  if (!projectOAuthReady()) return res.redirect('/?login=failed');
+  const code = String(req.query.code || '');
+  const state = String(req.query.state || '');
+  const raw = readRequestCookie(req, PROJECT_OAUTH_COOKIE);
+  if (!code || !state || !raw) {
+    res.clearCookie(PROJECT_OAUTH_COOKIE, projectCookieOptions(0));
+    return res.redirect('/?login=failed');
+  }
+
+  let oauth;
+  try {
+    oauth = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
+  } catch {
+    res.clearCookie(PROJECT_OAUTH_COOKIE, projectCookieOptions(0));
+    return res.redirect('/?login=failed');
+  }
+  if (oauth.state !== state || oauth.redirectUri !== PROJECT_SITE_URL + '/auth/callback' || !oauth.verifier) {
+    res.clearCookie(PROJECT_OAUTH_COOKIE, projectCookieOptions(0));
+    return res.redirect('/?login=failed');
+  }
+
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: OAUTH_CLIENT_ID,
+    client_secret: OAUTH_CLIENT_SECRET,
+    redirect_uri: oauth.redirectUri,
+    code,
+    code_verifier: oauth.verifier
+  });
+  const response = await fetch(AUTH_PUBLIC_URL + '/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+    signal: AbortSignal.timeout(12000)
+  });
+  const data = await response.json().catch(() => ({}));
+  res.clearCookie(PROJECT_OAUTH_COOKIE, projectCookieOptions(0));
+  if (!response.ok || !data.user?.id || !data.user?.name || !data.user?.email) {
+    console.error('[NEXORA ID] OAuth token exchange failed:', response.status, data.error || 'invalid_user');
+    return res.redirect('/?login=failed');
+  }
+
+  res.cookie(PROJECT_SESSION_COOKIE, createProjectSession(data.user, data.usage, data.packages), projectCookieOptions(PROJECT_SESSION_TTL));
+  return res.redirect('/');
+}));
+
+app.get('/auth/logout', (req, res) => {
+  res.clearCookie(PROJECT_SESSION_COOKIE, projectCookieOptions(0));
+  const target = AUTH_PUBLIC_URL + '/logout?client_id=' + encodeURIComponent(OAUTH_CLIENT_ID) +
+    '&return_to=' + encodeURIComponent(PROJECT_SITE_URL);
+  res.redirect(302, target);
+});
+
+app.get('/api/me', (req, res) => {
+  const user = readProjectSession(req);
+  if (!user) return res.status(401).json({ error: 'not_signed_in' });
+  return res.json({ user: { id: user.id, name: user.name, email: user.email }, usage: user.usage, packages: user.packages });
+});
 
 // Static site support for the existing Render deployment.
 const publicDir = path.resolve(process.cwd(), 'public');
