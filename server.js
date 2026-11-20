@@ -509,6 +509,7 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
   return winner.parsed;
 }
 async function critiqueProductScreenshot(png, product) {
+  if (process.env.PRODUCT_ENABLE_GEMINI_CRITIC !== 'true') return null;
   const provider = configuredAIProviders().find(item => item.type === 'gemini' && item.key);
   if (!provider) return null;
 
