@@ -563,9 +563,10 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task 
     throw error;
   }
 
-  // Prefer the model assigned to this task; compare quality and speed among same-priority providers.
-  // Other configured providers remain available as fallbacks if the preferred model fails.
-  successes.sort((a, b) => a.priority - b.priority || b.score - a.score || a.elapsedMs - b.elapsedMs);
+  // Prefer valid candidates first; then prefer the model assigned to this task.
+  // This prevents a malformed Gemini deck from beating a valid fallback response.
+  successes.sort((a, b) => (a.issues.length === 0 ? 0 : 1) - (b.issues.length === 0 ? 0 : 1)
+    || a.priority - b.priority || b.score - a.score || a.elapsedMs - b.elapsedMs);
   successes.forEach((candidate, index) => {
     console.log('[AI competition] #' + (index + 1) + ' ' + candidate.provider
       + ': score=' + candidate.score + ', issues=' + candidate.issues.length
