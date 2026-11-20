@@ -1712,6 +1712,7 @@ app.get('/api/health', asyncRoute(async (_req, res) => {
   const generationJobStorage = await inspectGenerationJobStorage();
   res.json({
     ok: true, service: 'presentation-generator', model: MODEL,
+    nexoraIdConfigured: projectOAuthReady(),
     aiProviders: providers.map(provider => provider.name),
     aiProviderModels: providers.map(provider => ({ name: provider.name, model: provider.model || MODEL })),
     aiProviderStatus: { geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY), openAIEnabledForText: false },
