@@ -79,7 +79,7 @@ function secureRandomToken(bytes = 32) {
 }
 
 // Free-tier deployments use temporary local storage; no paid disk is required for normal generation.
-const MODEL = 'gpt-4.1-mini';
+const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna';
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
 // Keep requests below common hosting/proxy limits; slow image lookups are bounded separately.
 const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 95000);
@@ -306,6 +306,9 @@ async function withTimeout(promise, ms, label = 'Операция') {
 }
 function configuredAIProviders() {
   const providers = [];
+  // Route school-project text and structure through GPT-6 Luna when its API key is configured.
+  if (openai) providers.push({ name: 'OpenAI', type: 'openai', key: process.env.OPENAI_API_KEY, model: MODEL });
+  // Presentations use Gemini 3.8 Flash as the preferred model.
   // Accept the common Google AI Studio environment-variable names.
   const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   // Every configured provider is attempted independently in the parallel competition.
@@ -316,7 +319,6 @@ function configuredAIProviders() {
   if (process.env.MISTRAL_API_KEY) providers.push({ name: 'Mistral', type: 'openai-compatible', key: process.env.MISTRAL_API_KEY, baseURL: 'https://api.mistral.ai/v1', model: process.env.MISTRAL_MODEL || 'mistral-small-latest' });
   if (process.env.ANTHROPIC_API_KEY) providers.push({ name: 'Anthropic Claude', type: 'anthropic', key: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5' });
   if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) providers.push({ name: 'Cloudflare Workers AI', type: 'cloudflare', accountId: process.env.CLOUDFLARE_ACCOUNT_ID, key: process.env.CLOUDFLARE_API_TOKEN, model: process.env.CLOUDFLARE_AI_MODEL || '@cf/openai/gpt-oss-120b' });
-  // OpenAI отключён от текстовой генерации проекта; остальные провайдеры работают независимо.
   return providers;
 }
 function providerErrorMessage(data, status) {
@@ -495,11 +497,12 @@ function scoreAIJsonCandidate(parsed, payload) {
   return { score, issues, slideCount: slides.length };
 }
 
-async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
+async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task = 'text') {
   const input = 'Return a valid json object matching the requested schema.\nPayload: ' + JSON.stringify(payload);
+  const preferredType = task === 'presentation' ? 'gemini' : 'openai';
   const providers = configuredAIProviders().filter(provider =>
     !(provider.name === 'OpenAI' && openAIQuotaBlockedUntil > Date.now())
-  );
+  ).map(provider => ({ ...provider, taskPriority: provider.type === preferredType ? 0 : 1 }));
   if (!providers.length) {
     throw new Error('Нет доступных ИИ-провайдеров: проверь ключи в Render. OpenAI может быть временно пропущен после ошибки исчерпанной квоты.');
   }
@@ -517,6 +520,7 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
       const quality = scoreAIJsonCandidate(parsed, payload);
       return {
         ok: true, provider: provider.name, parsed,
+        priority: provider.taskPriority,
         score: quality.score, issues: quality.issues, slideCount: quality.slideCount,
         elapsedMs: Date.now() - startedAt
       };
@@ -559,8 +563,9 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS) {
     throw error;
   }
 
-  // Quality validation outranks response speed; speed breaks ties only.
-  successes.sort((a, b) => b.score - a.score || a.elapsedMs - b.elapsedMs);
+  // Prefer the model assigned to this task; compare quality and speed among same-priority providers.
+  // Other configured providers remain available as fallbacks if the preferred model fails.
+  successes.sort((a, b) => a.priority - b.priority || b.score - a.score || a.elapsedMs - b.elapsedMs);
   successes.forEach((candidate, index) => {
     console.log('[AI competition] #' + (index + 1) + ' ' + candidate.provider
       + ': score=' + candidate.score + ', issues=' + candidate.issues.length
@@ -846,7 +851,7 @@ function repairInvalidSlideLayouts(raw) {
   return raw;
 }
 async function generateValidatedPresentation(topic, requestedCount, payload, instructions = PLANNER_INSTRUCTIONS) {
-  let raw = repairInvalidSlideLayouts(await aiJson(instructions, payload));
+  let raw = repairInvalidSlideLayouts(await aiJson(instructions, payload, REQUEST_TIMEOUT_MS, 'presentation'));
   let issues = validatePresentationPlan(raw, requestedCount);
   if (issues.length) {
     console.warn('[presentation-quality] План не прошёл проверку; запрашиваю исправление:', issues.join('; '));
@@ -860,7 +865,7 @@ ${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
       topic, requestedSlides: requestedCount, originalRequest: payload,
       previousDraft: raw, validationErrors: issues,
       outputRules: `Верни ровно ${requestedCount} неповторяющихся слайдов и все требуемые поля. Исправь каждую ошибку из validationErrors.`
-    }));
+    }, REQUEST_TIMEOUT_MS, 'presentation'));
     issues = validatePresentationPlan(raw, requestedCount);
   }
   if (issues.length) {
@@ -1707,6 +1712,11 @@ async function inspectGenerationJobStorage() {
     };
   }
 }
+app.get('/api/keep-alive', (_req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.json({ ok: true, timestamp: Date.now() });
+});
+
 app.get('/api/health', asyncRoute(async (_req, res) => {
   const providers = configuredAIProviders();
   const generationJobStorage = await inspectGenerationJobStorage();
@@ -1715,7 +1725,7 @@ app.get('/api/health', asyncRoute(async (_req, res) => {
     nexoraIdConfigured: projectOAuthReady(),
     aiProviders: providers.map(provider => provider.name),
     aiProviderModels: providers.map(provider => ({ name: provider.name, model: provider.model || MODEL })),
-    aiProviderStatus: { geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY), openAIEnabledForText: false },
+    aiProviderStatus: { geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY), openAIEnabledForText: Boolean(openai) },
     imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true',
     generationJobStorage: generationJobStorage.status,
     generationJobStorageWritable: generationJobStorage.writable,
