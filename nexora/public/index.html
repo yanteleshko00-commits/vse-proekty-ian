@@ -328,6 +328,14 @@ h1 span{color:var(--blue)}
  .login-button{font-size:11px}
 }
 
+
+/* NEXORA iOS input zoom fix: Safari zooms focused form fields below 16px. */
+@media (max-width: 760px) {
+  .argosha-panel .argosha-input {
+    font-size: 16px !important;
+  }
+}
+
 </style>
 </head>
 <body>
