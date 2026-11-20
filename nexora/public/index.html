@@ -272,7 +272,7 @@ h1 span{color:var(--blue)}
     </a>
     <div class="actions">
       <div class="profile" id="profile"><span class="avatar" id="avatar">N</span><span id="profile-name">Профиль</span></div>
-      <button class="icon-button" id="theme-toggle" type="button" aria-label="Сменить тему">☾</button>
+      <span class="icon-button" id="theme-toggle" aria-label="Тема устройства" title="Тема автоматически зависит от настроек устройства">☾</span>
       <div class="notification-wrap" id="notification-wrap">
         <button class="icon-button notification-button" id="notification-toggle" type="button" aria-label="Уведомления" aria-expanded="false" aria-controls="notification-panel"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-dot" id="notification-count">3</span></button>
         <section class="notification-panel" id="notification-panel" aria-label="Уведомления">
@@ -429,9 +429,18 @@ h1 span{color:var(--blue)}
 <script>
 (function(){
   var root=document.documentElement;
-  var savedTheme=localStorage.getItem('nexora-theme');
-  if(savedTheme==='dark'||savedTheme==='light')root.setAttribute('data-theme',savedTheme);
   var themeButton=document.getElementById('theme-toggle');
+  var themeMedia=window.matchMedia('(prefers-color-scheme: dark)');
+  function syncDeviceTheme(){
+    root.removeAttribute('data-theme');
+    themeButton.textContent=themeMedia.matches?'☀':'☾';
+    var themeColor=document.querySelector('meta[name="theme-color"]');
+    if(themeColor)themeColor.setAttribute('content',themeMedia.matches?'#0a1020':'#f4f7fc');
+  }
+  try{localStorage.removeItem('nexora-theme')}catch(e){}
+  syncDeviceTheme();
+  if(themeMedia.addEventListener)themeMedia.addEventListener('change',syncDeviceTheme);
+  else if(themeMedia.addListener)themeMedia.addListener(syncDeviceTheme);
   (function(){
     var toggle=document.getElementById('notification-toggle'),panel=document.getElementById('notification-panel'),wrap=document.getElementById('notification-wrap'),list=document.getElementById('notification-list'),count=document.getElementById('notification-count'),readAll=document.getElementById('notification-read-all');
     var notices=[
@@ -462,16 +471,8 @@ h1 span{color:var(--blue)}
     document.addEventListener('keydown',function(e){if(e.key==='Escape')setOpen(false)});
     update();
   })();
-  function isDark(){return root.getAttribute('data-theme')==='dark'||(!root.hasAttribute('data-theme')&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);}
-  function updateThemeIcon(){themeButton.textContent=isDark()?'☀':'☾';}
-  updateThemeIcon();
-  if(window.matchMedia){window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',function(){if(!localStorage.getItem('nexora-theme'))updateThemeIcon();});}
-  themeButton.addEventListener('click',function(){
-    var dark=!isDark();
-    root.setAttribute('data-theme',dark?'dark':'light');
-    localStorage.setItem('nexora-theme',dark?'dark':'light');
-    updateThemeIcon();
-  });
+  // Оформление всегда синхронизируется с системной темой устройства.
+
 
 
   var searchInput=document.getElementById('tool-search'),searchCount=document.getElementById('search-count');
@@ -575,7 +576,7 @@ h1 span{color:var(--blue)}
   });
   var footerContent={
     how:['Как это работает','<p>NEXORA объединяет отдельные цифровые инструменты в одном пространстве.</p><ul><li>Выберите нужную плитку на главной странице.</li><li>Откройте инструмент и следуйте его подсказкам.</li><li>Проверяйте отметку доступности: «Доступно» означает, что инструмент работает, а «Скоро» — что он ещё разрабатывается.</li></ul><p>Для персонального входа используется NEXORA ID. Не вводите пароль на сторонних страницах.</p>'],
-    faq:['Частые вопросы','<p><strong>Почему некоторые инструменты помечены «Скоро»?</strong><br>Они ещё разрабатываются и пока не принимают запросы.</p><p><strong>Нужно ли создавать отдельный аккаунт для каждого инструмента?</strong><br>Цель NEXORA — единый вход через NEXORA ID там, где он поддерживается.</p><p><strong>Почему тема изменилась?</strong><br>По умолчанию NEXORA следует настройкам оформления устройства. Ручной выбор темы сохраняется в браузере.</p>'],
+    faq:['Частые вопросы','<p><strong>Почему некоторые инструменты помечены «Скоро»?</strong><br>Они ещё разрабатываются и пока не принимают запросы.</p><p><strong>Нужно ли создавать отдельный аккаунт для каждого инструмента?</strong><br>Цель NEXORA — единый вход через NEXORA ID там, где он поддерживается.</p><p><strong>Почему тема изменилась?</strong><br>NEXORA автоматически использует светлую или тёмную тему, выбранную в настройках устройства. Если изменить тему телефона, оформление сайта тоже переключится.</p>'],
     articles:['Статьи','<p><strong>Знакомство с NEXORA</strong><br>Главная страница — это лобби: отсюда можно перейти к учебным и творческим инструментам.</p><p><strong>Как выбрать подходящий инструмент</strong><br>Начните с результата, который хотите получить: проект, объяснение, изображение или текст. Затем откройте соответствующую плитку.</p><p>Новые материалы будут появляться по мере развития проекта.</p>'],
     offer:['Публичная оферта','<p><strong>Информационный статус.</strong> Этот раздел пока является предварительной информацией, а не опубликованной юридически проверенной офертой.</p><p>NEXORA предоставляет доступ к цифровым инструментам. Конкретные условия использования, оплаты (если она появится), возвратов, ограничения ответственности и реквизиты оператора должны быть утверждены владельцем сервиса до публикации действующей оферты.</p><p>До заполнения и проверки этих сведений не рассматривайте этот текст как договор или предложение заключить договор.</p>'],
     cookies:['Политика cookie','<p>NEXORA может использовать техническое хранилище браузера для сохранения выбранной темы оформления и работы пользовательской сессии.</p><p>Эти данные помогают запомнить настройки и поддерживать вход в аккаунт. Очистка данных сайта в браузере может сбросить настройки темы и завершить сессию.</p><p>Перед публичным запуском необходимо дополнить этот раздел точным перечнем используемых cookie и сроками их хранения после проверки всех подключённых сервисов.</p>'],
