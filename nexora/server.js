@@ -186,13 +186,13 @@ async function argoshaReply(req, res) {
     name: 'OpenRouter',
     url: 'https://openrouter.ai/api/v1/chat/completions',
     key: process.env.OPENROUTER_API_KEY,
-    model: process.env.ARGOSHA_OPENROUTER_MODEL || 'openai/gpt-4o-mini'
+    model: process.env.ARGOSHA_OPENROUTER_MODEL || 'openrouter/free'
   });
   if (process.env.GROQ_API_KEY) providers.push({
     name: 'Groq',
     url: 'https://api.groq.com/openai/v1/chat/completions',
     key: process.env.GROQ_API_KEY,
-    model: process.env.ARGOSHA_GROQ_MODEL || 'llama-3.3-70b-versatile'
+    model: process.env.ARGOSHA_GROQ_MODEL || 'openai/gpt-oss-20b'
   });
   if (!providers.length) return send(res, 503, JSON.stringify({ error: 'argosha_not_configured' }), { 'Content-Type': 'application/json; charset=utf-8' });
   let body;
