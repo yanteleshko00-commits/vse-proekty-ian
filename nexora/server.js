@@ -92,16 +92,23 @@ async function startLogin(req, res) {
   const verifier = secureRandom(48);
   const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
   const redirectUri = appUrl(req) + '/auth/callback';
+  const cookies = parseCookies(req);
+  const deviceToken = cookies.ecosystem_device || secureRandom(32);
+  const deviceSignature = crypto.createHmac('sha256', clientSecret).update(deviceToken).digest('hex');
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
     state,
     code_challenge: challenge,
-    code_challenge_method: 'S256'
+    code_challenge_method: 'S256',
+    device_id: deviceToken,
+    device_signature: deviceSignature
   });
   const oauthCookie = Buffer.from(JSON.stringify({ state, verifier, redirectUri })).toString('base64url');
-  const headers = { 'Set-Cookie': cookie('nexora_oauth', oauthCookie, 300) };
+  const cookieHeaders = [cookie('nexora_oauth', oauthCookie, 300)];
+  if (!cookies.ecosystem_device) cookieHeaders.push(cookie('ecosystem_device', deviceToken, 315360000));
+  const headers = { 'Set-Cookie': cookieHeaders };
   redirect(res, authBase + '/oauth/authorize?' + params.toString(), headers);
 }
 
