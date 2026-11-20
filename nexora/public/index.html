@@ -220,7 +220,8 @@ h1 span{color:var(--blue)}
 .section-subtitle{margin:5px 0 0;color:var(--muted);font-size:13px}.recent-section,.plans-section{margin:42px 0 0}
 .recent-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .recent-item{display:flex;align-items:center;gap:12px;min-width:0;padding:15px;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink);text-decoration:none;transition:transform .2s,border-color .2s}.recent-item:hover{transform:translateY(-3px);border-color:rgba(65,132,255,.38)}
-.recent-icon{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:13px;background:var(--soft);color:var(--blue);font-size:18px}.recent-item strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.recent-item span{display:block;margin-top:3px;color:var(--muted);font-size:11px}.recent-empty{padding:17px;border:1px dashed var(--line);border-radius:17px;color:var(--muted);font-size:13px;text-align:center}
+.recent-icon{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:13px;background:var(--soft);color:var(--blue);font-size:18px}
+.recent-icon{overflow:hidden;padding:0;background:var(--soft)}.recent-icon img{display:block;width:100%;height:100%;object-fit:cover}.recent-item strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.recent-item span{display:block;margin-top:3px;color:var(--muted);font-size:11px}.recent-empty{padding:17px;border:1px dashed var(--line);border-radius:17px;color:var(--muted);font-size:13px;text-align:center}
 .recent-view-all{display:none;margin:14px auto 0;padding:10px 17px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--blue);font:inherit;font-size:13px;font-weight:750;cursor:pointer;transition:transform .2s,border-color .2s}
 .recent-view-all:hover{transform:translateY(-2px);border-color:rgba(65,132,255,.45)}
 .recent-history-list{display:grid;gap:9px;max-height:min(58dvh,520px);overflow:auto;padding-right:3px}
@@ -429,8 +430,10 @@ h1 span{color:var(--blue)}
   var recentKey='nexora-recent-tools';
   function readRecent(){try{return JSON.parse(localStorage.getItem(recentKey)||'[]').filter(function(x){return x&&typeof x.title==='string'&&typeof x.id==='string'}).slice(0,50)}catch(e){return[]}}
   function recentDate(item){if(!item.usedAt)return 'Недавно открывали';var d=new Date(item.usedAt);return isNaN(d.getTime())?'Недавно открывали':d.toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+  var recentImages={project:'https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=1400&q=90',math:'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=1400&q=90',chat:'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1400&q=90',image:'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1400&q=90',lesson:'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1400&q=90',text:'https://images.unsplash.com/photo-1731963094554-c5c981ccdefd?auto=format&fit=crop&fm=jpg&q=85&w=1600'};
+  function makeRecentIcon(item){var icon=document.createElement('span');icon.className='recent-icon';var src=recentImages[item.id];if(src){var img=document.createElement('img');img.src=src;img.alt='';img.loading='lazy';img.decoding='async';img.onerror=function(){icon.textContent=item.icon||'✦'};icon.appendChild(img)}else icon.textContent=item.icon||'✦';return icon}
   function makeRecentLink(item){var link=document.createElement('a');link.className='recent-item';link.href=item.href||'#';if(item.external){link.target='_blank';link.rel='noopener'}
-    var icon=document.createElement('span');icon.className='recent-icon';icon.textContent=item.icon||'✦';
+    var icon=makeRecentIcon(item);
     var copy=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('span');strong.textContent=item.title;small.textContent=recentDate(item);copy.appendChild(strong);copy.appendChild(small);link.appendChild(icon);link.appendChild(copy);
     if(item.id!=='project')link.addEventListener('click',function(e){e.preventDefault();var tile=document.querySelector('[data-tool="'+item.id+'"]');if(tile)tile.click()});
     return link;
@@ -445,7 +448,7 @@ h1 span{color:var(--blue)}
     var host=document.getElementById('recent-history-list'),items=readRecent();host.textContent='';
     if(!items.length){var empty=document.createElement('div');empty.className='recent-empty';empty.textContent='История пока пуста.';host.appendChild(empty);return}
     items.forEach(function(item){var row=document.createElement('button');row.type='button';row.className='recent-history-row';
-      var icon=document.createElement('span');icon.className='recent-icon';icon.textContent=item.icon||'✦';
+      var icon=makeRecentIcon(item);
       var copy=document.createElement('span');copy.className='recent-history-copy';var strong=document.createElement('strong');strong.textContent=item.title;var small=document.createElement('small');small.textContent=(item.subtitle||'Инструмент NEXORA')+' · '+recentDate(item);copy.appendChild(strong);copy.appendChild(small);
       var arrow=document.createElement('span');arrow.className='recent-history-arrow';arrow.textContent='›';row.appendChild(icon);row.appendChild(copy);row.appendChild(arrow);
       row.addEventListener('click',function(){closeRecentHistory();if(item.id==='project'){if(item.href)window.open(item.href,'_blank','noopener')}else{var tile=document.querySelector('[data-tool="'+item.id+'"]');if(tile)tile.click()}});
