@@ -261,7 +261,7 @@ async function getGigaChatAccessToken() {
         },
         body: new URLSearchParams({ scope: process.env.GIGACHAT_SCOPE || 'GIGACHAT_API_PERS' }),
         signal: AbortSignal.timeout(15000)
-      });
+      }).catch(error => { throw networkFailure('GigaChat', 'oauth', error); });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.access_token) {
         throw Object.assign(new Error('GigaChat OAuth HTTP ' + response.status), {
@@ -286,13 +286,19 @@ async function getGigaChatAccessToken() {
   return gigaChatTokenPromise;
 }
 
-function providerFailure(providerName, status, code, message) {
+function providerFailure(providerName, status, code, message, stage = '') {
   return Object.assign(new Error(providerName + ' HTTP ' + status), {
     providerName,
     upstreamStatus: status,
     providerCode: String(code || 'provider_error'),
+    diagnosticStage: stage,
     publicMessage: message
   });
+}
+
+function networkFailure(providerName, stage, error) {
+  const causeCode = String(error?.cause?.code || error?.code || error?.name || 'network_error');
+  return providerFailure(providerName, 0, causeCode, providerName + ' не удалось связаться с сервером на этапе ' + stage + '.', stage);
 }
 
 async function requestOpenAIImage({ apiKey, modelPrompt, size, detailed, imageFile, signal }) {
@@ -390,7 +396,7 @@ async function requestGigaChatImage({ modelPrompt, ratio, detailed, signal }) {
       function_call: 'auto'
     }),
     signal: AbortSignal.any([signal, AbortSignal.timeout(180000)])
-  });
+  }).catch(error => { throw networkFailure('GigaChat', 'image_generation', error); });
   const data = await upstream.json().catch(() => ({}));
   if (!upstream.ok) {
     const detail = data.error?.message || data.message || data.error || 'provider_error';
@@ -414,7 +420,7 @@ async function requestGigaChatImage({ modelPrompt, ratio, detailed, signal }) {
     method: 'GET',
     headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/jpg' },
     signal: AbortSignal.any([signal, AbortSignal.timeout(60000)])
-  });
+  }).catch(error => { throw networkFailure('GigaChat', 'image_download', error); });
   if (!download.ok) {
     throw providerFailure('GigaChat', download.status, 'image_download_failed', 'GigaChat создал изображение, но не удалось скачать результат.');
   }
@@ -527,6 +533,7 @@ async function generateNexoraImage(req, res) {
       provider: error.providerName || 'Неизвестный провайдер',
       status: error.upstreamStatus || 0,
       code: error.providerCode || error.name || 'request_failed',
+      stage: error.diagnosticStage || 'unknown',
       message: error.publicMessage || 'Провайдер временно недоступен.'
     }));
     const billingFailed = details.some(item =>
@@ -537,11 +544,11 @@ async function generateNexoraImage(req, res) {
       ? 'Ни один подключённый генератор не завершил создание изображения. ' +
         details.map(item => item.provider + ': ' + item.message).join(' ')
       : (details[0]?.message || 'Все подключённые генераторы изображений временно недоступны.');
-    console.error('NEXORA image providers failed:', JSON.stringify(details.map(({ provider, status, code }) => ({ provider, status, code }))));
+    console.error('NEXORA image providers failed:', JSON.stringify(details.map(({ provider, status, code, stage }) => ({ provider, status, code, stage }))));
     return send(res, billingFailed ? 502 : (details[0]?.status >= 400 && details[0]?.status < 500 ? details[0].status : 502), JSON.stringify({
       error: 'all_image_providers_failed',
       message,
-      providers: details.map(({ provider, status, code }) => ({ provider, status, code }))
+      providers: details.map(({ provider, status, code, stage }) => ({ provider, status, code, stage }))
     }), jsonHeaders);
   }
 }
