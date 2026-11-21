@@ -268,7 +268,6 @@ async function generateNexoraImage(req, res) {
   form.append('prompt', modelPrompt);
   form.append('width', String(width));
   form.append('height', String(height));
-  form.append('guidance', quality === 'detailed' ? '4' : '3.5');
   if (typeof body.image === 'string' && body.image) {
     const comma = body.image.indexOf(',');
     const header = comma > 0 ? body.image.slice(0, comma) : '';
