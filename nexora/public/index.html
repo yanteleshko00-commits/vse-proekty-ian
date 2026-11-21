@@ -405,13 +405,13 @@ h1 span{color:var(--blue)}
       <p>Объяснения, идеи и помощь с вопросами в одном чате.</p>
 
     </button>
-    <button class="tile" type="button" data-tool="image">
-      <span class="status">Скоро</span>
+    <a class="tile" data-tool="image" href="/image">
+      <span class="status ready">Доступно</span>
       <span class="tile-top">▧</span>
       <h3>Создать картинку</h3>
-      <p>Генерация изображений по вашему описанию.</p>
+      <p>Создание, скачивание и редактирование изображений по вашему описанию.</p>
 
-    </button>
+    </a>
     <button class="tile" type="button" data-tool="lesson">
       <span class="status">Скоро</span>
       <span class="tile-top">⌘</span>
@@ -608,7 +608,7 @@ h1 span{color:var(--blue)}
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&recentBackdrop.classList.contains('open'))closeRecentHistory()});
   function rememberTool(item){item.usedAt=new Date().toISOString();var items=readRecent();items.unshift(item);localStorage.setItem(recentKey,JSON.stringify(items.slice(0,50)));renderRecent()}
   document.querySelector('[data-tool="project"]').addEventListener('click',function(){rememberTool({id:'project',title:'Сделать проект',subtitle:'Генератор проектов',icon:'✦',href:this.href,external:true})});
-  document.querySelectorAll('.grid [data-tool]:not([data-tool="project"])').forEach(function(tile){tile.addEventListener('click',function(){rememberTool({id:tile.dataset.tool,title:tile.querySelector('h3').textContent,subtitle:'Инструмент NEXORA',icon:tile.querySelector('.tile-top').textContent,href:'#'})})});
+  document.querySelectorAll('.grid [data-tool]:not([data-tool="project"])').forEach(function(tile){tile.addEventListener('click',function(){rememberTool({id:tile.dataset.tool,title:tile.querySelector('h3').textContent,subtitle:'Инструмент NEXORA',icon:tile.querySelector('.tile-top').textContent,href:tile.tagName==='A'?tile.getAttribute('href'):'#'})})});
   renderRecent();
   var accountBackdrop=document.getElementById('account-backdrop');
   function closeAccount(){accountBackdrop.classList.remove('open');document.body.style.overflow=''}
@@ -651,12 +651,13 @@ h1 span{color:var(--blue)}
   var labels={
     math:['Решить задачу','Инструмент для решения задач ещё подключается. Здесь появится ввод условия, выбор класса и оформление решения по школьным требованиям.'],
     chat:['Спросить ChatGPT','Чат подключается к общей системе ИИ. Здесь можно будет задавать вопросы и получать объяснения.'],
-    image:['Создать картинку','Генератор изображений находится в разработке.'],
+    image:['Создать картинку','Создавайте новые изображения, скачивайте их и редактируйте следующим промптом.'],
     lesson:['Подготовиться к уроку','Здесь появятся конспекты с объяснениями, определениями, примерами и самопроверкой.'],
     text:['Создать текст','Здесь можно будет задать тему, тип текста, стиль и объём через компактные настройки под полем ввода.']
   };
   document.querySelectorAll('[data-tool]').forEach(function(button){
     button.addEventListener('click',function(){
+      if(button.getAttribute('data-tool')==='image')return;
       var item=labels[button.getAttribute('data-tool')];
       title.textContent=item[0];
       copy.textContent=item[1];

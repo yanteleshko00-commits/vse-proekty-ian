@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<meta name="description" content="NEXORA Image — создание и редактирование изображений с помощью искусственного интеллекта.">
+<title>Создать изображение · NEXORA</title>
+<style>
+:root{color-scheme:dark;--bg:#090f1e;--bg2:#111b31;--panel:rgba(20,31,54,.72);--panel2:rgba(25,38,65,.88);--line:rgba(170,195,239,.14);--text:#eef4ff;--muted:#95a5c2;--blue:#75aaff;--blue2:#397cf2;--glow:rgba(70,135,255,.22);--shadow:0 24px 70px rgba(0,0,0,.27);--good:#72d7b4;--danger:#ff8795}
+:root[data-theme=light]{color-scheme:light;--bg:#f3f7ff;--bg2:#eaf1ff;--panel:rgba(255,255,255,.72);--panel2:rgba(255,255,255,.91);--line:rgba(70,101,153,.16);--text:#17233a;--muted:#73819a;--blue:#276fe8;--blue2:#4d8fff;--glow:rgba(64,126,246,.14);--shadow:0 24px 70px rgba(49,79,130,.13);--good:#168b68;--danger:#cb4056}
+*{box-sizing:border-box}
+html{min-height:100%;scroll-behavior:smooth}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 12% -5%,rgba(61,128,255,.22),transparent 34%),radial-gradient(ellipse at 96% 22%,rgba(127,164,255,.13),transparent 29%),var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:background .25s,color .25s}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+a{color:inherit;text-decoration:none}
+.wrap{width:min(1240px,calc(100% - 40px));margin:auto}
+.topbar{position:sticky;top:0;z-index:20;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(24px) saturate(155%);-webkit-backdrop-filter:blur(24px) saturate(155%)}
+.top-inner{height:74px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:850;letter-spacing:.025em}
+.brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:15px;border:1px solid rgba(105,160,255,.25);background:linear-gradient(145deg,rgba(255,255,255,.14),rgba(63,124,237,.18));box-shadow:0 8px 28px var(--glow)}
+.brand-mark svg{width:26px;height:26px}
+.brand-copy{display:grid;gap:2px}.brand-copy small{font-size:10px;color:var(--muted);font-weight:650;letter-spacing:.14em}
+.top-actions{display:flex;align-items:center;gap:9px}
+.glass-button{height:42px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);backdrop-filter:blur(18px);transition:transform .2s,border-color .2s,background .2s}
+.glass-button:hover{transform:translateY(-2px);border-color:rgba(91,153,255,.45)}
+.glass-button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.icon-button{width:42px;padding:0;font-size:18px}
+main{padding:42px 0 70px}
+.intro{display:flex;align-items:end;justify-content:space-between;gap:24px;margin:0 0 28px}
+.kicker{display:inline-flex;align-items:center;gap:8px;padding:7px 11px;border:1px solid var(--line);border-radius:40px;background:var(--panel);color:var(--blue);font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.spark{width:7px;height:7px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 4px var(--glow)}
+h1{margin:15px 0 8px;font-size:clamp(32px,5.4vw,52px);line-height:1.05;letter-spacing:-.05em}
+.intro p{max-width:620px;margin:0;color:var(--muted);font-size:15px;line-height:1.6}
+.model-pill{display:inline-flex;align-items:center;gap:8px;padding:10px 13px;border:1px solid var(--line);border-radius:15px;background:var(--panel);color:var(--muted);font-size:12px;white-space:nowrap}
+.model-pill b{color:var(--text);font-weight:750}
+.layout{display:grid;grid-template-columns:minmax(320px,.91fr) minmax(0,1.09fr);gap:20px;align-items:stretch}
+.card{min-width:0;border:1px solid var(--line);border-radius:25px;background:var(--panel);box-shadow:var(--shadow);backdrop-filter:blur(24px) saturate(145%);-webkit-backdrop-filter:blur(24px) saturate(145%)}
+.composer{padding:23px}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:17px}
+.card-head h2{margin:0;font-size:17px;letter-spacing:-.025em}
+.step{color:var(--muted);font-size:11px;font-weight:750;letter-spacing:.08em}
+.field-label{display:flex;justify-content:space-between;gap:10px;margin:0 0 9px;color:var(--text);font-size:12px;font-weight:760}
+.field-hint{color:var(--muted);font-weight:500}
+textarea{width:100%;min-height:158px;resize:vertical;padding:16px;border:1px solid var(--line);border-radius:17px;outline:none;background:color-mix(in srgb,var(--bg2) 65%,transparent);color:var(--text);font-size:14px;line-height:1.65;transition:border-color .2s,box-shadow .2s}
+textarea::placeholder{color:var(--muted);opacity:.85}
+textarea:focus,select:focus{border-color:rgba(89,151,255,.7);box-shadow:0 0 0 4px var(--glow)}
+.examples{display:flex;flex-wrap:wrap;gap:7px;margin:11px 0 21px}
+.example{padding:7px 10px;border:1px solid var(--line);border-radius:30px;background:transparent;color:var(--muted);font-size:11px;transition:.18s}
+.example:hover{color:var(--text);border-color:rgba(92,151,255,.45);background:var(--glow)}
+.section-label{margin:0 0 10px;color:var(--text);font-size:12px;font-weight:760}
+.styles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:20px}
+.style{min-height:45px;padding:9px 8px;border:1px solid var(--line);border-radius:13px;background:color-mix(in srgb,var(--bg2) 56%,transparent);color:var(--muted);font-size:11px;font-weight:680;transition:.18s}
+.style.active{border-color:rgba(94,153,255,.66);background:var(--glow);color:var(--text);box-shadow:inset 0 0 0 1px rgba(94,153,255,.13)}
+.settings{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:19px}
+.setting label{display:block;margin-bottom:7px;color:var(--muted);font-size:11px;font-weight:700}
+select{width:100%;height:43px;padding:0 11px;border:1px solid var(--line);border-radius:13px;outline:none;background:var(--bg2);color:var(--text);font-size:12px}
+.primary{width:100%;min-height:54px;display:flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:16px;background:linear-gradient(115deg,#397cf2,#6b9fff);color:#fff;font-size:14px;font-weight:820;box-shadow:0 12px 27px rgba(51,116,239,.27);transition:transform .2s,filter .2s,box-shadow .2s}
+.primary:hover{transform:translateY(-2px);filter:brightness(1.06);box-shadow:0 17px 34px rgba(51,116,239,.34)}
+.primary:disabled{opacity:.62;cursor:wait;transform:none;filter:none}
+.primary svg{width:19px;height:19px}
+.footnote{margin:12px 2px 0;color:var(--muted);font-size:10px;line-height:1.55}
+.preview-card{padding:18px;display:flex;flex-direction:column}
+.preview-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 4px 15px}
+.preview-top h2{margin:0;font-size:17px;letter-spacing:-.025em}
+.preview-top span{color:var(--muted);font-size:11px}
+.stage{position:relative;flex:1;min-height:420px;display:grid;place-items:center;overflow:hidden;border:1px solid var(--line);border-radius:19px;background:radial-gradient(ellipse at center,rgba(97,150,255,.12),transparent 62%),color-mix(in srgb,var(--bg2) 74%,transparent)}
+.empty{max-width:290px;padding:25px;text-align:center}
+.empty-icon{width:76px;height:76px;margin:0 auto 18px;display:grid;place-items:center;border:1px solid rgba(105,160,255,.2);border-radius:25px;background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(67,126,245,.12));box-shadow:0 14px 42px var(--glow)}
+.empty-icon svg{width:37px;height:37px}
+.empty h3{margin:0 0 8px;font-size:16px}
+.empty p{margin:0;color:var(--muted);font-size:12px;line-height:1.6}
+#result-image{display:none;width:100%;height:100%;max-height:650px;object-fit:contain}
+.loading{display:none;max-width:270px;padding:24px;text-align:center}
+.loading.visible{display:block}
+.spinner{width:45px;height:45px;margin:0 auto 17px;border:3px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:spin .85s linear infinite}
+.loading strong{display:block;font-size:14px}
+.loading p{margin:8px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+.actions{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:13px}
+.actions.visible{display:grid}
+.action-button{height:44px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);border-radius:13px;background:var(--panel2);color:var(--text);font-size:11px;font-weight:750;transition:.18s}
+.action-button:hover{border-color:rgba(91,153,255,.5);transform:translateY(-1px)}
+.action-button svg{width:16px;height:16px;color:var(--blue)}
+.edit-panel{display:none;margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:17px;background:var(--panel2)}
+.edit-panel.open{display:block;animation:fadein .22s ease}
+.edit-panel textarea{min-height:90px}
+.edit-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 9px}
+.edit-head strong{font-size:12px}
+.edit-head span{color:var(--muted);font-size:10px}
+.edit-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:11px}
+.upload-label{display:inline-flex;align-items:center;gap:7px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--muted);font-size:11px;font-weight:720;cursor:pointer}
+.upload-label:hover{border-color:rgba(91,153,255,.5);color:var(--text)}
+.upload-label input{display:none}
+.source-preview{display:none;align-items:center;gap:9px;margin-top:10px;color:var(--muted);font-size:10px}
+.source-preview.visible{display:flex}
+.source-preview img{width:42px;height:42px;border-radius:9px;object-fit:cover;border:1px solid var(--line)}
+.source-preview button{border:0;background:none;color:var(--danger);font-size:11px}
+.edit-submit{min-height:41px;padding:0 13px;border:0;border-radius:12px;background:var(--blue2);color:white;font-size:11px;font-weight:790}
+.edit-submit:disabled{opacity:.5;cursor:wait}
+.message{display:none;margin-top:12px;padding:12px 13px;border:1px solid var(--line);border-radius:13px;background:var(--panel2);color:var(--muted);font-size:11px;line-height:1.5}
+.message.visible{display:block}
+.message.error{border-color:rgba(240,92,113,.32);color:var(--danger)}
+.message.success{border-color:rgba(66,194,151,.3);color:var(--good)}
+.history{margin-top:22px;padding:18px 20px}
+.history-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.history-head h2{margin:0;font-size:14px}
+.history-head span{color:var(--muted);font-size:10px}
+.history-list{display:flex;gap:10px;overflow-x:auto;padding:2px 1px 6px;scrollbar-width:thin}
+.history-empty{padding:5px 0;color:var(--muted);font-size:11px}
+.history-item{position:relative;flex:0 0 94px;width:94px;height:94px;padding:0;overflow:hidden;border:1px solid var(--line);border-radius:13px;background:var(--bg2)}
+.history-item img{width:100%;height:100%;display:block;object-fit:cover}
+.history-item.active{outline:2px solid var(--blue);outline-offset:2px}
+.history-item span{position:absolute;left:5px;right:5px;bottom:5px;padding:4px;border-radius:6px;background:rgba(0,0,0,.55);color:#fff;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.quota{display:flex;align-items:flex-start;gap:10px;margin-top:16px;padding:13px 15px;border:1px solid var(--line);border-radius:15px;background:var(--panel);color:var(--muted);font-size:10px;line-height:1.55}
+.quota svg{width:17px;height:17px;flex:0 0 17px;color:var(--blue)}
+.toast{position:fixed;left:50%;bottom:24px;z-index:50;max-width:calc(100% - 32px);padding:12px 16px;border:1px solid var(--line);border-radius:14px;background:var(--panel2);color:var(--text);box-shadow:var(--shadow);font-size:12px;opacity:0;transform:translate(-50%,12px);pointer-events:none;transition:.25s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@keyframes fadein{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:860px){.layout{grid-template-columns:1fr}.stage{min-height:340px}.intro{align-items:flex-start;flex-direction:column}.model-pill{align-self:flex-start}}
+@media(max-width:560px){.wrap{width:min(100% - 22px,1240px)}.top-inner{height:65px}.brand-mark{width:38px;height:38px}.brand-copy small{display:none}.top-actions .back-label{display:none}.glass-button{width:40px;height:40px;padding:0}.top-actions{gap:7px}main{padding:28px 0 48px}.intro{margin-bottom:20px}h1{font-size:36px}.intro p{font-size:13px}.composer{padding:16px;border-radius:20px}.preview-card{padding:13px;border-radius:20px}.stage{min-height:290px}.styles{grid-template-columns:repeat(3,minmax(0,1fr))}.style{font-size:10px}.settings{gap:8px}.history{padding:15px}.history-item{flex-basis:82px;width:82px;height:82px}.actions{gap:6px}.action-button{font-size:10px}.edit-controls{align-items:stretch;flex-direction:column}.edit-submit{min-height:44px}.quota{font-size:9px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<header class="topbar">
+ <div class="wrap top-inner">
+  <a class="brand" href="/" aria-label="NEXORA, на главную">
+   <span class="brand-mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M12 22.2h8M12.8 25.3h6.4M14 28h4M11.1 17.8a8 8 0 1 1 9.8 0c-1.2.9-1.6 1.8-1.6 2.7h-6.6c0-.9-.4-1.8-1.6-2.7Z" stroke="#69a5ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 3.2v3M5.2 14.3h3M23.8 14.3h3M8.1 6.5l2.1 2.1M23.9 6.5l-2.1 2.1" stroke="#9bc4ff" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+   <span class="brand-copy">NEXORA<small>IMAGE STUDIO</small></span>
+  </a>
+  <div class="top-actions">
+   <a class="glass-button" href="/"><span>‹</span><span class="back-label">Все инструменты</span></a>
+   <button class="glass-button icon-button" id="theme-toggle" type="button" aria-label="Сменить тему">☼</button>
+  </div>
+ </div>
+</header>
+<main class="wrap">
+ <section class="intro">
+  <div>
+   <div class="kicker"><span class="spark"></span> AI IMAGE STUDIO</div>
+   <h1>Создайте то,<br>что <span style="color:var(--blue)">представили.</span></h1>
+   <p>Опишите идею обычными словами. NEXORA превратит её в изображение, которое можно скачать, отправить или изменить новым промптом.</p>
+  </div>
+  <div class="model-pill"><span class="spark"></span><span><b>FLUX.2 Klein 4B</b> · модель изображений</span></div>
+ </section>
+ <section class="layout">
+  <div class="card composer">
+   <div class="card-head"><h2>Опишите изображение</h2><span class="step">01 / PROMPT</span></div>
+   <label class="field-label" for="prompt"><span>Ваш промпт</span><span class="field-hint" id="prompt-count">0 / 1200</span></label>
+   <textarea id="prompt" maxlength="1200" placeholder="Например: уютный домик в горах на берегу озера, раннее утро, мягкий туман, кинематографичный свет, высокая детализация…"></textarea>
+   <div class="examples">
+    <button class="example" type="button" data-prompt="Футуристический город на берегу моря на закате, отражения неоновых огней, кинематографичная атмосфера">Город будущего</button>
+    <button class="example" type="button" data-prompt="Милый маленький робот-помощник на чистом рабочем столе, мягкий свет, дружелюбный дизайн">Милый робот</button>
+    <button class="example" type="button" data-prompt="Величественные горы, озеро с прозрачной водой и хвойный лес, ранний рассвет">Пейзаж</button>
+   </div>
+   <p class="section-label">Стиль изображения</p>
+   <div class="styles" id="styles">
+    <button class="style active" type="button" data-style="realistic">Фотореализм</button>
+    <button class="style" type="button" data-style="cinematic">Кино</button>
+    <button class="style" type="button" data-style="3d">3D</button>
+    <button class="style" type="button" data-style="illustration">Иллюстрация</button>
+    <button class="style" type="button" data-style="anime">Аниме</button>
+    <button class="style" type="button" data-style="watercolor">Акварель</button>
+   </div>
+   <div class="settings">
+    <div class="setting"><label for="ratio">Формат изображения</label><select id="ratio"><option value="square">Квадрат · 1:1</option><option value="portrait">Портрет · 3:4</option><option value="landscape">Альбом · 4:3</option><option value="vertical">Вертикальный · 9:16</option><option value="wide">Широкий · 16:9</option></select></div>
+    <div class="setting"><label for="quality">Детализация</label><select id="quality"><option value="standard">Стандартная</option><option value="detailed">Повышенная</option></select></div>
+   </div>
+   <button class="primary" id="generate" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="m19 16 .9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16Z"/></svg><span>Создать изображение</span></button>
+   <p class="footnote">Генератор работает через сервер NEXORA. API-ключ хранится на сервере и не передаётся в браузер.</p>
+   <div class="message" id="message" role="status" aria-live="polite"></div>
+  </div>
+  <div class="card preview-card">
+   <div class="preview-top"><h2>Результат</h2><span id="result-status">Здесь появится ваша работа</span></div>
+   <div class="stage" id="stage">
+    <div class="empty" id="empty">
+     <div class="empty-icon"><svg viewBox="0 0 40 40" fill="none" stroke="#80b4ff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="6" width="30" height="28" rx="6"/><circle cx="14" cy="15" r="3"/><path d="m7 29 9-9 6 6 4-4 7 8"/></svg></div>
+     <h3>Ваше изображение будет здесь</h3>
+     <p>Введите описание слева и нажмите «Создать изображение». Результат появится в этой области.</p>
+    </div>
+    <div class="loading" id="loading"><div class="spinner"></div><strong>Создаём изображение…</strong><p>Модель рисует по вашему описанию. Это может занять немного времени.</p></div>
+    <img id="result-image" alt="Сгенерированное изображение">
+   </div>
+   <div class="actions" id="actions">
+    <button class="action-button" id="download" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v3h16v-3"/></svg>Скачать</button>
+    <button class="action-button" id="share" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.7 10.7 6.6-4.4m-6.6 7 6.6 4.4"/></svg>Отправить</button>
+    <button class="action-button" id="edit-toggle" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 5 5 5M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="M13 20h7"/></svg>Изменить</button>
+   </div>
+   <div class="edit-panel" id="edit-panel">
+    <div class="edit-head"><strong>Что изменить на изображении?</strong><span>02 / EDIT</span></div>
+    <textarea id="edit-prompt" maxlength="1200" placeholder="Например: добавь закатное освещение, сделай небо розовым, сохрани композицию и главные объекты…"></textarea>
+    <div class="source-preview" id="source-preview"><img id="source-thumb" alt="Изображение для редактирования"><span>Будет использовано выбранное изображение</span><button id="clear-source" type="button">Убрать</button></div>
+    <div class="edit-controls">
+     <label class="upload-label">＋ Загрузить своё<input id="upload-image" type="file" accept="image/png,image/jpeg,image/webp"></label>
+     <button class="edit-submit" id="apply-edit" type="button">Применить изменения ↗</button>
+    </div>
+    <p class="footnote">Без загрузки будет изменён текущий результат. Загружаемое фото обрабатывается для передачи модели и не сохраняется в NEXORA.</p>
+   </div>
+  </div>
+ </section>
+ <section class="card history">
+  <div class="history-head"><h2>История изображений</h2><span id="history-count">В этой сессии</span></div>
+  <div class="history-list" id="history-list"><div class="history-empty">Здесь будут ваши версии. Можно вернуться к любой из них.</div></div>
+ </section>
+ <div class="quota"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><span>Используется Cloudflare Workers AI. На бесплатном тарифе действует общая дневная квота 10&nbsp;000 Neurons; после её исчерпания бесплатные запросы приостанавливаются до ежедневного сброса. NEXORA не включает платные запросы автоматически.</span></div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+ const $=id=>document.getElementById(id);
+ const prompt=$('prompt'),count=$('prompt-count'),generate=$('generate'),loading=$('loading'),empty=$('empty'),image=$('result-image'),actions=$('actions'),message=$('message');
+ let selectedStyle='realistic',currentImage='',currentPrompt='',editSource='',busy=false,versions=[];
+ const styles={realistic:'photorealistic, realistic materials, natural lighting, highly detailed',cinematic:'cinematic composition, dramatic light, rich atmosphere, film still', '3d':'high-quality 3D render, refined materials, studio lighting, detailed 3D design',illustration:'beautiful digital illustration, polished artwork, clear shapes and refined details',anime:'anime art style, expressive clean linework, detailed anime background',watercolor:'traditional watercolor painting, soft pigment texture, delicate brushwork'};
+ const dims={square:[1024,1024],portrait:[768,1024],landscape:[1024,768],vertical:[576,1024],wide:[1024,576]};
+ function toast(text){const node=$('toast');node.textContent=text;node.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>node.classList.remove('show'),2800)}
+ function showMessage(text,type){message.textContent=text||'';message.className='message'+(text?' visible':'')+(type?' '+type:'')}
+ function setBusy(value){busy=value;generate.disabled=value;$('apply-edit').disabled=value;generate.querySelector('span').textContent=value?'Создаём…':'Создать изображение';if(value){empty.style.display='none';image.style.display='none';loading.classList.add('visible');actions.classList.remove('visible');$('result-status').textContent='Выполняется генерация'}else{loading.classList.remove('visible')}}
+ function dataUrlToBlob(url){const parts=url.split(',');const match=parts[0].match(/data:([^;]+);base64/);const binary=atob(parts[1]);const bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);return new Blob([bytes],{type:match?match[1]:'image/png'})}
+ function showImage(data,description){currentImage=data;currentPrompt=description||'';image.src=data;image.style.display='block';empty.style.display='none';loading.classList.remove('visible');actions.classList.add('visible');$('edit-panel').classList.remove('open');$('result-status').textContent='Готово · '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});$('edit-prompt').value='';addVersion(data,description)}
+ function addVersion(data,description){versions.unshift({data,prompt:description||'',id:Date.now()});versions=versions.slice(0,8);renderHistory()}
+ function renderHistory(){const list=$('history-list');list.textContent='';$('history-count').textContent=versions.length+' из 8 версий';if(!versions.length){const e=document.createElement('div');e.className='history-empty';e.textContent='Здесь будут ваши версии. Можно вернуться к любой из них.';list.appendChild(e);return}versions.forEach((v,i)=>{const b=document.createElement('button');b.type='button';b.className='history-item'+(v.data===currentImage?' active':'');const im=document.createElement('img');im.src=v.data;im.alt='Версия '+(versions.length-i);const label=document.createElement('span');label.textContent=i===0?'Последняя':'Версия '+(versions.length-i);b.append(im,label);b.addEventListener('click',()=>{currentImage=v.data;currentPrompt=v.prompt;image.src=v.data;image.style.display='block';empty.style.display='none';actions.classList.add('visible');$('result-status').textContent='Открыта предыдущая версия';$('edit-prompt').value='';renderHistory()});list.appendChild(b)})}
+ async function smallImageData(fileOrData){return new Promise((resolve,reject)=>{const src=typeof fileOrData==='string'?fileOrData:URL.createObjectURL(fileOrData);const im=new Image();im.onload=()=>{const scale=Math.min(1,512/Math.max(im.naturalWidth,im.naturalHeight));const w=Math.max(1,Math.round(im.naturalWidth*scale)),h=Math.max(1,Math.round(im.naturalHeight*scale));const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(im,0,0,w,h);if(typeof fileOrData!=='string')URL.revokeObjectURL(src);resolve(canvas.toDataURL('image/jpeg',.86))};im.onerror=()=>{if(typeof fileOrData!=='string')URL.revokeObjectURL(src);reject(new Error('Не удалось прочитать изображение.'))};im.src=src})}
+ async function run(promptText,imageData){if(busy)return;const clean=String(promptText||'').trim();if(clean.length<4){showMessage('Опиши изображение чуть подробнее.','error');prompt.focus();return}setBusy(true);showMessage('');try{let small=null;if(imageData)small=await smallImageData(imageData);const response=await fetch('/api/images/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:clean,style:selectedStyle,ratio:$('ratio').value,quality:$('quality').value,image:small})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.message||data.error||'Не удалось создать изображение.');if(!data.image||typeof data.image!=='string')throw new Error('Сервис не вернул готовое изображение.');showImage(data.image,clean);showMessage('Изображение готово. Его можно скачать, отправить или изменить следующим промптом.','success');$('result-status').textContent='Готово · FLUX.2 Klein 4B'}catch(error){empty.style.display=currentImage?'none':'block';image.style.display=currentImage?'block':'none';if(currentImage)actions.classList.add('visible');showMessage(error.message==='Failed to fetch'?'Не удалось связаться с сервером NEXORA. Проверьте подключение и попробуйте снова.':error.message,'error');$('result-status').textContent='Не удалось завершить генерацию'}finally{setBusy(false)}}
+ generate.addEventListener('click',()=>run(prompt.value,null));
+ prompt.addEventListener('input',()=>count.textContent=prompt.value.length+' / 1200');
+ document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>{prompt.value=b.dataset.prompt;count.textContent=prompt.value.length+' / 1200';prompt.focus()}));
+ document.querySelectorAll('.style').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.style').forEach(x=>x.classList.remove('active'));b.classList.add('active');selectedStyle=b.dataset.style}));
+ $('edit-toggle').addEventListener('click',()=>{$('edit-panel').classList.toggle('open');$('edit-prompt').focus()});
+ $('apply-edit').addEventListener('click',()=>{const text=$('edit-prompt').value.trim();if(!text){showMessage('Напиши, что нужно изменить.','error');$('edit-prompt').focus();return}if(!currentImage&&!editSource){showMessage('Сначала создай или загрузи изображение.','error');return}const source=editSource||currentImage;const editText='Отредактируй исходное изображение согласно инструкции. Сохрани основные объекты и композицию, если пользователь явно не попросил их изменить. Инструкция: '+text;run(editText,source)});
+ $('upload-image').addEventListener('change',async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;if(!/^image\/(png|jpeg|webp)$/.test(file.type)){showMessage('Поддерживаются PNG, JPG и WebP.','error');e.target.value='';return}if(file.size>10*1024*1024){showMessage('Файл должен быть меньше 10 МБ.','error');e.target.value='';return}try{editSource=await smallImageData(file);$('source-thumb').src=editSource;$('source-preview').classList.add('visible');showMessage('Изображение добавлено. Теперь опиши, что изменить.','success')}catch(error){showMessage(error.message,'error')}});
+ $('clear-source').addEventListener('click',()=>{editSource='';$('source-preview').classList.remove('visible');$('upload-image').value=''});
+ $('download').addEventListener('click',async()=>{if(!currentImage)return;try{const blob=dataUrlToBlob(currentImage),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='nexora-image-'+new Date().toISOString().slice(0,10)+'.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);toast('Изображение сохранено на устройство')}catch(e){toast('Не удалось скачать. Попробуйте ещё раз.')}});
+ $('share').addEventListener('click',async()=>{if(!currentImage)return;try{const blob=dataUrlToBlob(currentImage),file=new File([blob],'nexora-image.png',{type:blob.type||'image/png'});if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({files:[file],title:'Изображение NEXORA'});return}toast('В этом браузере отправка файла недоступна. Сначала скачайте изображение.')}catch(error){if(error.name!=='AbortError')toast('Не удалось открыть меню отправки. Скачайте изображение и отправьте его из приложения.')}});
+ $('theme-toggle').addEventListener('click',()=>{const root=document.documentElement;const next=root.dataset.theme==='light'?'dark':'light';root.dataset.theme=next;localStorage.setItem('nexora-image-theme',next);$('theme-toggle').textContent=next==='light'?'☾':'☼';document.querySelector('meta[name="theme-color"]').content=next==='light'?'#f3f7ff':'#0b1020'});
+ const saved=localStorage.getItem('nexora-image-theme');if(saved){document.documentElement.dataset.theme=saved;$('theme-toggle').textContent=saved==='light'?'☾':'☼';document.querySelector('meta[name="theme-color"]').content=saved==='light'?'#f3f7ff':'#0b1020'}else if(matchMedia('(prefers-color-scheme: light)').matches){document.documentElement.dataset.theme='light';$('theme-toggle').textContent='☾';document.querySelector('meta[name="theme-color"]').content='#f3f7ff'}
+ fetch('/health').then(r=>r.json()).then(d=>{if(!d.imageGeneratorConfigured)showMessage('Интерфейс готов. Для включения генерации владелец NEXORA должен добавить CLOUDFLARE_ACCOUNT_ID и CLOUDFLARE_API_TOKEN в переменные сервиса Render.','')}).catch(()=>{});
+})();
+</script>
+</body>
+</html>

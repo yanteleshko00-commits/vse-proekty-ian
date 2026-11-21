@@ -164,7 +164,7 @@ const ARGOSHA_TOOLS = [
   { id: 'project', name: 'Сделать проект', status: 'available', description: 'Школьные проекты, презентации, доклады и документы.', url: 'https://vse-proekty-ian-1.onrender.com/' },
   { id: 'solve', name: 'Решить задачу', status: 'coming_soon', description: 'Отдельное решение и объяснение учебных задач.' },
   { id: 'chat', name: 'Чат с ИИ', status: 'coming_soon', description: 'Отдельный универсальный чат с ИИ.' },
-  { id: 'image', name: 'Создать картинку', status: 'coming_soon', description: 'Генерация изображений.' },
+  { id: 'image', name: 'Создать картинку', status: 'available', description: 'Генерация и редактирование изображений.', url: '/image' },
   { id: 'lesson', name: 'Подготовиться к уроку', status: 'coming_soon', description: 'Конспекты, объяснения и самопроверка.' },
   { id: 'text', name: 'Создать текст', status: 'coming_soon', description: 'Отдельный генератор текстов.' }
 ];
@@ -215,6 +215,122 @@ async function readJson(req, limit = 12000) {
     if (Buffer.byteLength(raw) > limit) throw new Error('payload_too_large');
   }
   return JSON.parse(raw || '{}');
+}
+
+const imageDimensions = {
+  square: [1024, 1024],
+  portrait: [768, 1024],
+  landscape: [1024, 768],
+  vertical: [576, 1024],
+  wide: [1024, 576]
+};
+const imageStyles = {
+  realistic: 'photorealistic, realistic materials, natural lighting, highly detailed',
+  cinematic: 'cinematic composition, dramatic light, rich atmosphere, film still',
+  '3d': 'high-quality 3D render, refined materials, studio lighting, detailed 3D design',
+  illustration: 'beautiful digital illustration, polished artwork, clear shapes and refined details',
+  anime: 'anime art style, expressive clean linework, detailed anime background',
+  watercolor: 'traditional watercolor painting, soft pigment texture, delicate brushwork'
+};
+function imageMime(buffer) {
+  if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) return 'image/png';
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
+  if (buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
+  return 'image/png';
+}
+async function generateNexoraImage(req, res) {
+  const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
+  if (!process.env.CLOUDFLARE_ACCOUNT_ID || !process.env.CLOUDFLARE_API_TOKEN) {
+    return send(res, 503, JSON.stringify({
+      error: 'image_not_configured',
+      message: 'Интерфейс уже работает, но генератор ещё не подключён. Добавьте CLOUDFLARE_ACCOUNT_ID и CLOUDFLARE_API_TOKEN в переменные Render сервиса nexora-lobby.'
+    }), jsonHeaders);
+  }
+  if (!allowArgosha(req)) {
+    return send(res, 429, JSON.stringify({ error: 'rate_limited', message: 'Слишком много запросов. Подождите минуту и попробуйте ещё раз.' }), jsonHeaders);
+  }
+  let body;
+  try { body = await readJson(req, 2200000); } catch (error) {
+    return send(res, error.message === 'payload_too_large' ? 413 : 400, JSON.stringify({ error: 'invalid_request', message: 'Не удалось прочитать запрос. Попробуйте ещё раз.' }), jsonHeaders);
+  }
+  const prompt = typeof body.prompt === 'string' ? body.prompt.trim().slice(0, 1200) : '';
+  const ratio = typeof body.ratio === 'string' ? body.ratio : 'square';
+  const style = typeof body.style === 'string' ? body.style : 'realistic';
+  const quality = body.quality === 'detailed' ? 'detailed' : 'standard';
+  if (prompt.length < 4) return send(res, 400, JSON.stringify({ error: 'prompt_too_short', message: 'Опишите изображение чуть подробнее.' }), jsonHeaders);
+  if (!Object.prototype.hasOwnProperty.call(imageDimensions, ratio) || !Object.prototype.hasOwnProperty.call(imageStyles, style)) {
+    return send(res, 400, JSON.stringify({ error: 'invalid_options', message: 'Выберите один из доступных форматов и стилей.' }), jsonHeaders);
+  }
+  const [width, height] = imageDimensions[ratio];
+  const styleText = imageStyles[style];
+  const modelPrompt = prompt + '. Visual style: ' + styleText + (quality === 'detailed' ? '. Fine details, carefully rendered textures, balanced composition.' : '');
+  const form = new FormData();
+  form.append('prompt', modelPrompt);
+  form.append('width', String(width));
+  form.append('height', String(height));
+  form.append('guidance', quality === 'detailed' ? '4' : '3.5');
+  if (typeof body.image === 'string' && body.image) {
+    const match = body.image.match(/^data:(image\\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+    if (!match) return send(res, 400, JSON.stringify({ error: 'invalid_image', message: 'Не удалось прочитать исходное изображение. Загрузите PNG, JPG или WebP.' }), jsonHeaders);
+    if (match[2].length > 1500000) return send(res, 413, JSON.stringify({ error: 'image_too_large', message: 'Исходное изображение слишком большое. Выберите другое фото.' }), jsonHeaders);
+    const bytes = Buffer.from(match[2], 'base64');
+    if (!bytes.length || bytes.length > 1100000) return send(res, 413, JSON.stringify({ error: 'image_too_large', message: 'Исходное изображение слишком большое.' }), jsonHeaders);
+    form.append('input_image_0', new Blob([bytes], { type: match[1] }), 'reference.' + (match[1] === 'image/jpeg' ? 'jpg' : match[1].split('/')[1]));
+  }
+  const endpoint = 'https://api.cloudflare.com/client/v4/accounts/' +
+    encodeURIComponent(process.env.CLOUDFLARE_ACCOUNT_ID.trim()) +
+    '/ai/run/@cf/black-forest-labs/flux-2-klein-4b';
+  try {
+    const upstream = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + process.env.CLOUDFLARE_API_TOKEN.trim() },
+      body: form,
+      signal: AbortSignal.timeout(180000)
+    });
+    const raw = Buffer.from(await upstream.arrayBuffer());
+    if (!upstream.ok) {
+      let detail = '';
+      try {
+        const failure = JSON.parse(raw.toString('utf8'));
+        detail = failure.errors?.[0]?.message || failure.message || '';
+      } catch {}
+      const status = upstream.status === 429 ? 429 : (upstream.status === 401 || upstream.status === 403 ? 503 : 502);
+      const message = upstream.status === 429
+        ? 'Сервис генерации перегружен или достигнут лимит запросов. Попробуйте позже.'
+        : (upstream.status === 401 || upstream.status === 403)
+          ? 'Cloudflare не принял API-ключ. Проверьте Account ID и разрешение Workers AI: Read в Render.'
+          : 'Cloudflare не смог создать изображение. Проверьте настройки и повторите попытку.';
+      console.error('NEXORA image provider error:', upstream.status, detail.slice(0, 300));
+      return send(res, status, JSON.stringify({ error: 'image_provider_error', message }), jsonHeaders);
+    }
+    let imageBytes = raw;
+    const contentType = upstream.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      let payload;
+      try { payload = JSON.parse(raw.toString('utf8')); } catch {
+        return send(res, 502, JSON.stringify({ error: 'image_response_invalid', message: 'Модель вернула некорректный ответ. Попробуйте ещё раз.' }), jsonHeaders);
+      }
+      const encoded = payload.result?.image || payload.image || payload.result?.data?.[0]?.b64_json;
+      if (payload.success === false || typeof encoded !== 'string' || !encoded) {
+        const providerMessage = payload.errors?.[0]?.message || '';
+        console.error('NEXORA image response incomplete:', providerMessage.slice(0, 300));
+        return send(res, 502, JSON.stringify({ error: 'image_missing', message: 'Модель не вернула изображение. Попробуйте изменить описание.' }), jsonHeaders);
+      }
+      imageBytes = Buffer.from(encoded.replace(/^data:image\\/[a-zA-Z0-9.+-]+;base64,/, ''), 'base64');
+    }
+    if (!imageBytes.length || imageBytes.length > 18000000) {
+      return send(res, 502, JSON.stringify({ error: 'image_size_invalid', message: 'Получилось некорректное изображение. Попробуйте ещё раз.' }), jsonHeaders);
+    }
+    const mime = imageMime(imageBytes);
+    const dataUrl = 'data:' + mime + ';base64,' + imageBytes.toString('base64');
+    return send(res, 200, JSON.stringify({ image: dataUrl, model: 'FLUX.2 Klein 4B' }), jsonHeaders);
+  } catch (error) {
+    console.error('NEXORA image generation failed:', error.message);
+    return send(res, 502, JSON.stringify({
+      error: 'image_generation_failed',
+      message: error.name === 'TimeoutError' ? 'Генерация заняла слишком много времени. Попробуйте ещё раз.' : 'Не удалось связаться с Cloudflare. Проверьте соединение и повторите попытку.'
+    }), jsonHeaders);
+  }
 }
 async function argoshaReply(req, res) {
   if (!allowArgosha(req)) return send(res, 429, JSON.stringify({ error: 'Слишком много сообщений. Подожди минуту.' }), { 'Content-Type': 'application/json; charset=utf-8' });
@@ -329,8 +445,28 @@ const server = http.createServer(async (req, res) => {
       service: 'nexora-lobby',
       oauthConfigured: ready,
       argoshaConfigured: Boolean(process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY),
+      imageGeneratorConfigured: Boolean(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN),
+      imageModel: 'FLUX.2 Klein 4B',
       authService: authBase
     }), { 'Content-Type': 'application/json; charset=utf-8' });
+  }
+
+  if (url.pathname === '/api/images/generate' && req.method === 'POST') {
+    return generateNexoraImage(req, res);
+  }
+
+  if (url.pathname === '/image' || url.pathname === '/image/' || url.pathname === '/image.html') {
+    try {
+      const html = await readFile(join(publicDir, 'image.html'));
+      return send(res, 200, html, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+        'Referrer-Policy': 'strict-origin-when-cross-origin'
+      });
+    } catch (error) {
+      console.error('NEXORA image page read failed:', error.message);
+      return send(res, 500, 'Не удалось открыть генератор изображений.');
+    }
   }
 
   if (url.pathname.startsWith('/api/auth/') && req.method === 'POST') {
