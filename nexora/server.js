@@ -388,7 +388,7 @@ async function requestGigaChatImage({ modelPrompt, ratio, detailed, signal }) {
       'Accept': 'application/json'
     },
     body: JSON.stringify({
-      model: process.env.GIGACHAT_IMAGE_MODEL || 'GigaChat',
+      model: process.env.GIGACHAT_IMAGE_MODEL || 'GigaChat-2-Max',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: modelPrompt }
@@ -399,14 +399,19 @@ async function requestGigaChatImage({ modelPrompt, ratio, detailed, signal }) {
   }).catch(error => { throw networkFailure('GigaChat', 'image_generation', error); });
   const data = await upstream.json().catch(() => ({}));
   if (!upstream.ok) {
-    const detail = data.error?.message || data.message || data.error || 'provider_error';
+    const detail = String(data.error?.message || data.message || data.error || 'provider_error').slice(0, 240);
+    const selectedModel = process.env.GIGACHAT_IMAGE_MODEL || 'GigaChat-2-Max';
+    const publicMessage = upstream.status === 401 || upstream.status === 403
+      ? 'GigaChat отклонил запрос авторизации. Проверьте ключ и область доступа.'
+      : upstream.status === 404
+        ? 'GigaChat не нашёл модель или endpoint (HTTP 404). Проверьте GIGACHAT_IMAGE_MODEL; сейчас используется ' + selectedModel + '.'
+        : 'GigaChat не смог создать изображение (HTTP ' + upstream.status + ').';
     throw providerFailure(
       'GigaChat',
       upstream.status,
       data.error?.code || detail,
-      upstream.status === 401 || upstream.status === 403
-        ? 'GigaChat отклонил запрос авторизации. Проверьте ключ и область доступа.'
-        : 'GigaChat не смог создать изображение (HTTP ' + upstream.status + ').'
+      publicMessage,
+      'image_generation'
     );
   }
   const content = data.choices?.[0]?.message?.content || '';
