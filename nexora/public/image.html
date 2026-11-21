@@ -250,8 +250,14 @@ textarea,select{background:rgba(255,255,255,.65);border-color:rgba(103,139,191,.
  $('clear-source').addEventListener('click',()=>{editSource='';$('source-preview').classList.remove('visible');$('upload-image').value=''});
  $('download').addEventListener('click',async()=>{if(!currentImage)return;try{const blob=dataUrlToBlob(currentImage),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='nexora-image-'+new Date().toISOString().slice(0,10)+'.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);toast('Изображение сохранено на устройство')}catch(e){toast('Не удалось скачать. Попробуйте ещё раз.')}});
  $('share').addEventListener('click',async()=>{if(!currentImage)return;try{const blob=dataUrlToBlob(currentImage),file=new File([blob],'nexora-image.png',{type:blob.type||'image/png'});if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({files:[file],title:'Изображение NEXORA'});return}toast('В этом браузере отправка файла недоступна. Сначала скачайте изображение.')}catch(error){if(error.name!=='AbortError')toast('Не удалось открыть меню отправки. Скачайте изображение и отправьте его из приложения.')}});
- $('theme-toggle').addEventListener('click',()=>{const root=document.documentElement;const next=root.dataset.theme==='dark'?'light':'dark';root.dataset.theme=next;localStorage.setItem('nexora-image-theme',next);$('theme-toggle').textContent=next==='light'?'☾':'☼';document.querySelector('meta[name="theme-color"]').content=next==='light'?'#f7faff':'#0b1020'});
- const saved=localStorage.getItem('nexora-image-theme');if(saved==='dark'){document.documentElement.dataset.theme='dark';$('theme-toggle').textContent='☼';document.querySelector('meta[name="theme-color"]').content='#0b1020'}else{document.documentElement.dataset.theme='light';$('theme-toggle').textContent='☾';document.querySelector('meta[name="theme-color"]').content='#f7faff'}
+  const themeKey='nexora-image-theme';
+ const themeMedia=window.matchMedia('(prefers-color-scheme: dark)');
+ function applyTheme(theme){document.documentElement.dataset.theme=theme;$('theme-toggle').textContent=theme==='light'?'☾':'☼';document.querySelector('meta[name="theme-color"]').content=theme==='light'?'#f7faff':'#0b1020'}
+ const savedTheme=localStorage.getItem(themeKey);
+ applyTheme(savedTheme==='dark'||(!savedTheme&&themeMedia.matches)?'dark':'light');
+ $('theme-toggle').addEventListener('click',()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem(themeKey,next);applyTheme(next)});
+ const syncSystemTheme=event=>{if(!localStorage.getItem(themeKey))applyTheme(event.matches?'dark':'light')};
+ if(typeof themeMedia.addEventListener==='function')themeMedia.addEventListener('change',syncSystemTheme);else if(typeof themeMedia.addListener==='function')themeMedia.addListener(syncSystemTheme);
  fetch('/health').then(r=>r.json()).then(d=>{if(!d.imageGeneratorConfigured)showMessage('Интерфейс готов. Для включения генерации владелец NEXORA должен добавить CLOUDFLARE_ACCOUNT_ID и CLOUDFLARE_API_TOKEN в переменные сервиса Render.','')}).catch(()=>{});
 })();
 </script>
