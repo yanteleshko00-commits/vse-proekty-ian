@@ -49,9 +49,17 @@ h1{margin:15px 0 8px;font-size:clamp(32px,5.4vw,52px);line-height:1.05;letter-sp
 textarea{width:100%;min-height:158px;resize:vertical;padding:16px;border:1px solid var(--line);border-radius:17px;outline:none;background:color-mix(in srgb,var(--bg2) 65%,transparent);color:var(--text);font-size:14px;line-height:1.65;transition:border-color .2s,box-shadow .2s}
 textarea::placeholder{color:var(--muted);opacity:.85}
 textarea:focus,select:focus{border-color:rgba(89,151,255,.7);box-shadow:0 0 0 4px var(--glow)}
-.examples{display:flex;flex-wrap:wrap;gap:7px;margin:11px 0 21px}
-.example{padding:7px 10px;border:1px solid var(--line);border-radius:30px;background:transparent;color:var(--muted);font-size:11px;transition:.18s}
-.example:hover{color:var(--text);border-color:rgba(92,151,255,.45);background:var(--glow)}
+.ideas{margin:12px 0 21px}
+.ideas-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 9px;color:var(--muted);font-size:10px}
+.ideas-heading strong{color:var(--text);font-size:11px;font-weight:750}
+.ideas-window{position:relative;overflow:hidden;padding:2px 0 5px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent);mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
+.ideas-track{display:flex;width:max-content;animation:ideas-marquee 42s linear infinite;will-change:transform}
+.ideas-window:hover .ideas-track,.ideas-window:focus-within .ideas-track{animation-play-state:paused}
+.ideas-group{display:flex;flex:none;align-items:center;gap:8px;padding-right:8px}
+.idea-chip{flex:none;padding:8px 12px;border:1px solid var(--line);border-radius:30px;background:color-mix(in srgb,var(--panel2) 82%,transparent);color:var(--muted);font-size:11px;font-weight:650;white-space:nowrap;box-shadow:0 3px 10px rgba(40,80,145,.04);transition:color .2s,border-color .2s,background .2s,transform .2s}
+.idea-chip:hover,.idea-chip:focus-visible{color:var(--text);border-color:rgba(92,151,255,.58);background:var(--glow);transform:translateY(-1px);outline:none}
+@keyframes ideas-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){.ideas-track{animation:none}}
 .section-label{margin:0 0 10px;color:var(--text);font-size:12px;font-weight:760}
 .styles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:20px}
 .style{min-height:45px;padding:9px 8px;border:1px solid var(--line);border-radius:13px;background:color-mix(in srgb,var(--bg2) 56%,transparent);color:var(--muted);font-size:11px;font-weight:680;transition:.18s}
@@ -223,10 +231,34 @@ h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-to
    <div class="card-head"><h2>Опишите изображение</h2><span class="step">01 / PROMPT</span></div>
    <label class="field-label" for="prompt"><span>Ваш промпт</span><span class="field-hint" id="prompt-count">0 / 1200</span></label>
    <textarea id="prompt" maxlength="1200" placeholder="Например: уютный домик в горах на берегу озера, раннее утро, мягкий туман, кинематографичный свет, высокая детализация…"></textarea>
-   <div class="examples">
-    <button class="example" type="button" data-prompt="Футуристический город на берегу моря на закате, отражения неоновых огней, кинематографичная атмосфера">Город будущего</button>
-    <button class="example" type="button" data-prompt="Милый маленький робот-помощник на чистом рабочем столе, мягкий свет, дружелюбный дизайн">Милый робот</button>
-    <button class="example" type="button" data-prompt="Величественные горы, озеро с прозрачной водой и хвойный лес, ранний рассвет">Пейзаж</button>
+   <div class="ideas" aria-label="Идеи для изображения">
+    <div class="ideas-heading"><strong>Идеи для вдохновения</strong><span>Нажмите на любую, чтобы добавить её</span></div>
+    <div class="ideas-window">
+     <div class="ideas-track">
+      <div class="ideas-group" role="group" aria-label="Идеи для изображения">
+    <button class="idea-chip" type="button" data-prompt="Футуристический город на берегу моря на закате, отражения неоновых огней, кинематографичная атмосфера и детализированная архитектура">Город будущего</button>
+    <button class="idea-chip" type="button" data-prompt="Большая научно-фантастическая космическая станция на орбите Земли, рассвет за горизонтом планеты, кинематографичный реализм">Космическая станция</button>
+    <button class="idea-chip" type="button" data-prompt="Небольшой современный деревянный дом среди высоких сосен, тёплый свет в окнах, туманное утро, атмосферная фотография">Уютный дом в лесу</button>
+    <button class="idea-chip" type="button" data-prompt="Милый маленький робот-помощник на чистом рабочем столе, мягкий студийный свет, дружелюбный дизайн, высокодетализированный 3D-рендер">Маленький робот</button>
+    <button class="idea-chip" type="button" data-prompt="Величественный фэнтези-замок на вершине горы над облаками, лучи солнца, масштабная сказочная панорама">Замок в облаках</button>
+    <button class="idea-chip" type="button" data-prompt="Сказочный подводный мир с коралловыми садами, прозрачной бирюзовой водой и солнечными лучами, реалистичная фотография">Подводный мир</button>
+    <button class="idea-chip" type="button" data-prompt="Уютная маленькая кофейня на тихой улице во время дождя, отражения огней в мокрой мостовой, кинематографичная атмосфера">Кафе под дождём</button>
+    <button class="idea-chip" type="button" data-prompt="Элегантный скоростной поезд будущего проходит через зелёную горную долину, широкоугольная кинематографичная фотография">Поезд будущего</button>
+    <button class="idea-chip" type="button" data-prompt="Стильный натюрморт из свежих фруктов и цветов на цветном фоне, мягкий направленный свет, современная журнальная съёмка">Яркий натюрморт</button>
+      </div>
+      <div class="ideas-group" aria-hidden="true">
+    <button class="idea-chip" type="button" data-prompt="Футуристический город на берегу моря на закате, отражения неоновых огней, кинематографичная атмосфера и детализированная архитектура" tabindex="-1">Город будущего</button>
+    <button class="idea-chip" type="button" data-prompt="Большая научно-фантастическая космическая станция на орбите Земли, рассвет за горизонтом планеты, кинематографичный реализм" tabindex="-1">Космическая станция</button>
+    <button class="idea-chip" type="button" data-prompt="Небольшой современный деревянный дом среди высоких сосен, тёплый свет в окнах, туманное утро, атмосферная фотография" tabindex="-1">Уютный дом в лесу</button>
+    <button class="idea-chip" type="button" data-prompt="Милый маленький робот-помощник на чистом рабочем столе, мягкий студийный свет, дружелюбный дизайн, высокодетализированный 3D-рендер" tabindex="-1">Маленький робот</button>
+    <button class="idea-chip" type="button" data-prompt="Величественный фэнтези-замок на вершине горы над облаками, лучи солнца, масштабная сказочная панорама" tabindex="-1">Замок в облаках</button>
+    <button class="idea-chip" type="button" data-prompt="Сказочный подводный мир с коралловыми садами, прозрачной бирюзовой водой и солнечными лучами, реалистичная фотография" tabindex="-1">Подводный мир</button>
+    <button class="idea-chip" type="button" data-prompt="Уютная маленькая кофейня на тихой улице во время дождя, отражения огней в мокрой мостовой, кинематографичная атмосфера" tabindex="-1">Кафе под дождём</button>
+    <button class="idea-chip" type="button" data-prompt="Элегантный скоростной поезд будущего проходит через зелёную горную долину, широкоугольная кинематографичная фотография" tabindex="-1">Поезд будущего</button>
+    <button class="idea-chip" type="button" data-prompt="Стильный натюрморт из свежих фруктов и цветов на цветном фоне, мягкий направленный свет, современная журнальная съёмка" tabindex="-1">Яркий натюрморт</button>
+      </div>
+     </div>
+    </div>
    </div>
    <div class="settings">
     <div class="setting"><label for="ratio">Формат изображения</label><select id="ratio"><option value="square">Квадрат · 1:1</option><option value="portrait">Портрет · 3:4</option><option value="landscape">Альбом · 4:3</option><option value="vertical">Вертикальный · 9:16</option><option value="wide">Широкий · 16:9</option></select></div>
@@ -296,7 +328,7 @@ h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-to
  async function run(promptText,imageData){if(busy)return;const clean=String(promptText||'').trim();if(clean.length<4){showMessage('Опиши изображение чуть подробнее.','error');prompt.focus();return}setBusy(true);showMessage('');try{let small=null;if(imageData)small=await smallImageData(imageData);const response=await fetch('/api/images/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:clean,style:'realistic',ratio:$('ratio').value,quality:$('quality').value,image:small})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.message||data.error||'Не удалось создать изображение.');if(!data.image||typeof data.image!=='string')throw new Error('Сервис не вернул готовое изображение.');showImage(data.image,clean,data.provider||data.model);showMessage('Изображение готово. Его можно скачать, отправить или изменить следующим промптом.','success')}catch(error){empty.style.display=currentImage?'none':'block';image.style.display=currentImage?'block':'none';if(currentImage)actions.classList.add('visible');showMessage(error.message==='Failed to fetch'?'Не удалось связаться с сервером NEXORA. Проверьте подключение и попробуйте снова.':error.message,'error');$('result-status').textContent='Не удалось завершить генерацию'}finally{setBusy(false)}}
  generate.addEventListener('click',()=>run(prompt.value,null));
  prompt.addEventListener('input',()=>count.textContent=prompt.value.length+' / 1200');
- document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>{prompt.value=b.dataset.prompt;count.textContent=prompt.value.length+' / 1200';prompt.focus()}));
+ document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>{const addition=b.dataset.prompt||'';const existing=prompt.value.trim();const separator=existing?( /[.!?…]$/.test(existing)?' ':'; '):'';prompt.value=(existing+separator+addition).slice(0,1200);count.textContent=prompt.value.length+' / 1200';toast('Идея добавлена к описанию');prompt.focus()}));
 
  $('edit-toggle').addEventListener('click',()=>{$('edit-panel').classList.toggle('open');$('edit-prompt').focus()});
  $('apply-edit').addEventListener('click',()=>{const text=$('edit-prompt').value.trim();if(!text){showMessage('Напиши, что нужно изменить.','error');$('edit-prompt').focus();return}if(!currentImage&&!editSource){showMessage('Сначала создай или загрузи изображение.','error');return}const source=editSource||currentImage;const editText='Отредактируй исходное изображение согласно инструкции. Сохрани основные объекты и композицию, если пользователь явно не попросил их изменить. Инструкция: '+text;run(editText,source)});
