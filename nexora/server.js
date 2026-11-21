@@ -245,47 +245,58 @@ let gigaChatTokenPromise = null;
 async function getGigaChatAccessToken() {
   if (gigaChatTokenCache && Date.now() < gigaChatTokenExpiresAt - 60000) return gigaChatTokenCache;
   if (gigaChatTokenPromise) return gigaChatTokenPromise;
-  const authKey = String(process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY || '').trim();
-  if (!authKey) throw Object.assign(new Error('GigaChat is not configured'), {
+  const authKeys = [
+    String(process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY || '').trim(),
+    String(process.env.GIGACHAT_BACKUP_AUTH || '').trim()
+  ].filter((key, index, all) => key && all.indexOf(key) === index);
+  if (!authKeys.length) throw Object.assign(new Error('GigaChat is not configured'), {
     providerName: 'GigaChat', providerCode: 'not_configured', publicMessage: 'Ключ GigaChat не настроен.'
   });
   gigaChatTokenPromise = (async () => {
+    let lastAuthError;
     try {
-      const response = await fetch('https://ngw.devices.sberbank.ru:9443/api/v2/oauth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-          'RqUID': crypto.randomUUID(),
-          'Authorization': 'Basic ' + authKey
-        },
-        body: new URLSearchParams({ scope: process.env.GIGACHAT_SCOPE || 'GIGACHAT_API_PERS' }),
-        signal: AbortSignal.timeout(15000)
-      }).catch(error => { throw networkFailure('GigaChat', 'oauth', error); });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.access_token) {
-        throw Object.assign(new Error('GigaChat OAuth HTTP ' + response.status), {
-          providerName: 'GigaChat',
-          upstreamStatus: response.status,
-          providerCode: String(data.error || data.message || 'oauth_failed'),
-          publicMessage: response.status === 401 || response.status === 403
-            ? 'GigaChat не принял ключ авторизации. Проверьте GIGACHAT_API_KEY и GIGACHAT_SCOPE в Render.'
-            : 'Не удалось авторизовать запрос в GigaChat (HTTP ' + response.status + ').'
-        });
+      for (const authKey of authKeys) {
+        try {
+          const response = await fetch('https://ngw.devices.sberbank.ru:9443/api/v2/oauth', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+              'RqUID': crypto.randomUUID(),
+              'Authorization': 'Basic ' + authKey
+            },
+            body: new URLSearchParams({ scope: process.env.GIGACHAT_SCOPE || 'GIGACHAT_API_PERS' }),
+            signal: AbortSignal.timeout(15000)
+          }).catch(error => { throw networkFailure('GigaChat', 'oauth', error); });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.access_token) {
+            lastAuthError = Object.assign(new Error('GigaChat OAuth HTTP ' + response.status), {
+              providerName: 'GigaChat',
+              upstreamStatus: response.status,
+              providerCode: String(data.error || data.message || 'oauth_failed'),
+              publicMessage: response.status === 401 || response.status === 403
+                ? 'GigaChat не принял ключ авторизации. Проверьте основной или резервный ключ и GIGACHAT_SCOPE в Render.'
+                : 'Не удалось авторизовать запрос в GigaChat (HTTP ' + response.status + ').'
+            });
+            continue;
+          }
+          gigaChatTokenCache = String(data.access_token);
+          const expires = Number(data.expires_at);
+          gigaChatTokenExpiresAt = Number.isFinite(expires) && expires > 0
+            ? (expires > 100000000000 ? expires : expires * 1000)
+            : Date.now() + 25 * 60 * 1000;
+          return gigaChatTokenCache;
+        } catch (error) {
+          lastAuthError = error;
+        }
       }
-      gigaChatTokenCache = String(data.access_token);
-      const expires = Number(data.expires_at);
-      gigaChatTokenExpiresAt = Number.isFinite(expires) && expires > 0
-        ? (expires > 100000000000 ? expires : expires * 1000)
-        : Date.now() + 25 * 60 * 1000;
-      return gigaChatTokenCache;
+      throw lastAuthError || new Error('GigaChat OAuth failed');
     } finally {
       gigaChatTokenPromise = null;
     }
   })();
   return gigaChatTokenPromise;
 }
-
 function providerFailure(providerName, status, code, message, stage = '') {
   return Object.assign(new Error(providerName + ' HTTP ' + status), {
     providerName,
