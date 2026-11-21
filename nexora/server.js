@@ -332,22 +332,40 @@ async function generateNexoraImage(req, res) {
         requestId
       }));
       let status = 502;
+      let responseError = 'image_provider_error';
       let message = 'OpenAI не смог создать изображение. Попробуйте ещё раз.';
       if (upstream.status === 401 || upstream.status === 403) {
         status = 503;
         message = 'OpenAI не принял API-ключ. Проверьте OPENAI_API_KEY в настройках Render.';
       } else if (upstream.status === 429) {
-        status = 429;
-        message = code === 'insufficient_quota' || code === 'billing_hard_limit_reached'
-          ? 'У API-аккаунта OpenAI закончился доступный баланс или достигнут лимит расходов. Проверьте настройки оплаты и лимиты.'
-          : 'OpenAI временно ограничил число запросов. Подождите и попробуйте ещё раз.';
+        const balanceCodes = ['insufficient_quota', 'billing_hard_limit_reached', 'credit_balance_exhausted'];
+        const isBalanceError = balanceCodes.includes(code);
+        const isRateLimit = code === 'rate_limit_exceeded' || code === 'requests' || code === 'tokens' || code.includes('rate_limit');
+        if (isBalanceError) {
+          status = 402;
+          responseError = 'image_billing_required';
+          message = 'Баланс API-аккаунта OpenAI исчерпан или достигнут лимит расходов. Попросите владельца API-аккаунта проверить раздел Billing и Usage в OpenAI. Пока баланс не восстановлен, повторные попытки не помогут.';
+        } else if (isRateLimit) {
+          status = 429;
+          responseError = 'image_rate_limited';
+          message = 'OpenAI временно ограничил частоту запросов. Подождите немного и повторите попытку.';
+        } else {
+          status = 429;
+          responseError = 'image_api_limit';
+          message = 'OpenAI отклонил запрос с ограничением 429. Проверьте доступные лимиты и состояние API-аккаунта, затем повторите попытку.';
+        }
       } else if (upstream.status === 400) {
         status = 400;
         message = code === 'moderation_blocked'
           ? 'Запрос не прошёл проверку безопасности. Измените описание изображения.'
           : 'OpenAI не принял запрос. Проверьте описание, формат изображения и повторите попытку.';
       }
-      return send(res, status, JSON.stringify({ error: 'image_provider_error', message }), jsonHeaders);
+      const responseHeaders = { ...jsonHeaders };
+      const retryAfter = Number(upstream.headers.get('retry-after'));
+      if (status === 429 && Number.isFinite(retryAfter) && retryAfter > 0) {
+        responseHeaders['Retry-After'] = String(Math.min(300, Math.ceil(retryAfter)));
+      }
+      return send(res, status, JSON.stringify({ error: responseError, providerCode: code, message }), responseHeaders);
     }
 
     const encoded = payload.data?.[0]?.b64_json;
