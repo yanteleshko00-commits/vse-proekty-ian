@@ -270,12 +270,20 @@ async function generateNexoraImage(req, res) {
   form.append('height', String(height));
   form.append('guidance', quality === 'detailed' ? '4' : '3.5');
   if (typeof body.image === 'string' && body.image) {
-    const match = body.image.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
-    if (!match) return send(res, 400, JSON.stringify({ error: 'invalid_image', message: 'Не удалось прочитать исходное изображение. Загрузите PNG, JPG или WebP.' }), jsonHeaders);
-    if (match[2].length > 1500000) return send(res, 413, JSON.stringify({ error: 'image_too_large', message: 'Исходное изображение слишком большое. Выберите другое фото.' }), jsonHeaders);
-    const bytes = Buffer.from(match[2], 'base64');
+    const comma = body.image.indexOf(',');
+    const header = comma > 0 ? body.image.slice(0, comma) : '';
+    const mime = header === 'data:image/png;base64' ? 'image/png'
+      : header === 'data:image/jpeg;base64' ? 'image/jpeg'
+      : header === 'data:image/webp;base64' ? 'image/webp' : '';
+    const encodedImage = comma > 0 ? body.image.slice(comma + 1) : '';
+    if (!mime || !encodedImage || !/^[A-Za-z0-9+/=]+$/.test(encodedImage)) {
+      return send(res, 400, JSON.stringify({ error: 'invalid_image', message: 'Не удалось прочитать исходное изображение. Загрузите PNG, JPG или WebP.' }), jsonHeaders);
+    }
+    if (encodedImage.length > 1500000) return send(res, 413, JSON.stringify({ error: 'image_too_large', message: 'Исходное изображение слишком большое. Выберите другое фото.' }), jsonHeaders);
+    const bytes = Buffer.from(encodedImage, 'base64');
     if (!bytes.length || bytes.length > 1100000) return send(res, 413, JSON.stringify({ error: 'image_too_large', message: 'Исходное изображение слишком большое.' }), jsonHeaders);
-    form.append('input_image_0', new Blob([bytes], { type: match[1] }), 'reference.' + (match[1] === 'image/jpeg' ? 'jpg' : match[1].split('/')[1]));
+    const extension = mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1];
+    form.append('input_image_0', new Blob([bytes], { type: mime }), 'reference.' + extension);
   }
   const endpoint = 'https://api.cloudflare.com/client/v4/accounts/' +
     encodeURIComponent(process.env.CLOUDFLARE_ACCOUNT_ID.trim()) +
@@ -316,7 +324,8 @@ async function generateNexoraImage(req, res) {
         console.error('NEXORA image response incomplete:', providerMessage.slice(0, 300));
         return send(res, 502, JSON.stringify({ error: 'image_missing', message: 'Модель не вернула изображение. Попробуйте изменить описание.' }), jsonHeaders);
       }
-      imageBytes = Buffer.from(encoded.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, ''), 'base64');
+      const outputComma = encoded.indexOf(',');
+      imageBytes = Buffer.from(outputComma >= 0 ? encoded.slice(outputComma + 1) : encoded, 'base64');
     }
     if (!imageBytes.length || imageBytes.length > 18000000) {
       return send(res, 502, JSON.stringify({ error: 'image_size_invalid', message: 'Получилось некорректное изображение. Попробуйте ещё раз.' }), jsonHeaders);
