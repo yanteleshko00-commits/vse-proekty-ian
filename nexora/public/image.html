@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1020">
+<meta name="theme-color" content="#f7faff">
 <meta name="description" content="NEXORA Image — создание и редактирование изображений с помощью искусственного интеллекта.">
 <title>Создать изображение · NEXORA</title>
 <style>
-:root{color-scheme:dark;--bg:#090f1e;--bg2:#111b31;--panel:rgba(20,31,54,.72);--panel2:rgba(25,38,65,.88);--line:rgba(170,195,239,.14);--text:#eef4ff;--muted:#95a5c2;--blue:#75aaff;--blue2:#397cf2;--glow:rgba(70,135,255,.22);--shadow:0 24px 70px rgba(0,0,0,.27);--good:#72d7b4;--danger:#ff8795}
+:root{color-scheme:light;--bg:#f7faff;--bg2:#edf4ff;--panel:rgba(255,255,255,.68);--panel2:rgba(255,255,255,.86);--line:rgba(90,116,155,.14);--text:#14213a;--muted:#71819a;--blue:#276fe8;--blue2:#4d8fff;--glow:rgba(64,126,246,.12);--shadow:0 22px 64px rgba(42,74,125,.10);--good:#168b68;--danger:#cb4056}
 :root[data-theme=light]{color-scheme:light;--bg:#f3f7ff;--bg2:#eaf1ff;--panel:rgba(255,255,255,.72);--panel2:rgba(255,255,255,.91);--line:rgba(70,101,153,.16);--text:#17233a;--muted:#73819a;--blue:#276fe8;--blue2:#4d8fff;--glow:rgba(64,126,246,.14);--shadow:0 24px 70px rgba(49,79,130,.13);--good:#168b68;--danger:#cb4056}
 *{box-sizing:border-box}
 html{min-height:100%;scroll-behavior:smooth}
@@ -21,7 +21,9 @@ a{color:inherit;text-decoration:none}
 .brand{display:flex;align-items:center;gap:11px;font-weight:850;letter-spacing:.025em}
 .brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:15px;border:1px solid rgba(105,160,255,.25);background:linear-gradient(145deg,rgba(255,255,255,.14),rgba(63,124,237,.18));box-shadow:0 8px 28px var(--glow)}
 .brand-mark svg{width:26px;height:26px}
-.brand-copy{display:grid;gap:2px}.brand-copy small{font-size:10px;color:var(--muted);font-weight:650;letter-spacing:.14em}
+.brand-wordmark{font-size:20px;letter-spacing:.14em;font-weight:900;color:var(--text);display:block;text-shadow:0 1px 0 rgba(255,255,255,.9)}
+:root[data-theme=dark] .brand-wordmark{color:#eef4ff;text-shadow:none}
+
 .top-actions{display:flex;align-items:center;gap:9px}
 .glass-button{height:42px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);backdrop-filter:blur(18px);transition:transform .2s,border-color .2s,background .2s}
 .glass-button:hover{transform:translateY(-2px);border-color:rgba(91,153,255,.45)}
@@ -121,14 +123,28 @@ select{width:100%;height:43px;padding:0 11px;border:1px solid var(--line);border
 @media(max-width:860px){.layout{grid-template-columns:1fr}.stage{min-height:340px}.intro{align-items:flex-start;flex-direction:column}.model-pill{align-self:flex-start}}
 @media(max-width:560px){.wrap{width:min(100% - 22px,1240px)}.top-inner{height:65px}.brand-mark{width:38px;height:38px}.brand-copy small{display:none}.top-actions .back-label{display:none}.glass-button{width:40px;height:40px;padding:0}.top-actions{gap:7px}main{padding:28px 0 48px}.intro{margin-bottom:20px}h1{font-size:36px}.intro p{font-size:13px}.composer{padding:16px;border-radius:20px}.preview-card{padding:13px;border-radius:20px}.stage{min-height:290px}.styles{grid-template-columns:repeat(3,minmax(0,1fr))}.style{font-size:10px}.settings{gap:8px}.history{padding:15px}.history-item{flex-basis:82px;width:82px;height:82px}.actions{gap:6px}.action-button{font-size:10px}.edit-controls{align-items:stretch;flex-direction:column}.edit-submit{min-height:44px}.quota{font-size:9px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* Refined white liquid glass + mobile polish */
+body{background:radial-gradient(ellipse at 8% -8%,rgba(111,171,255,.17),transparent 36%),radial-gradient(ellipse at 96% 24%,rgba(194,218,255,.5),transparent 32%),linear-gradient(145deg,#fbfdff,#f1f6ff 55%,#f8fbff);background-attachment:fixed}
+.card{background:linear-gradient(145deg,rgba(255,255,255,.82),rgba(255,255,255,.58));border-color:rgba(113,147,196,.16);box-shadow:0 22px 60px rgba(44,80,132,.09),inset 0 1px 0 rgba(255,255,255,.92)}
+.topbar{background:rgba(249,252,255,.76);border-color:rgba(113,147,196,.14)}
+.brand-wordmark{font-size:20px;letter-spacing:.15em}
+textarea,select{background:rgba(255,255,255,.65);border-color:rgba(103,139,191,.18)}
+.stage{background:radial-gradient(ellipse at 48% 38%,rgba(104,157,255,.13),transparent 66%),rgba(244,248,255,.72);border-color:rgba(113,147,196,.17)}
+.glass-button,.action-button,.style,.example,.edit-panel,.quota,.history{box-shadow:inset 0 1px 0 rgba(255,255,255,.75)}
+:root[data-theme=dark] body{background:radial-gradient(ellipse at 12% -5%,rgba(61,128,255,.22),transparent 34%),radial-gradient(ellipse at 96% 22%,rgba(127,164,255,.13),transparent 29%),var(--bg);background-attachment:fixed}
+:root[data-theme=dark] .card{background:linear-gradient(145deg,rgba(27,41,67,.85),rgba(20,31,54,.74));box-shadow:0 24px 70px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.08)}
+:root[data-theme=dark] .topbar{background:rgba(9,15,30,.76)}
+:root[data-theme=dark] textarea,:root[data-theme=dark] select{background:rgba(20,31,54,.66)}
+:root[data-theme=dark] .stage{background:radial-gradient(ellipse at center,rgba(97,150,255,.12),transparent 62%),rgba(17,27,49,.74)}
+@media(max-width:560px){.top-inner{padding-left:2px;padding-right:2px}.brand-wordmark{font-size:18px;letter-spacing:.12em}.wrap{width:calc(100% - 18px)}main{padding-top:22px}.intro h1{font-size:clamp(31px,10vw,39px);line-height:1.08}.intro p{max-width:100%;font-size:13px;line-height:1.55}.model-pill{white-space:normal;font-size:11px}.composer{padding:15px}.card-head{margin-bottom:13px}.field-label{font-size:12px}textarea{min-height:144px;font-size:16px;line-height:1.5;padding:14px}.examples{gap:6px}.example{min-height:36px;padding:8px 11px;font-size:12px}.style{min-height:46px;font-size:11px;padding:8px 5px}.settings{grid-template-columns:1fr 1fr}.setting label{font-size:11px}.primary{min-height:52px;font-size:14px}.preview-card{padding:12px}.preview-top{padding:3px 2px 11px}.preview-top h2{font-size:16px}.stage{min-height:clamp(250px,68vw,370px);border-radius:16px}.actions{grid-template-columns:repeat(3,1fr)}.action-button{min-height:46px;font-size:11px}.edit-panel{padding:12px}.edit-panel textarea{min-height:100px}.upload-label,.edit-submit{min-height:46px}.history{margin-top:14px;padding:14px}.history-item{width:80px;height:80px;flex-basis:80px}.quota{padding:12px;font-size:10px;line-height:1.5}}
+@media(max-width:380px){.styles{grid-template-columns:repeat(2,minmax(0,1fr))}.settings{grid-template-columns:1fr}.model-pill{max-width:100%}.actions{grid-template-columns:1fr 1fr}.action-button:last-child{grid-column:1/-1}}
 </style>
 </head>
 <body>
 <header class="topbar">
  <div class="wrap top-inner">
   <a class="brand" href="/" aria-label="NEXORA, на главную">
-   <span class="brand-mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M12 22.2h8M12.8 25.3h6.4M14 28h4M11.1 17.8a8 8 0 1 1 9.8 0c-1.2.9-1.6 1.8-1.6 2.7h-6.6c0-.9-.4-1.8-1.6-2.7Z" stroke="#69a5ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 3.2v3M5.2 14.3h3M23.8 14.3h3M8.1 6.5l2.1 2.1M23.9 6.5l-2.1 2.1" stroke="#9bc4ff" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-   <span class="brand-copy">NEXORA<small>IMAGE STUDIO</small></span>
+   <span class="brand-copy brand-wordmark">NEXORA</span>
   </a>
   <div class="top-actions">
    <a class="glass-button" href="/"><span>‹</span><span class="back-label">Все инструменты</span></a>
@@ -233,8 +249,8 @@ select{width:100%;height:43px;padding:0 11px;border:1px solid var(--line);border
  $('clear-source').addEventListener('click',()=>{editSource='';$('source-preview').classList.remove('visible');$('upload-image').value=''});
  $('download').addEventListener('click',async()=>{if(!currentImage)return;try{const blob=dataUrlToBlob(currentImage),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='nexora-image-'+new Date().toISOString().slice(0,10)+'.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);toast('Изображение сохранено на устройство')}catch(e){toast('Не удалось скачать. Попробуйте ещё раз.')}});
  $('share').addEventListener('click',async()=>{if(!currentImage)return;try{const blob=dataUrlToBlob(currentImage),file=new File([blob],'nexora-image.png',{type:blob.type||'image/png'});if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({files:[file],title:'Изображение NEXORA'});return}toast('В этом браузере отправка файла недоступна. Сначала скачайте изображение.')}catch(error){if(error.name!=='AbortError')toast('Не удалось открыть меню отправки. Скачайте изображение и отправьте его из приложения.')}});
- $('theme-toggle').addEventListener('click',()=>{const root=document.documentElement;const next=root.dataset.theme==='light'?'dark':'light';root.dataset.theme=next;localStorage.setItem('nexora-image-theme',next);$('theme-toggle').textContent=next==='light'?'☾':'☼';document.querySelector('meta[name="theme-color"]').content=next==='light'?'#f3f7ff':'#0b1020'});
- const saved=localStorage.getItem('nexora-image-theme');if(saved){document.documentElement.dataset.theme=saved;$('theme-toggle').textContent=saved==='light'?'☾':'☼';document.querySelector('meta[name="theme-color"]').content=saved==='light'?'#f3f7ff':'#0b1020'}else if(matchMedia('(prefers-color-scheme: light)').matches){document.documentElement.dataset.theme='light';$('theme-toggle').textContent='☾';document.querySelector('meta[name="theme-color"]').content='#f3f7ff'}
+ $('theme-toggle').addEventListener('click',()=>{const root=document.documentElement;const next=root.dataset.theme==='dark'?'light':'dark';root.dataset.theme=next;localStorage.setItem('nexora-image-theme',next);$('theme-toggle').textContent=next==='light'?'☾':'☼';document.querySelector('meta[name="theme-color"]').content=next==='light'?'#f7faff':'#0b1020'});
+ const saved=localStorage.getItem('nexora-image-theme');if(saved==='dark'){document.documentElement.dataset.theme='dark';$('theme-toggle').textContent='☼';document.querySelector('meta[name="theme-color"]').content='#0b1020'}else{document.documentElement.dataset.theme='light';$('theme-toggle').textContent='☾';document.querySelector('meta[name="theme-color"]').content='#f7faff'}
  fetch('/health').then(r=>r.json()).then(d=>{if(!d.imageGeneratorConfigured)showMessage('Интерфейс готов. Для включения генерации владелец NEXORA должен добавить CLOUDFLARE_ACCOUNT_ID и CLOUDFLARE_API_TOKEN в переменные сервиса Render.','')}).catch(()=>{});
 })();
 </script>
