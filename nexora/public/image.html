@@ -139,6 +139,35 @@ textarea,select{background:rgba(255,255,255,.65);border-color:rgba(103,139,191,.
 :root[data-theme=dark] .stage{background:radial-gradient(ellipse at center,rgba(97,150,255,.12),transparent 62%),rgba(17,27,49,.74)}
 @media(max-width:560px){.top-inner{padding-left:2px;padding-right:2px}.brand-wordmark{font-size:18px;letter-spacing:.12em}.wrap{width:calc(100% - 18px)}main{padding-top:22px}.intro h1{font-size:clamp(31px,10vw,39px);line-height:1.08}.intro p{max-width:100%;font-size:13px;line-height:1.55}.model-pill{white-space:normal;font-size:11px}.composer{padding:15px}.card-head{margin-bottom:13px}.field-label{font-size:12px}textarea{min-height:144px;font-size:16px;line-height:1.5;padding:14px}.examples{gap:6px}.example{min-height:36px;padding:8px 11px;font-size:12px}.style{min-height:46px;font-size:11px;padding:8px 5px}.settings{grid-template-columns:1fr 1fr}.setting label{font-size:11px}.primary{min-height:52px;font-size:14px}.preview-card{padding:12px}.preview-top{padding:3px 2px 11px}.preview-top h2{font-size:16px}.stage{min-height:clamp(250px,68vw,370px);border-radius:16px}.actions{grid-template-columns:repeat(3,1fr)}.action-button{min-height:46px;font-size:11px}.edit-panel{padding:12px}.edit-panel textarea{min-height:100px}.upload-label,.edit-submit{min-height:46px}.history{margin-top:14px;padding:14px}.history-item{width:80px;height:80px;flex-basis:80px}.quota{padding:12px;font-size:10px;line-height:1.5}}
 @media(max-width:380px){.styles{grid-template-columns:repeat(2,minmax(0,1fr))}.settings{grid-template-columns:1fr}.model-pill{max-width:100%}.actions{grid-template-columns:1fr 1fr}.action-button:last-child{grid-column:1/-1}}
+
+/* NEXORA bold typography refresh */
+body,button,input,textarea,select{font-weight:650}
+.brand-wordmark,.brand{font-weight:900}
+h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-top h2{font-weight:850}
+.loading{width:min(100%,320px);padding:26px 22px;animation:loader-entry .45s cubic-bezier(.2,.8,.2,1) both}
+.art-loader{position:relative;width:118px;height:118px;margin:0 auto 22px;display:grid;place-items:center}
+.art-orbit{position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(82,145,255,.22);box-shadow:0 0 26px rgba(64,126,246,.08);animation:orbit-breathe 2.8s ease-in-out infinite}
+.orbit-one{border-top-color:var(--blue);border-right-color:rgba(82,145,255,.6);animation:orbit-spin 2.4s linear infinite}
+.orbit-two{inset:19px;border-style:dashed;border-color:rgba(82,145,255,.3);animation:orbit-spin 5.6s linear infinite reverse}
+.art-core{position:relative;width:52px;height:52px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(82,145,255,.22));border:1px solid rgba(92,151,255,.35);box-shadow:0 0 25px rgba(75,139,255,.22),0 0 60px rgba(75,139,255,.12);animation:core-pulse 1.6s ease-in-out infinite}
+.art-spark{position:absolute;width:6px;height:6px;border-radius:50%;background:#6ba3ff;box-shadow:0 0 12px #6ba3ff;animation:spark-float 1.8s ease-in-out infinite}
+.spark-a{top:-7px;left:10px}.spark-b{right:-8px;top:17px;animation-delay:.4s}.spark-c{bottom:-7px;left:19px;animation-delay:.8s}
+.loading-title{display:block;font-size:15px;letter-spacing:-.02em}
+.loading-dots{display:inline-flex;gap:4px;margin-left:5px;vertical-align:middle}
+.loading-dots i{width:4px;height:4px;border-radius:50%;background:var(--blue);animation:dot-hop .9s ease-in-out infinite}
+.loading-dots i:nth-child(2){animation-delay:.15s}.loading-dots i:nth-child(3){animation-delay:.3s}
+.loading p{font-size:12px;line-height:1.65}
+.loading-track{height:4px;overflow:hidden;margin:22px auto 0;border-radius:20px;background:var(--line)}
+.loading-track span{display:block;width:35%;height:100%;border-radius:20px;background:linear-gradient(90deg,transparent,var(--blue),#8db8ff,transparent);animation:track-sweep 1.35s ease-in-out infinite}
+@keyframes orbit-spin{to{transform:rotate(360deg)}}
+@keyframes orbit-breathe{50%{scale:1.06;opacity:.72}}
+@keyframes core-pulse{50%{transform:scale(1.08);box-shadow:0 0 36px rgba(75,139,255,.35),0 0 70px rgba(75,139,255,.2)}}
+@keyframes spark-float{50%{transform:translateY(-5px) scale(1.3);opacity:.65}}
+@keyframes dot-hop{50%{transform:translateY(-4px);opacity:.45}}
+@keyframes track-sweep{0%{transform:translateX(-140%)}100%{transform:translateX(340%)}}
+@keyframes loader-entry{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.art-orbit,.art-core,.art-spark,.loading-dots i,.loading-track span,.loading{animation:none!important}}
+
 </style>
 </head>
 <body>
@@ -172,15 +201,6 @@ textarea,select{background:rgba(255,255,255,.65);border-color:rgba(103,139,191,.
     <button class="example" type="button" data-prompt="Милый маленький робот-помощник на чистом рабочем столе, мягкий свет, дружелюбный дизайн">Милый робот</button>
     <button class="example" type="button" data-prompt="Величественные горы, озеро с прозрачной водой и хвойный лес, ранний рассвет">Пейзаж</button>
    </div>
-   <p class="section-label">Стиль изображения</p>
-   <div class="styles" id="styles">
-    <button class="style active" type="button" data-style="realistic">Фотореализм</button>
-    <button class="style" type="button" data-style="cinematic">Кино</button>
-    <button class="style" type="button" data-style="3d">3D</button>
-    <button class="style" type="button" data-style="illustration">Иллюстрация</button>
-    <button class="style" type="button" data-style="anime">Аниме</button>
-    <button class="style" type="button" data-style="watercolor">Акварель</button>
-   </div>
    <div class="settings">
     <div class="setting"><label for="ratio">Формат изображения</label><select id="ratio"><option value="square">Квадрат · 1:1</option><option value="portrait">Портрет · 3:4</option><option value="landscape">Альбом · 4:3</option><option value="vertical">Вертикальный · 9:16</option><option value="wide">Широкий · 16:9</option></select></div>
     <div class="setting"><label for="quality">Детализация</label><select id="quality"><option value="standard">Стандартная</option><option value="detailed">Повышенная</option></select></div>
@@ -197,7 +217,7 @@ textarea,select{background:rgba(255,255,255,.65);border-color:rgba(103,139,191,.
      <h3>Ваше изображение будет здесь</h3>
      <p>Введите описание слева и нажмите «Создать изображение». Результат появится в этой области.</p>
     </div>
-    <div class="loading" id="loading"><div class="spinner"></div><strong>Создаём изображение…</strong><p>Модель рисует по вашему описанию. Это может занять немного времени.</p></div>
+    <div class="loading" id="loading"><div class="art-loader" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-core"><span class="art-spark spark-a"></span><span class="art-spark spark-b"></span><span class="art-spark spark-c"></span></div></div><strong class="loading-title">Создаём изображение<span class="loading-dots"><i></i><i></i><i></i></span></strong><p>Подбираем композицию, свет и детали. Это может занять немного времени.</p><div class="loading-track"><span></span></div></div>
     <img id="result-image" alt="Сгенерированное изображение">
    </div>
    <div class="actions" id="actions">
@@ -228,8 +248,7 @@ textarea,select{background:rgba(255,255,255,.65);border-color:rgba(103,139,191,.
 (function(){
  const $=id=>document.getElementById(id);
  const prompt=$('prompt'),count=$('prompt-count'),generate=$('generate'),loading=$('loading'),empty=$('empty'),image=$('result-image'),actions=$('actions'),message=$('message');
- let selectedStyle='realistic',currentImage='',currentPrompt='',editSource='',busy=false,versions=[];
- const styles={realistic:'photorealistic, realistic materials, natural lighting, highly detailed',cinematic:'cinematic composition, dramatic light, rich atmosphere, film still', '3d':'high-quality 3D render, refined materials, studio lighting, detailed 3D design',illustration:'beautiful digital illustration, polished artwork, clear shapes and refined details',anime:'anime art style, expressive clean linework, detailed anime background',watercolor:'traditional watercolor painting, soft pigment texture, delicate brushwork'};
+ let currentImage='',currentPrompt='',editSource='',busy=false,versions=[];
  const dims={square:[1024,1024],portrait:[768,1024],landscape:[1024,768],vertical:[576,1024],wide:[1024,576]};
  function toast(text){const node=$('toast');node.textContent=text;node.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>node.classList.remove('show'),2800)}
  function showMessage(text,type){message.textContent=text||'';message.className='message'+(text?' visible':'')+(type?' '+type:'')}
@@ -239,11 +258,11 @@ textarea,select{background:rgba(255,255,255,.65);border-color:rgba(103,139,191,.
  function addVersion(data,description){versions.unshift({data,prompt:description||'',id:Date.now()});versions=versions.slice(0,8);renderHistory()}
  function renderHistory(){const list=$('history-list');list.textContent='';$('history-count').textContent=versions.length+' из 8 версий';if(!versions.length){const e=document.createElement('div');e.className='history-empty';e.textContent='Здесь будут ваши версии. Можно вернуться к любой из них.';list.appendChild(e);return}versions.forEach((v,i)=>{const b=document.createElement('button');b.type='button';b.className='history-item'+(v.data===currentImage?' active':'');const im=document.createElement('img');im.src=v.data;im.alt='Версия '+(versions.length-i);const label=document.createElement('span');label.textContent=i===0?'Последняя':'Версия '+(versions.length-i);b.append(im,label);b.addEventListener('click',()=>{currentImage=v.data;currentPrompt=v.prompt;image.src=v.data;image.style.display='block';empty.style.display='none';actions.classList.add('visible');$('result-status').textContent='Открыта предыдущая версия';$('edit-prompt').value='';renderHistory()});list.appendChild(b)})}
  async function smallImageData(fileOrData){return new Promise((resolve,reject)=>{const src=typeof fileOrData==='string'?fileOrData:URL.createObjectURL(fileOrData);const im=new Image();im.onload=()=>{const scale=Math.min(1,500/Math.max(im.naturalWidth,im.naturalHeight));const w=Math.max(1,Math.round(im.naturalWidth*scale)),h=Math.max(1,Math.round(im.naturalHeight*scale));const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(im,0,0,w,h);if(typeof fileOrData!=='string')URL.revokeObjectURL(src);resolve(canvas.toDataURL('image/jpeg',.86))};im.onerror=()=>{if(typeof fileOrData!=='string')URL.revokeObjectURL(src);reject(new Error('Не удалось прочитать изображение.'))};im.src=src})}
- async function run(promptText,imageData){if(busy)return;const clean=String(promptText||'').trim();if(clean.length<4){showMessage('Опиши изображение чуть подробнее.','error');prompt.focus();return}setBusy(true);showMessage('');try{let small=null;if(imageData)small=await smallImageData(imageData);const response=await fetch('/api/images/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:clean,style:selectedStyle,ratio:$('ratio').value,quality:$('quality').value,image:small})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.message||data.error||'Не удалось создать изображение.');if(!data.image||typeof data.image!=='string')throw new Error('Сервис не вернул готовое изображение.');showImage(data.image,clean);showMessage('Изображение готово. Его можно скачать, отправить или изменить следующим промптом.','success');$('result-status').textContent='Готово · GPT Image 2'}catch(error){empty.style.display=currentImage?'none':'block';image.style.display=currentImage?'block':'none';if(currentImage)actions.classList.add('visible');showMessage(error.message==='Failed to fetch'?'Не удалось связаться с сервером NEXORA. Проверьте подключение и попробуйте снова.':error.message,'error');$('result-status').textContent='Не удалось завершить генерацию'}finally{setBusy(false)}}
+ async function run(promptText,imageData){if(busy)return;const clean=String(promptText||'').trim();if(clean.length<4){showMessage('Опиши изображение чуть подробнее.','error');prompt.focus();return}setBusy(true);showMessage('');try{let small=null;if(imageData)small=await smallImageData(imageData);const response=await fetch('/api/images/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:clean,style:'realistic',ratio:$('ratio').value,quality:$('quality').value,image:small})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.message||data.error||'Не удалось создать изображение.');if(!data.image||typeof data.image!=='string')throw new Error('Сервис не вернул готовое изображение.');showImage(data.image,clean);showMessage('Изображение готово. Его можно скачать, отправить или изменить следующим промптом.','success');$('result-status').textContent='Готово · GPT Image 2'}catch(error){empty.style.display=currentImage?'none':'block';image.style.display=currentImage?'block':'none';if(currentImage)actions.classList.add('visible');showMessage(error.message==='Failed to fetch'?'Не удалось связаться с сервером NEXORA. Проверьте подключение и попробуйте снова.':error.message,'error');$('result-status').textContent='Не удалось завершить генерацию'}finally{setBusy(false)}}
  generate.addEventListener('click',()=>run(prompt.value,null));
  prompt.addEventListener('input',()=>count.textContent=prompt.value.length+' / 1200');
  document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>{prompt.value=b.dataset.prompt;count.textContent=prompt.value.length+' / 1200';prompt.focus()}));
- document.querySelectorAll('.style').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.style').forEach(x=>x.classList.remove('active'));b.classList.add('active');selectedStyle=b.dataset.style}));
+
  $('edit-toggle').addEventListener('click',()=>{$('edit-panel').classList.toggle('open');$('edit-prompt').focus()});
  $('apply-edit').addEventListener('click',()=>{const text=$('edit-prompt').value.trim();if(!text){showMessage('Напиши, что нужно изменить.','error');$('edit-prompt').focus();return}if(!currentImage&&!editSource){showMessage('Сначала создай или загрузи изображение.','error');return}const source=editSource||currentImage;const editText='Отредактируй исходное изображение согласно инструкции. Сохрани основные объекты и композицию, если пользователь явно не попросил их изменить. Инструкция: '+text;run(editText,source)});
  $('upload-image').addEventListener('change',async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;if(!/^image\/(png|jpeg|webp)$/.test(file.type)){showMessage('Поддерживаются PNG, JPG и WebP.','error');e.target.value='';return}if(file.size>10*1024*1024){showMessage('Файл должен быть меньше 10 МБ.','error');e.target.value='';return}try{editSource=await smallImageData(file);$('source-thumb').src=editSource;$('source-preview').classList.add('visible');showMessage('Изображение добавлено. Теперь опиши, что изменить.','success')}catch(error){showMessage(error.message,'error')}});
