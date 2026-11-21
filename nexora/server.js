@@ -217,12 +217,12 @@ async function readJson(req, limit = 12000) {
   return JSON.parse(raw || '{}');
 }
 
-const imageDimensions = {
-  square: [1024, 1024],
-  portrait: [768, 1024],
-  landscape: [1024, 768],
-  vertical: [576, 1024],
-  wide: [1024, 576]
+const imageSizes = {
+  square: '1024x1024',
+  portrait: '768x1024',
+  landscape: '1024x768',
+  vertical: '768x1360',
+  wide: '1360x768'
 };
 const imageStyles = {
   realistic: 'photorealistic, realistic materials, natural lighting, highly detailed',
@@ -236,107 +236,138 @@ function imageMime(buffer) {
   if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) return 'image/png';
   if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
   if (buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
-  return 'image/png';
+  return '';
 }
 async function generateNexoraImage(req, res) {
   const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
-  if (!process.env.CLOUDFLARE_ACCOUNT_ID || !process.env.CLOUDFLARE_API_TOKEN) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey || !apiKey.trim()) {
     return send(res, 503, JSON.stringify({
       error: 'image_not_configured',
-      message: 'Интерфейс уже работает, но генератор ещё не подключён. Добавьте CLOUDFLARE_ACCOUNT_ID и CLOUDFLARE_API_TOKEN в переменные Render сервиса nexora-lobby.'
+      message: 'Генератор подготовлен, но ещё не подключён. Добавьте OPENAI_API_KEY в Environment сервиса nexora-lobby на Render.'
     }), jsonHeaders);
   }
   if (!allowArgosha(req)) {
     return send(res, 429, JSON.stringify({ error: 'rate_limited', message: 'Слишком много запросов. Подождите минуту и попробуйте ещё раз.' }), jsonHeaders);
   }
   let body;
-  try { body = await readJson(req, 2200000); } catch (error) {
+  try { body = await readJson(req, 14 * 1024 * 1024); } catch (error) {
     return send(res, error.message === 'payload_too_large' ? 413 : 400, JSON.stringify({ error: 'invalid_request', message: 'Не удалось прочитать запрос. Попробуйте ещё раз.' }), jsonHeaders);
   }
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim().slice(0, 1200) : '';
   const ratio = typeof body.ratio === 'string' ? body.ratio : 'square';
   const style = typeof body.style === 'string' ? body.style : 'realistic';
-  const quality = body.quality === 'detailed' ? 'detailed' : 'standard';
+  const detailed = body.quality === 'detailed';
   if (prompt.length < 4) return send(res, 400, JSON.stringify({ error: 'prompt_too_short', message: 'Опишите изображение чуть подробнее.' }), jsonHeaders);
-  if (!Object.prototype.hasOwnProperty.call(imageDimensions, ratio) || !Object.prototype.hasOwnProperty.call(imageStyles, style)) {
+  if (!Object.prototype.hasOwnProperty.call(imageSizes, ratio) || !Object.prototype.hasOwnProperty.call(imageStyles, style)) {
     return send(res, 400, JSON.stringify({ error: 'invalid_options', message: 'Выберите один из доступных форматов и стилей.' }), jsonHeaders);
   }
-  const [width, height] = imageDimensions[ratio];
+
+  const size = imageSizes[ratio];
   const styleText = imageStyles[style];
-  const modelPrompt = prompt + '. Visual style: ' + styleText + (quality === 'detailed' ? '. Fine details, carefully rendered textures, balanced composition.' : '');
-  const form = new FormData();
-  form.append('prompt', modelPrompt);
-  form.append('width', String(width));
-  form.append('height', String(height));
+  const modelPrompt = prompt + '. Visual style: ' + styleText +
+    (detailed ? '. Fine details, carefully rendered textures, balanced composition.' : '');
+  let imageFile = null;
+
   if (typeof body.image === 'string' && body.image) {
     const comma = body.image.indexOf(',');
     const header = comma > 0 ? body.image.slice(0, comma) : '';
-    const mime = header === 'data:image/png;base64' ? 'image/png'
+    const declaredMime = header === 'data:image/png;base64' ? 'image/png'
       : header === 'data:image/jpeg;base64' ? 'image/jpeg'
       : header === 'data:image/webp;base64' ? 'image/webp' : '';
     const encodedImage = comma > 0 ? body.image.slice(comma + 1) : '';
-    if (!mime || !encodedImage || !/^[A-Za-z0-9+/=]+$/.test(encodedImage)) {
+    if (!declaredMime || !encodedImage || !/^[A-Za-z0-9+/=]+$/.test(encodedImage)) {
       return send(res, 400, JSON.stringify({ error: 'invalid_image', message: 'Не удалось прочитать исходное изображение. Загрузите PNG, JPG или WebP.' }), jsonHeaders);
     }
-    if (encodedImage.length > 1500000) return send(res, 413, JSON.stringify({ error: 'image_too_large', message: 'Исходное изображение слишком большое. Выберите другое фото.' }), jsonHeaders);
+    if (encodedImage.length > 12500000) {
+      return send(res, 413, JSON.stringify({ error: 'image_too_large', message: 'Исходное изображение слишком большое. Выберите другое фото.' }), jsonHeaders);
+    }
     const bytes = Buffer.from(encodedImage, 'base64');
-    if (!bytes.length || bytes.length > 1100000) return send(res, 413, JSON.stringify({ error: 'image_too_large', message: 'Исходное изображение слишком большое.' }), jsonHeaders);
-    const extension = mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1];
-    form.append('input_image_0', new Blob([bytes], { type: mime }), 'reference.' + extension);
+    if (!bytes.length || bytes.length > 9000000 || imageMime(bytes) !== declaredMime) {
+      return send(res, 400, JSON.stringify({ error: 'invalid_image', message: 'Файл изображения повреждён или имеет неподдерживаемый формат.' }), jsonHeaders);
+    }
+    const extension = declaredMime === 'image/jpeg' ? 'jpg' : declaredMime.split('/')[1];
+    imageFile = { bytes, mime: declaredMime, name: 'reference.' + extension };
   }
-  const endpoint = 'https://api.cloudflare.com/client/v4/accounts/' +
-    encodeURIComponent(process.env.CLOUDFLARE_ACCOUNT_ID.trim()) +
-    '/ai/run/@cf/black-forest-labs/flux-2-klein-4b';
+
   try {
+    const headers = { 'Authorization': 'Bearer ' + apiKey.trim() };
+    let endpoint;
+    let requestBody;
+    if (imageFile) {
+      endpoint = 'https://api.openai.com/v1/images/edits';
+      requestBody = new FormData();
+      requestBody.append('model', 'gpt-image-2');
+      requestBody.append('prompt', modelPrompt);
+      requestBody.append('size', size);
+      requestBody.append('quality', detailed ? 'high' : 'medium');
+      requestBody.append('output_format', 'png');
+      requestBody.append('image[]', new Blob([imageFile.bytes], { type: imageFile.mime }), imageFile.name);
+    } else {
+      endpoint = 'https://api.openai.com/v1/images/generations';
+      headers['Content-Type'] = 'application/json';
+      requestBody = JSON.stringify({
+        model: 'gpt-image-2',
+        prompt: modelPrompt,
+        size,
+        quality: detailed ? 'high' : 'medium',
+        output_format: 'png'
+      });
+    }
+
     const upstream = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + process.env.CLOUDFLARE_API_TOKEN.trim() },
-      body: form,
+      headers,
+      body: requestBody,
       signal: AbortSignal.timeout(180000)
     });
-    const raw = Buffer.from(await upstream.arrayBuffer());
+    const payload = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
-      let detail = '';
-      try {
-        const failure = JSON.parse(raw.toString('utf8'));
-        detail = failure.errors?.[0]?.message || failure.message || '';
-      } catch {}
-      const status = upstream.status === 429 ? 429 : (upstream.status === 401 || upstream.status === 403 ? 503 : 502);
-      const message = upstream.status === 429
-        ? 'Сервис генерации перегружен или достигнут лимит запросов. Попробуйте позже.'
-        : (upstream.status === 401 || upstream.status === 403)
-          ? 'Cloudflare не принял API-ключ. Проверьте Account ID и разрешение Workers AI: Read в Render.'
-          : 'Cloudflare не смог создать изображение. Проверьте настройки и повторите попытку.';
-      console.error('NEXORA image provider error:', upstream.status, detail.slice(0, 300));
+      const providerError = payload.error || {};
+      const code = String(providerError.code || providerError.type || 'unknown_error');
+      const requestId = upstream.headers.get('x-request-id') || '';
+      console.error('NEXORA OpenAI image API error:', JSON.stringify({
+        status: upstream.status,
+        code,
+        requestId
+      }));
+      let status = 502;
+      let message = 'OpenAI не смог создать изображение. Попробуйте ещё раз.';
+      if (upstream.status === 401 || upstream.status === 403) {
+        status = 503;
+        message = 'OpenAI не принял API-ключ. Проверьте OPENAI_API_KEY в настройках Render.';
+      } else if (upstream.status === 429) {
+        status = 429;
+        message = code === 'insufficient_quota' || code === 'billing_hard_limit_reached'
+          ? 'У API-аккаунта OpenAI закончился доступный баланс или достигнут лимит расходов. Проверьте настройки оплаты и лимиты.'
+          : 'OpenAI временно ограничил число запросов. Подождите и попробуйте ещё раз.';
+      } else if (upstream.status === 400) {
+        status = 400;
+        message = code === 'moderation_blocked'
+          ? 'Запрос не прошёл проверку безопасности. Измените описание изображения.'
+          : 'OpenAI не принял запрос. Проверьте описание, формат изображения и повторите попытку.';
+      }
       return send(res, status, JSON.stringify({ error: 'image_provider_error', message }), jsonHeaders);
     }
-    let imageBytes = raw;
-    const contentType = upstream.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      let payload;
-      try { payload = JSON.parse(raw.toString('utf8')); } catch {
-        return send(res, 502, JSON.stringify({ error: 'image_response_invalid', message: 'Модель вернула некорректный ответ. Попробуйте ещё раз.' }), jsonHeaders);
-      }
-      const encoded = payload.result?.image || payload.image || payload.result?.data?.[0]?.b64_json;
-      if (payload.success === false || typeof encoded !== 'string' || !encoded) {
-        const providerMessage = payload.errors?.[0]?.message || '';
-        console.error('NEXORA image response incomplete:', providerMessage.slice(0, 300));
-        return send(res, 502, JSON.stringify({ error: 'image_missing', message: 'Модель не вернула изображение. Попробуйте изменить описание.' }), jsonHeaders);
-      }
-      const outputComma = encoded.indexOf(',');
-      imageBytes = Buffer.from(outputComma >= 0 ? encoded.slice(outputComma + 1) : encoded, 'base64');
+
+    const encoded = payload.data?.[0]?.b64_json;
+    if (typeof encoded !== 'string' || !encoded) {
+      console.error('NEXORA OpenAI image API returned no image:', upstream.headers.get('x-request-id') || 'no_request_id');
+      return send(res, 502, JSON.stringify({ error: 'image_missing', message: 'OpenAI не вернул изображение. Попробуйте изменить описание.' }), jsonHeaders);
     }
-    if (!imageBytes.length || imageBytes.length > 18000000) {
+    const imageBytes = Buffer.from(encoded, 'base64');
+    if (!imageBytes.length || imageBytes.length > 18000000 || imageMime(imageBytes) !== 'image/png') {
       return send(res, 502, JSON.stringify({ error: 'image_size_invalid', message: 'Получилось некорректное изображение. Попробуйте ещё раз.' }), jsonHeaders);
     }
-    const mime = imageMime(imageBytes);
-    const dataUrl = 'data:' + mime + ';base64,' + imageBytes.toString('base64');
-    return send(res, 200, JSON.stringify({ image: dataUrl, model: 'FLUX.2 Klein 4B' }), jsonHeaders);
+    const dataUrl = 'data:image/png;base64,' + imageBytes.toString('base64');
+    return send(res, 200, JSON.stringify({ image: dataUrl, model: 'GPT Image 2' }), jsonHeaders);
   } catch (error) {
-    console.error('NEXORA image generation failed:', error.message);
+    console.error('NEXORA OpenAI image generation failed:', error.name || 'Error');
     return send(res, 502, JSON.stringify({
       error: 'image_generation_failed',
-      message: error.name === 'TimeoutError' ? 'Генерация заняла слишком много времени. Попробуйте ещё раз.' : 'Не удалось связаться с Cloudflare. Проверьте соединение и повторите попытку.'
+      message: error.name === 'TimeoutError'
+        ? 'Генерация заняла слишком много времени. Попробуйте ещё раз.'
+        : 'Не удалось связаться с OpenAI. Проверьте соединение и повторите попытку.'
     }), jsonHeaders);
   }
 }
@@ -453,8 +484,9 @@ const server = http.createServer(async (req, res) => {
       service: 'nexora-lobby',
       oauthConfigured: ready,
       argoshaConfigured: Boolean(process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY),
-      imageGeneratorConfigured: Boolean(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN),
-      imageModel: 'FLUX.2 Klein 4B',
+      imageGeneratorConfigured: Boolean(process.env.OPENAI_API_KEY),
+      imageProvider: 'OpenAI',
+      imageModel: 'GPT Image 2',
       authService: authBase
     }), { 'Content-Type': 'application/json; charset=utf-8' });
   }
