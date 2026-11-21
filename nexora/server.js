@@ -238,15 +238,200 @@ function imageMime(buffer) {
   if (buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') return 'image/webp';
   return '';
 }
+let gigaChatTokenCache = '';
+let gigaChatTokenExpiresAt = 0;
+let gigaChatTokenPromise = null;
+
+async function getGigaChatAccessToken() {
+  if (gigaChatTokenCache && Date.now() < gigaChatTokenExpiresAt - 60000) return gigaChatTokenCache;
+  if (gigaChatTokenPromise) return gigaChatTokenPromise;
+  const authKey = String(process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY || '').trim();
+  if (!authKey) throw Object.assign(new Error('GigaChat is not configured'), {
+    providerName: 'GigaChat', providerCode: 'not_configured', publicMessage: 'Ключ GigaChat не настроен.'
+  });
+  gigaChatTokenPromise = (async () => {
+    try {
+      const response = await fetch('https://ngw.devices.sberbank.ru:9443/api/v2/oauth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+          'RqUID': crypto.randomUUID(),
+          'Authorization': 'Basic ' + authKey
+        },
+        body: new URLSearchParams({ scope: process.env.GIGACHAT_SCOPE || 'GIGACHAT_API_PERS' }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.access_token) {
+        throw Object.assign(new Error('GigaChat OAuth HTTP ' + response.status), {
+          providerName: 'GigaChat',
+          upstreamStatus: response.status,
+          providerCode: String(data.error || data.message || 'oauth_failed'),
+          publicMessage: response.status === 401 || response.status === 403
+            ? 'GigaChat не принял ключ авторизации. Проверьте GIGACHAT_API_KEY и GIGACHAT_SCOPE в Render.'
+            : 'Не удалось авторизовать запрос в GigaChat (HTTP ' + response.status + ').'
+        });
+      }
+      gigaChatTokenCache = String(data.access_token);
+      const expires = Number(data.expires_at);
+      gigaChatTokenExpiresAt = Number.isFinite(expires) && expires > 0
+        ? (expires > 100000000000 ? expires : expires * 1000)
+        : Date.now() + 25 * 60 * 1000;
+      return gigaChatTokenCache;
+    } finally {
+      gigaChatTokenPromise = null;
+    }
+  })();
+  return gigaChatTokenPromise;
+}
+
+function providerFailure(providerName, status, code, message) {
+  return Object.assign(new Error(providerName + ' HTTP ' + status), {
+    providerName,
+    upstreamStatus: status,
+    providerCode: String(code || 'provider_error'),
+    publicMessage: message
+  });
+}
+
+async function requestOpenAIImage({ apiKey, modelPrompt, size, detailed, imageFile, signal }) {
+  const headers = { 'Authorization': 'Bearer ' + apiKey };
+  let endpoint;
+  let requestBody;
+  if (imageFile) {
+    endpoint = 'https://api.openai.com/v1/images/edits';
+    requestBody = new FormData();
+    requestBody.append('model', 'gpt-image-2');
+    requestBody.append('prompt', modelPrompt);
+    requestBody.append('size', size);
+    requestBody.append('quality', detailed ? 'high' : 'medium');
+    requestBody.append('output_format', 'png');
+    requestBody.append('image[]', new Blob([imageFile.bytes], { type: imageFile.mime }), imageFile.name);
+  } else {
+    endpoint = 'https://api.openai.com/v1/images/generations';
+    headers['Content-Type'] = 'application/json';
+    requestBody = JSON.stringify({
+      model: 'gpt-image-2',
+      prompt: modelPrompt,
+      size,
+      quality: detailed ? 'high' : 'medium',
+      output_format: 'png'
+    });
+  }
+  const upstream = await fetch(endpoint, {
+    method: 'POST',
+    headers,
+    body: requestBody,
+    signal: AbortSignal.any([signal, AbortSignal.timeout(180000)])
+  });
+  const payload = await upstream.json().catch(() => ({}));
+  if (!upstream.ok) {
+    const providerError = payload.error || {};
+    const code = String(providerError.code || providerError.type || 'unknown_error');
+    let message = 'OpenAI не смог создать изображение (HTTP ' + upstream.status + ').';
+    if (upstream.status === 401 || upstream.status === 403) {
+      message = 'OpenAI не принял API-ключ. Проверьте OPENAI_API_KEY в Render.';
+    } else if (upstream.status === 429) {
+      const balanceCodes = ['insufficient_quota', 'billing_hard_limit_reached', 'credit_balance_exhausted'];
+      if (balanceCodes.includes(code)) {
+        message = 'Баланс API-аккаунта OpenAI исчерпан или достигнут лимит расходов.';
+      } else {
+        message = 'OpenAI временно ограничил частоту запросов.';
+      }
+    } else if (upstream.status === 400) {
+      message = code === 'moderation_blocked'
+        ? 'Запрос не прошёл проверку безопасности. Измените описание изображения.'
+        : 'OpenAI не принял запрос. Проверьте описание и параметры изображения.';
+    }
+    throw providerFailure('OpenAI', upstream.status, code, message);
+  }
+  const encoded = payload.data?.[0]?.b64_json;
+  if (typeof encoded !== 'string' || !encoded) {
+    throw providerFailure('OpenAI', 502, 'image_missing', 'OpenAI не вернул файл изображения.');
+  }
+  const imageBytes = Buffer.from(encoded, 'base64');
+  if (!imageBytes.length || imageBytes.length > 18000000 || imageMime(imageBytes) !== 'image/png') {
+    throw providerFailure('OpenAI', 502, 'invalid_image', 'OpenAI вернул некорректный файл изображения.');
+  }
+  return {
+    image: 'data:image/png;base64,' + imageBytes.toString('base64'),
+    provider: 'OpenAI',
+    model: 'GPT Image 2'
+  };
+}
+
+async function requestGigaChatImage({ modelPrompt, ratio, detailed, signal }) {
+  const token = await getGigaChatAccessToken();
+  const orientation = {
+    square: 'квадратная композиция 1:1',
+    portrait: 'вертикальная композиция 3:4',
+    landscape: 'альбомная композиция 4:3',
+    vertical: 'высокая вертикальная композиция 9:16',
+    wide: 'широкая альбомная композиция 16:9'
+  }[ratio];
+  const systemPrompt = 'Ты — профессиональный художник и генератор изображений. Создавай оригинальную визуальную работу строго по описанию пользователя. Стиль: ' +
+    modelPrompt.slice(modelPrompt.indexOf('Visual style:') + 14) +
+    '. Компоновка: ' + orientation +
+    (detailed ? '. Максимально тщательно проработай мелкие детали, фактуры и освещение.' : '');
+  const upstream = await fetch('https://api.giga.chat/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify({
+      model: process.env.GIGACHAT_IMAGE_MODEL || 'GigaChat',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: modelPrompt }
+      ],
+      function_call: 'auto'
+    }),
+    signal: AbortSignal.any([signal, AbortSignal.timeout(180000)])
+  });
+  const data = await upstream.json().catch(() => ({}));
+  if (!upstream.ok) {
+    const detail = data.error?.message || data.message || data.error || 'provider_error';
+    throw providerFailure(
+      'GigaChat',
+      upstream.status,
+      data.error?.code || detail,
+      upstream.status === 401 || upstream.status === 403
+        ? 'GigaChat отклонил запрос авторизации. Проверьте ключ и область доступа.'
+        : 'GigaChat не смог создать изображение (HTTP ' + upstream.status + ').'
+    );
+  }
+  const content = data.choices?.[0]?.message?.content || '';
+  const fileMatch = String(content).match(/<img\b[^>]*\bsrc=["']([^"']+)["']/i) ||
+    String(content).match(/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i);
+  const fileId = fileMatch && (fileMatch[1] || fileMatch[0]);
+  if (!fileId || !/^[0-9a-f-]{20,}$/i.test(fileId)) {
+    throw providerFailure('GigaChat', 502, 'image_missing', 'GigaChat ответил, но не вернул идентификатор изображения.');
+  }
+  const download = await fetch('https://api.giga.chat/v1/files/' + encodeURIComponent(fileId) + '/content', {
+    method: 'GET',
+    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/jpg' },
+    signal: AbortSignal.any([signal, AbortSignal.timeout(60000)])
+  });
+  if (!download.ok) {
+    throw providerFailure('GigaChat', download.status, 'image_download_failed', 'GigaChat создал изображение, но не удалось скачать результат.');
+  }
+  const imageBytes = Buffer.from(await download.arrayBuffer());
+  const mime = imageMime(imageBytes);
+  if (!imageBytes.length || imageBytes.length > 18000000 || !['image/jpeg', 'image/png', 'image/webp'].includes(mime)) {
+    throw providerFailure('GigaChat', 502, 'invalid_image', 'GigaChat вернул файл изображения неподдерживаемого формата.');
+  }
+  return {
+    image: 'data:' + mime + ';base64,' + imageBytes.toString('base64'),
+    provider: 'GigaChat',
+    model: data.model || process.env.GIGACHAT_IMAGE_MODEL || 'GigaChat'
+  };
+}
+
 async function generateNexoraImage(req, res) {
   const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || !apiKey.trim()) {
-    return send(res, 503, JSON.stringify({
-      error: 'image_not_configured',
-      message: 'Генератор подготовлен, но ещё не подключён. Добавьте OPENAI_API_KEY в Environment сервиса nexora-lobby на Render.'
-    }), jsonHeaders);
-  }
   if (!allowArgosha(req)) {
     return send(res, 429, JSON.stringify({ error: 'rate_limited', message: 'Слишком много запросов. Подождите минуту и попробуйте ещё раз.' }), jsonHeaders);
   }
@@ -263,12 +448,7 @@ async function generateNexoraImage(req, res) {
     return send(res, 400, JSON.stringify({ error: 'invalid_options', message: 'Выберите один из доступных форматов и стилей.' }), jsonHeaders);
   }
 
-  const size = imageSizes[ratio];
-  const styleText = imageStyles[style];
-  const modelPrompt = prompt + '. Visual style: ' + styleText +
-    (detailed ? '. Fine details, carefully rendered textures, balanced composition.' : '');
   let imageFile = null;
-
   if (typeof body.image === 'string' && body.image) {
     const comma = body.image.indexOf(',');
     const header = comma > 0 ? body.image.slice(0, comma) : '';
@@ -290,102 +470,78 @@ async function generateNexoraImage(req, res) {
     imageFile = { bytes, mime: declaredMime, name: 'reference.' + extension };
   }
 
+  const openAIKey = String(process.env.OPENAI_API_KEY || '').trim();
+  const gigaKey = String(process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY || '').trim();
+  const providers = [];
+  if (openAIKey) providers.push({ name: 'OpenAI', run: signal => requestOpenAIImage({
+    apiKey: openAIKey,
+    modelPrompt: prompt + '. Visual style: ' + imageStyles[style] +
+      (detailed ? '. Fine details, carefully rendered textures, balanced composition.' : ''),
+    size: imageSizes[ratio],
+    detailed,
+    imageFile,
+    signal
+  }) });
+  if (gigaKey && !imageFile) providers.push({ name: 'GigaChat', run: signal => requestGigaChatImage({
+    modelPrompt: prompt + '. Visual style: ' + imageStyles[style] +
+      (detailed ? '. Fine details, carefully rendered textures, balanced composition.' : ''),
+    ratio,
+    detailed,
+    signal
+  }) });
+
+  if (!providers.length) {
+    const editOnly = Boolean(imageFile && gigaKey && !openAIKey);
+    return send(res, 503, JSON.stringify({
+      error: 'image_not_configured',
+      message: editOnly
+        ? 'GigaChat подключён для генерации новых изображений, но редактирование исходного фото пока требует подключённого OPENAI_API_KEY.'
+        : 'Не подключён ни один генератор изображений. Добавьте OPENAI_API_KEY и/или GIGACHAT_API_KEY в Environment сервиса NEXORA на Render.'
+    }), jsonHeaders);
+  }
+
+  const controllers = providers.map(() => new AbortController());
+  const tasks = providers.map((provider, index) => provider.run(controllers[index].signal).catch(error => {
+    if (!error.providerName) {
+      error.providerName = provider.name;
+      error.publicMessage = error.name === 'TimeoutError'
+        ? 'Время ожидания ответа ' + provider.name + ' истекло.'
+        : provider.name + ' временно недоступен.';
+    }
+    throw error;
+  }));
+
   try {
-    const headers = { 'Authorization': 'Bearer ' + apiKey.trim() };
-    let endpoint;
-    let requestBody;
-    if (imageFile) {
-      endpoint = 'https://api.openai.com/v1/images/edits';
-      requestBody = new FormData();
-      requestBody.append('model', 'gpt-image-2');
-      requestBody.append('prompt', modelPrompt);
-      requestBody.append('size', size);
-      requestBody.append('quality', detailed ? 'high' : 'medium');
-      requestBody.append('output_format', 'png');
-      requestBody.append('image[]', new Blob([imageFile.bytes], { type: imageFile.mime }), imageFile.name);
-    } else {
-      endpoint = 'https://api.openai.com/v1/images/generations';
-      headers['Content-Type'] = 'application/json';
-      requestBody = JSON.stringify({
-        model: 'gpt-image-2',
-        prompt: modelPrompt,
-        size,
-        quality: detailed ? 'high' : 'medium',
-        output_format: 'png'
-      });
-    }
-
-    const upstream = await fetch(endpoint, {
-      method: 'POST',
-      headers,
-      body: requestBody,
-      signal: AbortSignal.timeout(180000)
-    });
-    const payload = await upstream.json().catch(() => ({}));
-    if (!upstream.ok) {
-      const providerError = payload.error || {};
-      const code = String(providerError.code || providerError.type || 'unknown_error');
-      const requestId = upstream.headers.get('x-request-id') || '';
-      console.error('NEXORA OpenAI image API error:', JSON.stringify({
-        status: upstream.status,
-        code,
-        requestId
-      }));
-      let status = 502;
-      let responseError = 'image_provider_error';
-      let message = 'OpenAI не смог создать изображение. Попробуйте ещё раз.';
-      if (upstream.status === 401 || upstream.status === 403) {
-        status = 503;
-        message = 'OpenAI не принял API-ключ. Проверьте OPENAI_API_KEY в настройках Render.';
-      } else if (upstream.status === 429) {
-        const balanceCodes = ['insufficient_quota', 'billing_hard_limit_reached', 'credit_balance_exhausted'];
-        const isBalanceError = balanceCodes.includes(code);
-        const isRateLimit = code === 'rate_limit_exceeded' || code === 'requests' || code === 'tokens' || code.includes('rate_limit');
-        if (isBalanceError) {
-          status = 402;
-          responseError = 'image_billing_required';
-          message = 'Баланс API-аккаунта OpenAI исчерпан или достигнут лимит расходов. Попросите владельца API-аккаунта проверить раздел Billing и Usage в OpenAI. Пока баланс не восстановлен, повторные попытки не помогут.';
-        } else if (isRateLimit) {
-          status = 429;
-          responseError = 'image_rate_limited';
-          message = 'OpenAI временно ограничил частоту запросов. Подождите немного и повторите попытку.';
-        } else {
-          status = 429;
-          responseError = 'image_api_limit';
-          message = 'OpenAI отклонил запрос с ограничением 429. Проверьте доступные лимиты и состояние API-аккаунта, затем повторите попытку.';
-        }
-      } else if (upstream.status === 400) {
-        status = 400;
-        message = code === 'moderation_blocked'
-          ? 'Запрос не прошёл проверку безопасности. Измените описание изображения.'
-          : 'OpenAI не принял запрос. Проверьте описание, формат изображения и повторите попытку.';
-      }
-      const responseHeaders = { ...jsonHeaders };
-      const retryAfter = Number(upstream.headers.get('retry-after'));
-      if (status === 429 && Number.isFinite(retryAfter) && retryAfter > 0) {
-        responseHeaders['Retry-After'] = String(Math.min(300, Math.ceil(retryAfter)));
-      }
-      return send(res, status, JSON.stringify({ error: responseError, providerCode: code, message }), responseHeaders);
-    }
-
-    const encoded = payload.data?.[0]?.b64_json;
-    if (typeof encoded !== 'string' || !encoded) {
-      console.error('NEXORA OpenAI image API returned no image:', upstream.headers.get('x-request-id') || 'no_request_id');
-      return send(res, 502, JSON.stringify({ error: 'image_missing', message: 'OpenAI не вернул изображение. Попробуйте изменить описание.' }), jsonHeaders);
-    }
-    const imageBytes = Buffer.from(encoded, 'base64');
-    if (!imageBytes.length || imageBytes.length > 18000000 || imageMime(imageBytes) !== 'image/png') {
-      return send(res, 502, JSON.stringify({ error: 'image_size_invalid', message: 'Получилось некорректное изображение. Попробуйте ещё раз.' }), jsonHeaders);
-    }
-    const dataUrl = 'data:image/png;base64,' + imageBytes.toString('base64');
-    return send(res, 200, JSON.stringify({ image: dataUrl, model: 'GPT Image 2' }), jsonHeaders);
-  } catch (error) {
-    console.error('NEXORA OpenAI image generation failed:', error.name || 'Error');
-    return send(res, 502, JSON.stringify({
-      error: 'image_generation_failed',
-      message: error.name === 'TimeoutError'
-        ? 'Генерация заняла слишком много времени. Попробуйте ещё раз.'
-        : 'Не удалось связаться с OpenAI. Проверьте соединение и повторите попытку.'
+    const winner = await Promise.any(tasks);
+    controllers.forEach(controller => controller.abort());
+    return send(res, 200, JSON.stringify({
+      image: winner.image,
+      provider: winner.provider,
+      model: winner.model,
+      parallelProviders: providers.map(provider => provider.name)
+    }), jsonHeaders);
+  } catch (aggregateError) {
+    controllers.forEach(controller => controller.abort());
+    const failures = Array.isArray(aggregateError.errors) ? aggregateError.errors : [aggregateError];
+    const details = failures.map(error => ({
+      provider: error.providerName || 'Неизвестный провайдер',
+      status: error.upstreamStatus || 0,
+      code: error.providerCode || error.name || 'request_failed',
+      message: error.publicMessage || 'Провайдер временно недоступен.'
+    }));
+    const billingFailed = details.some(item =>
+      item.provider === 'OpenAI' &&
+      ['insufficient_quota', 'billing_hard_limit_reached', 'credit_balance_exhausted'].includes(item.code)
+    );
+    const message = details.length > 1
+      ? 'Ни один подключённый генератор не завершил создание изображения. ' +
+        details.map(item => item.provider + ': ' + item.message).join(' ')
+      : (details[0]?.message || 'Все подключённые генераторы изображений временно недоступны.');
+    console.error('NEXORA image providers failed:', JSON.stringify(details.map(({ provider, status, code }) => ({ provider, status, code }))));
+    return send(res, billingFailed ? 502 : (details[0]?.status >= 400 && details[0]?.status < 500 ? details[0].status : 502), JSON.stringify({
+      error: 'all_image_providers_failed',
+      message,
+      providers: details.map(({ provider, status, code }) => ({ provider, status, code }))
     }), jsonHeaders);
   }
 }
@@ -502,9 +658,13 @@ const server = http.createServer(async (req, res) => {
       service: 'nexora-lobby',
       oauthConfigured: ready,
       argoshaConfigured: Boolean(process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY),
-      imageGeneratorConfigured: Boolean(process.env.OPENAI_API_KEY),
-      imageProvider: 'OpenAI',
-      imageModel: 'GPT Image 2',
+      imageGeneratorConfigured: Boolean(process.env.OPENAI_API_KEY || process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY),
+      imageProviders: [
+        ...(process.env.OPENAI_API_KEY ? ['OpenAI'] : []),
+        ...((process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY) ? ['GigaChat'] : [])
+      ],
+      imageProvider: 'Parallel auto',
+      imageModel: 'First successful provider',
       authService: authBase
     }), { 'Content-Type': 'application/json; charset=utf-8' });
   }
