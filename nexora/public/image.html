@@ -144,29 +144,56 @@ textarea,select{background:rgba(255,255,255,.65);border-color:rgba(103,139,191,.
 body,button,input,textarea,select{font-weight:650}
 .brand-wordmark,.brand{font-weight:900}
 h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-top h2{font-weight:850}
-.loading{width:min(100%,320px);padding:26px 22px;animation:loader-entry .45s cubic-bezier(.2,.8,.2,1) both}
-.art-loader{position:relative;width:118px;height:118px;margin:0 auto 22px;display:grid;place-items:center}
-.art-orbit{position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(82,145,255,.22);box-shadow:0 0 26px rgba(64,126,246,.08);animation:orbit-breathe 2.8s ease-in-out infinite}
-.orbit-one{border-top-color:var(--blue);border-right-color:rgba(82,145,255,.6);animation:orbit-spin 2.4s linear infinite}
-.orbit-two{inset:19px;border-style:dashed;border-color:rgba(82,145,255,.3);animation:orbit-spin 5.6s linear infinite reverse}
-.art-core{position:relative;width:52px;height:52px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(145deg,rgba(255,255,255,.9),rgba(82,145,255,.22));border:1px solid rgba(92,151,255,.35);box-shadow:0 0 25px rgba(75,139,255,.22),0 0 60px rgba(75,139,255,.12);animation:core-pulse 1.6s ease-in-out infinite}
-.art-spark{position:absolute;width:6px;height:6px;border-radius:50%;background:#6ba3ff;box-shadow:0 0 12px #6ba3ff;animation:spark-float 1.8s ease-in-out infinite}
-.spark-a{top:-7px;left:10px}.spark-b{right:-8px;top:17px;animation-delay:.4s}.spark-c{bottom:-7px;left:19px;animation-delay:.8s}
+.loading{width:min(100%,370px);padding:18px 18px 22px;animation:loader-entry .5s cubic-bezier(.2,.8,.2,1) both;text-align:center}
+.photo-loader{position:relative;width:min(100%,306px);height:184px;margin:0 auto 10px;perspective:1050px;transform-style:preserve-3d;isolation:isolate}
+.photo-ground{position:absolute;left:13%;right:13%;bottom:9px;height:18px;border-radius:50%;background:radial-gradient(ellipse,rgba(43,91,183,.24),rgba(43,91,183,0) 72%);filter:blur(8px);animation:ground-breathe 8.4s ease-in-out infinite}
+.photo-stack,.photo-sheet{position:absolute;left:50%;top:22px;width:98px;height:126px;border:1px solid rgba(255,255,255,.86);border-radius:13px;background:linear-gradient(145deg,#fff,#eaf1ff);box-shadow:0 13px 30px rgba(31,70,139,.17),inset 0 1px 0 rgba(255,255,255,.9);transform-style:preserve-3d;overflow:hidden}
+.photo-sheet{backface-visibility:hidden}
+.photo-art{position:absolute;inset:7px;border-radius:8px;overflow:hidden;background:linear-gradient(155deg,#1f56dd,#7558ef 56%,#f2a1ca)}
+.photo-art:before{content:"";position:absolute;width:38px;height:38px;right:12px;top:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff9df,#ffd68d 48%,rgba(255,205,124,.12) 72%);box-shadow:0 0 23px rgba(255,220,158,.55)}
+.photo-art:after{content:"";position:absolute;left:-22%;bottom:-23%;width:145%;height:67%;border-radius:52% 48% 0 0;background:linear-gradient(145deg,#152c7d,#276de0 58%,#62c9d5);transform:rotate(-8deg)}
+.photo-art .photo-ridge{position:absolute;z-index:1;bottom:17px;left:-22%;width:145%;height:49%;border-radius:52% 48% 0 0;background:linear-gradient(130deg,#5b59d9,#38a7c7);transform:rotate(9deg)}
+.photo-art .photo-ridge.front{z-index:2;bottom:-19px;left:-24%;height:52%;background:linear-gradient(130deg,#182f82,#446be0 58%,#4fc3cf);transform:rotate(-11deg)}
+.photo-art .photo-glint{position:absolute;z-index:3;left:10px;bottom:11px;width:32px;height:3px;border-radius:4px;background:rgba(255,255,255,.78);box-shadow:0 6px 0 rgba(255,255,255,.28),0 12px 0 rgba(255,255,255,.18)}
+.art-cover{background:linear-gradient(145deg,#1e4fd2,#6148e9 58%,#b46df2)}
+.art-left{background:linear-gradient(150deg,#3bb8cb,#4779e8 55%,#7960d7)}
+.art-left:before{background:radial-gradient(circle at 35% 35%,#fff8d7,#ffc879 50%,rgba(255,195,120,.12) 73%)}
+.art-center{background:linear-gradient(150deg,#172f78,#2765d8 54%,#52b7cf)}
+.art-center:before{background:radial-gradient(circle at 35% 35%,#fff,#b9eaff 52%,rgba(185,234,255,.12) 73%)}
+.art-right{background:linear-gradient(145deg,#6746bb,#d16d9c 55%,#f0a56e)}
+.art-right:before{background:radial-gradient(circle at 35% 35%,#fff8e8,#ffce94 50%,rgba(255,206,148,.12) 73%)}
+.photo-cover{z-index:6;animation:photo-cover-unfold 8.4s cubic-bezier(.62,0,.25,1) infinite}
+.spread-left{z-index:3;top:27px;animation:photo-spread-left 8.4s cubic-bezier(.2,.75,.25,1) infinite}
+.spread-center{z-index:4;top:18px;animation:photo-spread-center 8.4s cubic-bezier(.2,.75,.25,1) infinite}
+.spread-right{z-index:3;top:27px;animation:photo-spread-right 8.4s cubic-bezier(.2,.75,.25,1) infinite}
+.photo-stack{z-index:2;top:21px;width:112px;height:139px;opacity:0}
+.stack-one{animation:photo-stack-one 8.4s ease-in-out infinite}
+.stack-two{animation:photo-stack-two 8.4s ease-in-out infinite}
+.stack-three{animation:photo-stack-three 8.4s ease-in-out infinite}
+.photo-stack:after{content:"";position:absolute;inset:7px;border:1px solid rgba(83,124,205,.14);border-radius:8px;background:linear-gradient(145deg,rgba(255,255,255,.94),rgba(230,239,255,.92))}
+.stack-one:after{background:linear-gradient(145deg,#fff,#edf3ff)}
+.stack-two:after{background:linear-gradient(145deg,#fdfdff,#e5edff)}
+.stack-three:after{background:linear-gradient(145deg,#fff,#f0f4ff)}
 .loading-title{display:block;font-size:15px;letter-spacing:-.02em}
 .loading-dots{display:inline-flex;gap:4px;margin-left:5px;vertical-align:middle}
 .loading-dots i{width:4px;height:4px;border-radius:50%;background:var(--blue);animation:dot-hop .9s ease-in-out infinite}
 .loading-dots i:nth-child(2){animation-delay:.15s}.loading-dots i:nth-child(3){animation-delay:.3s}
-.loading p{font-size:12px;line-height:1.65}
-.loading-track{height:4px;overflow:hidden;margin:22px auto 0;border-radius:20px;background:var(--line)}
-.loading-track span{display:block;width:35%;height:100%;border-radius:20px;background:linear-gradient(90deg,transparent,var(--blue),#8db8ff,transparent);animation:track-sweep 1.35s ease-in-out infinite}
-@keyframes orbit-spin{to{transform:rotate(360deg)}}
-@keyframes orbit-breathe{50%{scale:1.06;opacity:.72}}
-@keyframes core-pulse{50%{transform:scale(1.08);box-shadow:0 0 36px rgba(75,139,255,.35),0 0 70px rgba(75,139,255,.2)}}
-@keyframes spark-float{50%{transform:translateY(-5px) scale(1.3);opacity:.65}}
+.loading p{min-height:20px;margin:8px 0 0;font-size:12px;line-height:1.65;color:var(--muted);transition:opacity .2s}
+.loading-track{height:4px;overflow:hidden;margin:19px auto 0;border-radius:20px;background:var(--line)}
+.loading-track span{display:block;width:36%;height:100%;border-radius:20px;background:linear-gradient(90deg,transparent,var(--blue),#8db8ff,transparent);animation:track-sweep 1.35s ease-in-out infinite}
+@keyframes photo-cover-unfold{0%,12%{opacity:1;transform:translateX(-50%) rotateY(-18deg) rotateX(7deg) scale(1)}24%{opacity:1;transform:translateX(-50%) rotateY(0) rotateX(2deg) scale(2.05,.82)}35%,100%{opacity:0;transform:translateX(-50%) rotateY(88deg) scale(1.18,.82)}}
+@keyframes photo-spread-left{0%,32%{opacity:0;transform:translateX(-50%) translateX(-2px) rotateY(-70deg) rotateZ(-7deg) scale(.82)}45%{opacity:1;transform:translateX(-50%) translateX(-101px) rotateY(18deg) rotateZ(-6deg) scale(.94)}59%,71%{opacity:1;transform:translateX(-50%) translateX(-101px) rotateY(18deg) rotateZ(-6deg) scale(.94)}86%,100%{opacity:0;transform:translateX(-50%) translateX(-75px) rotateY(38deg) rotateZ(-4deg) scale(.86)}}
+@keyframes photo-spread-center{0%,36%{opacity:0;transform:translateX(-50%) translateY(8px) rotateY(-38deg) scale(.82)}47%{opacity:1;transform:translateX(-50%) translateY(0) rotateY(0) scale(1)}61%,72%{opacity:1;transform:translateX(-50%) translateY(0) rotateY(0) scale(1)}88%,100%{opacity:0;transform:translateX(-50%) translateY(8px) rotateY(30deg) scale(.9)}}
+@keyframes photo-spread-right{0%,32%{opacity:0;transform:translateX(-50%) translateX(2px) rotateY(70deg) rotateZ(7deg) scale(.82)}45%{opacity:1;transform:translateX(-50%) translateX(101px) rotateY(-18deg) rotateZ(6deg) scale(.94)}59%,71%{opacity:1;transform:translateX(-50%) translateX(101px) rotateY(-18deg) rotateZ(6deg) scale(.94)}86%,100%{opacity:0;transform:translateX(-50%) translateX(75px) rotateY(-38deg) rotateZ(4deg) scale(.86)}}
+@keyframes photo-stack-one{0%,65%{opacity:0;transform:translateX(-50%) translateY(10px) rotateZ(-11deg)}76%,91%{opacity:1;transform:translateX(-50%) translateY(0) rotateZ(-8deg)}100%{opacity:0;transform:translateX(-50%) translateY(5px) rotateZ(-11deg)}}
+@keyframes photo-stack-two{0%,67%{opacity:0;transform:translateX(-50%) translateY(8px) rotateZ(8deg)}77%,92%{opacity:.9;transform:translateX(-50%) translateY(0) rotateZ(5deg)}100%{opacity:0;transform:translateX(-50%) translateY(5px) rotateZ(8deg)}}
+@keyframes photo-stack-three{0%,69%{opacity:0;transform:translateX(-50%) translateY(7px) rotateZ(-2deg)}79%,93%{opacity:1;transform:translateX(-50%) translateY(0) rotateZ(0)}100%{opacity:0;transform:translateX(-50%) translateY(5px) rotateZ(-2deg)}}
+@keyframes ground-breathe{50%{transform:scaleX(.86);opacity:.6}}
 @keyframes dot-hop{50%{transform:translateY(-4px);opacity:.45}}
 @keyframes track-sweep{0%{transform:translateX(-140%)}100%{transform:translateX(340%)}}
 @keyframes loader-entry{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
-@media(prefers-reduced-motion:reduce){.art-orbit,.art-core,.art-spark,.loading-dots i,.loading-track span,.loading{animation:none!important}}
+@media(max-width:560px){.loading{padding:12px 8px 17px}.photo-loader{height:170px;transform:scale(.94);transform-origin:top center;margin-bottom:-1px}}
+@media(prefers-reduced-motion:reduce){.photo-cover,.spread-left,.spread-center,.spread-right,.photo-stack,.photo-ground,.loading-dots i,.loading-track span,.loading{animation:none!important}.photo-cover{opacity:1;transform:translateX(-50%) rotateY(-12deg)}.spread-left,.spread-center,.spread-right{opacity:0}.photo-stack{opacity:0}}
 
 </style>
 </head>
@@ -217,7 +244,14 @@ h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-to
      <h3>Ваше изображение будет здесь</h3>
      <p>Введите описание слева и нажмите «Создать изображение». Результат появится в этой области.</p>
     </div>
-    <div class="loading" id="loading"><div class="art-loader" aria-hidden="true"><div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div><div class="art-core"><span class="art-spark spark-a"></span><span class="art-spark spark-b"></span><span class="art-spark spark-c"></span></div></div><strong class="loading-title">Создаём изображение<span class="loading-dots"><i></i><i></i><i></i></span></strong><p>Подбираем композицию, свет и детали. Это может занять немного времени.</p><div class="loading-track"><span></span></div></div>
+    <div class="loading" id="loading" aria-live="polite"><div class="photo-loader" aria-hidden="true">
+      <div class="photo-ground"></div>
+      <div class="photo-stack stack-one"></div><div class="photo-stack stack-two"></div><div class="photo-stack stack-three"></div>
+      <div class="photo-sheet spread-left"><div class="photo-art art-left"><span class="photo-ridge"></span><span class="photo-ridge front"></span><span class="photo-glint"></span></div></div>
+      <div class="photo-sheet spread-center"><div class="photo-art art-center"><span class="photo-ridge"></span><span class="photo-ridge front"></span><span class="photo-glint"></span></div></div>
+      <div class="photo-sheet spread-right"><div class="photo-art art-right"><span class="photo-ridge"></span><span class="photo-ridge front"></span><span class="photo-glint"></span></div></div>
+      <div class="photo-sheet photo-cover"><div class="photo-art art-cover"><span class="photo-ridge"></span><span class="photo-ridge front"></span><span class="photo-glint"></span></div></div>
+     </div><strong class="loading-title">Создаём изображение<span class="loading-dots"><i></i><i></i><i></i></span></strong><p id="loading-detail">Подбираем композицию, свет и детали…</p><div class="loading-track"><span></span></div></div>
     <img id="result-image" alt="Сгенерированное изображение">
    </div>
    <div class="actions" id="actions">
@@ -248,11 +282,12 @@ h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-to
 (function(){
  const $=id=>document.getElementById(id);
  const prompt=$('prompt'),count=$('prompt-count'),generate=$('generate'),loading=$('loading'),empty=$('empty'),image=$('result-image'),actions=$('actions'),message=$('message');
- let currentImage='',currentPrompt='',editSource='',busy=false,versions=[];
+ let currentImage='',currentPrompt='',editSource='',busy=false,versions=[],loadingPhaseTimer=null,loadingPhaseIndex=0;
  const dims={square:[1024,1024],portrait:[768,1024],landscape:[1024,768],vertical:[576,1024],wide:[1024,576]};
  function toast(text){const node=$('toast');node.textContent=text;node.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>node.classList.remove('show'),2800)}
  function showMessage(text,type){message.textContent=text||'';message.className='message'+(text?' visible':'')+(type?' '+type:'')}
- function setBusy(value){busy=value;generate.disabled=value;$('apply-edit').disabled=value;generate.querySelector('span').textContent=value?'Создаём…':'Создать изображение';if(value){empty.style.display='none';image.style.display='none';loading.classList.add('visible');actions.classList.remove('visible');$('result-status').textContent='Выполняется генерация'}else{loading.classList.remove('visible')}}
+ const loadingPhases=['Подбираем композицию и перспективу…','Собираем свет, цвет и атмосферу…','Прорабатываем мелкие детали…','Проверяем финальный вид изображения…'];
+ function setBusy(value){busy=value;generate.disabled=value;$('apply-edit').disabled=value;generate.querySelector('span').textContent=value?'Создаём…':'Создать изображение';if(loadingPhaseTimer){clearInterval(loadingPhaseTimer);loadingPhaseTimer=null}if(value){empty.style.display='none';image.style.display='none';loading.classList.add('visible');actions.classList.remove('visible');$('result-status').textContent='Выполняется генерация';loadingPhaseIndex=0;$('loading-detail').textContent=loadingPhases[0];loadingPhaseTimer=setInterval(()=>{loadingPhaseIndex=(loadingPhaseIndex+1)%loadingPhases.length;$('loading-detail').textContent=loadingPhases[loadingPhaseIndex]},2800)}else{loading.classList.remove('visible')}}
  function dataUrlToBlob(url){const parts=url.split(',');const match=parts[0].match(/data:([^;]+);base64/);const binary=atob(parts[1]);const bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);return new Blob([bytes],{type:match?match[1]:'image/png'})}
  function showImage(data,description){currentImage=data;currentPrompt=description||'';image.src=data;image.style.display='block';empty.style.display='none';loading.classList.remove('visible');actions.classList.add('visible');$('edit-panel').classList.remove('open');$('result-status').textContent='Готово · '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});$('edit-prompt').value='';addVersion(data,description)}
  function addVersion(data,description){versions.unshift({data,prompt:description||'',id:Date.now()});versions=versions.slice(0,8);renderHistory()}
