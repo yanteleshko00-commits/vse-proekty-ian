@@ -70,6 +70,17 @@ let gigaChatTokenCache = '';
 let gigaChatTokenExpiresAt = 0;
 let gigaChatTokenPromise = null;
 
+function gigaChatKeys() {
+  const normalize = value => String(value || '').trim().replace(/^Basic\s+/i, '').trim();
+  const entries = [
+    { keySlot: 'основной', key: normalize(process.env.GIGACHAT_API_KEY) },
+    { keySlot: 'основной', key: normalize(process.env.GIGACHAT_AUTH_KEY) },
+    { keySlot: 'резервный', key: normalize(process.env.GIGACHAT_BACKUP_AUTH) }
+  ];
+  return entries.filter((entry, index) => entry.key &&
+    entries.findIndex(other => other.key === entry.key) === index);
+}
+
 function safeOAuthDiagnostic(value, fallback = '') {
   return String(value ?? fallback)
     .replace(/[\r\n\t]+/g, ' ')
@@ -84,15 +95,7 @@ async function getGigaChatAccessToken() {
   if (gigaChatTokenCache && Date.now() < gigaChatTokenExpiresAt - 60000) return gigaChatTokenCache;
   if (gigaChatTokenPromise) return gigaChatTokenPromise;
 
-  const primaryKey = String(process.env.GIGACHAT_API_KEY || '').trim() ||
-    String(process.env.GIGACHAT_AUTH_KEY || '').trim();
-  const configuredKeys = [
-    { keySlot: 'основной', key: primaryKey },
-    { keySlot: 'резервный', key: String(process.env.GIGACHAT_BACKUP_AUTH || '').trim() }
-  ].filter(item => item.key);
-  const authKeys = configuredKeys.filter((item, index, all) =>
-    all.findIndex(candidate => candidate.key === item.key) === index
-  );
+  const authKeys = gigaChatKeys();
   if (!authKeys.length) throw Object.assign(new Error('GigaChat is not configured'), {
     providerName: 'GigaChat', providerCode: 'not_configured', diagnosticStage: 'oauth',
     publicMessage: 'Ключ GigaChat не настроен.'
@@ -128,7 +131,7 @@ async function getGigaChatAccessToken() {
               diagnosticStage: 'oauth',
               diagnosticDetail: detail,
               publicMessage: response.status === 401 || response.status === 403
-                ? 'GigaChat отклонил ключ авторизации (HTTP ' + response.status + '). См. подробную диагностику.'
+                ? 'GigaChat отклонил ключ сервиса. Администратору нужно проверить ключ авторизации и тип доступа проекта GigaChat в настройках Image Studio.'
                 : 'GigaChat отклонил OAuth-запрос (HTTP ' + response.status + '). Проверьте scope и параметры авторизации.'
             });
             authAttempts.push({
@@ -320,7 +323,7 @@ async function requestGigaChatImage({ modelPrompt, ratio, detailed, signal }) {
       model: process.env.GIGACHAT_IMAGE_MODEL || 'GigaChat-2-Max',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: modelPrompt }
+        { role: 'user', content: 'Нарисуй изображение по описанию: ' + modelPrompt }
       ],
       function_call: 'auto'
     }),
@@ -379,6 +382,9 @@ async function generateNexoraImage(req, res) {
   try { body = await readJson(req, 14 * 1024 * 1024); } catch (error) {
     return send(res, error.message === 'payload_too_large' ? 413 : 400, JSON.stringify({ error: 'invalid_request', message: 'Не удалось прочитать запрос. Попробуйте ещё раз.' }), jsonHeaders);
   }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return send(res, 400, JSON.stringify({ error: 'invalid_request', message: 'Ожидается объект с описанием изображения.' }), jsonHeaders);
+  }
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim().slice(0, 1200) : '';
   const ratio = typeof body.ratio === 'string' ? body.ratio : 'square';
   const style = typeof body.style === 'string' ? body.style : 'realistic';
@@ -411,7 +417,7 @@ async function generateNexoraImage(req, res) {
   }
 
   const openAIKey = String(process.env.OPENAI_API_KEY || '').trim();
-  const gigaKey = String(process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY || process.env.GIGACHAT_BACKUP_AUTH || '').trim();
+  const hasGigaChat = gigaChatKeys().length > 0;
   const yandexKey = String(process.env.YANDEX_API_KEY || '').trim();
   const yandexFolderId = String(process.env.YANDEX_FOLDER_ID || '').trim();
   const providers = [];
@@ -424,7 +430,7 @@ async function generateNexoraImage(req, res) {
     imageFile,
     signal
   }) });
-  if (gigaKey && !imageFile) providers.push({ name: 'GigaChat', run: signal => requestGigaChatImage({
+  if (hasGigaChat && !imageFile) providers.push({ name: 'GigaChat', run: signal => requestGigaChatImage({
     modelPrompt: prompt + '. Visual style: ' + imageStyles[style] +
       (detailed ? '. Fine details, carefully rendered textures, balanced composition.' : ''),
     ratio,
@@ -441,11 +447,11 @@ async function generateNexoraImage(req, res) {
   }) });
 
   if (!providers.length) {
-    const editOnly = Boolean(imageFile && gigaKey && !openAIKey);
+    const editOnly = Boolean(imageFile && !openAIKey);
     return send(res, 503, JSON.stringify({
       error: 'image_not_configured',
       message: editOnly
-        ? 'GigaChat подключён для генерации новых изображений, но редактирование исходного фото пока требует подключённого OPENAI_API_KEY.'
+        ? 'Редактирование исходного фото требует подключённого OPENAI_API_KEY.'
         : 'Не подключён ни один генератор изображений. Добавьте OPENAI_API_KEY, GIGACHAT_API_KEY или YANDEX_API_KEY вместе с YANDEX_FOLDER_ID в Environment сервиса NEXORA на Render.'
     }), jsonHeaders);
   }
@@ -495,7 +501,10 @@ async function generateNexoraImage(req, res) {
       provider, status, code, stage, ...(oauthScope ? { oauthScope } : {}),
       ...(detail ? { detail } : {}), ...(authAttempts ? { authAttempts } : {})
     }))));
-    return send(res, billingFailed ? 502 : (details[0]?.status >= 400 && details[0]?.status < 500 ? details[0].status : 502), JSON.stringify({
+    const firstStatus = details[0]?.status;
+    const status = details.every(item => item.status === 401 || item.status === 403) ? 503
+      : !billingFailed && details.every(item => item.status === firstStatus) && [400, 422, 429].includes(firstStatus) ? firstStatus : 502;
+    return send(res, status, JSON.stringify({
       error: 'all_image_providers_failed',
       message,
       providers: details.map(({ provider, status, code, stage, oauthScope, detail, authAttempts }) => ({
@@ -518,28 +527,25 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && url.pathname === '/health') {
-    const hasGigaChat = Boolean(
-      process.env.GIGACHAT_API_KEY ||
-      process.env.GIGACHAT_AUTH_KEY ||
-      process.env.GIGACHAT_BACKUP_AUTH
-    );
+    const keys = gigaChatKeys();
+    const hasGigaChat = keys.length > 0;
     const providers = [
-      ...(process.env.OPENAI_API_KEY ? ['OpenAI'] : []),
+      ...(process.env.OPENAI_API_KEY?.trim() ? ['OpenAI'] : []),
       ...(hasGigaChat ? ['GigaChat'] : []),
-      ...(process.env.YANDEX_API_KEY && process.env.YANDEX_FOLDER_ID ? ['Alice AI ART'] : [])
+      ...(process.env.YANDEX_API_KEY?.trim() && process.env.YANDEX_FOLDER_ID?.trim() ? ['Alice AI ART'] : [])
     ];
     return send(res, providers.length ? 200 : 503, JSON.stringify({
-      ok: true,
+      ok: providers.length > 0,
       service: 'nexora-image-studio',
       imageGeneratorConfigured: providers.length > 0,
       imageProviders: providers,
-      yandexImage: { configured: Boolean(process.env.YANDEX_API_KEY && process.env.YANDEX_FOLDER_ID), model: 'aliceai-image-art-3.0' },
+      yandexImage: { configured: providers.includes('Alice AI ART'), model: 'aliceai-image-art-3.0' },
       imageProvider: 'Parallel auto',
       imageModel: 'First successful provider',
       gigaChatAuth: {
         configured: hasGigaChat,
-        primaryConfigured: Boolean(String(process.env.GIGACHAT_API_KEY || '').trim() || String(process.env.GIGACHAT_AUTH_KEY || '').trim()),
-        backupConfigured: Boolean(String(process.env.GIGACHAT_BACKUP_AUTH || '').trim()),
+        primaryConfigured: keys.some(entry => entry.keySlot === 'основной'),
+        backupConfigured: keys.some(entry => entry.keySlot === 'резервный'),
         scope: String(process.env.GIGACHAT_SCOPE || '').trim() || 'GIGACHAT_API_PERS',
         scopeSource: String(process.env.GIGACHAT_SCOPE || '').trim() ? 'Environment' : 'default'
       }
