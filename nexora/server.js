@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseMathResponse } from './math-response.js';
 import { mathAnswerPrompt } from './math-prompt.js';
+import { textBridge, textBridgeHealth } from './text-bridge.js';
 import { appendFractionWorking, fractionHelpForProblem } from './math-fractions.js';
 import { inferMathKind, mathStudyGuide, datasetHint, MATH_KINDS, MATH_LEVELS } from './math-curriculum.js';
 
@@ -655,6 +656,8 @@ const server = http.createServer(async (req, res) => {
       return send(res, 502, JSON.stringify({ error: 'Не удалось получить статус генерации.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     }
   }
+  if (url.pathname === '/api/text/internal/generate' && req.method === 'POST') return textBridge(req,res);
+  if (url.pathname === '/api/text/internal/health' && req.method === 'GET') return textBridgeHealth(req,res);
   if (url.pathname === '/api/math/internal/solve' && req.method === 'POST') return mathBridgeSolve(req, res);
   if (url.pathname === '/api/math/internal/health' && req.method === 'GET') {
     const key = req.headers['x-nexora-math-key'];
