@@ -180,3 +180,15 @@ test('append exact fraction expansion to AI answer without duplicating one it al
   appendFractionWorking(x);
   assert.equal(x.steps.length,2);
 });
+
+test('adds 5/8 x 125 expansion even when final AI answer only says 0,625',()=>{
+  const x={answer:'0,625',steps:[{text:'Вычисляем вероятность.',formula:'P(A)=m/n',substitution:'P(A)=5/8',calculation:'P(A)=0,625'}]};
+  appendFractionWorking(x);
+  assert.equal(x.steps.length,2);
+  assert.equal(x.steps[1].calculation,'625/1000 = 0,625');
+});
+test('does not add fraction conversion for intermediate unrelated fractions',()=>{
+  const x={answer:'1',steps:[{formula:'1/2 + 1/2 = 1'}]};
+  appendFractionWorking(x);
+  assert.equal(x.steps.length,1);
+});
