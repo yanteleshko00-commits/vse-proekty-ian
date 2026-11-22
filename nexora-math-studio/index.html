@@ -121,7 +121,7 @@ select{width:100%;min-width:0;height:46px;padding:0 11px;border:1px solid #e7e3f
 .result-list{margin:0;padding-left:20px;color:#504d63;font-size:13px;line-height:1.75}
 .result-list li{padding-left:2px;margin:3px 0}
 .result-steps{display:grid;gap:13px}
-.result-step{display:grid;grid-template-columns:30px 1fr;gap:10px}
+.result-step{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px}
 .step-no{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:#efebff;color:#735acf;font-size:11px;font-weight:800}
 .step-copy strong{display:block;font-size:13px;margin:1px 0 6px}
 .step-copy p{margin:0;color:#625e72;font-size:12px;line-height:1.72;white-space:pre-wrap}
@@ -199,17 +199,31 @@ footer b{color:#55486d;letter-spacing:.13em}
 .formula-parts{display:grid;gap:8px;margin-top:9px}
 .formula-part{padding:11px 13px;background:#f8f6fe;border-left:3px solid #c3b4f2;border-radius:0 9px 9px 0}
 .formula-part b{display:block;margin-bottom:5px;color:#8066c9;font-size:10px;letter-spacing:.03em}
-.formula-part span{display:block;font-family:"Cambria Math",Georgia,serif;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.65;color:#42394f}
+.formula-part > span{display:block;font-family:"Cambria Math",Georgia,serif;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.65;color:#42394f}
 .formula-part:first-child{border-color:#8f6be0;background:#f3efff}
 .formula-part:last-child{border-color:#5eae91}
-@media(max-width:560px){.modes{grid-template-columns:repeat(2,minmax(0,1fr))}.modes .mode{font-size:11px;min-height:45px}.curriculum-sources a{font-size:10px}.formula-part span{font-size:13px}}
+@media(max-width:560px){.modes{grid-template-columns:repeat(2,minmax(0,1fr))}.modes .mode{font-size:11px;min-height:45px}.curriculum-sources a{font-size:10px}.formula-part > span{font-size:13px}}
 
 /* Fraction typography: safe DOM nodes, no injection or HTML from AI responses */
-.stacked-fraction{display:inline-grid;grid-template-columns:max-content;grid-template-rows:auto auto;justify-items:stretch;vertical-align:middle;line-height:1.2;text-align:center;max-width:100%;white-space:nowrap;margin:0 .17em;font-family:"Cambria Math",Georgia,serif}
+.stacked-fraction{display:inline-grid;grid-template-columns:max-content;grid-template-rows:auto auto;justify-items:stretch;width:max-content;max-width:100%;vertical-align:middle;line-height:1.12;text-align:center;white-space:nowrap;margin:0 .13em;font-family:"Cambria Math",Georgia,serif}
 .stacked-fraction .numerator{padding:0 .24em .12em}
 .stacked-fraction .denominator{border-top:1.5px solid currentColor;padding:.12em .24em 0}
 .fraction-partial{white-space:normal}
 @media(max-width:560px){.stacked-fraction{font-size:.95em}}
+
+/* Keep mathematical numerators and denominators compact inside formula cards. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.result-step .step-copy,.result-step .formula-parts,.result-step .formula-part{min-width:0;max-width:100%}
+.formula-part{overflow-wrap:anywhere}
+.formula-part > span{min-width:0;max-width:100%;overflow-wrap:anywhere;white-space:pre-wrap}
+.formula-part .stacked-fraction{display:inline-grid;width:max-content;max-width:100%;white-space:nowrap;overflow-wrap:normal;line-height:1.1}
+.formula-part .stacked-fraction > .numerator,.formula-part .stacked-fraction > .denominator{display:block;width:auto;font-size:1em;max-width:none;min-width:0;white-space:nowrap;overflow-wrap:normal;line-height:1.18}
+.loader-elapsed{margin:12px 0 0!important;min-height:0!important;color:#e3d7ff!important;font-size:11px!important;font-variant-numeric:tabular-nums}
+.loader-hint{margin:8px auto 0!important;max-width:310px;font-size:10px!important;color:#aaaac8!important;line-height:1.6}
+.loader-cancel{margin-top:16px;padding:10px 15px;border:1px solid rgba(225,215,255,.4);border-radius:12px;color:white;background:rgba(255,255,255,.09);font-size:12px;font-weight:700}
+.loader-cancel:hover{background:rgba(255,255,255,.18)}
+.loader-cancel:focus-visible{outline-color:#dfd2ff}
+@media(max-width:560px){.formula-part{padding:10px 11px}.formula-part > span{font-size:13px;line-height:1.55}.formula-part .stacked-fraction{font-size:1em}}
 </style>
 </head>
 <body>
@@ -288,7 +302,7 @@ footer b{color:#55486d;letter-spacing:.13em}
 <div class="preview-head"><h3>Решение</h3><span id="result-status">Здесь появится разбор задачи</span></div>
 <div class="stage" id="stage">
 <div class="empty" id="empty"><div class="empty-icon" aria-hidden="true">∑</div><h3>Всё начинается с условия</h3><p>Введите задачу в поле выше и нажмите «Решить задачу». Здесь появятся шаги, формулы и ответ.</p></div>
-<div class="loader" id="loader" role="status" aria-live="polite"><div class="math-spinner" aria-hidden="true"><span>∑</span></div><h3 id="loader-title">Разбираю условие…</h3><p id="loader-detail">Определяю тип задачи и выбираю способ решения.</p><div class="progress"><i></i></div></div>
+<div class="loader" id="loader" role="status" aria-live="polite"><div class="math-spinner" aria-hidden="true"><span>∑</span></div><h3 id="loader-title">Готовлю запрос…</h3><p id="loader-detail">Подготавливаю условие задачи.</p><div class="progress" aria-label="Идёт обработка, точный процент неизвестен"><i></i></div><p class="loader-elapsed" id="loader-elapsed" aria-live="off">Прошло 0 с</p><p class="loader-hint">Этапы отображаются приблизительно. Сложные задачи могут потребовать больше времени.</p><button class="loader-cancel" id="cancel-solve" type="button">Отменить решение</button></div>
 <div class="solution" id="solution"><div class="result" id="result"></div></div>
 </div>
 <div class="result-actions" id="result-actions"><button class="action" id="copy" type="button">Копировать</button><button class="action" id="download" type="button">Скачать .txt</button><button class="action" id="print" type="button">Печать / PDF</button></div>
@@ -384,7 +398,7 @@ async function prepareAttachments(){
   return list;
 }
 
-let mode="auto",busy=false,last=null,loaderTimer=null,loadingIndex=0;
+let mode="auto",busy=false,last=null,loaderTimer=null,requestController=null;
 const stages={
  probability_statistics:[["Изучаю условие…","Определяю, какие статистические показатели или события нужны."],["Выбираю формулу…","Сверяю обозначения, определения и условия применимости."],["Подставляю числа…","Показываю все величины и последовательность вычислений."],["Проверяю ответ…","Проверяю вычисления и записываю итог."]],
  attachment:[["Открываю вложения…","Подготавливаю фотографии и документы."],["Читаю условие…","ИИ распознаёт текст и обозначения на рисунке."],["Считаю…","Выбираю формулы и выполняю вычисления."],["Оформляю решение…","Записываю шаги, чертёж и ответ."]],
@@ -426,11 +440,42 @@ input.addEventListener("input",()=>{$("counter").textContent=input.value.length+
 input.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){e.preventDefault();run()}});
 function chosenMode(){if(mode!=="auto")return mode;const p=input.value.toLowerCase();if(/треугольник|окружност|радиус|диаметр|прямоугольник|площадь\s*(?:треугольника|круга|фигуры)|геометр|ромб|трапец|параллелограмм|угол/.test(p))return "geometry";if(/вероятност|испытани|подброс|кубик|монет|комбинатор|сочетани|перестанов|независим.*событ|статистик|медиан|средн.*арифмет|дисперси|стандартн.*отклонен|размах|выборк|частот|гистограмм/.test(p))return "probability_statistics";return "algebra"}
 function isGeo(){return chosenMode()==="geometry"}
-function busyState(v){busy=v;solve.disabled=v;$("solve-label").textContent=v?"Решаю…":"Решить задачу";if(loaderTimer){clearInterval(loaderTimer);loaderTimer=null}if(v){last=null;solution.classList.remove("show");$("result-actions").classList.remove("show");$("preview").classList.remove("has-result");$("empty").style.display="none";$("loader").classList.add("show");$("result-status").textContent="ИИ решает задачу";loadingIndex=0;const list=stages[attachments.length?"attachment":chosenMode()];$("loader-title").textContent=list[0][0];$("loader-detail").textContent=list[0][1];loaderTimer=setInterval(()=>{loadingIndex=(loadingIndex+1)%list.length;$("loader-title").textContent=list[loadingIndex][0];$("loader-detail").textContent=list[loadingIndex][1]},3500)}else{$("loader").classList.remove("show");if(!last)$("empty").style.display="block"}}
+function loaderStatus(title,detail){if($("loader-title").textContent!==title)$("loader-title").textContent=title;if($("loader-detail").textContent!==detail)$("loader-detail").textContent=detail}
+function busyState(v){
+ busy=v;solve.disabled=v;
+ $("solve-label").textContent=v?"Решаю…":"Решить задачу";
+ if(loaderTimer){clearInterval(loaderTimer);loaderTimer=null}
+ if(v){
+  last=null;solution.classList.remove("show");
+  $("result-actions").classList.remove("show");$("preview").classList.remove("has-result");
+  $("empty").style.display="none";$("loader").classList.add("show");
+  $("result-status").textContent="Ожидание ответа ИИ";
+  const started=Date.now();
+  const hasFiles=attachments.length>0;
+  loaderStatus(hasFiles?"Подготавливаю вложения…":"Готовлю запрос…",hasFiles?"Читаю прикреплённые файлы и изображения.":"Подготавливаю условие задачи.");
+  $("loader-elapsed").textContent="Прошло 0 с";
+  let phase=-1;
+  loaderTimer=setInterval(()=>{
+   const seconds=Math.floor((Date.now()-started)/1000);
+   $("loader-elapsed").textContent="Прошло "+seconds+" с";
+   const next=seconds<6?0:seconds<17?1:seconds<30?2:3;
+   if(next===phase)return;
+   phase=next;
+   if(next===0) return;
+   if(next===1)loaderStatus("Считаю…","ИИ подбирает способ решения и выполняет вычисления.");
+   if(next===2)loaderStatus("Оформляю ответ…","Ожидаю пошаговый разбор и необходимые формулы.");
+   if(next===3)loaderStatus("Ожидаю ответ ИИ…","Сложная задача может занять больше времени. При необходимости решение можно отменить.");
+  },1000);
+ } else {
+  $("loader").classList.remove("show");
+  if(!last)$("empty").style.display="block";
+ }
+}
+
 function fail(t){errors.textContent=t;errors.classList.add("show");$("result-status").textContent="Не удалось завершить решение";if(!last){$("preview").classList.remove("has-result");$("empty").style.display="block"}}
 function make(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e}
 function mathText(parent,value,depth=0){
-  const str=String(value||"");
+  const str=String(value||"").replace(/(^|[=+\-×*·\s])\(\s*([+-]?\d{1,8})\s*\/\s*(\d{1,8})\s*\)(?=\s*(?:×|·|\*|$))/g,(_whole,p,n,d)=>p+n+"/"+d);
   if(depth>2||str.length>1000){parent.appendChild(document.createTextNode(str));return}
   // First match a bracketed fraction with expressions in its numerator and denominator;
   // then match simple numeric fractions. Always construct DOM nodes rather than HTML.
@@ -470,7 +515,39 @@ function render(sol,provider){last=sol;$("preview").classList.toggle("compact-vi
  if(sol.warning)result.appendChild(make("p","warning",sol.warning))}
  solution.classList.add("show");$("preview").classList.add("has-result");$("result-actions").classList.add("show");$("result-status").textContent="Готово · "+(provider||"ИИ");if(window.innerWidth<850)$("preview").scrollIntoView({behavior:"smooth",block:"start"})}
 function solutionText(){if(!last)return"";const x=last;const lines=[x.title||"Решение задачи",""];if(x.needs_clarification)return "Нужно уточнить: "+x.clarification;if(["geometry","probability_statistics","probability","statistics"].includes(x.kind)){lines.push("Дано:",...(x.given||[]),"","Найти:",...(x.find||[]),"")}else lines.push("Условие:",...(x.given?.length?x.given:[input.value]),"");lines.push("Решение:");(x.steps||[]).forEach((v,i)=>lines.push((i+1)+". "+v.title,v.text||"",v.formula?"Формула: "+v.formula:"",v.symbols?"Обозначения: "+v.symbols:"",v.substitution?"Подстановка: "+v.substitution:"",v.calculation?"Вычисление: "+v.calculation:"",""));lines.push("Ответ: "+(x.answer||""));if(x.verification)lines.push("Проверка: "+x.verification);return lines.join("\n")}
-async function run(){if(busy)return;const problem=input.value.trim();if(problem.length<5&&!attachments.length){fail("Напишите условие или прикрепите фотографию/файл с задачей.");input.focus();return}errors.classList.remove("show");busyState(true);try{const files=await prepareAttachments();const response=await fetch("/api/solve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({problem,kind:mode,grade:Number($("grade").value),level:$("level").value,textbook:$("source-mode").value==="textbook"?$("textbook").value.trim():"",attachments:files})});const payload=await response.json().catch(()=>({}));if(!response.ok||!payload.ok||!payload.solution)throw new Error(payload.message||"Сервис не смог подготовить решение.");render(payload.solution,payload.provider)}catch(e){fail(e.message==="Failed to fetch"?"Не удалось связаться с сервером. Попробуйте ещё раз.":e.message)}finally{busyState(false)}}
+async function run(){
+ if(busy)return;
+ const problem=input.value.trim();
+ if(problem.length<5&&!attachments.length){fail("Напишите условие или прикрепите фотографию/файл с задачей.");input.focus();return}
+ errors.classList.remove("show");
+ const controller=new AbortController();
+ requestController=controller;
+ let timedOut=false;
+ let timeout=null;
+ busyState(true);
+ try{
+  const files=await prepareAttachments();
+  if(controller.signal.aborted)return;
+  loaderStatus("Запрос отправлен…","ИИ анализирует условие и составляет пошаговое решение.");
+  timeout=setTimeout(()=>{timedOut=true;controller.abort()},files.some(x=>String(x.data).startsWith("data:image/"))?135000:110000);
+  const response=await fetch("/api/solve",{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,body:JSON.stringify({problem,kind:mode,grade:Number($("grade").value),level:$("level").value,textbook:$("source-mode").value==="textbook"?$("textbook").value.trim():"",attachments:files})});
+  const payload=await response.json().catch(()=>({}));
+  if(!response.ok||!payload.ok||!payload.solution)throw new Error(payload.message||"Сервис не смог подготовить решение.");
+  if(controller.signal.aborted)return;
+  render(payload.solution,payload.provider);
+ }catch(e){
+  if(controller.signal.aborted){
+   if(timedOut)fail("Превышено время ожидания ИИ. Попробуйте повторить запрос.");
+   else {errors.classList.remove("show");$("result-status").textContent="Решение отменено";toast("Решение отменено")}
+  }else fail(e.message==="Failed to fetch"?"Не удалось связаться с сервером. Попробуйте ещё раз.":e.message);
+ }finally{
+  if(timeout!==null)clearTimeout(timeout);
+  if(requestController===controller)requestController=null;
+  busyState(false);
+ }
+}
+$("cancel-solve").addEventListener("click",()=>{if(requestController&&!requestController.signal.aborted){loaderStatus("Отменяю…","Останавливаю ожидание ответа.");requestController.abort()}});
+
 solve.addEventListener("click",run);
 $("copy").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(solutionText());toast("Решение скопировано")}catch{toast("Копирование недоступно, используйте скачивание")}});
 $("download").addEventListener("click",()=>{if(!last)return;const url=URL.createObjectURL(new Blob([solutionText()],{type:"text/plain;charset=utf-8"}));const a=make("a");a.href=url;a.download="nexora-math-solution.txt";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast("Решение сохранено")});
