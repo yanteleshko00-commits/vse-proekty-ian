@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import vm from 'node:vm';
+import { decodeAttachments } from './attachments.js';
 
 const dir = fileURLToPath(new URL('.', import.meta.url));
 const html = await readFile(join(dir, 'index.html'), 'utf8');
@@ -22,6 +23,32 @@ new vm.Script(js);
 const style = html.match(/<style>([\s\S]*?)<\/style>/)?.[1];
 assert.ok(style);
 assert.equal((style.match(/{/g) || []).length, (style.match(/}/g) || []).length);
+
+
+assert.match(html, /id="attachment-input"/);
+assert.match(html, /id="camera-input"/);
+assert.match(html, /id="attachment-list"/);
+assert.match(html, /prepareAttachments/);
+assert.match(html, /compressedImage/);
+const txtBytes = Buffer.from('Решите уравнение 2x + 3 = 7', 'utf8');
+const txt = {name:'задача.txt',data:'data:text/plain;base64,'+txtBytes.toString('base64')};
+const parsedText = await decodeAttachments([txt]);
+assert.match(parsedText.documentText, /2x \+ 3 = 7/);
+assert.equal(parsedText.images.length, 0);
+const jpeg = Buffer.from([255, 216, 255, 224, 1, 2, 3, 4]);
+const photo = {name:'задача.jpg',data:'data:image/jpeg;base64,'+jpeg.toString('base64')};
+const parsedPhoto = await decodeAttachments([photo]);
+assert.equal(parsedPhoto.images.length,1);
+assert.equal(parsedPhoto.images[0].mime,'image/jpeg');
+await assert.rejects(decodeAttachments([{
+  name:'неверный.pdf',
+  data:'data:application/pdf;base64,'+Buffer.from('Not a PDF').toString('base64')
+}]), /Некорректный формат документа/);
+await assert.rejects(decodeAttachments([txt,txt,txt,txt]), /не более трёх/);
+await assert.rejects(decodeAttachments([{
+  name:'not_jpeg.jpg',
+  data:'data:image/jpeg;base64,'+Buffer.from('bad image').toString('base64')
+}]), /Не удалось проверить изображение/);
 
 const port = 15000 + (process.pid % 20000);
 const child = spawn(process.execPath, [join(dir, 'server.js')], {
@@ -49,7 +76,7 @@ try {
     body: JSON.stringify({ problem: '2x + 3 = 7' })
   });
   assert.equal(unavailable.status, 503);
-  console.log('Math Studio checks passed: HTML, JS, responsive CSS, health, homepage and safe unconfigured API.');
+  console.log('Math Studio checks passed: HTML, JS, responsive CSS, photo/TXT attachment validation, health, homepage and safe unconfigured API.');
 } finally {
   child.kill();
 }
