@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseMathResponse } from '../math-response.js';
+import { mathAnswerPrompt } from '../math-prompt.js';
 import { explainDecimalFraction, explainNestedFraction, fractionHelpForProblem, appendFractionWorking } from '../math-fractions.js';
 import { inferMathKind, mathStudyGuide, calculateBasicStatistics, datasetHint } from '../math-curriculum.js';
 
@@ -191,4 +192,25 @@ test('does not add fraction conversion for intermediate unrelated fractions',()=
   const x={answer:'1',steps:[{formula:'1/2 + 1/2 = 1'}]};
   appendFractionWorking(x);
   assert.equal(x.steps.length,1);
+});
+
+test('keeps model prompt short enough for free router response budget', () => {
+  const prompt=mathAnswerPrompt({kind:'geometry',grade:8,level:'basic'});
+  assert.ok(prompt.length<2600);
+  assert.match(prompt,/ДАНО:/);
+  assert.match(prompt,/НАЙТИ:/);
+  assert.match(prompt,/ОТВЕТ:/);
+  assert.match(prompt,/ЧЕРТЁЖ:/);
+});
+test('compact probability output contract explains formula and fraction steps', () => {
+  const prompt=mathAnswerPrompt({kind:'probability_statistics',grade:9});
+  assert.match(prompt,/ОБОЗНАЧЕНИЯ:/);
+  assert.match(prompt,/ПОДСТАНОВКА:/);
+  assert.match(prompt,/5\/8/);
+  assert.match(prompt,/625\/1000/);
+});
+test('compact prompt does not reveal or invent textbook content', () => {
+  const prompt=mathAnswerPrompt({kind:'algebra',grade:7,textbook:'Иванов, задание №11'});
+  assert.match(prompt,/Иванов, задание №11/);
+  assert.match(prompt,/не по одному номеру задачи/);
 });
