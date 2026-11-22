@@ -224,6 +224,132 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .loader-cancel:hover{background:rgba(255,255,255,.18)}
 .loader-cancel:focus-visible{outline-color:#dfd2ff}
 @media(max-width:560px){.formula-part{padding:10px 11px}.formula-part > span{font-size:13px;line-height:1.55}.formula-part .stacked-fraction{font-size:1em}}
+
+/* NEXORA Math Studio unified pastel loading and empty states — 2026-11 */
+.preview:not(.has-result) .stage{
+  min-height:405px;
+  padding:48px 16px 40px;
+  border:1px solid #e7dff3;
+  border-radius:20px;
+  background:
+    radial-gradient(circle at 18% 20%,rgba(223,212,255,.74),transparent 43%),
+    radial-gradient(circle at 87% 82%,rgba(255,224,238,.73),transparent 39%),
+    linear-gradient(155deg,#fbfaff 0%,#f4f1ff 55%,#fff9fc 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+  color:#252037;
+  isolation:isolate;
+}
+.preview:not(.has-result) .stage::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  opacity:1;
+  background-image:
+    linear-gradient(rgba(124,96,197,.042) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(124,96,197,.042) 1px,transparent 1px);
+  background-size:27px 27px;
+  mask-image:linear-gradient(130deg,transparent 1%,black 90%);
+  -webkit-mask-image:linear-gradient(130deg,transparent 1%,black 90%);
+}
+.preview:not(.has-result) .stage::after{
+  content:"∑  π  √";
+  position:absolute;
+  bottom:18px;
+  right:22px;
+  font:italic 20px Georgia,serif;
+  letter-spacing:.35em;
+  color:rgba(127,105,184,.15);
+  pointer-events:none;
+}
+.stage .empty,.stage .loader{position:relative;z-index:1;min-width:0;max-width:360px;width:100%}
+.stage .empty-icon{
+  width:76px;
+  height:76px;
+  margin-bottom:19px;
+  border:1px solid rgba(157,131,225,.24);
+  border-radius:24px;
+  background:linear-gradient(145deg,#fff,#eee7ff);
+  box-shadow:0 13px 30px rgba(94,72,158,.09);
+  color:#8364d9;
+}
+.stage .empty h3,.stage .loader h3{color:#29213f;font-size:19px;font-weight:780;letter-spacing:-.025em}
+.stage .empty p,.stage .loader p{color:#7c7891;font-size:12px;line-height:1.72}
+.stage .math-spinner{
+  width:92px;
+  height:92px;
+  margin-bottom:23px;
+  border:1px solid rgba(153,121,225,.2);
+  border-radius:27px;
+  background:linear-gradient(140deg,#fff 8%,#f0e8ff 100%);
+  color:#8669dd;
+  box-shadow:0 15px 33px rgba(108,79,169,.14),inset 0 1px rgba(255,255,255,.85);
+}
+.stage .math-spinner:before,.stage .math-spinner:after{
+  border-color:rgba(152,124,218,.2);
+}
+.stage .loader h3{margin:0 0 8px}
+.stage .loader #loader-detail{max-width:310px;margin-inline:auto;min-height:36px}
+.stage .progress{
+  width:240px;
+  max-width:100%;
+  height:6px;
+  margin-top:21px;
+  background:#e8e0f7;
+  border:1px solid rgba(146,116,207,.08);
+}
+.stage .progress i{background:linear-gradient(90deg,#8c6ce4,#bd94e9,#e6abce)}
+.stage .loader-elapsed{color:#806baa!important;font-size:11px!important}
+.stage .loader-hint{color:#9490a5!important;font-size:10px!important}
+.stage .loader-cancel{
+  color:#64518f;
+  border:1px solid #ded3f0;
+  background:rgba(255,255,255,.82);
+  box-shadow:0 4px 13px rgba(88,68,138,.045);
+}
+.stage .loader-cancel:hover{background:#f2ecff;border-color:#b7a2e5}
+.stage .loader-cancel:focus-visible{outline-color:#8f72e4}
+.preview-head{min-width:0;flex-wrap:wrap}
+.preview-head > span{max-width:100%;overflow-wrap:anywhere}
+@media(max-width:560px){
+  .preview:not(.has-result) .stage{min-height:300px;padding:35px 12px 29px;border-radius:16px}
+  .stage .math-spinner{width:75px;height:75px;margin-bottom:17px;border-radius:22px}
+  .stage .math-spinner span{font-size:38px}
+  .stage .empty-icon{width:66px;height:66px;margin-bottom:14px;border-radius:21px}
+  .stage .empty h3,.stage .loader h3{font-size:17px}
+  .stage .loader p{font-size:11px}
+  .stage .loader-hint{max-width:270px}
+  .preview:not(.has-result) .stage::after{font-size:16px;bottom:12px;right:12px}
+}
+/* Fraction bar follows the actual numerator/denominator width, not the full formula card. */
+.formula-part span.stacked-fraction{
+  display:inline-flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:stretch;
+  width:fit-content;
+  max-width:100%;
+  min-width:0;
+  vertical-align:middle;
+  white-space:nowrap;
+  overflow-wrap:normal;
+  text-align:center;
+}
+.formula-part .stacked-fraction > .numerator,
+.formula-part .stacked-fraction > .denominator{
+  display:block;
+  flex:0 0 auto;
+  width:auto;
+  max-width:none;
+  min-width:0;
+  margin:0;
+  padding-left:.2em;
+  padding-right:.2em;
+  text-align:center;
+  white-space:nowrap;
+  overflow-wrap:normal;
+}
+
 </style>
 </head>
 <body>
