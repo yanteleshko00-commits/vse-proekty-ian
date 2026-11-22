@@ -203,14 +203,127 @@ h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-to
 @media(max-width:560px){.loading{padding:12px 8px 17px}.photo-loader{height:170px;transform:scale(.94);transform-origin:top center;margin-bottom:-1px}}
 @media(prefers-reduced-motion:reduce){.photo-cover,.spread-left,.spread-center,.spread-right,.photo-stack,.photo-ground,.loading-dots i,.loading-track span,.loading{animation:none!important}.photo-cover{opacity:1;transform:translateX(-50%) rotateY(-12deg)}.spread-left,.spread-center,.spread-right{opacity:0}.photo-stack{opacity:0}}
 
+
+
+/* 2026 studio editorial redesign inspired by web-gallery references */
+:root,:root[data-theme=light]{--bg:#f9f9fe;--bg2:#f2f2fa;--panel:rgba(255,255,255,.88);--panel2:#fff;--line:rgba(43,33,92,.10);--text:#19162b;--muted:#74748b;--blue:#7759e7;--blue2:#7759e7;--glow:rgba(122,94,229,.14);--shadow:0 22px 68px rgba(57,44,109,.09)}
+body{background:radial-gradient(ellipse at 5% 5%,rgba(194,215,255,.60),transparent 39%),radial-gradient(ellipse at 92% 18%,rgba(251,194,223,.46),transparent 32%),#f8f9fd;background-attachment:fixed;letter-spacing:-.013em}
+body,button,input,textarea,select{font-weight:500}
+h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-top h2{font-weight:770}
+html{scroll-padding-top:100px}
+button:focus-visible,a:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid rgba(127,94,232,.35);outline-offset:3px}
+.wrap{width:min(1260px,calc(100% - 68px))}
+.topbar{background:rgba(252,252,255,.79);border-color:rgba(47,42,90,.08)}
+.top-inner{height:80px}
+.brand{gap:10px}
+.brand-symbol{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:#19172c;color:white;box-shadow:0 7px 20px rgba(26,22,56,.16)}
+.brand-symbol svg{width:27px;height:27px}
+.brand-copy{display:flex;flex-direction:column}
+.brand-wordmark{font-size:17px;line-height:1.15;letter-spacing:.15em;font-weight:850;text-shadow:none}
+.brand-copy small{margin-top:4px;color:var(--muted);letter-spacing:.22em;font-size:9px;font-weight:700}
+.glass-button{background:rgba(255,255,255,.8);border-color:rgba(59,47,110,.10);font-size:12px;font-weight:680}
+main{padding:35px 0 70px}
+.intro{display:grid;grid-template-columns:minmax(0,1fr) minmax(350px,.92fr);align-items:center;gap:35px;min-height:448px;margin:8px 0 58px}
+.hero-copy{position:relative;z-index:2;padding:10px 0 26px}
+.kicker{padding:8px 13px;background:#fff;border-color:rgba(119,89,231,.16);color:#7055c0;font-size:10px;letter-spacing:.15em}
+.intro h1{margin:22px 0;font-size:clamp(53px,6vw,86px);font-weight:850;line-height:1.03;letter-spacing:-.073em}
+.gradient-type{display:inline-block;background:linear-gradient(105deg,#7954e4 4%,#c271cb 52%,#e9aa89);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.intro p{max-width:520px;font-size:16px;line-height:1.74;color:#71758a;font-weight:460}
+.hero-cta{display:flex;align-items:center;flex-wrap:wrap;gap:17px;margin-top:27px}
+.hero-main{display:inline-flex;align-items:center;gap:12px;min-height:54px;padding:0 23px;border-radius:16px;background:#201b32;color:white;font-size:13px;font-weight:750;box-shadow:0 15px 31px rgba(32,24,60,.19);transition:transform .2s,box-shadow .2s}
+.hero-main:hover{transform:translateY(-2px);box-shadow:0 19px 35px rgba(32,24,60,.25)}
+.hero-main svg{width:18px;height:18px}
+.hero-secondary{font-size:12px;font-weight:740;color:#625b78}
+.hero-secondary:hover{color:var(--blue)}
+.hero-notes{display:flex;align-items:center;gap:10px;margin-top:27px;color:#87869c;font-size:11px}
+.hero-status{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#49c6a3;box-shadow:0 0 0 4px rgba(73,198,163,.14)}
+.hero-visual{position:relative;min-height:410px;isolation:isolate}
+.hero-visual:before{content:"";position:absolute;inset:6%;z-index:-1;border-radius:50%;background:radial-gradient(circle at 25% 45%,rgba(184,176,248,.58),transparent 48%),radial-gradient(circle at 74% 55%,rgba(250,178,211,.52),transparent 49%);filter:blur(45px)}
+.hero-frame{position:absolute;overflow:hidden;padding:7px;background:white;border:1px solid rgba(255,255,255,.95);border-radius:20px;box-shadow:0 23px 66px rgba(41,30,91,.18),0 7px 21px rgba(41,30,91,.07);transition:transform .3s,box-shadow .3s}
+.hero-frame:hover{box-shadow:0 29px 72px rgba(41,30,91,.24)}
+.hero-frame .frame-art{position:absolute;inset:7px;border-radius:14px;overflow:hidden}
+.hero-frame em{position:absolute;bottom:16px;left:17px;z-index:3;padding:7px 10px;border-radius:30px;background:rgba(20,20,40,.38);border:1px solid rgba(255,255,255,.32);backdrop-filter:blur(10px);color:#fff;font-size:9px;font-weight:750;font-style:normal;letter-spacing:.12em}
+.hero-frame-main{z-index:3;left:26%;top:8px;width:57%;height:352px;transform:rotate(3deg)}
+.hero-frame-left{z-index:2;left:0;top:108px;width:39%;height:254px;transform:rotate(-11deg)}
+.hero-frame-right{z-index:4;right:-1%;top:146px;width:35%;height:217px;transform:rotate(11deg)}
+.hero-frame-main:hover{transform:rotate(0) translateY(-6px)}
+.hero-frame-left:hover{transform:rotate(-6deg) translateY(-6px)}
+.hero-frame-right:hover{transform:rotate(5deg) translateY(-6px)}
+.art-dusk{background:radial-gradient(circle at 52% 37%,#ffe0bc 0 8%,transparent 9%),linear-gradient(173deg,#7775b8,#d890b8 36%,#f3ad99 62%,#d9b0a9 78%,#575578)}
+.art-dusk:before{content:"";position:absolute;inset:52% -12% 0;background:#5a5e83;clip-path:polygon(0 85%,25% 21%,47% 72%,74% 4%,100% 78%,100% 100%,0 100%)}
+.art-dusk:after{content:"";position:absolute;inset:70% -6% 0;background:linear-gradient(155deg,#3e4a77,#1e2c4d);clip-path:polygon(0 42%,21% 75%,47% 17%,65% 65%,87% 19%,100% 57%,100% 100%,0 100%)}
+.art-aurora{background:radial-gradient(ellipse at 36% 10%,rgba(193,255,223,.8),transparent 36%),radial-gradient(ellipse at 56% 73%,#b995f4,transparent 50%),linear-gradient(155deg,#183550,#2b606e 48%,#8276b8 78%,#d0a0c7)}
+.art-aurora:after{content:"";position:absolute;inset:12% -4%;border:30px solid rgba(170,249,209,.19);border-radius:50%;transform:rotate(-28deg);filter:blur(10px)}
+.art-bloom{background:radial-gradient(circle at 48% 52%,#ffeedc 0 7%,transparent 8%),radial-gradient(ellipse at 33% 32%,#ffc0dc 0 20%,transparent 21%),radial-gradient(ellipse at 69% 40%,#ef9ccd 0 21%,transparent 22%),radial-gradient(ellipse at 50% 73%,#ffb0b5 0 24%,transparent 25%),linear-gradient(140deg,#dcdbfc,#f4d6e9 61%,#faf0db)}
+.art-bloom:after{content:"";position:absolute;left:63%;bottom:5%;height:51%;width:4px;background:#6b9b84;transform:rotate(-25deg)}
+.hero-float{position:absolute;right:13%;bottom:5px;z-index:5;display:flex;align-items:center;gap:9px;padding:11px 14px;border:1px solid rgba(255,255,255,.93);border-radius:15px;background:rgba(255,255,255,.93);box-shadow:0 12px 30px rgba(43,30,93,.12);backdrop-filter:blur(16px);color:#504871;letter-spacing:.12em;font-size:10px;font-weight:800}
+.float-icon{display:grid;place-items:center;width:27px;height:27px;border-radius:9px;background:#ece5ff;color:#7556d7;font-size:16px}
+.workspace-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:20px}
+.workspace-heading .eyebrow{display:block;margin-bottom:10px;color:#9381c9;letter-spacing:.2em;font-size:10px;font-weight:800}
+.workspace-heading h2{margin:0;font-size:clamp(27px,3vw,39px);letter-spacing:-.055em}
+.workspace-heading p{max-width:330px;margin:0 0 3px;color:var(--muted);font-size:12px;line-height:1.6}
+.layout{grid-template-columns:minmax(320px,.9fr) minmax(0,1.1fr);gap:18px;scroll-margin-top:94px}
+.card{background:rgba(255,255,255,.88);border-color:rgba(65,48,110,.10);border-radius:24px;box-shadow:0 18px 56px rgba(68,49,108,.075),inset 0 1px 0 rgba(255,255,255,.9)}
+.composer{padding:24px}
+.card-head h2,.preview-top h2{font-size:18px;letter-spacing:-.04em}
+textarea,select{background:#faf9fe;border-color:#e7e3f1;color:var(--text);font-weight:470}
+textarea{padding:17px;line-height:1.7}
+textarea:focus,select:focus{border-color:#b49cf0;box-shadow:0 0 0 4px rgba(119,89,231,.10)}
+.ideas{scroll-margin-top:95px}
+.idea-chip{background:#fff;border-color:#e7e1f0;color:#69647d}
+.idea-chip:hover{background:#f4efff;border-color:#b3a3ed;color:#5743aa}
+.primary{background:linear-gradient(110deg,#7559ea,#9578e6 60%,#b983d5);box-shadow:0 14px 30px rgba(116,79,220,.25)}
+.primary:hover{box-shadow:0 18px 37px rgba(116,79,220,.3)}
+.preview-card{padding:16px}
+.preview-top{padding:8px 6px 17px}
+.stage{min-height:472px;border-color:rgba(20,20,46,.07);border-radius:19px;background:radial-gradient(ellipse at 48% 38%,rgba(164,141,229,.26),transparent 44%),radial-gradient(ellipse at 80% 85%,rgba(72,81,168,.22),transparent 44%),linear-gradient(155deg,#201e39,#111827 72%,#19172d);isolation:isolate}
+.stage:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.2;background-image:radial-gradient(circle,rgba(255,255,255,.28) .75px,transparent 1px);background-size:24px 24px;mask-image:linear-gradient(#000,transparent)}
+.empty-icon{background:linear-gradient(145deg,rgba(161,128,241,.24),rgba(101,142,219,.12));border-color:rgba(228,209,255,.23)}
+.empty h3,.loading strong{color:#fff}
+.empty p,.loading p{color:#bac3db;line-height:1.7}
+.loading-track{background:rgba(255,255,255,.2)}
+.action-button{background:#fff;border-color:#e8e5f1}
+.action-button svg{color:#7559ea}
+.edit-panel{background:#fbfaff;border-color:#e7e3f1}
+.history{padding:22px 24px}
+.history-head h2{font-size:16px}
+.feature-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px}
+.feature{padding:21px 22px;border:1px solid rgba(65,48,110,.09);border-radius:19px;background:rgba(255,255,255,.68)}
+.feature-number{display:block;margin-bottom:11px;color:#9581ce;letter-spacing:.18em;font-size:10px;font-weight:800}
+.feature h3{margin:0 0 7px;font-size:14px;letter-spacing:-.025em}
+.feature p{margin:0;color:#89869c;font-size:11px;line-height:1.6}
+.quota{margin-top:14px;padding:10px 1px;background:transparent;border:0;box-shadow:none;color:#9291a4}
+.site-footer{display:flex;justify-content:space-between;gap:14px;margin-top:21px;padding-top:22px;border-top:1px solid rgba(65,48,110,.11);font-size:10px;color:#9390a5}
+.site-footer strong{color:#5c5274;letter-spacing:.15em}
+:root[data-theme=dark]{--bg:#13111f;--bg2:#1e1a30;--panel:rgba(31,26,48,.88);--panel2:#27223d;--line:rgba(217,198,251,.14);--text:#f6f2ff;--muted:#aca5c1;--blue:#b497fa;--blue2:#9c7cf0;--glow:rgba(182,149,252,.18);--shadow:0 24px 70px rgba(0,0,0,.28)}
+:root[data-theme=dark] body{background:radial-gradient(ellipse at 12% 5%,rgba(87,57,148,.34),transparent 38%),radial-gradient(ellipse at 90% 22%,rgba(106,52,103,.23),transparent 34%),#13111f}
+:root[data-theme=dark] .topbar{background:rgba(19,17,31,.78);border-color:rgba(219,199,251,.12)}
+:root[data-theme=dark] .brand-symbol{background:#eee5ff;color:#201a35}
+:root[data-theme=dark] .brand-wordmark{color:var(--text);text-shadow:none}
+:root[data-theme=dark] .kicker{background:#322a4a;border-color:#4d3f69;color:#d2b8fe}
+:root[data-theme=dark] .intro p,:root[data-theme=dark] .hero-notes{color:#ada8bf}
+:root[data-theme=dark] .hero-main{background:#e8ddff;color:#211931}
+:root[data-theme=dark] .hero-secondary{color:#d0c3de}
+:root[data-theme=dark] .glass-button,:root[data-theme=dark] .card,:root[data-theme=dark] .feature{background:rgba(35,30,52,.9);border-color:rgba(219,199,251,.13);box-shadow:0 22px 58px rgba(0,0,0,.2)}
+:root[data-theme=dark] textarea,:root[data-theme=dark] select{background:#262138;border-color:#423957;color:var(--text)}
+:root[data-theme=dark] .idea-chip,:root[data-theme=dark] .action-button{background:#302b46;border-color:#4e405e;color:#e5dbf8}
+:root[data-theme=dark] .edit-panel{background:#2a263e;border-color:#4b405f}
+:root[data-theme=dark] .feature p{color:#aea8bf}
+:root[data-theme=dark] .site-footer{border-color:rgba(219,199,251,.13)}
+:root[data-theme=dark] .site-footer strong{color:#eee5ff}
+:root[data-theme=dark] .hero-float{background:rgba(44,36,65,.95);border-color:rgba(236,219,255,.13);color:#eee1ff}
+@media(max-width:1050px){.intro{grid-template-columns:minmax(0,1fr) minmax(290px,.86fr);gap:15px}.intro h1{font-size:clamp(52px,6.7vw,78px)}.hero-visual{min-height:380px}.hero-frame-main{height:325px}.hero-frame-left{height:225px}.hero-frame-right{height:195px}}
+@media(max-width:860px){.wrap{width:calc(100% - 42px)}.intro{grid-template-columns:1fr;gap:4px;min-height:0;margin-bottom:41px}.intro h1{font-size:clamp(58px,10.5vw,84px)}.hero-copy{padding-bottom:0}.hero-visual{width:100%;max-width:520px;margin:0 auto;min-height:376px}.hero-frame-main{height:330px}.layout{grid-template-columns:1fr}.workspace-heading{flex-direction:column;align-items:start;gap:7px}.workspace-heading p{max-width:520px}.stage{min-height:400px}}
+@media(max-width:560px){.wrap{width:calc(100% - 28px)}.top-inner{height:66px}.brand-symbol{width:35px;height:35px;border-radius:11px}.brand-symbol svg{width:24px;height:24px}.brand-wordmark{font-size:15px;letter-spacing:.12em}.brand-copy small{display:block;font-size:8px}.top-actions .glass-button{height:39px}.top-actions .back-label{display:none}.top-actions .glass-button:not(.icon-button){width:40px;padding:0;font-size:18px}.intro{margin-top:0;margin-bottom:36px}.hero-copy{padding:6px 0 0}.kicker{font-size:9px;padding:7px 10px}.intro h1{font-size:clamp(47px,13vw,68px);margin:18px 0 17px}.intro p{font-size:13px;line-height:1.71}.hero-cta{gap:10px;margin-top:22px}.hero-main{min-height:49px;padding:0 16px;font-size:12px;border-radius:14px}.hero-secondary{font-size:11px}.hero-notes{margin-top:18px;font-size:10px}.hero-visual{min-height:277px;max-width:385px;margin-top:7px}.hero-frame{padding:5px;border-radius:15px}.hero-frame .frame-art{inset:5px;border-radius:10px}.hero-frame em{left:11px;bottom:11px;font-size:7px;padding:5px 7px}.hero-frame-main{left:26%;top:8px;width:57%;height:239px}.hero-frame-left{left:1%;top:76px;width:39%;height:174px}.hero-frame-right{right:-1%;top:109px;width:35%;height:147px}.hero-float{right:13%;bottom:0;padding:7px 10px;font-size:8px}.float-icon{width:21px;height:21px;font-size:13px}.workspace-heading h2{font-size:28px}.workspace-heading p{font-size:11px}.composer{padding:17px}.preview-card{padding:12px}.stage{min-height:315px}.feature-strip{grid-template-columns:1fr;gap:9px;margin-top:15px}.feature{padding:15px 17px}.feature-number{margin-bottom:6px}.feature p{font-size:10px}.history{padding:16px}.site-footer{flex-wrap:wrap;font-size:9px}.quota{font-size:9px}}
+@media(max-width:380px){.intro h1{font-size:clamp(42px,12.4vw,52px)}.hero-visual{min-height:251px}.hero-frame-main{height:214px}.hero-frame-left{height:155px}.hero-frame-right{height:132px}}
+@media(prefers-reduced-motion:reduce){.hero-frame,.hero-main{transition:none!important}}
+
 </style>
 </head>
 <body>
 <header class="topbar">
  <div class="wrap top-inner">
-  <a class="brand" href="/" aria-label="NEXORA, на главную">
-   <span class="brand-copy brand-wordmark">NEXORA</span>
-  </a>
+  <a class="brand" href="/" aria-label="NEXORA Image Studio"><span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M8 24V8l16 16V8" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="brand-copy"><strong class="brand-wordmark">NEXORA</strong><small>IMAGE STUDIO</small></span></a>
   <div class="top-actions">
    <a class="glass-button" href="https://nexora-lobby.onrender.com/"><span>‹</span><span class="back-label">В NEXORA Lobby</span></a>
    <button class="glass-button icon-button" id="theme-toggle" type="button" aria-label="Сменить тему">☼</button>
@@ -218,20 +331,28 @@ h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-to
  </div>
 </header>
 <main class="wrap">
- <section class="intro">
-  <div>
-   <div class="kicker"><span class="spark"></span> AI IMAGE STUDIO</div>
-   <h1>Создайте то,<br>что <span style="color:var(--blue)">представили.</span></h1>
-   <p>Опишите идею обычными словами. NEXORA превратит её в изображение, которое можно скачать, отправить или изменить новым промптом.</p>
-  </div>
-  <div class="model-pill"><span class="spark"></span><span><b>NEXORA Auto</b> · параллельный запуск моделей</span></div>
- </section>
- <section class="layout">
+ <section class="intro" aria-labelledby="hero-title">
+ <div class="hero-copy">
+  <div class="kicker"><span class="spark"></span> НОВОЕ ПРОСТРАНСТВО ДЛЯ ИДЕЙ</div>
+  <h1 id="hero-title">Из мысли —<br><span class="gradient-type">в искусство.</span></h1>
+  <p>Представьте что угодно. Опишите это парой слов — NEXORA превратит вашу идею в уникальное изображение, готовое к сохранению и новым экспериментам.</p>
+  <div class="hero-cta"><a class="hero-main" href="#studio">Начать создавать <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a><a class="hero-secondary" href="#inspiration">Найти вдохновение ↗</a></div>
+  <div class="hero-notes"><span class="hero-status" aria-hidden="true"></span> Несколько AI-моделей · одно пространство для творчества</div>
+ </div>
+ <div class="hero-visual" aria-hidden="true">
+  <div class="hero-frame hero-frame-left"><div class="frame-art art-aurora"></div><em>ATMOSPHERE</em></div>
+  <div class="hero-frame hero-frame-main"><div class="frame-art art-dusk"></div><em>DREAMSCAPE</em></div>
+  <div class="hero-frame hero-frame-right"><div class="frame-art art-bloom"></div><em>ART DIRECTION</em></div>
+  <div class="hero-float"><span class="float-icon">✦</span> IMAGINE ANYTHING</div>
+ </div>
+</section>
+<div class="workspace-heading" id="studio-heading"><div><span class="eyebrow">01 / YOUR CREATIVE SPACE</span><h2>Ваша творческая студия</h2></div><p>Все инструменты под рукой: от первой идеи до готового изображения.</p></div>
+<section class="layout" id="studio" aria-labelledby="studio-heading">
   <div class="card composer">
    <div class="card-head"><h2>Опишите изображение</h2><span class="step">01 / PROMPT</span></div>
    <label class="field-label" for="prompt"><span>Ваш промпт</span><span class="field-hint" id="prompt-count">0 / 1200</span></label>
    <textarea id="prompt" maxlength="1200" placeholder="Например: уютный домик в горах на берегу озера, раннее утро, мягкий туман, кинематографичный свет, высокая детализация…"></textarea>
-   <div class="ideas" aria-label="Идеи для изображения">
+   <div class="ideas" id="inspiration" aria-label="Идеи для изображения">
     <div class="ideas-heading"><strong>Идеи для вдохновения</strong><span>Нажмите на любую, чтобы добавить её</span></div>
     <div class="ideas-window">
      <div class="ideas-track">
@@ -303,11 +424,17 @@ h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-to
    </div>
   </div>
  </section>
- <section class="card history">
+ <section class="feature-strip" aria-label="Возможности студии">
+ <div class="feature"><span class="feature-number">01 / CREATE</span><h3>От идеи к изображению</h3><p>Напишите промпт и выберите удобный формат.</p></div>
+ <div class="feature"><span class="feature-number">02 / REFINE</span><h3>Точнее с каждым шагом</h3><p>Уточняйте детали и редактируйте новым запросом.</p></div>
+ <div class="feature"><span class="feature-number">03 / KEEP</span><h3>Ваши работы с вами</h3><p>Сохраняйте, отправляйте и возвращайтесь к версиям.</p></div>
+</section>
+<section class="card history">
   <div class="history-head"><h2>История изображений</h2><span id="history-count">В этой сессии</span></div>
   <div class="history-list" id="history-list"><div class="history-empty">Здесь будут ваши версии. Можно вернуться к любой из них.</div></div>
  </section>
  <div class="quota"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><span>NEXORA одновременно запускает все подключённые генераторы и показывает первый готовый результат. Доступность зависит от лимитов и состояния каждого провайдера.</span></div>
+ <footer class="site-footer"><span><strong>NEXORA</strong> · IMAGE STUDIO</span><span>Создавайте. Исследуйте. Вдохновляйтесь.</span></footer>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
@@ -340,7 +467,7 @@ h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-to
  const themeMedia=window.matchMedia('(prefers-color-scheme: dark)');
  function applyTheme(theme){document.documentElement.dataset.theme=theme;$('theme-toggle').textContent=theme==='light'?'☾':'☼';document.querySelector('meta[name="theme-color"]').content=theme==='light'?'#f7faff':'#0b1020'}
  const savedTheme=localStorage.getItem(themeKey);
- applyTheme(savedTheme==='dark'||(!savedTheme&&themeMedia.matches)?'dark':'light');
+ applyTheme(savedTheme==='dark'?'dark':'light');
  $('theme-toggle').addEventListener('click',()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem(themeKey,next);applyTheme(next)});
  const syncSystemTheme=event=>{if(!localStorage.getItem(themeKey))applyTheme(event.matches?'dark':'light')};
  if(typeof themeMedia.addEventListener==='function')themeMedia.addEventListener('change',syncSystemTheme);else if(typeof themeMedia.addListener==='function')themeMedia.addListener(syncSystemTheme);
