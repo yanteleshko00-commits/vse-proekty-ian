@@ -70,7 +70,9 @@ const server = http.createServer(async (req, res) => {
   try { input = await readJson(req, 10500000); }
   catch { return respond(res, 400, { message: 'Некорректные данные или слишком большой файл (до 7 МБ вложений).' }); }
   const problem = typeof input.problem === 'string' ? input.problem.trim() : '';
-  const kind = ['auto', 'algebra', 'geometry', 'probability', 'statistics'].includes(input.kind) ? input.kind : 'auto';
+  const kind = ['probability','statistics','probability_statistics'].includes(input.kind)
+    ? 'probability_statistics'
+    : ['auto','algebra','geometry'].includes(input.kind) ? input.kind : 'auto';
   const level = ['basic', 'advanced'].includes(input.level) ? input.level : 'basic';
   const textbook = typeof input.textbook === 'string' ? input.textbook.trim().slice(0, 220) : '';
   const grade = Math.max(5, Math.min(11, Number.isInteger(input.grade) ? input.grade : 8));
