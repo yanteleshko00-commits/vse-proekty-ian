@@ -10,6 +10,16 @@ const dir = fileURLToPath(new URL('.', import.meta.url));
 const html = await readFile(join(dir, 'index.html'), 'utf8');
 assert.match(html, /id="problem"/);
 assert.match(html, /id="solve"/);
+assert.match(html, /data-mode="probability"/);
+assert.match(html, /data-mode="statistics"/);
+assert.match(html, /id="level"/);
+assert.match(html, /id="source-mode"/);
+assert.match(html, /id="textbook"/);
+assert.match(html, /data-kind="probability"/);
+assert.match(html, /data-kind="statistics"/);
+assert.match(html, /level:\$\("level"\)\.value/);
+assert.match(html, /textbook:\$\("source-mode"\)/);
+
 assert.match(html, /Дано/);
 assert.match(html, /Найти/);
 assert.match(html, /Решение/);
@@ -76,7 +86,7 @@ try {
     body: JSON.stringify({ problem: '2x + 3 = 7' })
   });
   assert.equal(unavailable.status, 503);
-  console.log('Math Studio checks passed: HTML, JS, responsive CSS, photo/TXT attachment validation, health, homepage and safe unconfigured API.');
+  console.log('Math Studio checks passed: topic modes, grade/level/textbook inputs, attachments, JS, responsive CSS, health and safe API.');
 } finally {
   child.kill();
 }
