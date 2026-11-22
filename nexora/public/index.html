@@ -528,6 +528,28 @@ h1 span{background:linear-gradient(103deg,#7956e5 1%,#bc70c5 55%,#de9a99);backgr
 }
 @media(prefers-reduced-motion:reduce){.hero-gallery-card,.hero-start{transition:none!important}}
 
+
+/* Keep the signed-in header narrow enough for iPhone screens */
+.profile{min-width:0;max-width:160px}
+#profile-name{display:block;min-width:0;max-width:115px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:root[data-theme=dark] .brand-mark svg path{stroke:#29213c}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .brand-mark svg path{stroke:#29213c}}
+@media(max-width:600px){
+ #login-link{font-size:0;gap:5px;min-width:68px;max-width:none}
+ #login-link:before{content:"Войти";font-size:11px;font-weight:770}
+ #login-link>span{font-size:13px}
+ .profile{max-width:78px;padding:4px}
+ #profile-name{display:none}
+ #logout-form .login-button{font-size:11px;padding:0 10px}
+ .actions{flex:0 0 auto}
+ .brand-copy small{display:none}
+}
+@media(max-width:350px){
+ .brand-copy strong{font-size:12px}
+ .actions{gap:4px}
+ .icon-button{width:34px;height:34px;flex-basis:34px}
+ #login-link{min-width:62px;padding:0 8px}
+}
 </style>
 </head>
 <body>
