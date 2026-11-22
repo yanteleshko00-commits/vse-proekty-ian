@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f8f7fc">
+<meta name="description" content="NEXORA Game Studio: создавайте и запускайте небольшие игры с помощью ИИ.">
+<title>NEXORA Game Studio — сделайте свою игру</title>
+<style>
+:root{--bg:#f8f7fc;--ink:#241c38;--sub:#756b88;--line:#e9e3f2;--violet:#7756d8;--soft:#f2eeff;--card:#fff}
+*{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:clip}body{margin:0;min-width:0;overflow-x:clip;background:radial-gradient(ellipse at 7% 2%,#e8dfff 0%,transparent 36%),radial-gradient(ellipse at 95% 65%,#ffeaf4 0%,transparent 33%),var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-weight:680;-webkit-font-smoothing:antialiased}
+button,textarea,select,input{font:inherit;font-weight:700}button{cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}a{color:inherit;text-decoration:none}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #bca4ff;outline-offset:3px}
+[hidden]{display:none!important}
+.top{position:sticky;top:0;z-index:5;border-bottom:1px solid #e6e0ef;background:rgba(250,248,255,.93);backdrop-filter:blur(19px);-webkit-backdrop-filter:blur(19px)}
+.top-inner{max-width:1230px;min-height:82px;margin:auto;padding:13px clamp(16px,3vw,34px);display:flex;justify-content:space-between;align-items:center;gap:15px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}.logo{display:grid;place-items:center;width:50px;height:50px;flex:0 0 50px;border-radius:15px;background:#201a33;color:#fff;font-size:29px;font-weight:850}
+.brand strong{display:block;font-size:20px;font-weight:900;letter-spacing:.18em;line-height:1.1}.brand small{display:block;margin-top:6px;color:#8d849f;font-size:10px;font-weight:800;letter-spacing:.26em}.back{display:inline-flex;align-items:center;justify-content:center;min-height:43px;padding:0 16px;border:1px solid var(--line);border-radius:14px;background:white;font-size:12px;font-weight:800;white-space:nowrap}
+.shell{max-width:1230px;margin:auto;padding:38px clamp(16px,3vw,34px) 62px}.hero{margin-bottom:25px}.kicker{font-size:11px;letter-spacing:.2em;color:#9b85d3;font-weight:850}.hero h1{margin:11px 0 8px;font-size:clamp(32px,4.3vw,53px);line-height:1.1;letter-spacing:-.05em;font-weight:900}.hero h1 span{color:#8766dc}.hero p{max-width:730px;margin:0;color:var(--sub);font-size:13px;line-height:1.65}
+.workspace{display:grid;grid-template-columns:minmax(0,.91fr) minmax(0,1.09fr);gap:19px;align-items:start}.card{min-width:0;padding:27px;border:1px solid var(--line);border-radius:25px;background:var(--card);box-shadow:0 19px 47px rgba(83,61,130,.07)}.card-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:20px}.card h2{margin:0;font-size:22px;letter-spacing:-.03em;font-weight:850}.card-note{color:#a099ad;font-size:10px;font-weight:760}.label{display:block;margin:19px 0 9px;color:#635a77;font-size:11px;font-weight:800}
+textarea,select{width:100%;min-width:0;border:1px solid #e6dfef;border-radius:13px;background:#fcfbff;color:var(--ink);outline:none}textarea{min-height:126px;padding:13px 14px;resize:vertical;font-size:13px;line-height:1.7}textarea::placeholder{color:#a39aae}select{height:46px;padding:0 12px;font-size:12px}.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.choice{min-height:49px;border:1px solid #e5def0;border-radius:12px;background:#faf8ff;color:#6f6088;font-size:11px;padding:9px 5px;text-align:center}.choice.active{color:#6c4ac6;border-color:#bba7f0;background:#f0eaff}.options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}.example{border:1px solid #e3daf1;border-radius:99px;padding:7px 10px;background:white;color:#7c62b6;font-size:10px}
+.create{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:53px;border:0;border-radius:15px;background:linear-gradient(120deg,#7352d9,#9d75ec);color:#fff;font-size:14px;font-weight:850;margin-top:23px;box-shadow:0 12px 27px rgba(111,81,213,.24)}
+.hint{margin:12px 0 0;color:#928aa0;font-size:10px;line-height:1.7}.error{display:none;margin:13px 0 0;padding:11px 13px;border:1px solid #ffd0db;border-radius:11px;background:#fff0f5;color:#a52f57;font-size:11px;line-height:1.55}.error.show{display:block}
+.stage{position:relative;display:flex;min-height:430px;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:22px;overflow:hidden;border:1px solid #e4dcf0;border-radius:19px;background:radial-gradient(circle at 20% 15%,#e6dafa,transparent 45%),radial-gradient(circle at 85% 85%,#ffe8f5,transparent 40%),#f8f5fe;text-align:center}
+.stage-icon{display:grid;place-items:center;width:90px;height:90px;margin-bottom:8px;border:1px solid #e2d6fa;border-radius:27px;background:linear-gradient(140deg,#fff,#ebe1fc);box-shadow:0 13px 31px rgba(107,73,161,.11);color:#8869d5;font-size:46px}.stage strong{font-size:19px;font-weight:850}.stage p{max-width:350px;font-size:12px;line-height:1.7;color:#80758d}.stage.wait .stage-icon{animation:pulse 1.3s ease-in-out infinite}@keyframes pulse{50%{transform:scale(1.055)}}
+#play-area{display:none}#play-area.visible{display:block}
+.game-head{display:flex;flex-wrap:wrap;align-items:start;justify-content:space-between;gap:10px;margin-bottom:12px}.game-head h3{font-size:20px;font-weight:850;margin:0}.game-head p{color:#776d89;font-size:11px;margin:6px 0 0;line-height:1.65}.scoreboard{display:flex;flex-wrap:wrap;gap:7px}.scoreboard span{border-radius:9px;background:#f0eaff;color:#775bc2;padding:8px 10px;font-size:11px;font-weight:850;white-space:nowrap}
+.game-frame{overflow:hidden;border-radius:17px;border:1px solid #e0d7ed;background:#fcfbff;touch-action:none}canvas{width:100%;height:auto;aspect-ratio:11/7;display:block;touch-action:none}
+.controls{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:12px 0}.ctrl{min-width:46px;min-height:45px;padding:7px 13px;border:1px solid #e2d9f0;border-radius:12px;background:#f5f0ff;color:#6647bd;font-size:15px;font-weight:850;touch-action:manipulation}.ctrl.primary{background:#7558d6;color:#fff;border-color:#7558d6;font-size:12px}.ctrl.secondary{font-size:11px}.ctrl:hover{filter:brightness(.97)}
+.game-bottom{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-top:15px}.provider{color:#938aa3;font-size:11px;font-weight:750}.standalone .edit-pane,.standalone .back,.standalone .footer-note{display:none!important}.standalone .workspace{grid-template-columns:1fr}.standalone .shell{max-width:940px}.standalone .game-bottom #download{display:none}.standalone .hero p{max-width:900px}.footer-note{padding:20px 0;text-align:center;color:#9b91aa;font-size:10px}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}.stage{min-height:330px}}
+@media(max-width:550px){.top-inner{min-height:74px}.brand .logo{width:43px;height:43px;flex-basis:43px;font-size:24px;border-radius:12px}.brand strong{font-size:16px}.brand small{font-size:9px}.back{padding:0 10px;min-height:40px;font-size:11px}.shell{padding:28px 15px 45px}.hero h1{font-size:34px}.hero p{font-size:12px}.card{padding:19px 15px;border-radius:21px}.card h2{font-size:19px}.choices{gap:7px}.choice{font-size:10px}.stage{min-height:260px;padding:16px}.stage-icon{width:76px;height:76px;font-size:39px}.game-head h3{font-size:17px}.ctrl{min-width:41px;min-height:44px}.hero{margin-bottom:20px}}
+@media(prefers-reduced-motion:reduce){.stage.wait .stage-icon{animation:none}}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-inner">
+ <a class="brand" href="/"><span class="logo">N</span><span><strong>NEXORA</strong><small>GAME STUDIO</small></span></a>
+ <a class="back" href="/">‹ &nbsp; В лобби</a>
+</div></header>
+<main class="shell">
+ <div class="hero"><div class="kicker">NEXORA / GAME STUDIO</div><h1>Создай <span>свою игру.</span></h1><p>Опиши идею, выбери механику и запусти игру прямо в браузере. Нейросеть поможет с названием и концепцией, а встроенный движок обеспечит работающие игровые правила.</p></div>
+ <div class="workspace">
+  <section class="card edit-pane" aria-labelledby="editor-title">
+   <div class="card-top"><h2 id="editor-title">Создание игры</h2><span class="card-note">01 / CREATE</span></div>
+   <label class="label" for="idea">Какую игру сделаем?</label>
+   <textarea id="idea" maxlength="500" placeholder="Например: космическая игра, где нужно ловить звёзды, избегать метеоритов и набирать очки.">Космическая игра, где нужно собирать звёзды и избегать препятствий</textarea>
+   <div class="examples">
+    <button class="example" data-idea="Космическая змейка собирает планеты и становится длиннее" data-type="snake" type="button">Космическая змейка</button>
+    <button class="example" data-idea="Поймай как можно больше падающих звёзд и не задень препятствия" data-type="catch" type="button">Лови звёзды</button>
+    <button class="example" data-idea="Проверка реакции: нажимай по движущимся мишеням на время" data-type="target" type="button">Проверь реакцию</button>
+   </div>
+   <span class="label">Тип игры</span>
+   <div class="choices" id="types">
+    <button class="choice active" type="button" data-type="auto" aria-pressed="true">✦ Автоматически</button>
+    <button class="choice" type="button" data-type="catch" aria-pressed="false">★ Лови звёзды</button>
+    <button class="choice" type="button" data-type="snake" aria-pressed="false">〰 Змейка</button>
+    <button class="choice" type="button" data-type="target" aria-pressed="false">◎ Меткость</button>
+   </div>
+   <div class="options">
+    <div><label class="label" for="difficulty">Сложность</label><select id="difficulty"><option value="easy">Лёгкая</option><option value="normal" selected>Обычная</option><option value="hard">Сложная</option></select></div>
+    <div><label class="label" for="color">Оформление</label><select id="color"><option value="violet">Сиреневое</option><option value="blue">Голубое</option><option value="mint">Мятное</option><option value="sunset">Закат</option></select></div>
+   </div>
+   <button id="generate" type="button" class="create">✦ Создать игру</button>
+   <div id="error" class="error" role="alert"></div>
+   <p class="hint">Первая версия умеет создавать игры на трёх механиках: «Змейка», «Лови звёзды», «Меткость». ИИ помогает с оформлением идеи, но не создаёт произвольный код. Можно играть на iPhone и сохранить автономную HTML-версию.</p>
+  </section>
+  <section class="card" id="result-card" aria-labelledby="result-title">
+   <div class="card-top"><h2 id="result-title">Ваша игра</h2><span class="card-note" id="state-label">02 / PREVIEW</span></div>
+   <div class="stage" id="stage"><span class="stage-icon" id="stage-icon">✦</span><strong id="stage-title">Игра появится здесь</strong><p id="stage-description">Выберите тип, придумайте идею и нажмите «Создать игру». Затем можно играть прямо на телефоне или компьютере.</p></div>
+   <div id="play-area">
+    <div class="game-head"><div><h3 id="game-title">Новая игра</h3><p id="instructions">Управляйте героем и набирайте очки.</p></div><div class="scoreboard"><span id="score">Очки: 0</span><span id="time">Время: 0</span><span id="lives">Жизни: 3</span></div></div>
+    <div class="game-frame"><canvas id="game" width="660" height="420" role="img" aria-label="Игровое поле; используйте кнопки под ним"></canvas></div>
+    <div class="controls">
+     <button class="ctrl" type="button" data-dir="left" aria-label="Налево">←</button>
+     <button class="ctrl" type="button" data-dir="up" aria-label="Вверх">↑</button>
+     <button class="ctrl" type="button" data-dir="down" aria-label="Вниз">↓</button>
+     <button class="ctrl" type="button" data-dir="right" aria-label="Направо">→</button>
+     <button id="start" class="ctrl primary" type="button">▶ Играть</button>
+     <button id="pause" class="ctrl secondary" type="button">Ⅱ Пауза</button>
+     <button id="reset" class="ctrl secondary" type="button">↻ Заново</button>
+    </div>
+    <div class="game-bottom"><span id="provider" class="provider">Движок NEXORA</span><button type="button" id="download" class="ctrl secondary">↓ Скачать игру HTML</button></div>
+   </div>
+  </section>
+ </div>
+ <div class="footer-note">NEXORA Game Studio · Для мини-игр и экспериментов с идеями</div>
+</main>
+<script src="/game.js"></script>
+</body>
+</html>
