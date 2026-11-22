@@ -12,6 +12,7 @@ const clientId = process.env.OAUTH_CLIENT_ID || 'nexora';
 const clientSecret = process.env.OAUTH_CLIENT_SECRET || '';
 const sessionSecret = process.env.SESSION_SECRET || '';
 const production = process.env.NODE_ENV === 'production';
+const imageStudioUrl = (process.env.IMAGE_STUDIO_URL || 'https://nexora-image-studio.onrender.com').replace(/\/$/, '');
 
 function appUrl(req) {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
@@ -164,7 +165,7 @@ const ARGOSHA_TOOLS = [
   { id: 'project', name: 'Сделать проект', status: 'available', description: 'Школьные проекты, презентации, доклады и документы.', url: 'https://vse-proekty-ian-1.onrender.com/' },
   { id: 'solve', name: 'Решить задачу', status: 'coming_soon', description: 'Отдельное решение и объяснение учебных задач.' },
   { id: 'chat', name: 'Чат с ИИ', status: 'coming_soon', description: 'Отдельный универсальный чат с ИИ.' },
-  { id: 'image', name: 'Создать картинку', status: 'available', description: 'Генерация и редактирование изображений.', url: '/image' },
+  { id: 'image', name: 'Создать картинку', status: 'available', description: 'Генерация и редактирование изображений.', url: 'https://nexora-image-studio.onrender.com/' },
   { id: 'lesson', name: 'Подготовиться к уроку', status: 'coming_soon', description: 'Конспекты, объяснения и самопроверка.' },
   { id: 'text', name: 'Создать текст', status: 'coming_soon', description: 'Отдельный генератор текстов.' }
 ];
@@ -493,7 +494,7 @@ async function generateNexoraImage(req, res) {
   }
 
   const openAIKey = String(process.env.OPENAI_API_KEY || '').trim();
-  const gigaKey = String(process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY || '').trim();
+  const gigaKey = String(process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY || process.env.GIGACHAT_BACKUP_AUTH || '').trim();
   const providers = [];
   if (openAIKey) providers.push({ name: 'OpenAI', run: signal => requestOpenAIImage({
     apiKey: openAIKey,
@@ -681,10 +682,10 @@ const server = http.createServer(async (req, res) => {
       service: 'nexora-lobby',
       oauthConfigured: ready,
       argoshaConfigured: Boolean(process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY),
-      imageGeneratorConfigured: Boolean(process.env.OPENAI_API_KEY || process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY),
+      imageGeneratorConfigured: Boolean(process.env.OPENAI_API_KEY || process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY || process.env.GIGACHAT_BACKUP_AUTH),
       imageProviders: [
         ...(process.env.OPENAI_API_KEY ? ['OpenAI'] : []),
-        ...((process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY) ? ['GigaChat'] : [])
+        ...((process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY || process.env.GIGACHAT_BACKUP_AUTH) ? ['GigaChat'] : [])
       ],
       imageProvider: 'Parallel auto',
       imageModel: 'First successful provider',
@@ -696,18 +697,8 @@ const server = http.createServer(async (req, res) => {
     return generateNexoraImage(req, res);
   }
 
-  if (url.pathname === '/image' || url.pathname === '/image/' || url.pathname === '/image.html') {
-    try {
-      const html = await readFile(join(publicDir, 'image.html'));
-      return send(res, 200, html, {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'",
-        'Referrer-Policy': 'strict-origin-when-cross-origin'
-      });
-    } catch (error) {
-      console.error('NEXORA image page read failed:', error.message);
-      return send(res, 500, 'Не удалось открыть генератор изображений.');
-    }
+  if (['/image', '/image/', '/image.html'].includes(url.pathname)) {
+    return redirect(res, imageStudioUrl + '/');
   }
 
   if (url.pathname.startsWith('/api/auth/') && req.method === 'POST') {
