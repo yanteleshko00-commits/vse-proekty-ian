@@ -60,9 +60,9 @@ test('asks a question when problem is under-specified', () => {
 });
 
 test('routes basic textbook probability tasks', () => {
-  assert.equal(inferMathKind('Игральную кость бросили дважды. Найдите вероятность двух шестёрок.'), 'probability');
+  assert.equal(inferMathKind('Игральную кость бросили дважды. Найдите вероятность двух шестёрок.'), 'probability_statistics');
   assert.equal(inferMathKind('Найдите медиану треугольника ABC'), 'geometry');
-  assert.equal(inferMathKind('Даны значения: 2, 3, 3, 5, 7. Найдите медиану и размах.'), 'statistics');
+  assert.equal(inferMathKind('Даны значения: 2, 3, 3, 5, 7. Найдите медиану и размах.'), 'probability_statistics');
 });
 test('parses probability with required steps and answer', () => {
   const solution = parseMathResponse([
@@ -75,7 +75,7 @@ test('parses probability with required steps and answer', () => {
     'ФОРМУЛА: P = 5 / 8 = 0,625',
     'ОТВЕТ: 5/8 = 0,625'
   ].join('\n'), 'probability', 'В коробке 5 красных и 3 синих шара.');
-  assert.equal(solution.kind,'probability');
+  assert.equal(solution.kind,'probability_statistics');
   assert.equal(solution.answer,'5/8 = 0,625');
   assert.equal(solution.steps.length,2);
   assert.equal(solution.diagram.kind,'none');
@@ -91,7 +91,7 @@ test('parses statistics solution, including data and variance', () => {
     'ФОРМУЛА: (4+1+1+1+9)/5 = 3,2',
     'ОТВЕТ: среднее 4, дисперсия 3,2'
   ].join('\n'), 'statistics');
-  assert.equal(solution.kind,'statistics');
+  assert.equal(solution.kind,'probability_statistics');
   assert.equal(solution.steps.length,3);
   assert.equal(solution.given[0],'2, 3, 3, 5, 7');
 });
@@ -107,8 +107,42 @@ test('computes descriptive statistics independently and distinguishes sample var
   assert.equal(datasetHint('В книге №37 найдите среднее 1, 2, 3.'),'');
 });
 test('describes advanced classes without inventing a textbook exercise', () => {
-  const guide=mathStudyGuide({grade:11,level:'advanced',kind:'probability',textbook:'Автор, номер 59'});
+  const guide=mathStudyGuide({grade:11,level:'advanced',kind:'probability_statistics',textbook:'Автор, номер 59'});
   assert.match(guide,/углублённый/);
-  assert.match(guide,/Байеса/);
+  assert.match(guide,/Вероятность и статистика/);
   assert.match(guide,/не выдумывай/);
+});
+
+test('recognizes one official school subject and correctly routes both subtopics', () => {
+  assert.equal(inferMathKind('Найдите среднее арифметическое 1, 2, 3'), 'probability_statistics');
+  assert.equal(inferMathKind('Определите вероятность события'), 'probability_statistics');
+  assert.equal(inferMathKind('', 'statistics'), 'probability_statistics');
+  assert.equal(inferMathKind('', 'probability'), 'probability_statistics');
+});
+test('parses complete probability formula: symbols, substitution and calculations', () => {
+  const text = [
+    'ТИП: probability_statistics',
+    'ДАНО: 5 красных и 3 синих шара.',
+    'НАЙТИ: P(A)',
+    'РЕШЕНИЕ:',
+    '1. Исходы равновозможны, применим классическое определение.',
+    'ФОРМУЛА: P(A) = m / n',
+    'ОБОЗНАЧЕНИЯ: m — благоприятные исходы; n — все равновозможные исходы.',
+    'ПОДСТАНОВКА: P(A) = 5 / (5 + 3)',
+    'ВЫЧИСЛЕНИЕ: P(A) = 5 / 8 = 0,625',
+    'ОТВЕТ: 5/8'
+  ].join('\n');
+  const x = parseMathResponse(text, 'probability_statistics');
+  assert.equal(x.kind,'probability_statistics');
+  assert.equal(x.steps[0].formula,'P(A) = m / n');
+  assert.match(x.steps[0].symbols,/благоприятные/);
+  assert.match(x.steps[0].substitution,/5 \/ \(5 \+ 3\)/);
+  assert.match(x.steps[0].calculation,/0,625/);
+});
+test('uses verifiable curriculum URL rather than imaginary textbook pages', () => {
+  const guide=mathStudyGuide({grade:8,level:'basic',kind:'probability_statistics',textbook:'Ященко, №27'});
+  assert.match(guide,/edsoo\.ru/);
+  assert.match(guide,/media\.prosv\.ru/);
+  assert.match(guide,/не выдумывай/);
+  assert.match(guide,/подстановку/);
 });
