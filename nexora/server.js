@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseMathResponse } from './math-response.js';
+import { mathAnswerPrompt } from './math-prompt.js';
 import { appendFractionWorking, fractionHelpForProblem } from './math-fractions.js';
 import { inferMathKind, mathStudyGuide, datasetHint, MATH_KINDS, MATH_LEVELS } from './math-curriculum.js';
 
@@ -399,6 +400,15 @@ async function mathBridgeSolve(req, res) {
     name: 'OpenRouter', url: 'https://openrouter.ai/api/v1/chat/completions',
     key: process.env.OPENROUTER_API_KEY.trim(), model: process.env.MATH_OPENROUTER_MODEL || process.env.ARGOSHA_OPENROUTER_MODEL || 'openrouter/free'
   });
+  if (process.env.OPENROUTER_API_KEY?.trim()) {
+    const backupModel = process.env.MATH_OPENROUTER_FALLBACK_MODEL || 'google/gemma-4-26b-a4b-it:free';
+    if (!providers.some(item => item.model === backupModel)) providers.push({
+      name: 'OpenRouter Backup',
+      url: 'https://openrouter.ai/api/v1/chat/completions',
+      key: process.env.OPENROUTER_API_KEY.trim(),
+      model: backupModel
+    });
+  }
   if (process.env.GROQ_API_KEY?.trim()) providers.push({
     name: 'Groq', url: 'https://api.groq.com/openai/v1/chat/completions',
     key: process.env.GROQ_API_KEY.trim(), model: process.env.MATH_GROQ_MODEL || process.env.ARGOSHA_GROQ_MODEL || 'openai/gpt-oss-20b'
@@ -452,70 +462,27 @@ async function mathBridgeSolve(req, res) {
   const studyContext = mathStudyGuide({grade, level:studyLevel, kind:solvedKind, textbook});
   const exactStatistics = solvedKind === 'probability_statistics' ? datasetHint(problem) : '';
   const exactFractions = fractionHelpForProblem(problem);
-  const instructions = [
-    'Ты NEXORA Math — учитель математики. Дай правильное последовательное решение на русском языке для указанного школьного класса.',
-    'Проверяй все вычисления, ОДЗ и единицы. Если условие неоднозначное, запроси уточнение и НЕ выдумывай значения.',
-    'Для геометрии обязательны Дано, Найти, Решение, Ответ. Укажи применяемые теоремы. Чертёж схематический, не в масштабе.',
-    'Для алгебры тоже опиши Дано и Найти, затем последовательные шаги с формулами и Ответ.',
-    'Для вероятностей: прежде вычисления определи все возможные элементарные исходы и благоприятные, когда они равновозможны; различай независимые и зависимые события, с возвращением и без возвращения.',
-    'Для комбинаторных задач: обоснуй выбор формулы (n!, C(n,k), A(n,k)) или правила умножения, учитывай порядок и повторения.',
-    'Для статистики: показывай упорядоченный ряд, частоты, n, вычисление среднего, медианы, моды, размаха или дисперсии в зависимости от вопроса. Не делай вывод о выборке из недостаточных данных.',
-    'Единый учебный курс называется «Вероятность и статистика», не дели его на предметы. Ориентируйся на подтверждённые темы федеральных программ edsoo.ru и сведения о комплекте учебников Просвещения, переданные в подсказке.',
-    'ПРАВИЛО ДЛЯ ОБЫКНОВЕННЫХ ДРОБЕЙ: никогда не перепрыгивай от 5/8 сразу к 0,625. Сначала покажи, как 8 × 125 = 1000, затем равенство 5/8 = (5 × 125)/(8 × 125) = 625/1000 = 0,625. Числитель И знаменатель умножаются на ОДИНАКОВЫЙ множитель; нельзя умножать только числитель.',
-    'Для другой дроби подбирай ЕЁ собственный дополнительный множитель, а не всегда 125. При необходимости сначала сокращай; если знаменатель в несократимой дроби содержит простые делители кроме 2 и 5, не выдумывай конечную десятичную дробь — объясни периодическую запись.',
-    'ДВУХЭТАЖНАЯ ДРОБЬ: сначала определи полный числитель и полный знаменатель, укажи ограничения деления на ноль; затем (a/b) ÷ (c/d) = (a/b) × (d/c) = ad/bc; только после этого сокращай и при надобности перевод в десятичную запись. Для сложения/вычитания сначала общий знаменатель, для умножения умножай числители и знаменатели.',
-    'Каждое такое преобразование дроби обязательно выделяй в РЕШЕНИЕ с отдельными строками ФОРМУЛА, ОБОЗНАЧЕНИЯ, ПОДСТАНОВКА, ВЫЧИСЛЕНИЕ и пояснением причины умножения или сокращения.',
-    'В задачах по вероятности обязательно раскрой формулу. Пример для 5 красных и 3 синих шаров: ФОРМУЛА: P(A) = m/n; ОБОЗНАЧЕНИЯ: m — число благоприятных исходов, n — число всех равновозможных исходов; ПОДСТАНОВКА: P(A) = 5/(5+3); ВЫЧИСЛЕНИЕ: P(A) = 5/8 = 0,625; ОТВЕТ: 5/8. Применяй эту формулу только при равновозможных исходах.',
-    'В статистике аналогично отдельно запиши формулу среднего, медианы, дисперсии или другого нужного показателя и последовательно покажи числа из условия.',
-    'Величины и цифры в формуле должны совпадать с Дано. Не пропускай объяснение обозначений. Не называй формулу без доказанной применимости.',
-    'Для задач о распределении вероятностей проверяй сумму вероятностей 1, формулы математического ожидания и дисперсии. Для условной вероятности указывай событие-условие и ненулевой знаменатель.',
-    'Если учебник, таблица или условие прикреплены, следуй именно их определениям и обозначениям. Если есть только номер задания, без самого текста запроси условие, не выдумывай его.',
-    'Верни ПРОСТОЙ ТЕКСТ без JSON, без фигурных скобок, без блоков кода, без таблиц и без Markdown.',
-    'Точный формат: ',
-    'ТИП: geometry / algebra / probability_statistics',
-    'НАЗВАНИЕ: краткая тема',
-    'ДАНО:',
-    '- исходные известные величины',
-    'НАЙТИ:',
-    '- неизвестная величина',
-    'РЕШЕНИЕ:',
-    '1. Краткое обоснование: почему именно эта формула и какие условия её применимости проверены',
-    'ФОРМУЛА: общая запись формулы БЕЗ подстановки чисел',
-    'ОБОЗНАЧЕНИЯ: поясни каждый символ формулы, какие величины в условии ему соответствуют',
-    'ПОДСТАНОВКА: подставь числа из условия в формулу, покажи все скобки и единицы измерения',
-    'ВЫЧИСЛЕНИЕ: подробно вычисли каждое действие и итог; дробь сокращай по возможности',
-    '2. Следующий шаг, если требуется',
-    'ФОРМУЛА: ...',
-    'ОБОЗНАЧЕНИЯ: ...',
-    'ПОДСТАНОВКА: ...',
-    'ВЫЧИСЛЕНИЕ: ...',
-    'ОТВЕТ: точный итог с единицами',
-    'ПРОВЕРКА: обратная подстановка или проверка формулы',
-    'ЧЕРТЁЖ: right_triangle / triangle / rectangle / circle / coordinate / none',
-    'Каждый заголовок пиши с новой строки. Укажи ровно столько шагов, сколько необходимо, без пропусков.',
-    'Если данных недостаточно, верни только строку УТОЧНЕНИЕ: и один конкретный вопрос. Не придумывай ответ.',
-    'Не используй LaTeX, HTML, JSON, кавычки вокруг всего ответа; формулы обычными символами x², √, ∠, π, =, единицы через пробел.',
-    'Не утверждай соответствие универсальному ГОСТу: формат предназначен для школьного решения.',
-    'Дополнительные требования по учебной программе и выбранной теме:\n' + studyContext,
-    exactStatistics ? 'Проверка статистических вычислений:\n' + exactStatistics : '',
-    exactFractions ? 'Проверенная арифметика сложной дроби:\n' + exactFractions : ''
-  ].join('\n');
+  const instructions = mathAnswerPrompt({
+    kind: solvedKind, grade, level: studyLevel, textbook, exactStatistics, exactFractions
+  }) + '\nШкольная программа: ' + studyContext.split('\n').slice(0, 3).join(' ').slice(0, 480);
+  let partialSolution = null;
   let lastFailure = 'Провайдеры ИИ не ответили.';
   for (const provider of providers) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    const maxAttempts = provider.name === 'OpenRouter' ? 2 : 1;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const response = await fetch(provider.url, {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + provider.key, 'Content-Type': 'application/json', 'HTTP-Referer': appUrl(req), 'X-Title': 'NEXORA Math Studio' },
         body: JSON.stringify({
-          model: provider.model, temperature: 0.12, max_tokens: attempt === 0 ? 3400 : 4600,
-          ...(provider.name === 'OpenRouter' ? {reasoning:{effort:'low'}} : {}),
+          model: provider.model, temperature: 0.12, max_tokens: 3200,
+          ...(provider.name.startsWith('OpenRouter') ? {reasoning:{effort:'minimal'}} : {}),
           messages: [
             { role: 'system', content: instructions },
             { role: 'user', content: JSON.stringify({ problem, requested_kind: solvedKind, grade, level: studyLevel, textbook_reference: textbook }) }
           ]
         }),
-        signal: AbortSignal.timeout(65000)
+        signal: AbortSignal.timeout(provider.name === 'OpenRouter' ? 32000 : 30000)
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(provider.name + ' HTTP ' + response.status);
@@ -530,22 +497,30 @@ async function mathBridgeSolve(req, res) {
       const parsed = parseMathResponse(raw, solvedKind, problem);
       const solution = normalizeMathSolution(parsed, solvedKind);
       appendFractionWorking(solution);
-      if (solvedKind === 'probability_statistics' && !solution.needs_clarification) {
-        const hasExpandedFormula = solution.steps.some(x => x.formula && x.symbols && x.substitution && x.calculation);
-        if (!hasExpandedFormula) throw new Error('missing_expanded_formula');
-      }
       if (solution.kind === 'other' || (requestedKind !== 'auto' && solution.kind !== solvedKind)) solution.kind = solvedKind;
+      if (solvedKind === 'probability_statistics' && !solution.needs_clarification &&
+          !solution.steps.some(x => x.formula && x.symbols && x.substitution && x.calculation)) {
+        if (!solution.warning) solution.warning = 'Некоторые обозначения или подстановки не раскрыты моделью полностью — проверьте выкладки.';
+        partialSolution ||= {solution, provider:provider.name};
+        throw new Error('missing_expanded_formula');
+      }
       return mathJson(res, 200, { ok: true, solution, provider: provider.name });
     } catch (error) {
       lastFailure = error.message;
       console.error('Math Studio provider failed:', provider.name, 'attempt', attempt + 1, error.message);
       const mayRetry = ['empty_provider_response','missing_expanded_formula','unstructured_ai_response','incomplete_ai_solution'].includes(error.message);
-      if (!mayRetry || attempt === 1) break;
+      if (!mayRetry || attempt + 1 >= maxAttempts) break;
     }
     }
   }
+  if (partialSolution) {
+    console.warn('Math Studio delivered usable partial solution after provider fallback:',lastFailure);
+    return mathJson(res, 200, {ok:true,solution:partialSolution.solution,provider:partialSolution.provider});
+  }
   console.error('Math Studio all providers failed:', lastFailure);
-  return mathJson(res, 502, { error: 'providers_unavailable', message: 'Не удалось решить задачу через подключённые модели. Попробуйте ещё раз.' });
+  const message = lastFailure.includes('HTTP 429') ? 'Сервис ИИ временно достиг лимита запросов. Попробуйте позднее.'
+    : 'Модель пока не смогла подготовить читаемое решение. Попробуйте повторить запрос или уточнить условие.';
+  return mathJson(res, 502, { error: 'providers_unavailable', message });
 }
 async function authApi(path, payload, req) {
   const headers = { 'Content-Type': 'application/json' };
