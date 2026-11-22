@@ -94,4 +94,26 @@ server.requestTimeout = 95000;
 server.listen(port, '0.0.0.0', () => {
   console.log('NEXORA Math Studio listening on port ' + port);
   console.log('Math gateway configured:', bridgeToken.length >= 32);
+  // Explicitly opt-in to one diagnostic generation after startup; never run by default.
+  if (process.env.MATH_SMOKE_TEST === '1') {
+    setTimeout(async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:' + port + '/api/solve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({problem: 'Решите уравнение 2x + 3 = 7.', kind: 'algebra', grade: 6}),
+          signal: AbortSignal.timeout(85000)
+        });
+        const json = await response.json().catch(() => ({}));
+        const valid = Boolean(response.ok && json.ok && json.solution?.answer && json.solution?.steps?.length);
+        console.info('MATH_SMOKE_RESULT', JSON.stringify({
+          passed: valid, status: response.status,
+          provider: valid ? json.provider : undefined,
+          reason: valid ? undefined : String(json.error || json.message || 'invalid_answer').slice(0, 120)
+        }));
+      } catch (error) {
+        console.error('MATH_SMOKE_RESULT', JSON.stringify({passed: false, reason: error.message}));
+      }
+    }, 2500);
+  }
 });
