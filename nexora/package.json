@@ -8,8 +8,8 @@
   },
   "scripts": {
     "start": "node start.js",
-    "check": "node --check server.js && node --check start.js && node --test test/math-response.test.mjs",
-    "test": "node --test test/math-response.test.mjs",
-    "postinstall": "node --check server.js && node --test test/math-response.test.mjs"
+    "check": "node --check server.js && node --check start.js && node --test test/math-response.test.mjs test/game-studio.test.mjs",
+    "test": "node --test test/math-response.test.mjs test/game-studio.test.mjs",
+    "postinstall": "node --check server.js && node --test test/math-response.test.mjs test/game-studio.test.mjs"
   }
 }
