@@ -10,6 +10,12 @@ const dir = fileURLToPath(new URL('.', import.meta.url));
 const html = await readFile(join(dir, 'index.html'), 'utf8');
 assert.match(html, /id="problem"/);
 assert.match(html, /id="solve"/);
+assert.match(html, /Двухэтажная дробь/);
+assert.match(html, /Дробь 5\/8/);
+assert.match(html, /function mathText\(/);
+assert.match(html, /stacked-fraction/);
+assert.match(html, /Делить на|делить на/);
+
 assert.match(html, /data-mode="probability_statistics"/);
 assert.doesNotMatch(html, /data-mode="probability"/);
 assert.doesNotMatch(html, /data-mode="statistics"/);
