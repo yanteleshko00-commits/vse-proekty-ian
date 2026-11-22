@@ -88,7 +88,7 @@ const server = http.createServer(async (req, res) => {
         'Content-Type': 'application/json', 'x-nexora-math-key': bridgeToken
       },
       body: JSON.stringify({ problem: combinedProblem, kind, grade, images: attachments.images }),
-      signal: AbortSignal.timeout(90000)
+      signal: AbortSignal.timeout(attachments.images.length ? 125000 : 90000)
     });
     const json = await upstream.json().catch(() => ({}));
     return respond(res, upstream.status, json && typeof json === 'object' ? json : { message: 'Некорректный ответ ИИ.' });
@@ -97,7 +97,7 @@ const server = http.createServer(async (req, res) => {
     return respond(res, 502, { message: 'Не удалось связаться с ИИ. Попробуйте ещё раз.' });
   } finally { active--; }
 });
-server.requestTimeout = 95000;
+server.requestTimeout = 135000;
 server.listen(port, '0.0.0.0', () => {
   console.log('NEXORA Math Studio listening on port ' + port);
   console.log('Math gateway configured:', bridgeToken.length >= 32);
@@ -122,5 +122,29 @@ server.listen(port, '0.0.0.0', () => {
         console.error('MATH_SMOKE_RESULT', JSON.stringify({passed: false, reason: error.message}));
       }
     }, 2500);
+  }
+  if (process.env.MATH_IMAGE_SMOKE_TEST === '1') {
+    setTimeout(async () => {
+      try {
+        const { mathTestImage } = await import('./test-image.mjs');
+        const image = mathTestImage();
+        const response = await fetch('http://127.0.0.1:' + port + '/api/solve', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ problem:'',kind:'auto',grade:7,attachments:[{
+            name:'math-test.png',data:'data:image/png;base64,'+image.toString('base64')
+          }]}),
+          signal:AbortSignal.timeout(130000)
+        });
+        const json=await response.json().catch(()=>({}));
+        const answer=String(json.solution?.answer || '');
+        console.info('MATH_IMAGE_SMOKE_RESULT',JSON.stringify({
+          passed: Boolean(response.ok && json.ok && answer && /2/.test(answer)),
+          status:response.status,provider:json.provider,
+          reason:response.ok ? undefined : String(json.error || json.message || 'invalid_solution').slice(0,140)
+        }));
+      } catch(error) {
+        console.error('MATH_IMAGE_SMOKE_RESULT',JSON.stringify({passed:false,reason:error.message}));
+      }
+    }, 2800);
   }
 });
