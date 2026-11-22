@@ -629,13 +629,13 @@ h1 span{background:linear-gradient(103deg,#7956e5 1%,#bc70c5 55%,#de9a99);backgr
       <p>Конспект, определения, примеры и вопросы для повторения.</p>
 
     </button>
-    <button class="tile" type="button" data-tool="text">
-      <span class="status">Скоро</span>
+    <a class="tile" data-tool="text" href="https://nexora-text-studio.onrender.com/">
+      <span class="status ready">Доступно</span>
       <span class="tile-top">¶</span>
       <h3>Создать текст</h3>
-      <p>Сочинение, эссе, письмо, доклад и другие форматы.</p>
+      <p>Статьи, сочинения, посты и письма. Написание, проверка и редактирование текстов с ИИ.</p>
 
-    </button>
+    </a>
   </section>
 
   <section class="recent-section" aria-labelledby="recent-heading">
@@ -789,7 +789,7 @@ h1 span{background:linear-gradient(103deg,#7956e5 1%,#bc70c5 55%,#de9a99);backgr
   function makeRecentLink(item){var link=document.createElement('a');link.className='recent-item';link.href=item.href||'#';if(item.external){link.target='_blank';link.rel='noopener'}
     var icon=makeRecentIcon(item);
     var copy=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('span');strong.textContent=item.title;small.textContent=recentDate(item);copy.appendChild(strong);copy.appendChild(small);link.appendChild(icon);link.appendChild(copy);
-    if(!['project','math','image'].includes(item.id))link.addEventListener('click',function(e){e.preventDefault();var tile=document.querySelector('[data-tool="'+item.id+'"]');if(tile)tile.click()});
+    if(!['project','math','image','text'].includes(item.id))link.addEventListener('click',function(e){e.preventDefault();var tile=document.querySelector('[data-tool="'+item.id+'"]');if(tile)tile.click()});
     return link;
   }
   function renderRecent(){
