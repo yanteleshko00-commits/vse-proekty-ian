@@ -336,13 +336,17 @@ function normalizeMathSolution(value, hint) {
   const steps = Array.isArray(value.steps) ? value.steps.slice(0, 12).map((step, index) => ({
     title: str(step?.title, 100) || 'Шаг ' + (index + 1),
     text: str(step?.text || step?.explanation, 1200),
-    formula: str(step?.formula, 440)
-  })).filter(step => step.text || step.formula) : [];
+    formula: str(step?.formula, 500),
+    symbols: str(step?.symbols, 850),
+    substitution: str(step?.substitution, 600),
+    calculation: str(step?.calculation, 600)
+  })).filter(step => step.text || step.formula || step.symbols || step.substitution || step.calculation) : [];
   if (!needsClarification && (!str(value.answer, 600) || steps.length === 0)) throw new Error('incomplete_solution');
   const kind = str(value.diagram?.kind, 24).toLowerCase();
   const allowedKinds = new Set(['triangle', 'right_triangle', 'rectangle', 'circle', 'coordinate', 'none']);
   return {
-    kind: ['algebra', 'geometry', 'probability', 'statistics', 'other'].includes(value.kind) ? value.kind : hint,
+    kind: ['probability','statistics','probability_statistics'].includes(value.kind) ? 'probability_statistics'
+      : ['algebra','geometry','other'].includes(value.kind) ? value.kind : hint,
     title: str(value.title, 120) || 'Решение задачи',
     given: list(value.given, 9),
     find: list(value.find, 7),
@@ -445,7 +449,7 @@ async function mathBridgeSolve(req, res) {
   }
   const solvedKind = inferMathKind(problem, requestedKind);
   const studyContext = mathStudyGuide({grade, level:studyLevel, kind:solvedKind, textbook});
-  const exactStatistics = solvedKind === 'statistics' ? datasetHint(problem) : '';
+  const exactStatistics = solvedKind === 'probability_statistics' ? datasetHint(problem) : '';
   const instructions = [
     'Ты NEXORA Math — учитель математики. Дай правильное последовательное решение на русском языке для указанного школьного класса.',
     'Проверяй все вычисления, ОДЗ и единицы. Если условие неоднозначное, запроси уточнение и НЕ выдумывай значения.',
@@ -454,21 +458,31 @@ async function mathBridgeSolve(req, res) {
     'Для вероятностей: прежде вычисления определи все возможные элементарные исходы и благоприятные, когда они равновозможны; различай независимые и зависимые события, с возвращением и без возвращения.',
     'Для комбинаторных задач: обоснуй выбор формулы (n!, C(n,k), A(n,k)) или правила умножения, учитывай порядок и повторения.',
     'Для статистики: показывай упорядоченный ряд, частоты, n, вычисление среднего, медианы, моды, размаха или дисперсии в зависимости от вопроса. Не делай вывод о выборке из недостаточных данных.',
+    'Единый учебный курс называется «Вероятность и статистика», не дели его на предметы. Ориентируйся на подтверждённые темы федеральных программ edsoo.ru и сведения о комплекте учебников Просвещения, переданные в подсказке.',
+    'В задачах по вероятности обязательно раскрой формулу. Пример для 5 красных и 3 синих шаров: ФОРМУЛА: P(A) = m/n; ОБОЗНАЧЕНИЯ: m — число благоприятных исходов, n — число всех равновозможных исходов; ПОДСТАНОВКА: P(A) = 5/(5+3); ВЫЧИСЛЕНИЕ: P(A) = 5/8 = 0,625; ОТВЕТ: 5/8. Применяй эту формулу только при равновозможных исходах.',
+    'В статистике аналогично отдельно запиши формулу среднего, медианы, дисперсии или другого нужного показателя и последовательно покажи числа из условия.',
+    'Величины и цифры в формуле должны совпадать с Дано. Не пропускай объяснение обозначений. Не называй формулу без доказанной применимости.',
     'Для задач о распределении вероятностей проверяй сумму вероятностей 1, формулы математического ожидания и дисперсии. Для условной вероятности указывай событие-условие и ненулевой знаменатель.',
     'Если учебник, таблица или условие прикреплены, следуй именно их определениям и обозначениям. Если есть только номер задания, без самого текста запроси условие, не выдумывай его.',
     'Верни ПРОСТОЙ ТЕКСТ без JSON, без фигурных скобок, без блоков кода, без таблиц и без Markdown.',
     'Точный формат: ',
-    'ТИП: geometry / algebra / probability / statistics',
+    'ТИП: geometry / algebra / probability_statistics',
     'НАЗВАНИЕ: краткая тема',
     'ДАНО:',
     '- исходные известные величины',
     'НАЙТИ:',
     '- неизвестная величина',
     'РЕШЕНИЕ:',
-    '1. Краткое обоснование первого шага',
-    'ФОРМУЛА: выражение и вычисление',
-    '2. Следующий шаг',
-    'ФОРМУЛА: вычисление',
+    '1. Краткое обоснование: почему именно эта формула и какие условия её применимости проверены',
+    'ФОРМУЛА: общая запись формулы БЕЗ подстановки чисел',
+    'ОБОЗНАЧЕНИЯ: поясни каждый символ формулы, какие величины в условии ему соответствуют',
+    'ПОДСТАНОВКА: подставь числа из условия в формулу, покажи все скобки и единицы измерения',
+    'ВЫЧИСЛЕНИЕ: подробно вычисли каждое действие и итог; дробь сокращай по возможности',
+    '2. Следующий шаг, если требуется',
+    'ФОРМУЛА: ...',
+    'ОБОЗНАЧЕНИЯ: ...',
+    'ПОДСТАНОВКА: ...',
+    'ВЫЧИСЛЕНИЕ: ...',
     'ОТВЕТ: точный итог с единицами',
     'ПРОВЕРКА: обратная подстановка или проверка формулы',
     'ЧЕРТЁЖ: right_triangle / triangle / rectangle / circle / coordinate / none',
@@ -500,7 +514,11 @@ async function mathBridgeSolve(req, res) {
       if (typeof raw !== 'string' || !raw.trim()) throw new Error('empty_provider_response');
       const parsed = parseMathResponse(raw, solvedKind, problem);
       const solution = normalizeMathSolution(parsed, solvedKind);
-      if (solution.kind === 'other' || (requestedKind !== 'auto' && solution.kind !== requestedKind)) solution.kind = solvedKind;
+      if (solvedKind === 'probability_statistics' && !solution.needs_clarification) {
+        const hasExpandedFormula = solution.steps.some(x => x.formula && x.symbols && x.substitution && x.calculation);
+        if (!hasExpandedFormula) throw new Error('missing_expanded_formula');
+      }
+      if (solution.kind === 'other' || (requestedKind !== 'auto' && solution.kind !== solvedKind)) solution.kind = solvedKind;
       return mathJson(res, 200, { ok: true, solution, provider: provider.name });
     } catch (error) {
       lastFailure = error.message;
