@@ -350,6 +350,16 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   overflow-wrap:normal;
 }
 
+
+/* NEXORA: unified bolder and more readable typography, including mobile screens. */
+html body{font-weight:680}
+body p,body li,body label,body button,body input,body select,body textarea,body a,body small{font-weight:680}
+body :is(h1,h2,h3,h4,strong,b){font-weight:850}
+body :is(.tile p,.hero-copy,.hint,.subnote,.field label,.field-label,.stage p,.intro p,.footer-note,.footer-link){font-weight:680}
+body :is(.tile h3,.brand,.brand-text strong,.brand-wordmark,.card h3,.panel-head h2){font-weight:850}
+body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equation){font-weight:580}
+@media(max-width:600px){body p,body button,body input,body select,body textarea{font-weight:690}}
+
 </style>
 </head>
 <body>
