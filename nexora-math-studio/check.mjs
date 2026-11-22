@@ -14,6 +14,12 @@ assert.match(html, /Двухэтажная дробь/);
 assert.match(html, /Дробь 5\/8/);
 assert.match(html, /function mathText\(/);
 assert.match(html, /stacked-fraction/);
+assert.match(html, /id="loader-elapsed"/);
+assert.match(html, /id="cancel-solve"/);
+assert.match(html, /requestController\.abort\(\)/);
+assert.match(html, /controller\.signal/);
+assert.match(html, /Превышено время ожидания ИИ/);
+
 assert.match(html, /Делить на|делить на/);
 
 assert.match(html, /data-mode="probability_statistics"/);
@@ -44,7 +50,42 @@ new vm.Script(js);
 const style = html.match(/<style>([\s\S]*?)<\/style>/)?.[1];
 assert.ok(style);
 assert.equal((style.match(/{/g) || []).length, (style.match(/}/g) || []).length);
+assert.match(style, /\.formula-part\s*>\s*span\s*\{/);
+assert.doesNotMatch(style, /\.formula-part\s+span\s*\{/);
+assert.match(style, /\.formula-part\s+\.stacked-fraction\s*\{[^}]*display:inline-grid/);
+assert.match(style, /\.result-step\s*\{[^}]*minmax\(0,1fr\)/);
 
+
+
+
+const formatSource=js.slice(js.indexOf('function mathText('),js.indexOf('function section(',js.indexOf('function mathText(')));
+assert.ok(formatSource.includes('const fraction='));
+const fakeDocument={
+  createTextNode: value=>({tag:'#text',textContent:value}),
+  createElement:tag=>({
+    tag,children:[],attributes:{},
+    appendChild(child){this.children.push(child)},
+    append(...children){this.children.push(...children)},
+    setAttribute(key,value){this.attributes[key]=value}
+  })
+};
+const formatter = vm.runInNewContext(
+  '(function(){function make(tag,cls,text){const el=document.createElement(tag);el.className=cls;if(text!==undefined)el.textContent=String(text);return el;}' +
+  formatSource + 'return mathText;})()',
+  {document:fakeDocument}
+);
+const equation=fakeDocument.createElement('span');
+formatter(equation,'S = (1/2) × a × b');
+const eqFraction=equation.children.find(child=>child.className==='stacked-fraction');
+assert.ok(eqFraction,'fraction remains inline');
+assert.equal(eqFraction.children[0].children[0].textContent,'1');
+assert.equal(eqFraction.children[1].children[0].textContent,'2');
+assert.equal(equation.children[0].textContent,'S = ');
+assert.equal(equation.children[equation.children.length-1].textContent,' × a × b');
+const nested=fakeDocument.createElement('span');
+formatter(nested,'(1/2)/(3/4)');
+assert.equal(nested.children.length,1,'nested fractions form one stacked expression');
+assert.equal(nested.children[0].className,'stacked-fraction');
 
 assert.match(html, /id="attachment-input"/);
 assert.match(html, /id="camera-input"/);
