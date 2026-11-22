@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseMathResponse } from '../math-response.js';
+import { explainDecimalFraction, explainNestedFraction, fractionHelpForProblem, appendFractionWorking } from '../math-fractions.js';
 import { inferMathKind, mathStudyGuide, calculateBasicStatistics, datasetHint } from '../math-curriculum.js';
 
 test('accepts structured algebra solution without JSON', () => {
@@ -145,4 +146,37 @@ test('uses verifiable curriculum URL rather than imaginary textbook pages', () =
   assert.match(guide,/media\.prosv\.ru/);
   assert.match(guide,/не выдумывай/);
   assert.match(guide,/подстановку/);
+});
+
+test('5/8 uses multiplier 125 in both numerator and denominator', () => {
+  const x=explainDecimalFraction(5,8);
+  assert.equal(x.factor,125);
+  assert.equal(x.base,1000);
+  assert.equal(x.decimal,'0,625');
+  assert.equal(x.step.substitution,'5/8 = (5 × 125)/(8 × 125)');
+  assert.equal(x.step.calculation,'625/1000 = 0,625');
+});
+test('fraction multiplier depends on denominator and reductions', () => {
+  const x=explainDecimalFraction(3,40);
+  assert.equal(x.factor,25);
+  assert.equal(x.step.calculation,'75/1000 = 0,075');
+  assert.equal(explainDecimalFraction(6,8).decimal,'0,75');
+  assert.equal(explainDecimalFraction(1,3).terminates,false);
+  assert.equal(explainDecimalFraction(1,0),null);
+});
+test('nested fraction uses reciprocal and reduces exactly', () => {
+  const x=explainNestedFraction(1,2,3,4);
+  assert.equal(x.value,'2/3');
+  assert.match(x.step.substitution,/\(4\/3\)/);
+  assert.match(x.step.calculation,/4\/6 = 2\/3/);
+  assert.match(fractionHelpForProblem('Вычислите (1/2)/(3/4)'),/умножения на обратную/);
+});
+test('append exact fraction expansion to AI answer without duplicating one it already gave',()=>{
+  const x={answer:'P(A) = 5/8',steps:[{text:'Пять подходящих исходов из восьми равновозможных.'}]};
+  appendFractionWorking(x);
+  assert.equal(x.steps.length,2);
+  assert.match(x.steps[1].substitution,/5 × 125/);
+  assert.equal(x.steps[1].calculation,'625/1000 = 0,625');
+  appendFractionWorking(x);
+  assert.equal(x.steps.length,2);
 });
