@@ -75,7 +75,7 @@ textarea:focus,select:focus{border-color:#b6a5f1;box-shadow:0 0 0 4px rgba(119,8
 .example{min-height:33px;padding:7px 12px;border:1px solid #e9e3f1;border-radius:99px;background:#fff;color:#6f6883;font-size:11px;font-weight:650}
 .example:hover{border-color:#aa9aea;background:#f5f0ff;color:#5740a6}
 .category-label{display:block;margin:22px 0 10px;font-size:12px;font-weight:710}
-.modes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.modes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .mode{min-height:46px;padding:9px 8px;border:1px solid #e7e3f1;border-radius:12px;background:#faf9fd;color:#767188;font-size:11px;font-weight:700}
 .mode.active{border-color:#a798ed;background:#f2edff;color:#5b48ae;box-shadow:inset 0 0 0 1px rgba(119,89,231,.12)}
 .controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:19px 0}
@@ -188,6 +188,21 @@ footer b{color:#55486d;letter-spacing:.13em}
 .textbook-hint{margin:7px 0 0;color:#9d97ae;font-size:10px;line-height:1.55}
 @media(max-width:790px){.modes{grid-template-columns:repeat(3,minmax(0,1fr))}.modes .mode{min-height:44px;padding:8px 6px;font-size:10px}.feature-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.modes{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.modes .mode{font-size:10px}.curriculum-guide{font-size:10px}.feature-strip{grid-template-columns:1fr}}
+
+/* Official curriculum and fully explained formulas */
+.curriculum-sources{margin:12px 0 4px;padding:14px 15px;background:rgba(255,255,255,.85);border:1px solid #e5dff1;border-radius:13px;color:#6b6383}
+.curriculum-sources strong{display:block;margin-bottom:10px;font-size:11px;font-weight:790;color:#594d78}
+.curriculum-sources .source-links{display:flex;flex-wrap:wrap;gap:10px}
+.curriculum-sources a{color:#7355d6;text-decoration:underline;text-decoration-color:rgba(115,85,214,.28);text-underline-offset:4px;font-size:11px;line-height:1.5;font-weight:720}
+.curriculum-sources a:hover{color:#4d3499}
+.curriculum-sources small{display:block;margin-top:10px;font-size:10px;line-height:1.6;color:#9690a5}
+.formula-parts{display:grid;gap:8px;margin-top:9px}
+.formula-part{padding:11px 13px;background:#f8f6fe;border-left:3px solid #c3b4f2;border-radius:0 9px 9px 0}
+.formula-part b{display:block;margin-bottom:5px;color:#8066c9;font-size:10px;letter-spacing:.03em}
+.formula-part span{display:block;font-family:"Cambria Math",Georgia,serif;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.65;color:#42394f}
+.formula-part:first-child{border-color:#8f6be0;background:#f3efff}
+.formula-part:last-child{border-color:#5eae91}
+@media(max-width:560px){.modes{grid-template-columns:repeat(2,minmax(0,1fr))}.modes .mode{font-size:11px;min-height:45px}.curriculum-sources a{font-size:10px}.formula-part span{font-size:13px}}
 </style>
 </head>
 <body>
@@ -235,20 +250,24 @@ footer b{color:#55486d;letter-spacing:.13em}
 <button class="example" type="button" data-kind="geometry" data-problem="В прямоугольном треугольнике ABC угол A = 90°, AB = 6 см, AC = 8 см. Найдите гипотенузу BC и площадь треугольника.">Треугольник</button>
 <button class="example" type="button" data-kind="algebra" data-problem="Решите систему: 2x + y = 7; x − y = 2.">Система уравнений</button>
 <button class="example" type="button" data-kind="geometry" data-problem="В прямоугольнике ABCD стороны AB = 9 см, BC = 5 см. Найдите периметр, площадь и диагональ AC.">Прямоугольник</button>
-<button class="example" type="button" data-kind="probability" data-problem="В коробке 5 красных и 3 синих шара. Наугад выбирают один шар. Найдите вероятность того, что он красный.">Вероятность события</button>
-<button class="example" type="button" data-kind="probability" data-problem="Игральную кость бросают дважды. Найдите вероятность, что оба раза выпадет шестёрка. События независимы.">Два броска кубика</button>
-<button class="example" type="button" data-kind="statistics" data-problem="Даны данные: 2, 3, 3, 5, 7. Найдите среднее арифметическое, медиану, моду, размах и дисперсию (с делением на n).">Статистический ряд</button>
-<button class="example" type="button" data-kind="statistics" data-problem="Результаты измерений: 4, 4, 5, 6, 6, 6, 7. Составьте таблицу частот и найдите среднее значение, медиану и моду.">Частоты и медиана</button>
+<button class="example" type="button" data-kind="probability_statistics" data-problem="В коробке 5 красных и 3 синих шара. Наугад выбирают один шар. Найдите вероятность того, что он красный.">Вероятность события</button>
+<button class="example" type="button" data-kind="probability_statistics" data-problem="Игральную кость бросают дважды. Найдите вероятность, что оба раза выпадет шестёрка. События независимы.">Два броска кубика</button>
+<button class="example" type="button" data-kind="probability_statistics" data-problem="Даны данные: 2, 3, 3, 5, 7. Найдите среднее арифметическое, медиану, моду, размах и дисперсию (с делением на n).">Статистический ряд</button>
+<button class="example" type="button" data-kind="probability_statistics" data-problem="Результаты измерений: 4, 4, 5, 6, 6, 6, 7. Составьте таблицу частот и найдите среднее значение, медиану и моду.">Частоты и медиана</button>
 </div>
 <span class="category-label">Раздел математики</span>
 <div class="modes" role="group" aria-label="Раздел математики">
 <button class="mode active" type="button" data-mode="auto" aria-pressed="true">✦ Авто</button>
 <button class="mode" type="button" data-mode="algebra" aria-pressed="false">∑ Алгебра</button>
 <button class="mode" type="button" data-mode="geometry" aria-pressed="false">△ Геометрия</button>
-<button class="mode" type="button" data-mode="probability" aria-pressed="false">◈ Вероятность</button>
-<button class="mode" type="button" data-mode="statistics" aria-pressed="false">▥ Статистика</button>
+<button class="mode" type="button" data-mode="probability_statistics" aria-pressed="false">◈ Вероятность и статистика</button>
 </div>
 <p class="curriculum-guide" id="topic-guide">Выберите раздел и класс: примеры и методы решения будут соответствовать вашему уровню подготовки.</p>
+<div class="curriculum-sources" id="curriculum-sources"><strong>Проверенные источники программы</strong>
+<div class="source-links"><a id="program-source" href="https://edsoo.ru/wp-content/uploads/2025/07/2025_ooo_frp_matematika-5-9_baza.pdf" target="_blank" rel="noopener noreferrer">Единое содержание общего образования · ФРП ↗</a>
+<a id="publisher-source" href="https://media.prosv.ru/content/item/16498/" target="_blank" rel="noopener noreferrer">«Просвещение» · сведения об учебнике ↗</a></div>
+<small>Используются темы официальной программы и сведения об учебниках. Тексты закрытых учебников не загружаются; для конкретной задачи приложите её страницу.</small>
+</div>
 <div class="controls"><div class="setting"><label for="grade">Класс</label><select id="grade"><option>5</option><option>6</option><option>7</option><option selected>8</option><option>9</option><option>10</option><option>11</option></select></div><div class="setting"><label for="level">Уровень</label><select id="level"><option value="basic">Базовый</option><option value="advanced">Углублённый</option></select></div></div>
 <div class="controls"><div class="setting"><label for="format">Оформление</label><select id="format"><option value="full">Полное решение</option><option value="compact">Краткое объяснение</option></select></div><div class="setting"><label for="source-mode">Источник задачи</label><select id="source-mode"><option value="general">Обычная задача</option><option value="textbook">Из учебника</option></select></div></div>
 <div class="textbook-field" id="textbook-field" hidden><label for="textbook">Учебник, автор, номер задачи (необязательно)</label><input type="text" id="textbook" maxlength="220" placeholder="Например: Алгебра, 9 класс, № 241"><p class="textbook-hint">Название и номер сами по себе не содержат условие. Прикрепите фото страницы или напишите текст задачи.</p></div>
@@ -269,8 +288,7 @@ footer b{color:#55486d;letter-spacing:.13em}
 <section class="feature-strip" aria-label="Возможности">
 <div class="feature"><b>01 / UNDERSTAND</b><h3>Не просто ответ</h3><p>Понятные шаги, формулы и объяснения каждого действия.</p></div>
 <div class="feature"><b>02 / GEOMETRY</b><h3>Геометрия с чертежом</h3><p>«Дано», «Найти», схематический рисунок и полное решение.</p></div>
-<div class="feature"><b>03 / PROBABILITY</b><h3>Вероятность</h3><p>Случайные события, комбинаторика, вероятностные деревья и распределения.</p></div>
-<div class="feature"><b>04 / STATISTICS</b><h3>Статистика</h3><p>Среднее, медиана, мода, размах, дисперсия, частоты и таблицы.</p></div>
+<div class="feature"><b>03 / SCHOOL COURSE</b><h3>Вероятность и статистика</h3><p>Один курс: случайные события, комбинаторика, графы, статистические показатели и формулы.</p></div>
 </section>
 <p class="disclaimer">Формат решения ориентирован на школьную практику и рекомендации учителя. Универсального ГОСТа на запись школьных задач нет. Чертежи схематические, не в масштабе. Этапы работы показываются ориентировочно.</p>
 <footer><span><b>NEXORA</b> · MATH STUDIO</span><span>Думай. Решай. Понимай.</span></footer>
@@ -359,8 +377,7 @@ async function prepareAttachments(){
 
 let mode="auto",busy=false,last=null,loaderTimer=null,loadingIndex=0;
 const stages={
- probability:[["Составляю исходы…","Определяю пространство элементарных исходов."],["Считаю варианты…","Перебираю благоприятные исходы и события."],["Вычисляю вероятность…","Применяю правила сложения и умножения."],["Проверяю результат…","Вероятность должна лежать от 0 до 1."]],
- statistics:[["Собираю данные…","Выделяю значения, частоты и число наблюдений."],["Упорядочиваю ряд…","Готовлю выборку и таблицу частот."],["Считаю характеристики…","Вычисляю среднее, медиану и другие показатели."],["Проверяю вычисления…","Проверяю количество наблюдений и формулы."]],
+ probability_statistics:[["Изучаю условие…","Определяю, какие статистические показатели или события нужны."],["Выбираю формулу…","Сверяю обозначения, определения и условия применимости."],["Подставляю числа…","Показываю все величины и последовательность вычислений."],["Проверяю ответ…","Проверяю вычисления и записываю итог."]],
  attachment:[["Открываю вложения…","Подготавливаю фотографии и документы."],["Читаю условие…","ИИ распознаёт текст и обозначения на рисунке."],["Считаю…","Выбираю формулы и выполняю вычисления."],["Оформляю решение…","Записываю шаги, чертёж и ответ."]],
  algebra:[["Разбираю условие…","Определяю неизвестные и подбираю метод."],["Считаю…","Выполняю преобразования и вычисления."],["Проверяю…","Сопоставляю ответ с исходным условием."],["Оформляю решение…","Записываю шаги и окончательный ответ."]],
  geometry:[["Читаю условие…","Выделяю известные величины и то, что нужно найти."],["Записываю «Дано»…","Определяю геометрические объекты и обозначения."],["Строю чертёж…","Подготавливаю схематическое изображение фигуры."],["Считаю…","Применяю теоремы и формулы."],["Проверяю ответ…","Записываю решение и единицы измерения."]]
@@ -372,8 +389,7 @@ const topicAdvice={
  auto:"Автоматически определю тип задачи: алгебра, геометрия, вероятность или статистика.",
  algebra:"Уравнения, неравенства, функции, проценты, выражения, тригонометрия и начала анализа.",
  geometry:"Планиметрия и стереометрия. Решение с разделами «Дано», «Найти», «Решение», «Ответ».",
- probability:"Исходы и события, комбинаторика, зависимые и независимые события, Бернулли, условная вероятность.",
- statistics:"Таблицы и частоты, среднее, медиана, мода, размах, дисперсия, распределения."
+ probability_statistics:"Единый школьный курс: статистика, случайные события, вероятность, комбинаторика, деревья, графы и распределения. Формулы обязательно раскрываются."
 };
 function updateStudyGuide(){
  const g=Number($("grade").value),level=$("level").value;
@@ -382,12 +398,24 @@ function updateStudyGuide(){
 $("grade").addEventListener("change",updateStudyGuide);
 $("level").addEventListener("change",updateStudyGuide);
 $("source-mode").addEventListener("change",()=>{$("textbook-field").hidden=$("source-mode").value!=="textbook"});
+const resourceCatalog={
+  lowerBasic:["https://edsoo.ru/wp-content/uploads/2025/07/2025_ooo_frp_matematika-5-9_baza.pdf","https://media.prosv.ru/content/item/16498/"],
+  lowerAdvanced:["https://edsoo.ru/wp-content/uploads/2025/07/2025_ooo_frp_matematika-5-9_ugl.pdf","https://media.prosv.ru/content/item/16497/"],
+  senior:["https://edsoo.ru/wp-content/uploads/2025/07/2025_soo_frp_matematika_10_11_baz.pdf","https://media.prosv.ru/content/item/14987/"]
+};
+function syncSources(){
+ const grade=Number($("grade").value),level=$("level").value;
+ const row=grade>=10?resourceCatalog.senior:level==="advanced"?resourceCatalog.lowerAdvanced:resourceCatalog.lowerBasic;
+ $("program-source").href=row[0];$("publisher-source").href=row[1];
+ $("publisher-source").textContent=grade>=10?"«Просвещение» · учебное пособие (10 класс) ↗":level==="advanced"?"«Просвещение» · учебник углублённого уровня (9 класс) ↗":"«Просвещение» · учебник базового уровня (7–9 классы) ↗";
+}
+$("grade").addEventListener("change",syncSources);$("level").addEventListener("change",syncSources);syncSources();
 updateStudyGuide();
 
 document.querySelectorAll("[data-problem]").forEach(b=>b.addEventListener("click",()=>{input.value=b.dataset.problem;setMode(b.dataset.kind);$("counter").textContent=input.value.length+" / 4000";input.focus();toast("Пример добавлен")}));
 input.addEventListener("input",()=>{$("counter").textContent=input.value.length+" / 4000";errors.classList.remove("show")});
 input.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){e.preventDefault();run()}});
-function chosenMode(){if(mode!=="auto")return mode;const p=input.value.toLowerCase();if(/вероятност|испытани|подброс|кубик|монет|комбинатор|сочетани|перестанов|независим.*событ/.test(p))return "probability";if(/треугольник|окружност|радиус|диаметр|прямоугольник|площадь\s*(?:треугольника|круга|фигуры)|геометр|ромб|трапец|параллелограмм|угол/.test(p))return "geometry";if(/статистик|медиан|средн.*арифмет|дисперси|стандартн.*отклонен|размах|выборк|частот|гистограмм/.test(p))return "statistics";return "algebra"}
+function chosenMode(){if(mode!=="auto")return mode;const p=input.value.toLowerCase();if(/треугольник|окружност|радиус|диаметр|прямоугольник|площадь\s*(?:треугольника|круга|фигуры)|геометр|ромб|трапец|параллелограмм|угол/.test(p))return "geometry";if(/вероятност|испытани|подброс|кубик|монет|комбинатор|сочетани|перестанов|независим.*событ|статистик|медиан|средн.*арифмет|дисперси|стандартн.*отклонен|размах|выборк|частот|гистограмм/.test(p))return "probability_statistics";return "algebra"}
 function isGeo(){return chosenMode()==="geometry"}
 function busyState(v){busy=v;solve.disabled=v;$("solve-label").textContent=v?"Решаю…":"Решить задачу";if(loaderTimer){clearInterval(loaderTimer);loaderTimer=null}if(v){last=null;solution.classList.remove("show");$("result-actions").classList.remove("show");$("preview").classList.remove("has-result");$("empty").style.display="none";$("loader").classList.add("show");$("result-status").textContent="ИИ решает задачу";loadingIndex=0;const list=stages[attachments.length?"attachment":chosenMode()];$("loader-title").textContent=list[0][0];$("loader-detail").textContent=list[0][1];loaderTimer=setInterval(()=>{loadingIndex=(loadingIndex+1)%list.length;$("loader-title").textContent=list[loadingIndex][0];$("loader-detail").textContent=list[loadingIndex][1]},3500)}else{$("loader").classList.remove("show");if(!last)$("empty").style.display="block"}}
 function fail(t){errors.textContent=t;errors.classList.add("show");$("result-status").textContent="Не удалось завершить решение";if(!last){$("preview").classList.remove("has-result");$("empty").style.display="block"}}
@@ -401,17 +429,17 @@ function diagram(kind,labels){const root=svgEl("svg",{viewBox:"0 0 360 240",role
  else if(kind==="circle"){root.appendChild(svgEl("circle",{cx:180,cy:120,r:91,fill:"rgba(147,119,229,.07)",stroke:"#765ac8","stroke-width":3}));line(180,120,271,120);point(180,120,labels[0]||"O");point(271,120,labels[1]||"A");}
  else if(kind==="coordinate"){line(30,120,325,120);line(178,215,178,22);root.appendChild(svgEl("path",{d:"M319 114 L327 120 L319 126 M172 30 L178 20 L184 30",fill:"none",stroke:"#765ac8","stroke-width":2}));root.appendChild(svgEl("text",{x:333,y:117,fill:"#6d50cb","font-size":16},"x"));root.appendChild(svgEl("text",{x:190,y:18,fill:"#6d50cb","font-size":16},"y"));point(178,120,labels[0]||"O");}
  return root}
-function render(sol,provider){last=sol;$("preview").classList.toggle("compact-view",$("format").value==="compact");result.replaceChildren();const top=make("div","result-top");top.appendChild(make("h3","",sol.title||"Решение задачи"));top.appendChild(make("span","result-badge",sol.kind==="geometry"?"Геометрия":sol.kind==="algebra"?"Алгебра":sol.kind==="probability"?"Вероятность":sol.kind==="statistics"?"Статистика":"Математика"));result.appendChild(top);
+function render(sol,provider){last=sol;$("preview").classList.toggle("compact-view",$("format").value==="compact");result.replaceChildren();const top=make("div","result-top");top.appendChild(make("h3","",sol.title||"Решение задачи"));top.appendChild(make("span","result-badge",sol.kind==="geometry"?"Геометрия":sol.kind==="algebra"?"Алгебра":["probability_statistics","probability","statistics"].includes(sol.kind)?"Вероятность и статистика":"Математика"));result.appendChild(top);
  if(sol.needs_clarification){const b=make("div","answer");b.append(make("b","","НУЖНО УТОЧНИТЬ"),make("p","",sol.clarification||"Уточните условие задачи."));result.appendChild(b)}
- else{const geo=sol.kind==="geometry";if(geo||sol.kind==="probability"||sol.kind==="statistics"){listSection("Дано",sol.given);listSection("Найти",sol.find)}
+ else{const geo=sol.kind==="geometry";if(geo||["probability_statistics","probability","statistics"].includes(sol.kind)){listSection("Дано",sol.given);listSection("Найти",sol.find)}
  else{listSection("Условие",sol.given.length?sol.given:[input.value])}
  if(geo&&sol.diagram?.kind&&sol.diagram.kind!=="none"){const d=section("Чертёж"),w=make("div","diagram-wrap");w.appendChild(diagram(sol.diagram.kind,sol.diagram.labels||[]));w.appendChild(make("p","diagram-note",(sol.diagram.note||"Схематический чертёж")+" · не в масштабе"));d.appendChild(w)}
- const steps=section("Решение"),container=make("div","result-steps");(sol.steps||[]).forEach((step,i)=>{const row=make("div","result-step"),copy=make("div","step-copy");copy.appendChild(make("strong","",step.title||"Шаг "+(i+1)));if(step.text)copy.appendChild(make("p","",step.text));if(step.formula)copy.appendChild(make("div","formula",step.formula));row.append(make("span","step-no",i+1),copy);container.appendChild(row)});steps.appendChild(container);
+ const steps=section("Решение"),container=make("div","result-steps");(sol.steps||[]).forEach((step,i)=>{const row=make("div","result-step"),copy=make("div","step-copy");copy.appendChild(make("strong","",step.title||"Шаг "+(i+1)));if(step.text)copy.appendChild(make("p","",step.text));if(step.formula||step.symbols||step.substitution||step.calculation){const parts=make("div","formula-parts");for(const [label,value] of [["Общая формула",step.formula],["Обозначения",step.symbols],["Подстановка",step.substitution],["Вычисление",step.calculation]]){if(!value)continue;const part=make("div","formula-part");part.append(make("b","",label),make("span","",value));parts.appendChild(part)}copy.appendChild(parts)}row.append(make("span","step-no",i+1),copy);container.appendChild(row)});steps.appendChild(container);
  const answer=make("div","answer");answer.append(make("b","","ОТВЕТ"),make("p","",sol.answer));result.appendChild(answer);
  if(sol.verification){const check=make("p","verify");check.append(make("b","","Проверка. "),document.createTextNode(sol.verification));result.appendChild(check)}
  if(sol.warning)result.appendChild(make("p","warning",sol.warning))}
  solution.classList.add("show");$("preview").classList.add("has-result");$("result-actions").classList.add("show");$("result-status").textContent="Готово · "+(provider||"ИИ");if(window.innerWidth<850)$("preview").scrollIntoView({behavior:"smooth",block:"start"})}
-function solutionText(){if(!last)return"";const x=last;const lines=[x.title||"Решение задачи",""];if(x.needs_clarification)return "Нужно уточнить: "+x.clarification;if(["geometry","probability","statistics"].includes(x.kind)){lines.push("Дано:",...(x.given||[]),"","Найти:",...(x.find||[]),"")}else lines.push("Условие:",...(x.given?.length?x.given:[input.value]),"");lines.push("Решение:");(x.steps||[]).forEach((v,i)=>lines.push((i+1)+". "+v.title,v.text||"",v.formula||"",""));lines.push("Ответ: "+(x.answer||""));if(x.verification)lines.push("Проверка: "+x.verification);return lines.join("\n")}
+function solutionText(){if(!last)return"";const x=last;const lines=[x.title||"Решение задачи",""];if(x.needs_clarification)return "Нужно уточнить: "+x.clarification;if(["geometry","probability_statistics","probability","statistics"].includes(x.kind)){lines.push("Дано:",...(x.given||[]),"","Найти:",...(x.find||[]),"")}else lines.push("Условие:",...(x.given?.length?x.given:[input.value]),"");lines.push("Решение:");(x.steps||[]).forEach((v,i)=>lines.push((i+1)+". "+v.title,v.text||"",v.formula?"Формула: "+v.formula:"",v.symbols?"Обозначения: "+v.symbols:"",v.substitution?"Подстановка: "+v.substitution:"",v.calculation?"Вычисление: "+v.calculation:"",""));lines.push("Ответ: "+(x.answer||""));if(x.verification)lines.push("Проверка: "+x.verification);return lines.join("\n")}
 async function run(){if(busy)return;const problem=input.value.trim();if(problem.length<5&&!attachments.length){fail("Напишите условие или прикрепите фотографию/файл с задачей.");input.focus();return}errors.classList.remove("show");busyState(true);try{const files=await prepareAttachments();const response=await fetch("/api/solve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({problem,kind:mode,grade:Number($("grade").value),level:$("level").value,textbook:$("source-mode").value==="textbook"?$("textbook").value.trim():"",attachments:files})});const payload=await response.json().catch(()=>({}));if(!response.ok||!payload.ok||!payload.solution)throw new Error(payload.message||"Сервис не смог подготовить решение.");render(payload.solution,payload.provider)}catch(e){fail(e.message==="Failed to fetch"?"Не удалось связаться с сервером. Попробуйте ещё раз.":e.message)}finally{busyState(false)}}
 solve.addEventListener("click",run);
 $("copy").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(solutionText());toast("Решение скопировано")}catch{toast("Копирование недоступно, используйте скачивание")}});
