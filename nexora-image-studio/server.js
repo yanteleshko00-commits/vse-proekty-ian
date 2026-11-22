@@ -247,6 +247,8 @@ async function requestOpenAIImage({ apiKey, modelPrompt, size, detailed, imageFi
 }
 
 async function requestAliceImage({ apiKey, folderId, modelPrompt, ratio, detailed, signal }) {
+  // Use only parameters documented as supported for Alice AI ART 3.0.
+  // The API returns the final image in data[0].b64_json.
   const yandexSizes = {
     square: '1024x1024',
     portrait: '1024x1536',
@@ -263,22 +265,24 @@ async function requestAliceImage({ apiKey, folderId, modelPrompt, ratio, detaile
     },
     body: JSON.stringify({
       model: 'art://' + folderId + '/aliceai-image-art-3.0',
-      prompt: String(modelPrompt).slice(0, 500),
-      size: yandexSizes[ratio] || '1024x1024',
-      quality: detailed ? 'high' : 'medium',
-      output_format: 'png'
+      prompt: String(modelPrompt).slice(0, 32000),
+      size: yandexSizes[ratio] || '1024x1024'
     }),
     signal: AbortSignal.any([signal, AbortSignal.timeout(180000)])
   }).catch(error => { throw networkFailure('Alice AI ART', 'image_generation', error); });
   const payload = await upstream.json().catch(() => ({}));
   if (!upstream.ok) {
-    const code = String(payload.error?.code || payload.error?.type || 'yandex_error');
-    const msg = upstream.status === 401 || upstream.status === 403
-      ? 'Yandex AI Studio не принял API-ключ.'
-      : upstream.status === 429
-        ? 'Yandex AI Studio временно ограничил запросы или закончился лимит.'
-        : 'Alice AI ART не смог создать изображение (HTTP ' + upstream.status + ').';
-    throw providerFailure('Alice AI ART', upstream.status, code, msg, 'image_generation');
+    const code = safeOAuthDiagnostic(payload.error?.code || payload.error?.type || payload.code || 'yandex_error');
+    const detail = safeOAuthDiagnostic(payload.error?.message || payload.message || payload.error_description || '');
+    let msg = 'Alice AI ART не смог создать изображение (HTTP ' + upstream.status + ').';
+    if (upstream.status === 401 || upstream.status === 403) {
+      msg = 'Yandex AI Studio отклонил API-ключ или доступ. Проверьте ключ, его scope и роль ai.imageGeneration.user.';
+    } else if (upstream.status === 429) {
+      msg = 'Yandex AI Studio временно ограничил запросы или исчерпан лимит.';
+    } else if (upstream.status === 400) {
+      msg = 'Yandex AI Studio отклонил параметры генерации. Проверьте модель, каталог и размер.';
+    }
+    throw Object.assign(providerFailure('Alice AI ART', upstream.status, code, msg, 'image_generation'), { diagnosticDetail: detail });
   }
   const encoded = payload.data?.[0]?.b64_json;
   if (typeof encoded !== 'string' || !encoded) {
