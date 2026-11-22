@@ -2,6 +2,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { decodeAttachments } from './attachments.js';
 
 const port = Number(process.env.PORT || 10000);
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -66,21 +67,27 @@ const server = http.createServer(async (req, res) => {
   if (!allowRequest(req)) return respond(res, 429, { message: 'Слишком много запросов. Попробуйте через некоторое время.' });
   if (active >= 4) return respond(res, 503, { message: 'Сервис занят. Попробуйте чуть позже.' });
   let input;
-  try { input = await readJson(req); }
-  catch { return respond(res, 400, { message: 'Условие задачи передано неверно.' }); }
+  try { input = await readJson(req, 10500000); }
+  catch { return respond(res, 400, { message: 'Некорректные данные или слишком большой файл (до 7 МБ вложений).' }); }
   const problem = typeof input.problem === 'string' ? input.problem.trim() : '';
   const kind = ['auto', 'algebra', 'geometry'].includes(input.kind) ? input.kind : 'auto';
   const grade = Math.max(5, Math.min(11, Number.isInteger(input.grade) ? input.grade : 8));
-  if (problem.length < 5 || problem.length > 4000) return respond(res, 400, {
-    message: 'Условие должно содержать от 5 до 4000 символов.'
-  });
+  if (problem.length > 4000) return respond(res, 400, { message: 'Текстовое условие не должно превышать 4000 символов.' });
+  let attachments;
+  try { attachments = await decodeAttachments(input.attachments); }
+  catch (error) { return respond(res, error.statusCode || 400, { message: error.message || 'Не удалось открыть вложение.' }); }
+  if (problem.length < 5 && !attachments.documentText && !attachments.images.length) {
+    return respond(res, 400, { message: 'Напишите условие или прикрепите фото либо документ с задачей.' });
+  }
+  const combinedProblem = [problem,attachments.documentText].filter(Boolean).join('\n\n');
+  if (combinedProblem.length > 9800) return respond(res, 400, {message:'Слишком много текста в файлах. Прикрепите документ с одной-двумя задачами.'});
   active++;
   try {
     const upstream = await fetch(lobby + '/api/math/internal/solve', {
       method: 'POST', headers: {
         'Content-Type': 'application/json', 'x-nexora-math-key': bridgeToken
       },
-      body: JSON.stringify({ problem, kind, grade }),
+      body: JSON.stringify({ problem: combinedProblem, kind, grade, images: attachments.images }),
       signal: AbortSignal.timeout(90000)
     });
     const json = await upstream.json().catch(() => ({}));
