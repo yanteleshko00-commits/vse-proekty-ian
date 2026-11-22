@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
 import vm from 'node:vm';
 import {normalizeTextRequest,buildTextPrompt,readTextResponse,summarizeTextStats} from '../nexora/text-engine.js';
+import {decodeAttachments} from './attachments.js';
 
 const here=fileURLToPath(new URL('.',import.meta.url));
 const html=await readFile(join(here,'index.html'),'utf8');
@@ -25,10 +26,26 @@ assert.ok(css&&css.match(/{/g).length===css.match(/}/g).length,'Styles must be b
 const valid=normalizeTextRequest({action:'create',topic:'Написать статью о путешествиях',format:'article'});
 assert.equal(valid.language,'ru');
 assert.match(buildTextPrompt(valid),/статья/);
-assert.throws(()=>normalizeTextRequest({action:'rewrite',source:'кратко'}),/15 символов/);
+assert.throws(()=>normalizeTextRequest({action:'rewrite',source:'кратко'}),/источник|исходный текст/i);
 assert.throws(()=>normalizeTextRequest({action:'create',topic:'а'}),/тему/);
 assert.throws(()=>normalizeTextRequest({action:'create',topic:'тема',source:'x'.repeat(17000)}),/длинный/);
 assert.equal(summarizeTextStats('Привет, мир!\n\nЕщё два слова.').paragraphs,2);
+assert.ok(html.includes('id="files"')&&html.includes('id="camera"')&&html.includes('id="file-list"'));
+assert.equal((html.match(/data-format-choice=/g)||[]).length,9);
+assert.match(html,/function prepareFiles\(/);
+assert.match(html,/function compressPhoto\(/);
+assert.ok(normalizeTextRequest({action:'create',source:'Данные из документа для нового текста'}).source);
+assert.equal(normalizeTextRequest({action:'rewrite',images:[{mime:'image/jpeg',data:'stub'}]}).images.length,1);
+const sampleText=Buffer.from('Из документа: краткие заметки для будущего текста.', 'utf8');
+const txtFile={name:'заметки.txt',data:'data:text/plain;base64,'+sampleText.toString('base64')};
+const decoded=await decodeAttachments([txtFile]);
+assert.match(decoded.documentText,/краткие заметки/);
+const sampleJpg=Buffer.from([255,216,255,224,4,5,6,7]);
+const jpegFile={name:'фото.jpg',data:'data:image/jpeg;base64,'+sampleJpg.toString('base64')};
+const images=await decodeAttachments([jpegFile]);
+assert.equal(images.images.length,1);
+await assert.rejects(decodeAttachments([{name:'bad.pdf',data:'data:application/pdf;base64,'+Buffer.from('not pdf').toString('base64')}]),/Некорректный формат/);
+await assert.rejects(decodeAttachments([txtFile,txtFile,txtFile,txtFile]),/не более трёх/);
 assert.equal(readTextResponse({choices:[{message:{content:'Вот готовый текст: Хорошая книга помогает раскрыть воображение.'}}]}),'Хорошая книга помогает раскрыть воображение.');
 
 const mockKey='c'.repeat(64);
@@ -75,5 +92,23 @@ try{
   assert.equal(result.provider,'Mock model');
   assert.equal(lastBody.action,'create');
   assert.equal(lastBody.format,'post');
-  console.log('Text Studio checks passed: 6 modes, inputs, responsive styles, HTML/JS, request validation, secure gateway forwarding and text response.');
+  const sourceRequest=await fetch('http://127.0.0.1:'+port+'/api/generate',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'create',topic:'Сделай краткий рассказ по заметкам',format:'story',attachments:[txtFile]})
+  });
+  assert.equal(sourceRequest.status,200);
+  assert.match(lastBody.source,/краткие заметки/);
+  const photoRequest=await fetch('http://127.0.0.1:'+port+'/api/generate',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'create',topic:'Опиши изображение',format:'description',attachments:[jpegFile]})
+  });
+  assert.equal(photoRequest.status,200);
+  assert.equal(lastBody.images.length,1);
+  const editFromPhoto=await fetch('http://127.0.0.1:'+port+'/api/generate',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'rewrite',format:'free',attachments:[jpegFile]})
+  });
+  assert.equal(editFromPhoto.status,200);
+  assert.equal(lastBody.images.length,1);
+  console.log('Text Studio checks passed: 6 modes, 9 text types, photo/TXT attachments, safe file limits, mobile UI, mock gateway and text responses.');
 }finally{child.kill();await new Promise(resolve=>upstream.close(resolve))}
