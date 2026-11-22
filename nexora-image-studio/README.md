@@ -1,20 +1,28 @@
 # NEXORA Image Studio
 
-Standalone website for NEXORA image creation and editing.
+Standalone image-generation website and API.
 
-## Render
+## Render service
 
-Create a Node.js Web Service from this repository with:
-
+- Service: `nexora-image-studio`
+- Root directory: repository root
 - Build command: `cd nexora-image-studio && npm install`
 - Start command: `cd nexora-image-studio && npm start`
-- Health check path: `/health`
-- Region: Oregon (same region as NEXORA Lobby)
+- Health check: `/health`
+- Region: Oregon
 
-The frontend and its web server are hosted separately from NEXORA Lobby. Image generation requests are temporarily proxied to the existing NEXORA Image API in `nexora-lobby`; provider credentials remain server-side in that service.
+The website, API, rate limiter, provider selection, GigaChat OAuth and image retrieval all run in this service. Image requests do not call NEXORA Lobby.
 
-Optional environment variable:
+## Secrets
 
-- `NEXORA_IMAGE_API_URL`: base URL of the existing NEXORA Image API. Defaults to `https://nexora-lobby.onrender.com`.
+Set provider credentials only in the Render Environment for `nexora-image-studio`:
 
-Do not put provider API keys in this service's frontend or repository.
+- `GIGACHAT_API_KEY` or `GIGACHAT_AUTH_KEY` — primary GigaChat Basic authorization key
+- `GIGACHAT_BACKUP_AUTH` — optional backup GigaChat Basic authorization key
+- `GIGACHAT_SCOPE` — optional; defaults to `GIGACHAT_API_PERS`
+- `GIGACHAT_IMAGE_MODEL` — optional model override
+- `OPENAI_API_KEY` — optional second provider; requests are raced and the first successful result is returned
+
+The startup launcher downloads and validates the official Russian Trusted Root CA and adds it to Node.js trust for GigaChat TLS. If certificate loading fails, the app still starts and logs the certificate problem.
+
+Never put provider keys in GitHub, frontend code, or URLs.
