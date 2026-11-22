@@ -203,6 +203,13 @@ footer b{color:#55486d;letter-spacing:.13em}
 .formula-part:first-child{border-color:#8f6be0;background:#f3efff}
 .formula-part:last-child{border-color:#5eae91}
 @media(max-width:560px){.modes{grid-template-columns:repeat(2,minmax(0,1fr))}.modes .mode{font-size:11px;min-height:45px}.curriculum-sources a{font-size:10px}.formula-part span{font-size:13px}}
+
+/* Fraction typography: safe DOM nodes, no injection or HTML from AI responses */
+.stacked-fraction{display:inline-grid;grid-template-columns:max-content;grid-template-rows:auto auto;justify-items:stretch;vertical-align:middle;line-height:1.2;text-align:center;max-width:100%;white-space:nowrap;margin:0 .17em;font-family:"Cambria Math",Georgia,serif}
+.stacked-fraction .numerator{padding:0 .24em .12em}
+.stacked-fraction .denominator{border-top:1.5px solid currentColor;padding:.12em .24em 0}
+.fraction-partial{white-space:normal}
+@media(max-width:560px){.stacked-fraction{font-size:.95em}}
 </style>
 </head>
 <body>
@@ -249,6 +256,8 @@ footer b{color:#55486d;letter-spacing:.13em}
 <button class="example" type="button" data-kind="algebra" data-problem="Решите уравнение: 3x² − 12x + 9 = 0. Проверьте корни.">Квадратное уравнение</button>
 <button class="example" type="button" data-kind="geometry" data-problem="В прямоугольном треугольнике ABC угол A = 90°, AB = 6 см, AC = 8 см. Найдите гипотенузу BC и площадь треугольника.">Треугольник</button>
 <button class="example" type="button" data-kind="algebra" data-problem="Решите систему: 2x + y = 7; x − y = 2.">Система уравнений</button>
+<button class="example" type="button" data-kind="algebra" data-problem="Переведите обыкновенную дробь 5/8 в десятичную. Подробно покажите, на что домножать числитель и знаменатель.">Дробь 5/8</button>
+<button class="example" type="button" data-kind="algebra" data-problem="Вычислите двухэтажную дробь (1/2)/(3/4). Покажите деление на дробь, умножение на обратную и сокращение.">Двухэтажная дробь</button>
 <button class="example" type="button" data-kind="geometry" data-problem="В прямоугольнике ABCD стороны AB = 9 см, BC = 5 см. Найдите периметр, площадь и диагональ AC.">Прямоугольник</button>
 <button class="example" type="button" data-kind="probability_statistics" data-problem="В коробке 5 красных и 3 синих шара. Наугад выбирают один шар. Найдите вероятность того, что он красный.">Вероятность события</button>
 <button class="example" type="button" data-kind="probability_statistics" data-problem="Игральную кость бросают дважды. Найдите вероятность, что оба раза выпадет шестёрка. События независимы.">Два броска кубика</button>
@@ -420,6 +429,27 @@ function isGeo(){return chosenMode()==="geometry"}
 function busyState(v){busy=v;solve.disabled=v;$("solve-label").textContent=v?"Решаю…":"Решить задачу";if(loaderTimer){clearInterval(loaderTimer);loaderTimer=null}if(v){last=null;solution.classList.remove("show");$("result-actions").classList.remove("show");$("preview").classList.remove("has-result");$("empty").style.display="none";$("loader").classList.add("show");$("result-status").textContent="ИИ решает задачу";loadingIndex=0;const list=stages[attachments.length?"attachment":chosenMode()];$("loader-title").textContent=list[0][0];$("loader-detail").textContent=list[0][1];loaderTimer=setInterval(()=>{loadingIndex=(loadingIndex+1)%list.length;$("loader-title").textContent=list[loadingIndex][0];$("loader-detail").textContent=list[loadingIndex][1]},3500)}else{$("loader").classList.remove("show");if(!last)$("empty").style.display="block"}}
 function fail(t){errors.textContent=t;errors.classList.add("show");$("result-status").textContent="Не удалось завершить решение";if(!last){$("preview").classList.remove("has-result");$("empty").style.display="block"}}
 function make(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=String(text);return e}
+function mathText(parent,value,depth=0){
+  const str=String(value||"");
+  if(depth>2||str.length>1000){parent.appendChild(document.createTextNode(str));return}
+  // First match a bracketed fraction with expressions in its numerator and denominator;
+  // then match simple numeric fractions. Always construct DOM nodes rather than HTML.
+  const fraction=/\(([^()]{1,90})\)\s*\/\s*\(([^()]{1,90})\)|(?<![\p{L}\d])(-?\d{1,8})\s*\/\s*(\d{1,8})(?![\p{L}\d])/gu;
+  let last=0,match;
+  while((match=fraction.exec(str))){
+    if(match.index>last)parent.appendChild(document.createTextNode(str.slice(last,match.index)));
+    const num=match[1]||match[3],den=match[2]||match[4];
+    const frac=make("span","stacked-fraction");
+    const top=make("span","numerator"),bottom=make("span","denominator");
+    mathText(top,num,depth+1);mathText(bottom,den,depth+1);
+    frac.append(top,bottom);
+    frac.setAttribute("aria-label",num+" делить на "+den);
+    parent.appendChild(frac);
+    last=fraction.lastIndex;
+  }
+  if(last<str.length)parent.appendChild(document.createTextNode(str.slice(last)));
+}
+
 function section(label){const e=make("section","result-section");e.appendChild(make("h4","",label));result.appendChild(e);return e}
 function listSection(title,items){if(!items?.length)return;const s=section(title),ul=make("ul","result-list");items.forEach(t=>ul.appendChild(make("li","",t)));s.appendChild(ul)}
 function svgEl(tag,attrs={},content=""){const x=document.createElementNS("http://www.w3.org/2000/svg",tag);Object.entries(attrs).forEach(([k,v])=>x.setAttribute(k,String(v)));if(content)x.textContent=content;return x}
@@ -434,7 +464,7 @@ function render(sol,provider){last=sol;$("preview").classList.toggle("compact-vi
  else{const geo=sol.kind==="geometry";if(geo||["probability_statistics","probability","statistics"].includes(sol.kind)){listSection("Дано",sol.given);listSection("Найти",sol.find)}
  else{listSection("Условие",sol.given.length?sol.given:[input.value])}
  if(geo&&sol.diagram?.kind&&sol.diagram.kind!=="none"){const d=section("Чертёж"),w=make("div","diagram-wrap");w.appendChild(diagram(sol.diagram.kind,sol.diagram.labels||[]));w.appendChild(make("p","diagram-note",(sol.diagram.note||"Схематический чертёж")+" · не в масштабе"));d.appendChild(w)}
- const steps=section("Решение"),container=make("div","result-steps");(sol.steps||[]).forEach((step,i)=>{const row=make("div","result-step"),copy=make("div","step-copy");copy.appendChild(make("strong","",step.title||"Шаг "+(i+1)));if(step.text)copy.appendChild(make("p","",step.text));if(step.formula||step.symbols||step.substitution||step.calculation){const parts=make("div","formula-parts");for(const [label,value] of [["Общая формула",step.formula],["Обозначения",step.symbols],["Подстановка",step.substitution],["Вычисление",step.calculation]]){if(!value)continue;const part=make("div","formula-part");part.append(make("b","",label),make("span","",value));parts.appendChild(part)}copy.appendChild(parts)}row.append(make("span","step-no",i+1),copy);container.appendChild(row)});steps.appendChild(container);
+ const steps=section("Решение"),container=make("div","result-steps");(sol.steps||[]).forEach((step,i)=>{const row=make("div","result-step"),copy=make("div","step-copy");copy.appendChild(make("strong","",step.title||"Шаг "+(i+1)));if(step.text)copy.appendChild(make("p","",step.text));if(step.formula||step.symbols||step.substitution||step.calculation){const parts=make("div","formula-parts");for(const [label,value] of [["Общая формула",step.formula],["Обозначения",step.symbols],["Подстановка",step.substitution],["Вычисление",step.calculation]]){if(!value)continue;const part=make("div","formula-part");const valueNode=make("span","");if(label==="Общая формула"||label==="Подстановка"||label==="Вычисление")mathText(valueNode,value);else valueNode.textContent=value;part.append(make("b","",label),valueNode);parts.appendChild(part)}copy.appendChild(parts)}row.append(make("span","step-no",i+1),copy);container.appendChild(row)});steps.appendChild(container);
  const answer=make("div","answer");answer.append(make("b","","ОТВЕТ"),make("p","",sol.answer));result.appendChild(answer);
  if(sol.verification){const check=make("p","verify");check.append(make("b","","Проверка. "),document.createTextNode(sol.verification));result.appendChild(check)}
  if(sol.warning)result.appendChild(make("p","warning",sol.warning))}
