@@ -11,7 +11,8 @@ function readTextSections(content) {
   for (const candidate of raw.split('\n')) {
     const line = candidate.trim();
     if (!line) continue;
-    const m = line.match(sections);
+    const plain = line.replace(/^#{1,5}\s*/, '').replace(/\*\*/g, '').replace(/__/g, '');
+    const m = plain.match(sections);
     if (m) {
       current = m[1].toUpperCase().replace('Ё', 'Е');
       result[current] ||= [];
