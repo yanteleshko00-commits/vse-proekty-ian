@@ -14,6 +14,11 @@ assert.match(html, /Двухэтажная дробь/);
 assert.match(html, /Дробь 5\/8/);
 assert.match(html, /function mathText\(/);
 assert.match(html, /stacked-fraction/);
+assert.match(html, /NEXORA Math Studio unified pastel loading and empty states/);
+assert.match(html, /\.preview:not\(\.has-result\) \.stage/);
+assert.match(html, /\.stage \.loader h3\{color:#29213f/);
+assert.match(html, /\.formula-part span\.stacked-fraction/);
+
 assert.match(html, /id="loader-elapsed"/);
 assert.match(html, /id="cancel-solve"/);
 assert.match(html, /requestController\.abort\(\)/);
