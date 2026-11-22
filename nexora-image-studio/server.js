@@ -9,6 +9,13 @@ const publicDir = join(here, 'public');
 const port = Number(process.env.PORT || 10000);
 const production = process.env.NODE_ENV === 'production';
 
+const yandexKey = (process.env.YANDEX_API_KEY || '').trim().replace(/^Api-Key\s+/i, '').trim();
+const yandexFolderId = (process.env.YANDEX_FOLDER_ID || '').trim();
+const yandexMissing = [
+  ...(!yandexKey ? ['YANDEX_API_KEY'] : []),
+  ...(!yandexFolderId ? ['YANDEX_FOLDER_ID'] : [])
+];
+
 function send(res, status, body, headers = {}) {
   res.writeHead(status, {
     'Cache-Control': 'no-store',
@@ -294,10 +301,11 @@ async function requestAliceImage({ apiKey, folderId, modelPrompt, ratio, detaile
     throw providerFailure('Alice AI ART', 502, 'image_missing', 'Yandex не вернул файл изображения.');
   }
   const bytes = Buffer.from(encoded, 'base64');
-  if (!bytes.length || bytes.length > 18000000 || imageMime(bytes) !== 'image/png') {
+  const mime = imageMime(bytes);
+  if (!mime || bytes.length > 18000000) {
     throw providerFailure('Alice AI ART', 502, 'invalid_image', 'Alice AI ART вернула некорректное изображение.');
   }
-  return { image: 'data:image/png;base64,' + bytes.toString('base64'), provider: 'Alice AI ART', model: 'Alice AI ART 3.0' };
+  return { image: 'data:' + mime + ';base64,' + bytes.toString('base64'), provider: 'Alice AI ART', model: 'Alice AI ART 3.0' };
 }
 async function requestGigaChatImage({ modelPrompt, ratio, detailed, signal }) {
   const token = await getGigaChatAccessToken();
@@ -418,8 +426,6 @@ async function generateNexoraImage(req, res) {
 
   const openAIKey = String(process.env.OPENAI_API_KEY || '').trim();
   const hasGigaChat = gigaChatKeys().length > 0;
-  const yandexKey = String(process.env.YANDEX_API_KEY || '').trim();
-  const yandexFolderId = String(process.env.YANDEX_FOLDER_ID || '').trim();
   const providers = [];
   if (openAIKey) providers.push({ name: 'OpenAI', run: signal => requestOpenAIImage({
     apiKey: openAIKey,
@@ -532,14 +538,14 @@ const server = http.createServer(async (req, res) => {
     const providers = [
       ...(process.env.OPENAI_API_KEY?.trim() ? ['OpenAI'] : []),
       ...(hasGigaChat ? ['GigaChat'] : []),
-      ...(process.env.YANDEX_API_KEY?.trim() && process.env.YANDEX_FOLDER_ID?.trim() ? ['Alice AI ART'] : [])
+      ...(yandexMissing.length === 0 ? ['Alice AI ART'] : [])
     ];
     return send(res, providers.length ? 200 : 503, JSON.stringify({
       ok: providers.length > 0,
       service: 'nexora-image-studio',
       imageGeneratorConfigured: providers.length > 0,
       imageProviders: providers,
-      yandexImage: { configured: providers.includes('Alice AI ART'), model: 'aliceai-image-art-3.0' },
+      yandexImage: { configured: yandexMissing.length === 0, missing: yandexMissing, model: 'aliceai-image-art-3.0' },
       imageProvider: 'Parallel auto',
       imageModel: 'First successful provider',
       gigaChatAuth: {
@@ -575,4 +581,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, '0.0.0.0', () => {
   console.info('NEXORA Image Studio API and website listening on port ' + port);
+  console.info(yandexMissing.length ? 'Yandex Image: missing ' + yandexMissing.join(', ') : 'Yandex Image: API key and folder configured');
 });
