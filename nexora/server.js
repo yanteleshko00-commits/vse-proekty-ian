@@ -163,7 +163,7 @@ async function finishLogin(req, res, url) {
 
 const ARGOSHA_TOOLS = [
   { id: 'project', name: 'Сделать проект', status: 'available', description: 'Школьные проекты, презентации, доклады и документы.', url: 'https://vse-proekty-ian-1.onrender.com/' },
-  { id: 'solve', name: 'Решить задачу', status: 'coming_soon', description: 'Отдельное решение и объяснение учебных задач.' },
+  { id: 'solve', name: 'Решить задачу', status: 'available', description: 'Математика и геометрия с оформлением Дано — Найти — Решение — Ответ.', url: 'https://nexora-math-studio.onrender.com/' },
   { id: 'chat', name: 'Чат с ИИ', status: 'coming_soon', description: 'Отдельный универсальный чат с ИИ.' },
   { id: 'image', name: 'Создать картинку', status: 'available', description: 'Генерация и редактирование изображений.', url: 'https://nexora-image-studio.onrender.com/' },
   { id: 'lesson', name: 'Подготовиться к уроку', status: 'coming_soon', description: 'Конспекты, объяснения и самопроверка.' },
@@ -307,6 +307,128 @@ ${JSON.stringify(ARGOSHA_TOOLS)}
   return send(res, 502, JSON.stringify({ error: 'Сервис ИИ временно недоступен.' }), { 'Content-Type': 'application/json; charset=utf-8' });
 }
 
+
+/* Shared mathematics provider: reuse Lobby's OpenRouter/Groq credentials without copying secrets. */
+const mathBridgeToken = (process.env.MATH_BRIDGE_TOKEN || '').trim();
+const mathBridgeRate = new Map();
+function allowedMathBridge(req) {
+  const key = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+  const now = Date.now();
+  const fresh = (mathBridgeRate.get(key) || []).filter(t => now - t < 60000);
+  if (fresh.length >= 18) return false;
+  fresh.push(now);
+  mathBridgeRate.set(key, fresh);
+  if (mathBridgeRate.size > 2000) {
+    for (const [ip, times] of mathBridgeRate) if (!times.some(t => now - t < 60000)) mathBridgeRate.delete(ip);
+  }
+  return true;
+}
+function mathJson(res, status, data) {
+  return send(res, status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8' });
+}
+function normalizeMathSolution(value, hint) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid_solution');
+  const str = (x, len = 1600) => String(typeof x === 'string' || typeof x === 'number' ? x : '').trim().slice(0, len);
+  const list = (value, max) => Array.isArray(value) ? value.slice(0, max).map(x => str(x, 500)).filter(Boolean) : [];
+  const needsClarification = value.needs_clarification === true;
+  const steps = Array.isArray(value.steps) ? value.steps.slice(0, 12).map((step, index) => ({
+    title: str(step?.title, 100) || 'Шаг ' + (index + 1),
+    text: str(step?.text || step?.explanation, 1200),
+    formula: str(step?.formula, 440)
+  })).filter(step => step.text || step.formula) : [];
+  if (!needsClarification && (!str(value.answer, 600) || steps.length === 0)) throw new Error('incomplete_solution');
+  const kind = str(value.diagram?.kind, 24).toLowerCase();
+  const allowedKinds = new Set(['triangle', 'right_triangle', 'rectangle', 'circle', 'coordinate', 'none']);
+  return {
+    kind: ['algebra', 'geometry', 'other'].includes(value.kind) ? value.kind : hint,
+    title: str(value.title, 120) || 'Решение задачи',
+    given: list(value.given, 9),
+    find: list(value.find, 7),
+    steps,
+    answer: str(value.answer, 600),
+    verification: str(value.verification, 900),
+    warning: str(value.warning, 500),
+    needs_clarification: needsClarification,
+    clarification: str(value.clarification, 600),
+    diagram: { kind: allowedKinds.has(kind) ? kind : 'none', labels: list(value.diagram?.labels, 6).map(x => x.slice(0, 12)), note: str(value.diagram?.note, 160) }
+  };
+}
+async function mathBridgeSolve(req, res) {
+  const supplied = req.headers['x-nexora-math-key'];
+  const expected = Buffer.from(mathBridgeToken);
+  const received = Buffer.from(typeof supplied === 'string' ? supplied : '');
+  if (expected.length < 32 || expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) {
+    return mathJson(res, 403, { error: 'forbidden', message: 'Доступ запрещён.' });
+  }
+  if (!allowedMathBridge(req)) return mathJson(res, 429, { error: 'rate_limit', message: 'Слишком много запросов. Попробуйте позже.' });
+  let input;
+  try { input = await readJson(req, 12000); }
+  catch { return mathJson(res, 400, { error: 'invalid_input', message: 'Не удалось прочитать условие.' }); }
+  const problem = typeof input.problem === 'string' ? input.problem.trim().slice(0, 4000) : '';
+  const requestedKind = ['algebra', 'geometry', 'auto'].includes(input.kind) ? input.kind : 'auto';
+  const grade = Number.isInteger(input.grade) && input.grade >= 5 && input.grade <= 11 ? input.grade : 8;
+  if (problem.length < 5) return mathJson(res, 400, { error: 'empty_problem', message: 'Введите полное условие задачи.' });
+  if (String(input.problem || '').length > 4000) return mathJson(res, 413, { error: 'too_long', message: 'Условие должно быть короче 4000 символов.' });
+  const providers = [];
+  if (process.env.OPENROUTER_API_KEY?.trim()) providers.push({
+    name: 'OpenRouter', url: 'https://openrouter.ai/api/v1/chat/completions',
+    key: process.env.OPENROUTER_API_KEY.trim(), model: process.env.MATH_OPENROUTER_MODEL || process.env.ARGOSHA_OPENROUTER_MODEL || 'openrouter/free'
+  });
+  if (process.env.GROQ_API_KEY?.trim()) providers.push({
+    name: 'Groq', url: 'https://api.groq.com/openai/v1/chat/completions',
+    key: process.env.GROQ_API_KEY.trim(), model: process.env.MATH_GROQ_MODEL || process.env.ARGOSHA_GROQ_MODEL || 'openai/gpt-oss-20b'
+  });
+  if (!providers.length) return mathJson(res, 503, { error: 'not_configured', message: 'Нейросети ещё не настроены в NEXORA Lobby.' });
+
+  const instructions = [
+    'Ты NEXORA Math, математический помощник для школьников. Решай задачи максимально точно на русском языке, с понятными последовательными вычислениями.',
+    'Сначала классифицируй задачу как algebra, geometry или other. При недостатке информации честно запроси уточнение; не выдумывай чисел, теорем, размеров и выводов.',
+    'Для геометрии строго используй оформление «Дано», «Найти», «Решение», «Ответ», обязательно указывай теоремы и формулы. Рисунок только схематический и не в масштабе.',
+    'Для алгебры используй «Условие», нумерованные шаги решения, необходимые преобразования, проверку и ответ. Не пропускай важные вычисления. Для неоднозначных уравнений учитывай ОДЗ.',
+    'Пиши формулы обычными читаемыми символами: x², √, ∠, =, π, ×, ÷, дробь через /; используй единицы измерения, отделяй число от единицы пробелом. Избегай HTML и LaTeX, не используй Markdown-код.',
+    'Внешнее оформление соответствует школьной практике, а не универсальному стандарту ГОСТ. Не утверждай соответствие конкретному ГОСТу.',
+    'Проверь вычисления и ответ обратной подстановкой, если возможно. Если проверить нельзя, не выдумывай проверку.',
+    'В поле diagram.kind укажи triangle, right_triangle, rectangle, circle, coordinate или none; labels — обозначения точек до 6. Не придумывай буквенные обозначения, противоречащие условию; note — подпись о схематичности.',
+    'Верни СТРОГО один JSON-объект без Markdown: {"kind":"geometry|algebra|other","title":"краткое название","given":["..."],"find":["..."],"steps":[{"title":"Шаг 1","text":"объяснение","formula":"выражение"}],"answer":"окончательный ответ","verification":"проверка или пустая строка","warning":"необязательное замечание","needs_clarification":false,"clarification":"","diagram":{"kind":"triangle|right_triangle|rectangle|circle|coordinate|none","labels":["A","B","C"],"note":"Схематический чертёж"}}',
+    'Если данных недостаточно: needs_clarification=true, clarification="один конкретный вопрос", steps=[], answer="".'
+  ].join('\n');
+  let lastFailure = 'Провайдеры ИИ не ответили.';
+  for (const provider of providers) {
+    try {
+      const response = await fetch(provider.url, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + provider.key, 'Content-Type': 'application/json', 'HTTP-Referer': appUrl(req), 'X-Title': 'NEXORA Math Studio' },
+        body: JSON.stringify({
+          model: provider.model, temperature: 0.15, max_tokens: 2700,
+          messages: [
+            { role: 'system', content: instructions },
+            { role: 'user', content: JSON.stringify({ problem, requested_kind: requestedKind, grade }) }
+          ]
+        }),
+        signal: AbortSignal.timeout(65000)
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(provider.name + ' HTTP ' + response.status);
+      const raw = payload.choices?.[0]?.message?.content;
+      if (typeof raw !== 'string' || !raw.trim()) throw new Error('empty_provider_response');
+      let parsed;
+      try { parsed = JSON.parse(raw); }
+      catch {
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('invalid_provider_json');
+        parsed = JSON.parse(match[0]);
+      }
+      const solution = normalizeMathSolution(parsed, requestedKind === 'auto' ? 'other' : requestedKind);
+      return mathJson(res, 200, { ok: true, solution, provider: provider.name });
+    } catch (error) {
+      lastFailure = error.message;
+      console.error('Math Studio provider failed:', provider.name, error.message);
+    }
+  }
+  console.error('Math Studio all providers failed:', lastFailure);
+  return mathJson(res, 502, { error: 'providers_unavailable', message: 'Не удалось решить задачу через подключённые модели. Попробуйте ещё раз.' });
+}
+
 async function authApi(path, payload, req) {
   const headers = { 'Content-Type': 'application/json' };
   const deviceToken = parseCookies(req).ecosystem_device;
@@ -439,6 +561,13 @@ const server = http.createServer(async (req, res) => {
       console.error('Argosha generation status failed:', error.message);
       return send(res, 502, JSON.stringify({ error: 'Не удалось получить статус генерации.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     }
+  }
+  if (url.pathname === '/api/math/internal/solve' && req.method === 'POST') return mathBridgeSolve(req, res);
+  if (url.pathname === '/api/math/internal/health' && req.method === 'GET') {
+    const key = req.headers['x-nexora-math-key'];
+    const expected = Buffer.from(mathBridgeToken), supplied = Buffer.from(typeof key === 'string' ? key : '');
+    if (expected.length < 32 || expected.length !== supplied.length || !crypto.timingSafeEqual(expected, supplied)) return mathJson(res, 403, { error: 'forbidden' });
+    return mathJson(res, 200, { ok: true, providers: [process.env.OPENROUTER_API_KEY ? 'OpenRouter' : null, process.env.GROQ_API_KEY ? 'Groq' : null].filter(Boolean) });
   }
   if (url.pathname === '/api/argosha/tools' && req.method === 'GET') {
     return send(res, 200, JSON.stringify({ tools: ARGOSHA_TOOLS.map(({ id, name, status, description }) => ({ id, name, status, description })) }), { 'Content-Type': 'application/json; charset=utf-8' });
