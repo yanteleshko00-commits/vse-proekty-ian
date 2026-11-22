@@ -92,7 +92,7 @@ const server = http.createServer(async (req, res) => {
         'Content-Type': 'application/json', 'x-nexora-math-key': bridgeToken
       },
       body: JSON.stringify({ problem: combinedProblem, kind, grade, level, textbook, images: attachments.images }),
-      signal: AbortSignal.timeout(attachments.images.length ? 125000 : 90000)
+      signal: AbortSignal.timeout(attachments.images.length ? 165000 : 102000)
     });
     const json = await upstream.json().catch(() => ({}));
     return respond(res, upstream.status, json && typeof json === 'object' ? json : { message: 'Некорректный ответ ИИ.' });
@@ -101,7 +101,7 @@ const server = http.createServer(async (req, res) => {
     return respond(res, 502, { message: 'Не удалось связаться с ИИ. Попробуйте ещё раз.' });
   } finally { active--; }
 });
-server.requestTimeout = 135000;
+server.requestTimeout = 190000;
 server.listen(port, '0.0.0.0', () => {
   console.log('NEXORA Math Studio listening on port ' + port);
   console.log('Math gateway configured:', bridgeToken.length >= 32);
