@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseMathResponse } from './math-response.js';
+import { appendFractionWorking, fractionHelpForProblem } from './math-fractions.js';
 import { inferMathKind, mathStudyGuide, datasetHint, MATH_KINDS, MATH_LEVELS } from './math-curriculum.js';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -450,6 +451,7 @@ async function mathBridgeSolve(req, res) {
   const solvedKind = inferMathKind(problem, requestedKind);
   const studyContext = mathStudyGuide({grade, level:studyLevel, kind:solvedKind, textbook});
   const exactStatistics = solvedKind === 'probability_statistics' ? datasetHint(problem) : '';
+  const exactFractions = fractionHelpForProblem(problem);
   const instructions = [
     'Ты NEXORA Math — учитель математики. Дай правильное последовательное решение на русском языке для указанного школьного класса.',
     'Проверяй все вычисления, ОДЗ и единицы. Если условие неоднозначное, запроси уточнение и НЕ выдумывай значения.',
@@ -459,6 +461,10 @@ async function mathBridgeSolve(req, res) {
     'Для комбинаторных задач: обоснуй выбор формулы (n!, C(n,k), A(n,k)) или правила умножения, учитывай порядок и повторения.',
     'Для статистики: показывай упорядоченный ряд, частоты, n, вычисление среднего, медианы, моды, размаха или дисперсии в зависимости от вопроса. Не делай вывод о выборке из недостаточных данных.',
     'Единый учебный курс называется «Вероятность и статистика», не дели его на предметы. Ориентируйся на подтверждённые темы федеральных программ edsoo.ru и сведения о комплекте учебников Просвещения, переданные в подсказке.',
+    'ПРАВИЛО ДЛЯ ОБЫКНОВЕННЫХ ДРОБЕЙ: никогда не перепрыгивай от 5/8 сразу к 0,625. Сначала покажи, как 8 × 125 = 1000, затем равенство 5/8 = (5 × 125)/(8 × 125) = 625/1000 = 0,625. Числитель И знаменатель умножаются на ОДИНАКОВЫЙ множитель; нельзя умножать только числитель.',
+    'Для другой дроби подбирай ЕЁ собственный дополнительный множитель, а не всегда 125. При необходимости сначала сокращай; если знаменатель в несократимой дроби содержит простые делители кроме 2 и 5, не выдумывай конечную десятичную дробь — объясни периодическую запись.',
+    'ДВУХЭТАЖНАЯ ДРОБЬ: сначала определи полный числитель и полный знаменатель, укажи ограничения деления на ноль; затем (a/b) ÷ (c/d) = (a/b) × (d/c) = ad/bc; только после этого сокращай и при надобности перевод в десятичную запись. Для сложения/вычитания сначала общий знаменатель, для умножения умножай числители и знаменатели.',
+    'Каждое такое преобразование дроби обязательно выделяй в РЕШЕНИЕ с отдельными строками ФОРМУЛА, ОБОЗНАЧЕНИЯ, ПОДСТАНОВКА, ВЫЧИСЛЕНИЕ и пояснением причины умножения или сокращения.',
     'В задачах по вероятности обязательно раскрой формулу. Пример для 5 красных и 3 синих шаров: ФОРМУЛА: P(A) = m/n; ОБОЗНАЧЕНИЯ: m — число благоприятных исходов, n — число всех равновозможных исходов; ПОДСТАНОВКА: P(A) = 5/(5+3); ВЫЧИСЛЕНИЕ: P(A) = 5/8 = 0,625; ОТВЕТ: 5/8. Применяй эту формулу только при равновозможных исходах.',
     'В статистике аналогично отдельно запиши формулу среднего, медианы, дисперсии или другого нужного показателя и последовательно покажи числа из условия.',
     'Величины и цифры в формуле должны совпадать с Дано. Не пропускай объяснение обозначений. Не называй формулу без доказанной применимости.',
@@ -491,7 +497,8 @@ async function mathBridgeSolve(req, res) {
     'Не используй LaTeX, HTML, JSON, кавычки вокруг всего ответа; формулы обычными символами x², √, ∠, π, =, единицы через пробел.',
     'Не утверждай соответствие универсальному ГОСТу: формат предназначен для школьного решения.',
     'Дополнительные требования по учебной программе и выбранной теме:\n' + studyContext,
-    exactStatistics ? 'Проверка статистических вычислений:\n' + exactStatistics : ''
+    exactStatistics ? 'Проверка статистических вычислений:\n' + exactStatistics : '',
+    exactFractions ? 'Проверенная арифметика сложной дроби:\n' + exactFractions : ''
   ].join('\n');
   let lastFailure = 'Провайдеры ИИ не ответили.';
   for (const provider of providers) {
@@ -522,6 +529,7 @@ async function mathBridgeSolve(req, res) {
       }
       const parsed = parseMathResponse(raw, solvedKind, problem);
       const solution = normalizeMathSolution(parsed, solvedKind);
+      appendFractionWorking(solution);
       if (solvedKind === 'probability_statistics' && !solution.needs_clarification) {
         const hasExpandedFormula = solution.steps.some(x => x.formula && x.symbols && x.substitution && x.calculation);
         if (!hasExpandedFormula) throw new Error('missing_expanded_formula');
