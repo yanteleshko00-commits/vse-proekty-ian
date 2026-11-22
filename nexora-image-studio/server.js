@@ -246,6 +246,50 @@ async function requestOpenAIImage({ apiKey, modelPrompt, size, detailed, imageFi
   };
 }
 
+async function requestAliceImage({ apiKey, folderId, modelPrompt, ratio, detailed, signal }) {
+  const yandexSizes = {
+    square: '1024x1024',
+    portrait: '1024x1536',
+    landscape: '1536x1024',
+    vertical: '1024x1536',
+    wide: '1536x1024'
+  };
+  const upstream = await fetch('https://ai.api.cloud.yandex.net/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Api-Key ' + apiKey,
+      'OpenAI-Project': folderId,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'art://' + folderId + '/aliceai-image-art-3.0',
+      prompt: String(modelPrompt).slice(0, 500),
+      size: yandexSizes[ratio] || '1024x1024',
+      quality: detailed ? 'high' : 'medium',
+      output_format: 'png'
+    }),
+    signal: AbortSignal.any([signal, AbortSignal.timeout(180000)])
+  }).catch(error => { throw networkFailure('Alice AI ART', 'image_generation', error); });
+  const payload = await upstream.json().catch(() => ({}));
+  if (!upstream.ok) {
+    const code = String(payload.error?.code || payload.error?.type || 'yandex_error');
+    const msg = upstream.status === 401 || upstream.status === 403
+      ? 'Yandex AI Studio не принял API-ключ.'
+      : upstream.status === 429
+        ? 'Yandex AI Studio временно ограничил запросы или закончился лимит.'
+        : 'Alice AI ART не смог создать изображение (HTTP ' + upstream.status + ').';
+    throw providerFailure('Alice AI ART', upstream.status, code, msg, 'image_generation');
+  }
+  const encoded = payload.data?.[0]?.b64_json;
+  if (typeof encoded !== 'string' || !encoded) {
+    throw providerFailure('Alice AI ART', 502, 'image_missing', 'Yandex не вернул файл изображения.');
+  }
+  const bytes = Buffer.from(encoded, 'base64');
+  if (!bytes.length || bytes.length > 18000000 || imageMime(bytes) !== 'image/png') {
+    throw providerFailure('Alice AI ART', 502, 'invalid_image', 'Alice AI ART вернула некорректное изображение.');
+  }
+  return { image: 'data:image/png;base64,' + bytes.toString('base64'), provider: 'Alice AI ART', model: 'Alice AI ART 3.0' };
+}
 async function requestGigaChatImage({ modelPrompt, ratio, detailed, signal }) {
   const token = await getGigaChatAccessToken();
   const orientation = {
@@ -362,6 +406,8 @@ async function generateNexoraImage(req, res) {
 
   const openAIKey = String(process.env.OPENAI_API_KEY || '').trim();
   const gigaKey = String(process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY || process.env.GIGACHAT_BACKUP_AUTH || '').trim();
+  const yandexKey = String(process.env.YANDEX_API_KEY || '').trim();
+  const yandexFolderId = String(process.env.YANDEX_FOLDER_ID || '').trim();
   const providers = [];
   if (openAIKey) providers.push({ name: 'OpenAI', run: signal => requestOpenAIImage({
     apiKey: openAIKey,
@@ -379,6 +425,14 @@ async function generateNexoraImage(req, res) {
     detailed,
     signal
   }) });
+  if (yandexKey && yandexFolderId && !imageFile) providers.push({ name: 'Alice AI ART', run: signal => requestAliceImage({
+    apiKey: yandexKey,
+    folderId: yandexFolderId,
+    modelPrompt: prompt + '. Visual style: ' + imageStyles[style] + (detailed ? '. Fine details, carefully rendered textures, balanced composition.' : ''),
+    ratio,
+    detailed,
+    signal
+  }) });
 
   if (!providers.length) {
     const editOnly = Boolean(imageFile && gigaKey && !openAIKey);
@@ -386,7 +440,7 @@ async function generateNexoraImage(req, res) {
       error: 'image_not_configured',
       message: editOnly
         ? 'GigaChat подключён для генерации новых изображений, но редактирование исходного фото пока требует подключённого OPENAI_API_KEY.'
-        : 'Не подключён ни один генератор изображений. Добавьте OPENAI_API_KEY и/или GIGACHAT_API_KEY в Environment сервиса NEXORA на Render.'
+        : 'Не подключён ни один генератор изображений. Добавьте OPENAI_API_KEY, GIGACHAT_API_KEY или YANDEX_API_KEY вместе с YANDEX_FOLDER_ID в Environment сервиса NEXORA на Render.'
     }), jsonHeaders);
   }
 
@@ -465,14 +519,15 @@ const server = http.createServer(async (req, res) => {
     );
     const providers = [
       ...(process.env.OPENAI_API_KEY ? ['OpenAI'] : []),
-      ...(hasGigaChat ? ['GigaChat'] : [])
+      ...(hasGigaChat ? ['GigaChat'] : []),
+      ...(process.env.YANDEX_API_KEY && process.env.YANDEX_FOLDER_ID ? ['Alice AI ART'] : [])
     ];
     return send(res, providers.length ? 200 : 503, JSON.stringify({
       ok: true,
       service: 'nexora-image-studio',
       imageGeneratorConfigured: providers.length > 0,
       imageProviders: providers,
-      imageProvider: 'Parallel auto',
+      yandexImage: { configured: Boolean(process.env.YANDEX_API_KEY && process.env.YANDEX_FOLDER_ID), model: 'aliceai-image-art-3.0' },\n      imageProvider: 'Parallel auto',
       imageModel: 'First successful provider',
       gigaChatAuth: {
         configured: hasGigaChat,
