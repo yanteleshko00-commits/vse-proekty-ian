@@ -560,6 +560,12 @@ body :is(.tile h3,.brand,.brand-text strong,.brand-wordmark,.card h3,.panel-head
 body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equation){font-weight:580}
 @media(max-width:600px){body p,body button,body input,body select,body textarea{font-weight:690}}
 
+
+/* New Game Studio tile follows NEXORA's visual gallery, with bold labels. */
+.tile[data-tool="game"] .tile-top{background:radial-gradient(circle at 75% 30%,rgba(222,168,255,.34),transparent 36%),linear-gradient(135deg,#2d1c54,#7456a5 62%,#a77adb)}
+.tile[data-tool="game"] .tile-top:before{content:"🎮";position:absolute;top:17%;left:50%;transform:translateX(-50%) rotate(-7deg);color:white;font-size:86px;line-height:1;filter:drop-shadow(0 16px 14px rgba(13,4,44,.2));opacity:.82}
+.tile[data-tool="game"] .tile-top:after{background:linear-gradient(180deg,rgba(16,8,37,.07),rgba(20,10,46,.18) 37%,rgba(18,10,35,.93))}
+@media(max-width:600px){.tile[data-tool="game"] .tile-top:before{font-size:69px}}
 </style>
 </head>
 <body>
@@ -601,7 +607,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
     </div>
   </section>
 
-  <div class="discovery" role="search"><span class="discovery-icon" aria-hidden="true">⌕</span><input id="tool-search" type="search" autocomplete="off" placeholder="Найти инструмент…" aria-label="Поиск по инструментам"><span class="discovery-count" id="search-count">6 инструментов</span></div>
+  <div class="discovery" role="search"><span class="discovery-icon" aria-hidden="true">⌕</span><input id="tool-search" type="search" autocomplete="off" placeholder="Найти инструмент…" aria-label="Поиск по инструментам"><span class="discovery-count" id="search-count">7 инструментов</span></div>
   <div class="tools-heading"><div><span class="tools-eyebrow">DISCOVER / 01</span><h2>Выберите свой инструмент</h2></div><p>Все возможности для воплощения ваших идей.</p></div>
   <section class="grid" id="tools" aria-label="Основные инструменты">
     <a class="tile" data-tool="project" href="https://vse-proekty-ian-1.onrender.com/" target="_blank" rel="noopener">
@@ -645,6 +651,12 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
       <h3>Создать текст</h3>
       <p>Статьи, сочинения, посты и письма. Написание, проверка и редактирование текстов с ИИ.</p>
 
+    </a>
+    <a class="tile" data-tool="game" href="/game">
+      <span class="status ready">Доступно</span>
+      <span class="tile-top">🎮</span>
+      <h3>Сделать игру</h3>
+      <p>Придумайте свою мини-игру с ИИ, запустите её и скачайте в HTML.</p>
     </a>
   </section>
 
@@ -789,7 +801,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
   searchInput.addEventListener('input',function(){
     var query=searchInput.value.trim().toLocaleLowerCase('ru'),visible=0;
     allTiles.forEach(function(tile){var match=!query||tile.textContent.toLocaleLowerCase('ru').includes(query);tile.style.display=match?'':'none';if(match)visible++});
-    searchCount.textContent=query?visible+' из '+allTiles.length:'6 инструментов';
+    searchCount.textContent=query?visible+' из '+allTiles.length:allTiles.length+' инструментов';
   });
   var recentKey='nexora-recent-tools';
   function readRecent(){try{return JSON.parse(localStorage.getItem(recentKey)||'[]').filter(function(x){return x&&typeof x.title==='string'&&typeof x.id==='string'}).slice(0,50)}catch(e){return[]}}
@@ -799,7 +811,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
   function makeRecentLink(item){var link=document.createElement('a');link.className='recent-item';link.href=item.href||'#';if(item.external){link.target='_blank';link.rel='noopener'}
     var icon=makeRecentIcon(item);
     var copy=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('span');strong.textContent=item.title;small.textContent=recentDate(item);copy.appendChild(strong);copy.appendChild(small);link.appendChild(icon);link.appendChild(copy);
-    if(!['project','math','image','text'].includes(item.id))link.addEventListener('click',function(e){e.preventDefault();var tile=document.querySelector('[data-tool="'+item.id+'"]');if(tile)tile.click()});
+    if(!['project','math','image','text','game'].includes(item.id))link.addEventListener('click',function(e){e.preventDefault();var tile=document.querySelector('[data-tool="'+item.id+'"]');if(tile)tile.click()});
     return link;
   }
   function renderRecent(){
@@ -877,7 +889,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
   };
   document.querySelectorAll('[data-tool]').forEach(function(button){
     button.addEventListener('click',function(){
-      if(['image','math','project','text'].includes(button.getAttribute('data-tool')))return;
+      if(['image','math','project','text','game'].includes(button.getAttribute('data-tool')))return;
       var item=labels[button.getAttribute('data-tool')];
       title.textContent=item[0];
       copy.textContent=item[1];
