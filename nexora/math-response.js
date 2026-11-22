@@ -33,7 +33,7 @@ function stepItems(lines) {
   let current = null;
   const start = () => {
     if (items.length >= 12) return null;
-    current = { title: 'Шаг ' + (items.length + 1), text: '', formula: '' };
+    current = { title: 'Шаг ' + (items.length + 1), text: '', formula: '', symbols: '', substitution: '', calculation: '' };
     items.push(current);
     return current;
   };
@@ -41,7 +41,7 @@ function stepItems(lines) {
     const line = trimLine(src);
     if (!line) continue;
     const number = line.match(/^(?:(?:шаг)\s*)?(\d{1,2})[.)]\s*(.*)$/i);
-    const formula = line.match(/^(?:формула|вычисление|преобразование)\s*[:：]\s*(.+)$/i);
+    const formula = line.match(/^(формула|формула общего вида|обозначения|что означают символы|подстановка|вычисление|расчёт|преобразование)\s*[:：]\s*(.+)$/i);
     if (number) {
       if (items.length >= 12) break;
       start();
@@ -51,14 +51,18 @@ function stepItems(lines) {
     if (!current) start();
     if (!current) break;
     if (formula) {
-      current.formula = [current.formula, formula[1]].filter(Boolean).join('\n').slice(0, 440);
+      const type = formula[1].toLowerCase();
+      const key = type.includes('обозначения') || type.includes('символы') ? 'symbols'
+        : type.includes('подстановка') ? 'substitution'
+        : type.includes('вычисление') || type.includes('расчёт') ? 'calculation' : 'formula';
+      current[key] = [current[key], formula[2]].filter(Boolean).join('\n').slice(0, key === 'symbols' ? 850 : 600);
     } else if ((line.includes('=') || line.includes('√') || line.includes('∠')) && !/[.!?]\s/.test(line) && line.length <= 180 && !current.formula) {
       current.formula = line.slice(0, 440);
     } else {
       current.text = [current.text, line].filter(Boolean).join('\n').slice(0, 1200);
     }
   }
-  return items.filter(x => x.text || x.formula);
+  return items.filter(x => x.text || x.formula || x.symbols || x.substitution || x.calculation);
 }
 function guessGeometryKind(problem, lines) {
   const token = (lines || []).join(' ').toLowerCase().replace(/\s/g, '');
@@ -92,11 +96,11 @@ export function parseMathResponse(raw, hint = 'other', problem = '') {
   if (obj && typeof obj === 'object' && !Array.isArray(obj)) return obj;
   const parts = readTextSections(clean);
   const kindLine = (parts['ТИП'] || []).join(' ').toLowerCase();
-  const kind = kindLine.includes('probability') || kindLine.includes('вероятност') ? 'probability'
-    : kindLine.includes('statistics') || kindLine.includes('статистик') ? 'statistics'
-    : kindLine.includes('geometry') || kindLine.includes('геометр') ? 'geometry'
+  const kind = kindLine.includes('geometry') || kindLine.includes('геометр') ? 'geometry'
     : kindLine.includes('algebra') || kindLine.includes('алгебр') ? 'algebra'
-    : inferMathKind(problem, hint);
+    : kindLine.includes('probability') || kindLine.includes('statistics') || kindLine.includes('вероятност') || kindLine.includes('статистик')
+      ? 'probability_statistics'
+      : inferMathKind(problem, hint);
   const answer = max((parts['ОТВЕТ'] || []).join(' '), 600);
   const steps = stepItems(parts['РЕШЕНИЕ']);
   const clarification = max((parts['УТОЧНЕНИЕ'] || []).join(' '), 600);
@@ -104,7 +108,7 @@ export function parseMathResponse(raw, hint = 'other', problem = '') {
   if (answer && !steps.length) throw new Error('incomplete_ai_solution');
   const diagramKind = kind === 'geometry' ? guessGeometryKind(problem, parts['ЧЕРТЕЖ']) : 'none';
   return {
-    kind, title: max((parts['НАЗВАНИЕ'] || []).join(' '), 120) || (kind === 'geometry' ? 'Геометрическая задача' : kind === 'probability' ? 'Задача по теории вероятностей' : kind === 'statistics' ? 'Задача по статистике' : 'Решение задачи'),
+    kind, title: max((parts['НАЗВАНИЕ'] || []).join(' '), 120) || (kind === 'geometry' ? 'Геометрическая задача' : kind === 'probability_statistics' ? 'Вероятность и статистика' : 'Решение задачи'),
     given: listItems(parts['ДАНО'] || parts['УСЛОВИЕ'] || (kind !== 'algebra' ? [problem] : []), 9),
     find: listItems(parts['НАЙТИ'], 7),
     steps, answer,
