@@ -10,5 +10,9 @@
     "start": "node server.js",
     "check": "node --check server.js && node --check check.mjs",
     "test": "node check.mjs"
+  },
+  "dependencies": {
+    "mammoth": "1.13.0",
+    "pdf-parse": "2.4.5"
   }
 }
