@@ -75,8 +75,8 @@ function guessGeometryKind(problem, lines) {
 }
 function geometryLabels(problem, kind) {
   const p = kind === 'rectangle'
-    ? problem.match(/(?:прямоугольник|квадрат)\s+([A-Za-zА-Яа-я]{4})\b/i)
-    : problem.match(/треугольник\s+([A-Za-zА-Яа-я]{3})\b/i);
+    ? problem.match(/(?:прямоугольник|квадрат)[а-яё]*\s+([A-Za-zА-Яа-я]{4})(?=\s|[.,;:!?)\]]|$)/i)
+    : problem.match(/треугольник[а-яё]*\s+([A-Za-zА-Яа-я]{3})(?=\s|[.,;:!?)\]]|$)/i);
   return p ? p[1].toUpperCase().split('') : [];
 }
 export function parseMathResponse(raw, hint = 'other', problem = '') {
