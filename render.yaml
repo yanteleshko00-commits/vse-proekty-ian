@@ -19,3 +19,35 @@ services:
         sync: false
       - key: SESSION_SECRET
         generateValue: true
+      - key: AUTH_SERVICE_API_KEY
+        sync: false
+      - key: IMAGE_STUDIO_URL
+        value: https://nexora-image-studio.onrender.com
+      - key: PROJECT_GENERATOR_URL
+        value: https://vse-proekty-ian-1.onrender.com
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+  - type: web
+    name: nexora-image-studio
+    runtime: node
+    plan: free
+    rootDir: nexora-image-studio
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GIGACHAT_API_KEY
+        sync: false
+      - key: GIGACHAT_BACKUP_AUTH
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: YANDEX_API_KEY
+        sync: false
+      - key: YANDEX_FOLDER_ID
+        sync: false
