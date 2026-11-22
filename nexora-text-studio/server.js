@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {normalizeTextRequest} from '../nexora/text-engine.js';
+import {decodeAttachments} from './attachments.js';
 
 const here=fileURLToPath(new URL('.',import.meta.url));
 const port=Number(process.env.PORT||10000);
@@ -29,7 +30,7 @@ async function getJSON(req){
   let total=0;const items=[];
   for await(const chunk of req){
     total+=chunk.length;
-    if(total>35000)throw Error('Слишком много текста.');
+    if(total>10500000)throw Error('Слишком большой запрос (до 7 МБ вложений).');
     items.push(chunk);
   }
   return JSON.parse(Buffer.concat(items).toString('utf8')||'{}');
@@ -55,15 +56,22 @@ const server=http.createServer(async(req,res)=>{
   if(!allow(req))return respond(res,429,{message:'Слишком много запросов. Попробуйте позднее.'});
   if(active>=4)return respond(res,503,{message:'Сервис занят. Попробуйте позже.'});
   let params;
-  try{params=normalizeTextRequest(await getJSON(req));}
-  catch(error){return respond(res,400,{message:error.message||'Некорректное задание.'});}
+  try{
+    const input=await getJSON(req);
+    if(typeof input.source==='string' && input.source.length>16000)throw Error('Исходный текст слишком длинный (до 16 000 символов).');
+    const files=await decodeAttachments(input.attachments);
+    const source=[typeof input.source==='string'?input.source.trim():'',files.documentText].filter(Boolean).join('\n\n');
+    if(source.length>16000)throw Error('Слишком много текста во вложениях. Попробуйте приложить меньше страниц.');
+    params=normalizeTextRequest({...input,source,images:files.images});
+  }
+  catch(error){return respond(res,error.statusCode||400,{message:error.message||'Некорректное задание.'});}
   active++;
   try{
     const upstream=await fetch(lobby+'/api/text/internal/generate',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-nexora-text-key':key},
       body:JSON.stringify(params),
-      signal:AbortSignal.timeout(119000)
+      signal:AbortSignal.timeout(params.images.length?162000:119000)
     });
     const answer=await upstream.json().catch(()=>({}));
     return respond(res,upstream.status,answer&&typeof answer==='object'?answer:{message:'Некорректный ответ ИИ.'});
@@ -72,7 +80,7 @@ const server=http.createServer(async(req,res)=>{
     return respond(res,502,{message:'Нет связи с ИИ. Попробуйте повторить запрос.'});
   }finally{active--;}
 });
-server.requestTimeout=130000;
+server.requestTimeout=175000;
 server.listen(port,'0.0.0.0',()=>{
   console.log('NEXORA Text Studio listening on port '+port);
   console.log('Text bridge configured:',key.length>=32);
