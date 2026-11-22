@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseMathResponse } from './math-response.js';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const publicDir = join(here, 'public');
@@ -381,16 +382,30 @@ async function mathBridgeSolve(req, res) {
   if (!providers.length) return mathJson(res, 503, { error: 'not_configured', message: 'Нейросети ещё не настроены в NEXORA Lobby.' });
 
   const instructions = [
-    'Ты NEXORA Math, математический помощник для школьников. Решай задачи максимально точно на русском языке, с понятными последовательными вычислениями.',
-    'Сначала классифицируй задачу как algebra, geometry или other. При недостатке информации честно запроси уточнение; не выдумывай чисел, теорем, размеров и выводов.',
-    'Для геометрии строго используй оформление «Дано», «Найти», «Решение», «Ответ», обязательно указывай теоремы и формулы. Рисунок только схематический и не в масштабе.',
-    'Для алгебры используй «Условие», нумерованные шаги решения, необходимые преобразования, проверку и ответ. Не пропускай важные вычисления. Для неоднозначных уравнений учитывай ОДЗ.',
-    'Пиши формулы обычными читаемыми символами: x², √, ∠, =, π, ×, ÷, дробь через /; используй единицы измерения, отделяй число от единицы пробелом. Избегай HTML и LaTeX, не используй Markdown-код.',
-    'Внешнее оформление соответствует школьной практике, а не универсальному стандарту ГОСТ. Не утверждай соответствие конкретному ГОСТу.',
-    'Проверь вычисления и ответ обратной подстановкой, если возможно. Если проверить нельзя, не выдумывай проверку.',
-    'В поле diagram.kind укажи triangle, right_triangle, rectangle, circle, coordinate или none; labels — обозначения точек до 6. Не придумывай буквенные обозначения, противоречащие условию; note — подпись о схематичности.',
-    'Верни СТРОГО один JSON-объект без Markdown: {"kind":"geometry|algebra|other","title":"краткое название","given":["..."],"find":["..."],"steps":[{"title":"Шаг 1","text":"объяснение","formula":"выражение"}],"answer":"окончательный ответ","verification":"проверка или пустая строка","warning":"необязательное замечание","needs_clarification":false,"clarification":"","diagram":{"kind":"triangle|right_triangle|rectangle|circle|coordinate|none","labels":["A","B","C"],"note":"Схематический чертёж"}}',
-    'Если данных недостаточно: needs_clarification=true, clarification="один конкретный вопрос", steps=[], answer="".'
+    'Ты NEXORA Math — учитель математики. Дай правильное последовательное решение на русском языке для указанного школьного класса.',
+    'Проверяй все вычисления, ОДЗ и единицы. Если условие неоднозначное, запроси уточнение и НЕ выдумывай значения.',
+    'Для геометрии обязательны Дано, Найти, Решение, Ответ. Укажи применяемые теоремы. Чертёж схематический, не в масштабе.',
+    'Для алгебры тоже опиши Дано и Найти, затем последовательные шаги с формулами и Ответ.',
+    'Верни ПРОСТОЙ ТЕКСТ без JSON, без фигурных скобок, без блоков кода, без таблиц и без Markdown.',
+    'Точный формат: ',
+    'ТИП: geometry (или algebra)',
+    'НАЗВАНИЕ: краткая тема',
+    'ДАНО:',
+    '- исходные известные величины',
+    'НАЙТИ:',
+    '- неизвестная величина',
+    'РЕШЕНИЕ:',
+    '1. Краткое обоснование первого шага',
+    'ФОРМУЛА: выражение и вычисление',
+    '2. Следующий шаг',
+    'ФОРМУЛА: вычисление',
+    'ОТВЕТ: точный итог с единицами',
+    'ПРОВЕРКА: обратная подстановка или проверка формулы',
+    'ЧЕРТЁЖ: right_triangle / triangle / rectangle / circle / coordinate / none',
+    'Каждый заголовок пиши с новой строки. Укажи ровно столько шагов, сколько необходимо, без пропусков.',
+    'Если данных недостаточно, верни только строку УТОЧНЕНИЕ: и один конкретный вопрос. Не придумывай ответ.',
+    'Не используй LaTeX, HTML, JSON, кавычки вокруг всего ответа; формулы обычными символами x², √, ∠, π, =, единицы через пробел.',
+    'Не утверждай соответствие универсальному ГОСТу: формат предназначен для школьного решения.'
   ].join('\n');
   let lastFailure = 'Провайдеры ИИ не ответили.';
   for (const provider of providers) {
@@ -399,7 +414,7 @@ async function mathBridgeSolve(req, res) {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + provider.key, 'Content-Type': 'application/json', 'HTTP-Referer': appUrl(req), 'X-Title': 'NEXORA Math Studio' },
         body: JSON.stringify({
-          model: provider.model, temperature: 0.15, max_tokens: 2700,
+          model: provider.model, temperature: 0.15, max_tokens: 3200,
           messages: [
             { role: 'system', content: instructions },
             { role: 'user', content: JSON.stringify({ problem, requested_kind: requestedKind, grade }) }
@@ -411,13 +426,7 @@ async function mathBridgeSolve(req, res) {
       if (!response.ok) throw new Error(provider.name + ' HTTP ' + response.status);
       const raw = payload.choices?.[0]?.message?.content;
       if (typeof raw !== 'string' || !raw.trim()) throw new Error('empty_provider_response');
-      let parsed;
-      try { parsed = JSON.parse(raw); }
-      catch {
-        const match = raw.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error('invalid_provider_json');
-        parsed = JSON.parse(match[0]);
-      }
+      const parsed = parseMathResponse(raw, requestedKind, problem);
       const solution = normalizeMathSolution(parsed, requestedKind === 'auto' ? 'other' : requestedKind);
       return mathJson(res, 200, { ok: true, solution, provider: provider.name });
     } catch (error) {
