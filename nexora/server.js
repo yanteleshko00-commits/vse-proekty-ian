@@ -210,12 +210,14 @@ function allowArgosha(req) {
   return true;
 }
 async function readJson(req, limit = 12000) {
-  let raw = '';
+  const chunks = [];
+  let size = 0;
   for await (const chunk of req) {
-    raw += chunk;
-    if (Buffer.byteLength(raw) > limit) throw new Error('payload_too_large');
+    size += chunk.length;
+    if (size > limit) throw new Error('payload_too_large');
+    chunks.push(chunk);
   }
-  return JSON.parse(raw || '{}');
+  return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
 }
 
 async function argoshaReply(req, res) {
@@ -445,7 +447,25 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/me' && req.method === 'GET') {
     const user = readSession(req);
     if (!user) return send(res, 401, JSON.stringify({ error: 'not_signed_in' }), { 'Content-Type': 'application/json; charset=utf-8' });
-    return send(res, 200, JSON.stringify({ user, usage: user.usage || null, packages: user.packages || null }), { 'Content-Type': 'application/json; charset=utf-8' });
+    let usage = user.usage || null;
+    let packages = user.packages || null;
+    // The signed cookie holds a snapshot from login time; refresh the balance so it is not stale after generations/payments.
+    if (authServiceApiKey) {
+      try {
+        const summary = await fetch(authBase + '/v1/internal/users/' + encodeURIComponent(user.id) + '/summary', {
+          headers: { 'x-service-id': authServiceClientId, 'x-service-api-key': authServiceApiKey },
+          signal: AbortSignal.timeout(5000)
+        });
+        if (summary.ok) {
+          const fresh = await summary.json();
+          usage = fresh.usage || usage;
+          packages = fresh.packages || packages;
+        }
+      } catch (error) {
+        console.error('NEXORA usage refresh failed:', error.message);
+      }
+    }
+    return send(res, 200, JSON.stringify({ user: { id: user.id, name: user.name, email: user.email }, usage, packages }), { 'Content-Type': 'application/json; charset=utf-8' });
   }
 
   if (url.pathname.startsWith('/docs/') && req.method === 'GET') {

@@ -12,6 +12,7 @@ from xml.sax.saxutils import escape
 BASE = Path(__file__).parent / "public" / "docs"
 BASE.mkdir(parents=True, exist_ok=True)
 FONT_CANDIDATES = [
+    str(Path(__file__).parent / "assets" / "DejaVuSans.ttf"),
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
 ]
