@@ -72,10 +72,10 @@ let gigaChatTokenPromise = null;
 
 function safeOAuthDiagnostic(value, fallback = '') {
   return String(value ?? fallback)
-    .replace(/[\\r\\n\\t]+/g, ' ')
-    .replace(/\\b(Basic|Bearer)\\s+[A-Za-z0-9._~+\\/=-]+/gi, '$1 [скрыто]')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\b(Basic|Bearer)\s+[A-Za-z0-9._~+\/= -]+/gi, '$1 [скрыто]')
     .replace(/[A-Za-z0-9+/_=-]{40,}/g, '[скрыто]')
-    .replace(/[\\u0000-\\u001f\\u007f]/g, ' ')
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .trim()
     .slice(0, 180);
 }
