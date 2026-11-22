@@ -212,7 +212,7 @@ h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-to
    <span class="brand-copy brand-wordmark">NEXORA</span>
   </a>
   <div class="top-actions">
-   <a class="glass-button" href="/"><span>‹</span><span class="back-label">Все инструменты</span></a>
+   <a class="glass-button" href="https://nexora-lobby.onrender.com/"><span>‹</span><span class="back-label">В NEXORA Lobby</span></a>
    <button class="glass-button icon-button" id="theme-toggle" type="button" aria-label="Сменить тему">☼</button>
   </div>
  </div>
@@ -344,7 +344,7 @@ h1,h2,h3,h4,strong,b,label,.field-label,.section-label,.card-head h2,.preview-to
  $('theme-toggle').addEventListener('click',()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem(themeKey,next);applyTheme(next)});
  const syncSystemTheme=event=>{if(!localStorage.getItem(themeKey))applyTheme(event.matches?'dark':'light')};
  if(typeof themeMedia.addEventListener==='function')themeMedia.addEventListener('change',syncSystemTheme);else if(typeof themeMedia.addListener==='function')themeMedia.addListener(syncSystemTheme);
- fetch('/health').then(r=>r.json()).then(d=>{if(!d.imageGeneratorConfigured)showMessage('Сервер генерации изображений временно не подключён. Проверьте NEXORA Image API.','')}).catch(()=>showMessage('Не удалось проверить подключение к серверу NEXORA Image Studio.',''));
+ fetch('/health').then(r=>r.json()).then(d=>{if(!d.imageGeneratorConfigured)showMessage('Сервер генерации изображений временно не подключён. Проверьте ключи провайдеров в Environment сервиса NEXORA Image Studio.','')}).catch(()=>showMessage('Не удалось проверить подключение к серверу NEXORA Image Studio.',''));
 })();
 </script>
 </body>
