@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseMathResponse } from './math-response.js';
 import { mathAnswerPrompt } from './math-prompt.js';
 import { textBridge, textBridgeHealth } from './text-bridge.js';
+import { makeGame } from './game-studio.js';
 import { appendFractionWorking, fractionHelpForProblem } from './math-fractions.js';
 import { inferMathKind, mathStudyGuide, datasetHint, MATH_KINDS, MATH_LEVELS } from './math-curriculum.js';
 
@@ -172,7 +173,8 @@ const ARGOSHA_TOOLS = [
   { id: 'chat', name: 'Чат с ИИ', status: 'coming_soon', description: 'Отдельный универсальный чат с ИИ.' },
   { id: 'image', name: 'Создать картинку', status: 'available', description: 'Генерация и редактирование изображений.', url: 'https://nexora-image-studio.onrender.com/' },
   { id: 'lesson', name: 'Подготовиться к уроку', status: 'coming_soon', description: 'Конспекты, объяснения и самопроверка.' },
-  { id: 'text', name: 'Создать текст', status: 'coming_soon', description: 'Отдельный генератор текстов.' }
+  { id: 'text', name: 'Создать текст', status: 'available', description: 'Писать, переписывать и редактировать тексты.', url: 'https://nexora-text-studio.onrender.com/' },
+  { id: 'game', name: 'Сделать игру', status: 'available', description: 'Создавать и запускать мини-игры с ИИ.', url: '/game' }
 ];
 const ARGOSHA_PROJECT_URL = 'https://vse-proekty-ian-1.onrender.com/';
 const PROJECT_GENERATOR_BASE = (process.env.PROJECT_GENERATOR_URL || 'https://vse-proekty-ian-1.onrender.com').replace(/\/$/, '');
@@ -553,6 +555,29 @@ const server = http.createServer(async (req, res) => {
       authService: authBase
     }), { 'Content-Type': 'application/json; charset=utf-8' });
   }
+
+  if (req.method === 'GET' && ['/game','/game/','/game.html'].includes(url.pathname)) {
+    try {
+      const html=await readFile(join(publicDir,'game.html'));
+      return send(res,200,html,{
+        'Content-Type':'text/html; charset=utf-8',
+        'Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'",
+        'Cache-Control':'public, max-age=120',
+        'X-Content-Type-Options':'nosniff'
+      });
+    }catch(e){console.error('Game Studio page error:',e.message);return send(res,500,'Не удалось открыть Game Studio.')}
+  }
+  if(req.method === 'GET' && url.pathname === '/game.js'){
+    try {
+      const js=await readFile(join(publicDir,'game.js'));
+      return send(res,200,js,{
+        'Content-Type':'text/javascript; charset=utf-8',
+        'Cache-Control':'public, max-age=120',
+        'X-Content-Type-Options':'nosniff'
+      });
+    }catch(e){console.error('Game Studio engine error:',e.message);return send(res,500,'Движок игры недоступен.')}
+  }
+  if(req.method === 'POST' && url.pathname === '/api/game/generate')return makeGame(req,res);
 
   if (url.pathname === '/api/images/generate') {
     return send(res, 410, JSON.stringify({
