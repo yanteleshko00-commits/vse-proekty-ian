@@ -156,6 +156,7 @@ footer b{color:#55486d;letter-spacing:.13em}
 @media(max-width:370px){.brand-copy small{display:none}.intro h1{font-size:clamp(40px,12vw,47px)}.top-link{padding:0 9px}.controls{grid-template-columns:1fr}.result-actions{gap:6px}.action{font-size:10px}}
 @media print{html,body{overflow:visible;background:white!important}.topbar,.intro,.section-heading,.composer,.preview-head,.result-actions,.feature-strip,.disclaimer,footer,.toast{display:none!important}.wrap{width:100%;max-width:100%}.workspace{display:block}.preview{padding:0;box-shadow:none;border:0}.preview.has-result .stage{display:block}.result{padding:0;border:0}.result-top h3{font-size:19px}.result-section,.result-step,.answer,.diagram-wrap{break-inside:avoid}body{color:black}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.preview.compact-view .step-copy p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
 </style>
 </head>
 <body>
@@ -250,7 +251,7 @@ function diagram(kind,labels){const root=svgEl("svg",{viewBox:"0 0 360 240",role
  else if(kind==="circle"){root.appendChild(svgEl("circle",{cx:180,cy:120,r:91,fill:"rgba(147,119,229,.07)",stroke:"#765ac8","stroke-width":3}));line(180,120,271,120);point(180,120,labels[0]||"O");point(271,120,labels[1]||"A");}
  else if(kind==="coordinate"){line(30,120,325,120);line(178,215,178,22);root.appendChild(svgEl("path",{d:"M319 114 L327 120 L319 126 M172 30 L178 20 L184 30",fill:"none",stroke:"#765ac8","stroke-width":2}));root.appendChild(svgEl("text",{x:333,y:117,fill:"#6d50cb","font-size":16},"x"));root.appendChild(svgEl("text",{x:190,y:18,fill:"#6d50cb","font-size":16},"y"));point(178,120,labels[0]||"O");}
  return root}
-function render(sol,provider){last=sol;result.replaceChildren();const top=make("div","result-top");top.appendChild(make("h3","",sol.title||"Решение задачи"));top.appendChild(make("span","result-badge",sol.kind==="geometry"?"Геометрия":sol.kind==="algebra"?"Алгебра":"Математика"));result.appendChild(top);
+function render(sol,provider){last=sol;$("preview").classList.toggle("compact-view",$("format").value==="compact");result.replaceChildren();const top=make("div","result-top");top.appendChild(make("h3","",sol.title||"Решение задачи"));top.appendChild(make("span","result-badge",sol.kind==="geometry"?"Геометрия":sol.kind==="algebra"?"Алгебра":"Математика"));result.appendChild(top);
  if(sol.needs_clarification){const b=make("div","answer");b.append(make("b","","НУЖНО УТОЧНИТЬ"),make("p","",sol.clarification||"Уточните условие задачи."));result.appendChild(b)}
  else{const geo=sol.kind==="geometry";if(geo){listSection("Дано",sol.given);listSection("Найти",sol.find)}
  else{listSection("Условие",sol.given.length?sol.given:[input.value])}
