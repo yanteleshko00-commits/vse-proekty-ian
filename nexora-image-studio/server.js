@@ -68,20 +68,40 @@ let gigaChatTokenCache = '';
 let gigaChatTokenExpiresAt = 0;
 let gigaChatTokenPromise = null;
 
+function safeOAuthDiagnostic(value, fallback = '') {
+  return String(value ?? fallback)
+    .replace(/[\\r\\n\\t]+/g, ' ')
+    .replace(/\\b(Basic|Bearer)\\s+[A-Za-z0-9._~+\\/= -]+/gi, '$1 [скрыто]')
+    .replace(/[A-Za-z0-9+/_=-]{40,}/g, '[скрыто]')
+    .replace(/[\\u0000-\\u001f\\u007f]/g, ' ')
+    .trim()
+    .slice(0, 180);
+}
+
 async function getGigaChatAccessToken() {
   if (gigaChatTokenCache && Date.now() < gigaChatTokenExpiresAt - 60000) return gigaChatTokenCache;
   if (gigaChatTokenPromise) return gigaChatTokenPromise;
-  const authKeys = [
-    String(process.env.GIGACHAT_API_KEY || process.env.GIGACHAT_AUTH_KEY || '').trim(),
-    String(process.env.GIGACHAT_BACKUP_AUTH || '').trim()
-  ].filter((key, index, all) => key && all.indexOf(key) === index);
+
+  const primaryKey = String(process.env.GIGACHAT_API_KEY || '').trim() ||
+    String(process.env.GIGACHAT_AUTH_KEY || '').trim();
+  const configuredKeys = [
+    { keySlot: 'основной', key: primaryKey },
+    { keySlot: 'резервный', key: String(process.env.GIGACHAT_BACKUP_AUTH || '').trim() }
+  ].filter(item => item.key);
+  const authKeys = configuredKeys.filter((item, index, all) =>
+    all.findIndex(candidate => candidate.key === item.key) === index
+  );
   if (!authKeys.length) throw Object.assign(new Error('GigaChat is not configured'), {
-    providerName: 'GigaChat', providerCode: 'not_configured', publicMessage: 'Ключ GigaChat не настроен.'
+    providerName: 'GigaChat', providerCode: 'not_configured', diagnosticStage: 'oauth',
+    publicMessage: 'Ключ GigaChat не настроен.'
   });
+
+  const scope = String(process.env.GIGACHAT_SCOPE || '').trim() || 'GIGACHAT_API_PERS';
   gigaChatTokenPromise = (async () => {
     let lastAuthError;
+    const authAttempts = [];
     try {
-      for (const authKey of authKeys) {
+      for (const authItem of authKeys) {
         try {
           const response = await fetch('https://ngw.devices.sberbank.ru:9443/api/v2/oauth', {
             method: 'POST',
@@ -89,23 +109,36 @@ async function getGigaChatAccessToken() {
               'Content-Type': 'application/x-www-form-urlencoded',
               'Accept': 'application/json',
               'RqUID': crypto.randomUUID(),
-              'Authorization': 'Basic ' + authKey
+              'Authorization': 'Basic ' + authItem.key
             },
-            body: new URLSearchParams({ scope: process.env.GIGACHAT_SCOPE || 'GIGACHAT_API_PERS' }),
+            body: new URLSearchParams({ scope }),
             signal: AbortSignal.timeout(15000)
           }).catch(error => { throw networkFailure('GigaChat', 'oauth', error); });
+
           const data = await response.json().catch(() => ({}));
           if (!response.ok || !data.access_token) {
+            const code = safeOAuthDiagnostic(data.error || data.code || 'oauth_failed', 'oauth_failed');
+            const detail = safeOAuthDiagnostic(data.error_description || data.message || '', '');
             lastAuthError = Object.assign(new Error('GigaChat OAuth HTTP ' + response.status), {
               providerName: 'GigaChat',
               upstreamStatus: response.status,
-              providerCode: String(data.error || data.message || 'oauth_failed'),
+              providerCode: code,
+              diagnosticStage: 'oauth',
+              diagnosticDetail: detail,
               publicMessage: response.status === 401 || response.status === 403
-                ? 'GigaChat не принял ключ авторизации. Проверьте основной или резервный ключ и GIGACHAT_SCOPE в Render.'
-                : 'Не удалось авторизовать запрос в GigaChat (HTTP ' + response.status + ').'
+                ? 'GigaChat отклонил ключ авторизации (HTTP ' + response.status + '). См. подробную диагностику.'
+                : 'GigaChat отклонил OAuth-запрос (HTTP ' + response.status + '). Проверьте scope и параметры авторизации.'
+            });
+            authAttempts.push({
+              keySlot: authItem.keySlot,
+              status: response.status,
+              code,
+              detail
             });
             continue;
           }
+
+          console.info('GigaChat OAuth authorized; keySlot=' + authItem.keySlot + '; scope=' + scope);
           gigaChatTokenCache = String(data.access_token);
           const expires = Number(data.expires_at);
           gigaChatTokenExpiresAt = Number.isFinite(expires) && expires > 0
@@ -114,9 +147,18 @@ async function getGigaChatAccessToken() {
           return gigaChatTokenCache;
         } catch (error) {
           lastAuthError = error;
+          authAttempts.push({
+            keySlot: authItem.keySlot,
+            status: Number(error.upstreamStatus || 0),
+            code: safeOAuthDiagnostic(error.providerCode || error.name || 'request_failed', 'request_failed'),
+            detail: safeOAuthDiagnostic(error.publicMessage || error.message || '', '')
+          });
         }
       }
-      throw lastAuthError || new Error('GigaChat OAuth failed');
+      const failure = lastAuthError || new Error('GigaChat OAuth failed');
+      failure.authAttempts = authAttempts;
+      failure.oauthScope = scope;
+      throw failure;
     } finally {
       gigaChatTokenPromise = null;
     }
@@ -376,7 +418,10 @@ async function generateNexoraImage(req, res) {
       status: error.upstreamStatus || 0,
       code: error.providerCode || error.name || 'request_failed',
       stage: error.diagnosticStage || 'unknown',
-      message: error.publicMessage || 'Провайдер временно недоступен.'
+      message: error.publicMessage || 'Провайдер временно недоступен.',
+      ...(error.oauthScope ? { oauthScope: error.oauthScope } : {}),
+      ...(error.diagnosticDetail ? { detail: safeOAuthDiagnostic(error.diagnosticDetail) } : {}),
+      ...(Array.isArray(error.authAttempts) ? { authAttempts: error.authAttempts } : {})
     }));
     const billingFailed = details.some(item =>
       item.provider === 'OpenAI' &&
@@ -386,11 +431,19 @@ async function generateNexoraImage(req, res) {
       ? 'Ни один подключённый генератор не завершил создание изображения. ' +
         details.map(item => item.provider + ': ' + item.message).join(' ')
       : (details[0]?.message || 'Все подключённые генераторы изображений временно недоступны.');
-    console.error('NEXORA image providers failed:', JSON.stringify(details.map(({ provider, status, code, stage }) => ({ provider, status, code, stage }))));
+    console.error('NEXORA image providers failed:', JSON.stringify(details.map(({ provider, status, code, stage, oauthScope, detail, authAttempts }) => ({
+      provider, status, code, stage, ...(oauthScope ? { oauthScope } : {}),
+      ...(detail ? { detail } : {}), ...(authAttempts ? { authAttempts } : {})
+    }))));
     return send(res, billingFailed ? 502 : (details[0]?.status >= 400 && details[0]?.status < 500 ? details[0].status : 502), JSON.stringify({
       error: 'all_image_providers_failed',
       message,
-      providers: details.map(({ provider, status, code, stage }) => ({ provider, status, code, stage }))
+      providers: details.map(({ provider, status, code, stage, oauthScope, detail, authAttempts }) => ({
+        provider, status, code, stage,
+        ...(oauthScope ? { oauthScope } : {}),
+        ...(detail ? { detail } : {}),
+        ...(authAttempts ? { authAttempts } : {})
+      }))
     }), jsonHeaders);
   }
 }
@@ -420,7 +473,14 @@ const server = http.createServer(async (req, res) => {
       imageGeneratorConfigured: providers.length > 0,
       imageProviders: providers,
       imageProvider: 'Parallel auto',
-      imageModel: 'First successful provider'
+      imageModel: 'First successful provider',
+      gigaChatAuth: {
+        configured: hasGigaChat,
+        primaryConfigured: Boolean(String(process.env.GIGACHAT_API_KEY || '').trim() || String(process.env.GIGACHAT_AUTH_KEY || '').trim()),
+        backupConfigured: Boolean(String(process.env.GIGACHAT_BACKUP_AUTH || '').trim()),
+        scope: String(process.env.GIGACHAT_SCOPE || '').trim() || 'GIGACHAT_API_PERS',
+        scopeSource: String(process.env.GIGACHAT_SCOPE || '').trim() ? 'Environment' : 'default'
+      }
     }), { 'Content-Type': 'application/json; charset=utf-8' });
   }
 
