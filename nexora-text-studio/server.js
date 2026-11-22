@@ -71,7 +71,7 @@ const server=http.createServer(async(req,res)=>{
       method:'POST',
       headers:{'Content-Type':'application/json','x-nexora-text-key':key},
       body:JSON.stringify(params),
-      signal:AbortSignal.timeout(params.images.length?162000:119000)
+      signal:AbortSignal.timeout(params.images.length?210000:119000)
     });
     const answer=await upstream.json().catch(()=>({}));
     return respond(res,upstream.status,answer&&typeof answer==='object'?answer:{message:'Некорректный ответ ИИ.'});
@@ -80,10 +80,35 @@ const server=http.createServer(async(req,res)=>{
     return respond(res,502,{message:'Нет связи с ИИ. Попробуйте повторить запрос.'});
   }finally{active--;}
 });
-server.requestTimeout=175000;
+server.requestTimeout=228000;
 server.listen(port,'0.0.0.0',()=>{
   console.log('NEXORA Text Studio listening on port '+port);
   console.log('Text bridge configured:',key.length>=32);
+  if(process.env.TEXT_PHOTO_SMOKE_TEST==='1'){
+    setTimeout(async()=>{
+      try{
+        const {mathTestImage}=await import('../nexora-math-studio/test-image.mjs');
+        const png=mathTestImage();
+        const response=await fetch('http://127.0.0.1:'+port+'/api/generate',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            action:'create',format:'description',tone:'neutral',size:'short',language:'ru',
+            topic:'Опиши, что показано на прикреплённой фотографии с математической записью.',
+            attachments:[{name:'sample.png',data:'data:image/png;base64,'+png.toString('base64')}]
+          }),
+          signal:AbortSignal.timeout(215000)
+        });
+        const data=await response.json().catch(()=>({}));
+        const text=String(data.text||'');
+        console.info('TEXT_PHOTO_SMOKE_RESULT',JSON.stringify({
+          passed:!!(response.ok&&data.ok&&text.length>=35),
+          status:response.status,provider:data.ok?data.provider:undefined,
+          characters:data.ok?text.length:undefined,
+          reason:data.ok?undefined:String(data.message||data.error||'no_text').slice(0,140)
+        }));
+      }catch(error){console.error('TEXT_PHOTO_SMOKE_RESULT',JSON.stringify({passed:false,reason:error.message}));}
+    },2500);
+  }
   if(process.env.TEXT_SMOKE_TEST==='1'){
     setTimeout(async()=>{
       try{
