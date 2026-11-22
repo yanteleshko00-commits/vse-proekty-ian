@@ -149,4 +149,32 @@ server.listen(port, '0.0.0.0', () => {
       }
     }, 2800);
   }
+  if (process.env.MATH_TOPIC_SMOKE_TEST === '1') {
+    setTimeout(async () => {
+      const cases = [
+        {name:'probability',kind:'probability',grade:8,problem:'В коробке 5 красных и 3 синих шара. Выбирают один шар. Какова вероятность выбрать красный?'},
+        {name:'statistics',kind:'statistics',grade:8,problem:'Даны данные: 2, 3, 3, 5, 7. Найдите среднее арифметическое, медиану и моду.'}
+      ];
+      for (const sample of cases) {
+        try {
+          const res=await fetch('http://127.0.0.1:'+port+'/api/solve',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({...sample,level:'basic',textbook:'',attachments:[]}),
+            signal:AbortSignal.timeout(88000)
+          });
+          const body=await res.json().catch(()=>({}));
+          const answer=String(body.solution?.answer||'');
+          const ok=Boolean(res.ok&&body.ok&&body.solution?.kind===sample.kind&&body.solution?.steps?.length);
+          console.info('MATH_TOPIC_SMOKE_RESULT',JSON.stringify({
+            kind:sample.kind,passed:ok,status:res.status,provider:body.provider,
+            answer:ok?answer.slice(0,140):undefined,
+            reason:ok?undefined:String(body.error||body.message||'invalid_answer').slice(0,120)
+          }));
+        }catch(error){
+          console.error('MATH_TOPIC_SMOKE_RESULT',JSON.stringify({kind:sample.kind,passed:false,reason:error.message}));
+        }
+      }
+    },2900);
+  }
+
 });
