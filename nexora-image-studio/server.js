@@ -527,7 +527,8 @@ const server = http.createServer(async (req, res) => {
       service: 'nexora-image-studio',
       imageGeneratorConfigured: providers.length > 0,
       imageProviders: providers,
-      yandexImage: { configured: Boolean(process.env.YANDEX_API_KEY && process.env.YANDEX_FOLDER_ID), model: 'aliceai-image-art-3.0' },\n      imageProvider: 'Parallel auto',
+      yandexImage: { configured: Boolean(process.env.YANDEX_API_KEY && process.env.YANDEX_FOLDER_ID), model: 'aliceai-image-art-3.0' },
+      imageProvider: 'Parallel auto',
       imageModel: 'First successful provider',
       gigaChatAuth: {
         configured: hasGigaChat,
