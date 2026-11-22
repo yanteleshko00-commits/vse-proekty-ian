@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f8f9fd">
+<meta name="description" content="NEXORA Text Studio — создание и редактирование сочинений, статей, писем и постов с помощью ИИ.">
+<title>NEXORA Text Studio — создавайте тексты</title>
+<style>
+:root{color-scheme:light;--bg:#f8f9fd;--ink:#211b38;--sub:#6f6984;--muted:#9993a9;--primary:#7759e7;--primary2:#9b81ec;--line:#e8e4f1;--card:#fff;--soft:#f4f1ff;--shadow:0 22px 60px rgba(64,42,117,.055)}
+*{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:clip}body{margin:0;min-height:100vh;overflow-x:clip;background:radial-gradient(ellipse at 12% 8%,rgba(231,223,255,.65),transparent 32%),radial-gradient(ellipse at 91% 45%,rgba(250,228,245,.44),transparent 39%),var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit}button{cursor:pointer}a{color:inherit}button:disabled{cursor:not-allowed;opacity:.62}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(119,89,231,.35);outline-offset:2px}
+.topbar{position:sticky;z-index:20;top:0;border-bottom:1px solid #ece7f4;background:rgba(250,249,255,.91);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.topbar-inner{max-width:1310px;min-height:91px;margin:auto;padding:14px clamp(18px,4vw,42px);display:flex;gap:18px;align-items:center;justify-content:space-between;min-width:0}
+.brand{display:flex;align-items:center;gap:13px;min-width:0;text-decoration:none}
+.brand-icon{display:grid;place-items:center;flex:0 0 51px;width:51px;height:51px;background:#1d1933;color:white;border-radius:16px;font-size:30px;font-weight:750;letter-spacing:-.07em}
+.brand-text strong{display:block;font-size:21px;font-weight:850;letter-spacing:.19em;line-height:1.05}.brand-text span{display:block;margin-top:6px;font-size:10px;font-weight:780;letter-spacing:.3em;color:#8c879d}
+.header-actions{display:flex;align-items:center;gap:8px}
+.header-link,.theme-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:43px;border:1px solid var(--line);border-radius:14px;padding:0 16px;background:var(--card);font-size:12px;font-weight:750;text-decoration:none;white-space:nowrap}
+.theme-button{width:44px;padding:0;font-size:19px}
+.container{max-width:1310px;margin:auto;padding:39px clamp(18px,4vw,42px) 70px}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:15px;align-items:end;margin:0 0 25px}
+.eyebrow{font-size:11px;font-weight:820;letter-spacing:.19em;color:#9b85d7}
+.hero h1{margin:9px 0 8px;letter-spacing:-.05em;font-size:clamp(29px,3.4vw,48px);line-height:1.14}
+.hero h1 em{color:#8c6ee3;font-style:normal}.hero p{max-width:700px;margin:0;color:var(--sub);font-size:14px;line-height:1.7}
+.hero-pill{display:flex;gap:9px;align-items:center;padding:10px 14px;border:1px solid #e4def5;border-radius:99px;background:rgba(255,255,255,.77);font-weight:750;color:#806bc0;font-size:11px;white-space:nowrap}
+.hero-pill i{width:7px;height:7px;border-radius:50%;background:#50bb9c;box-shadow:0 0 0 5px rgba(80,187,156,.12)}
+.workspace{display:grid;grid-template-columns:minmax(0,.96fr) minmax(0,1.04fr);align-items:start;gap:22px}
+.panel{min-width:0;border:1px solid var(--line);border-radius:27px;background:var(--card);box-shadow:var(--shadow);padding:29px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:21px;min-width:0}
+.panel-head h2{margin:0;font-size:22px;font-weight:820;letter-spacing:-.04em}
+.panel-head span{font-size:11px;color:var(--muted);text-align:right}
+.section-label{display:block;font-size:11px;font-weight:790;color:#686177;margin:0 0 10px}
+.actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:20px}
+.action{min-width:0;min-height:47px;display:flex;justify-content:center;align-items:center;gap:7px;border:1px solid #e9e4f2;border-radius:12px;background:#faf9fc;color:#6c677d;font-size:11px;font-weight:770;transition:background .18s,border-color .18s}
+.action.active{background:#eee8ff;border-color:#c8b8f5;color:#6b4bcd;box-shadow:inset 0 1px rgba(255,255,255,.9)}
+.action:hover{border-color:#b9a3ef}
+.field{margin:0 0 17px;min-width:0}
+.field label{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:9px;font-size:11px;font-weight:790;color:#6c647f}
+.field label small{font-size:10px;color:#aaa4b7;font-weight:500}
+.field textarea,.field input,.field select,.editor{display:block;width:100%;min-width:0;border:1px solid #e5e0ee;border-radius:13px;background:#fbfaff;color:var(--ink);font-size:13px;line-height:1.7;transition:border-color .2s,box-shadow .2s}
+.field input,.field select{height:47px;padding:0 13px}
+.field textarea{padding:12px 14px;resize:vertical;min-height:109px}
+.field textarea:focus,.field input:focus,.field select:focus,.editor:focus{border-color:#aa95ed;outline:0;box-shadow:0 0 0 3px rgba(133,104,221,.1)}
+.field textarea::placeholder,.field input::placeholder{color:#aaa4b5}
+#source-field[hidden]{display:none}
+.field-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:13px}
+.examples{display:flex;flex-wrap:wrap;gap:7px;margin:-4px 0 18px}
+.example{padding:8px 10px;border:1px solid #e5dff3;border-radius:99px;background:#fbfaff;color:#8b78c4;font-size:10px;font-weight:750}
+.example:hover{border-color:#ac95ea;background:#f4edff}
+.generate{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;padding:14px 18px;min-height:51px;border:0;border-radius:14px;background:linear-gradient(110deg,#7453db,#9b79ed);color:white;font-size:13px;font-weight:810;box-shadow:0 12px 30px rgba(119,89,231,.25);transition:transform .2s,filter .2s}
+.generate:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.045)}
+.hint{margin:11px 0 0;color:#938ba5;font-size:10px;line-height:1.65}
+.error{display:none;margin:12px 0 0;padding:11px 13px;background:#fff1f5;color:#af345a;border:1px solid #f5cbd8;border-radius:11px;font-size:12px;line-height:1.6}
+.error.show{display:block}
+.preview{min-width:0}
+.output-status{display:flex;align-items:center;gap:7px;flex:0 0 auto}
+.output-status::before{content:"";width:6px;height:6px;background:#bfacd9;border-radius:50%}
+.output-status.ready::before{background:#35ba94}
+.stage{min-height:445px;display:grid;place-items:center;position:relative;overflow:hidden;padding:32px 23px;background:radial-gradient(circle at 22% 17%,rgba(222,211,255,.66),transparent 43%),radial-gradient(circle at 88% 83%,rgba(250,224,239,.73),transparent 40%),linear-gradient(145deg,#fcfbff,#f4efff 62%,#fffafc);border:1px solid #e9e1f3;border-radius:22px;text-align:center}
+.stage:before{content:"";position:absolute;inset:0;opacity:.45;background-image:linear-gradient(rgba(129,97,197,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(129,97,197,.07) 1px,transparent 1px);background-size:27px 27px;pointer-events:none}
+.stage-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;max-width:380px}
+.stage-icon{width:105px;height:105px;display:grid;place-items:center;border-radius:28px;border:1px solid #e3daf7;background:linear-gradient(155deg,#fff,#e9e1fc);color:#8669d7;font-family:Georgia,serif;font-size:63px;box-shadow:0 17px 37px rgba(94,64,160,.1);margin-bottom:22px}
+.stage h3{font-size:20px;letter-spacing:-.035em;margin:0 0 10px}
+.stage p{font-size:12px;line-height:1.85;color:#817b95;margin:0;max-width:315px}
+.stage .loading-bar{width:230px;max-width:100%;margin:24px 0 14px;height:6px;background:#e7dff5;border-radius:99px;overflow:hidden}
+.stage .loading-bar span{display:block;height:100%;width:25%;background:linear-gradient(90deg,#8667e5,#d09fef);border-radius:99px;animation:wait 2.4s ease-in-out infinite}
+@keyframes wait{0%{transform:translateX(-150%)}100%{transform:translateX(480%)}}
+.stage[hidden]{display:none}
+.loading-stop{margin-top:7px;border:1px solid #d9ccef;color:#745db0;background:#fff;border-radius:10px;padding:7px 17px;font-size:11px;font-weight:720}
+.result{display:none;min-width:0}
+.result.show{display:block}
+.result-actions{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
+.tool{border:1px solid #e3dded;background:#f9f7fe;border-radius:10px;padding:9px 11px;font-size:11px;color:#6e598e;font-weight:750}
+.tool:hover:not(:disabled){background:#f2ecff;border-color:#c7b8f3}
+.editor{min-height:455px;padding:20px 18px;font-size:14px;line-height:1.93;resize:vertical;border-radius:16px;background:#fdfcff;white-space:pre-wrap}
+.result-stats{margin-top:12px;display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;color:#8d879f;font-size:11px}
+.result-stats strong{color:#665481;font-weight:750}
+.footer{margin-top:24px;border-top:1px solid #ebe6f4;padding:22px 3px;display:flex;gap:12px;justify-content:space-between;color:#9b94a9;font-size:11px;line-height:1.65}
+.footer strong{color:#685387;letter-spacing:.14em}
+#toast{position:fixed;z-index:80;bottom:max(22px,env(safe-area-inset-bottom));left:50%;transform:translate(-50%,20px);padding:12px 17px;border-radius:14px;background:#261d3c;color:#fff;box-shadow:0 17px 45px rgba(38,29,60,.24);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;font-size:12px;max-width:calc(100vw - 28px);text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#printer{display:none}
+@media(max-width:980px){.workspace{grid-template-columns:1fr}.stage{min-height:330px}.editor{min-height:400px}}
+@media(max-width:600px){.topbar-inner{min-height:77px;padding:12px 17px}.brand-icon{width:46px;height:46px;flex-basis:46px;font-size:27px;border-radius:13px}.brand-text strong{font-size:17px;letter-spacing:.18em}.brand-text span{font-size:9px;letter-spacing:.23em}.header-link{min-height:42px;padding:0 11px;font-size:11px}.theme-button{min-height:42px;width:42px}.container{padding:27px 15px 47px}.hero{grid-template-columns:1fr;margin-bottom:20px;gap:13px}.hero h1{font-size:32px}.hero p{font-size:12px}.hero-pill{width:max-content;font-size:10px}.workspace{gap:16px}.panel{padding:21px 17px;border-radius:22px}.panel-head{margin-bottom:17px}.panel-head h2{font-size:20px}.panel-head span{font-size:10px}.actions{gap:7px}.action{min-height:45px;font-size:10px;padding:3px 4px}.field-row{column-gap:9px}.field textarea{font-size:12px}.stage{min-height:285px;padding:25px 10px}.stage-icon{width:83px;height:83px;font-size:50px;border-radius:24px;margin-bottom:16px}.stage h3{font-size:17px}.stage p{font-size:11px}.editor{min-height:360px;padding:15px 13px;font-size:12px}.tool{font-size:10px;padding:8px}.footer{font-size:10px}}
+:root[data-theme=dark]{color-scheme:dark;--bg:#151425;--ink:#f0ecfa;--sub:#b9b0c7;--muted:#a69ab6;--card:#211d35;--line:#3f3856;--soft:#352954;--shadow:0 20px 50px rgba(0,0,0,.16)}
+:root[data-theme=dark] body{background:radial-gradient(circle at 10% 5%,#30274b,transparent 35%),#151425}
+:root[data-theme=dark] .topbar{background:rgba(29,25,44,.92);border-color:#4a415f}
+:root[data-theme=dark] .brand-icon{background:#f2eefd;color:#281d42}
+:root[data-theme=dark] .field textarea,:root[data-theme=dark] .field input,:root[data-theme=dark] .field select,:root[data-theme=dark] .editor,:root[data-theme=dark] .action,:root[data-theme=dark] .tool,:root[data-theme=dark] .example{background:#2d2844;color:#f0eafc;border-color:#4c4364}
+:root[data-theme=dark] .action.active{background:#3c3161;color:#cfbafb;border-color:#745bab}
+:root[data-theme=dark] .stage{background:radial-gradient(circle at 20% 10%,#443265,transparent 55%),linear-gradient(155deg,#2b2346,#262238);border-color:#50446a}
+:root[data-theme=dark] .stage-icon{background:#433664;border-color:#635480;color:#d4bbff}
+:root[data-theme=dark] .stage h3{color:#f1eaff}
+:root[data-theme=dark] .stage p{color:#c9c0d8}
+:root[data-theme=dark] .footer{border-color:#493f5c}
+@media print{body{background:white!important;color:#111!important}body>*:not(#printer){display:none!important}#printer{display:block!important;padding:2cm;font:12pt/1.7 Georgia,serif;color:#111}#printer h1{font:700 18pt/1.3 Arial,sans-serif;margin:0 0 18pt}#printer p{white-space:pre-wrap;break-inside:avoid;margin:0 0 1em}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="https://nexora-lobby.onrender.com/" aria-label="В лобби NEXORA">
+      <span class="brand-icon">N</span><span class="brand-text"><strong>NEXORA</strong><span>TEXT STUDIO</span></span>
+    </a>
+    <div class="header-actions">
+      <a class="header-link" href="https://nexora-lobby.onrender.com/">‹ &nbsp; В лобби</a>
+      <button class="theme-button" id="theme" type="button" aria-label="Переключить тёмную тему" title="Сменить тему">☾</button>
+    </div>
+  </div>
+</header>
+<main class="container">
+  <div class="hero">
+    <div><div class="eyebrow">NEXORA / CREATIVE WORKSPACE</div><h1>Идея превращается <em>в текст.</em></h1><p>Пишите, редактируйте и улучшайте тексты с помощью ИИ. От первой мысли до готового материала — в одном аккуратном пространстве.</p></div>
+    <div class="hero-pill"><i></i> 6 режимов работы с текстом</div>
+  </div>
+  <div class="workspace">
+    <section class="panel" aria-labelledby="create-title">
+      <div class="panel-head"><h2 id="create-title">Создать текст</h2><span>01 / EDITOR</span></div>
+      <span class="section-label">Что будем делать?</span>
+      <div class="actions" aria-label="Режим работы">
+        <button class="action active" data-action="create" aria-pressed="true" type="button">✦ Написать</button>
+        <button class="action" data-action="rewrite" aria-pressed="false" type="button">↻ Переписать</button>
+        <button class="action" data-action="proofread" aria-pressed="false" type="button">✓ Исправить</button>
+        <button class="action" data-action="shorten" aria-pressed="false" type="button">− Сократить</button>
+        <button class="action" data-action="expand" aria-pressed="false" type="button">＋ Расширить</button>
+        <button class="action" data-action="summarize" aria-pressed="false" type="button">≡ Пересказать</button>
+      </div>
+      <div class="field">
+        <label for="topic"><span id="topic-label">Тема или идея</span><small>до 1500 знаков</small></label>
+        <textarea id="topic" maxlength="1500" placeholder="Например: Почему чтение книг развивает воображение? С примерами и простым выводом."></textarea>
+      </div>
+      <div class="field" id="source-field" hidden>
+        <label for="source">Исходный текст <small>до 16 000 знаков</small></label>
+        <textarea id="source" maxlength="16000" style="min-height:164px" placeholder="Вставьте сюда текст, который нужно изменить, исправить, сократить или пересказать…"></textarea>
+      </div>
+      <span class="section-label">Примеры заданий</span>
+      <div class="examples">
+        <button class="example" type="button" data-format="essay" data-topic="Сочинение на тему «Почему важно беречь природу» с введением, примерами и выводом.">Сочинение о природе</button>
+        <button class="example" type="button" data-format="post" data-topic="Короткий интересный пост о пользе ежедневного чтения для подростков.">Пост о книгах</button>
+        <button class="example" type="button" data-format="email" data-topic="Вежливое письмо преподавателю с просьбой объяснить пропущенную тему.">Письмо</button>
+        <button class="example" type="button" data-format="description" data-topic="Красивое описание уютной кофейни для сайта.">Описание</button>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="format">Формат</label><select id="format"><option value="article">Статья</option><option value="essay">Сочинение / эссе</option><option value="post">Пост</option><option value="letter">Письмо</option><option value="email">E-mail</option><option value="description">Описание</option><option value="story">Рассказ</option><option value="report">Доклад</option><option value="free" selected>Свободный</option></select></div>
+        <div class="field"><label for="tone">Стиль</label><select id="tone"><option value="neutral">Нейтральный</option><option value="formal">Официальный</option><option value="friendly">Дружелюбный</option><option value="creative">Творческий</option><option value="persuasive">Убедительный</option><option value="academic">Учебный</option></select></div>
+        <div class="field"><label for="size">Объём</label><select id="size"><option value="short">Короткий</option><option value="medium" selected>Средний</option><option value="long">Подробный</option></select></div>
+        <div class="field"><label for="language">Язык</label><select id="language"><option value="ru">Русский</option><option value="en">English</option></select></div>
+      </div>
+      <div class="field"><label for="requirements">Дополнительные пожелания <small>необязательно</small></label><textarea id="requirements" maxlength="1300" style="min-height:75px" placeholder="Например: без сложных слов, для 8 класса, на 3 абзаца…"></textarea></div>
+      <button id="generate" class="generate" type="button">✦ &nbsp; Создать текст</button>
+      <div class="error" id="error" role="alert"></div>
+      <p class="hint">Текст создаётся через подключённые модели NEXORA. Проверяйте факты перед публикацией. Исходные тексты не сохраняются этим сайтом в истории.</p>
+    </section>
+    <section class="panel preview" id="preview" aria-labelledby="result-title">
+      <div class="panel-head"><h2 id="result-title">Результат</h2><span id="output-status" class="output-status">Здесь появится ваш текст</span></div>
+      <div class="stage" id="stage">
+        <div class="stage-content">
+          <div class="stage-icon" id="stage-icon">¶</div>
+          <h3 id="stage-title">Ваш текст будет здесь</h3>
+          <p id="stage-description">Опишите идею слева, настройте формат и нажмите «Создать текст». Готовый результат можно будет изменить и сохранить.</p>
+          <div class="loading-bar" id="loading-bar" hidden><span></span></div>
+          <button class="loading-stop" id="cancel" type="button" hidden>Отменить</button>
+        </div>
+      </div>
+      <div class="result" id="result">
+        <div class="result-actions">
+          <button type="button" class="tool" id="copy">⧉ Копировать</button>
+          <button type="button" class="tool" id="download">↓ TXT</button>
+          <button type="button" class="tool" id="print">▤ PDF / печать</button>
+          <button type="button" class="tool" id="rework">↻ Доработать</button>
+        </div>
+        <label class="section-label" for="result-editor">Готовый текст — можно редактировать</label>
+        <textarea class="editor" id="result-editor" spellcheck="true" aria-label="Готовый текст, доступный для редактирования"></textarea>
+        <div class="result-stats"><span><strong id="words">0 слов</strong> · <span id="characters">0 символов</span></span><span id="provider">NEXORA AI</span></div>
+      </div>
+    </section>
+  </div>
+  <footer class="footer"><strong>NEXORA TEXT STUDIO</strong><span>Слова, идеи, возможности. Один стиль NEXORA.</span></footer>
+</main>
+<div id="printer" aria-hidden="true"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const actions=document.querySelectorAll("[data-action]");
+let action="create",busy=false,controller=null,loadingTimer=null,toastTimer=null,currentText="";
+const stats=text=>({characters:text.length,words:(text.trim().match(/[\p{L}\p{N}]+(?:[-’'][\p{L}\p{N}]+)*/gu)||[]).length});
+function updateStats(){const s=stats($("result-editor").value);$("words").textContent=s.words+" слов";$("characters").textContent=s.characters+" символов"}
+function toast(message){const el=$("toast");el.textContent=message;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),2800)}
+function showError(message){$("error").textContent=message;$("error").classList.add("show");$("output-status").textContent="Нужна повторная попытка"}
+function clearError(){$("error").classList.remove("show");$("error").textContent=""}
+function mode(next){if(busy)return;action=next;actions.forEach(b=>{const yes=b.dataset.action===action;b.classList.toggle("active",yes);b.setAttribute("aria-pressed",String(yes))});$("source-field").hidden=next==="create";$("topic-label").textContent=next==="create"?"Тема или идея":"Пожелания к результату (необязательно)";$("topic").placeholder=next==="create"?"Опишите, какой текст хотите получить…":"Например: сохранить стиль и имена, убрать повторы…";$("generate").textContent=next==="create"?"✦ Создать текст":next==="proofread"?"✓ Исправить ошибки":next==="shorten"?"− Сократить текст":next==="expand"?"＋ Расширить текст":next==="summarize"?"≡ Пересказать текст":"↻ Переписать текст"}
+actions.forEach(b=>b.addEventListener("click",()=>mode(b.dataset.action)));
+document.querySelectorAll(".example").forEach(b=>b.addEventListener("click",()=>{if(busy)return;mode("create");$("topic").value=b.dataset.topic;$("format").value=b.dataset.format;$("topic").focus()}));
+function loading(active){
+  busy=active;$("generate").disabled=active;
+  if(active){
+    $("result").classList.remove("show");$("stage").hidden=false;
+    $("stage-icon").textContent="✎";$("output-status").classList.remove("ready");$("output-status").textContent="ИИ пишет текст";
+    $("stage-title").textContent="Подбираю слова…";$("stage-description").textContent="Разбираю тему, стиль и требования к материалу.";
+    $("loading-bar").hidden=false;$("cancel").hidden=false;
+    let i=0;const msgs=[["Продумываю структуру…","Выбираю порядок мыслей и абзацев."],["Пишу текст…","Собираю предложения в связный материал."],["Редактирую…","Проверяю читаемость и плавность формулировок."],["Завершаю…","Оформляю финальную версию для редактора."]];
+    clearInterval(loadingTimer);loadingTimer=setInterval(()=>{const m=msgs[Math.min(i++,msgs.length-1)];$("stage-title").textContent=m[0];$("stage-description").textContent=m[1]},7000);
+  }else{
+    clearInterval(loadingTimer);loadingTimer=null;$("loading-bar").hidden=true;$("cancel").hidden=true;
+  }
+}
+function render(text,provider){
+  currentText=text;$("result-editor").value=text;$("stage").hidden=true;$("result").classList.add("show");
+  $("output-status").classList.add("ready");$("output-status").textContent="Готово";
+  $("provider").textContent=provider?"Модель: "+provider:"NEXORA AI";updateStats();
+  if(window.innerWidth<981)$("preview").scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function generate(){
+  if(busy)return;
+  const topic=$("topic").value.trim(),source=$("source").value.trim();
+  if(action==="create"&&topic.length<4){showError("Опишите тему или идею текста.");$("topic").focus();return}
+  if(action!=="create"&&source.length<15){showError("Добавьте исходный текст (минимум 15 символов).");$("source").focus();return}
+  clearError();const data={action,topic,source,format:$("format").value,tone:$("tone").value,size:$("size").value,language:$("language").value,requirements:$("requirements").value.trim()};
+  controller=new AbortController();loading(true);
+  let timedOut=false;const timeout=setTimeout(()=>{timedOut=true;controller.abort()},122000);
+  try{
+    const response=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data),signal:controller.signal});
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok||!result.ok||typeof result.text!=="string")throw Error(result.message||"Не удалось создать текст.");
+    render(result.text,result.provider);
+  }catch(error){
+    if(error.name==="AbortError"&&!timedOut){$("output-status").textContent="Отменено";toast("Генерация отменена")}
+    else showError(timedOut?"Ожидание ответа ИИ заняло слишком много времени. Попробуйте текст короче.":error.message||"Ошибка сети.");
+    if(!$("result").classList.contains("show")){
+      $("stage-icon").textContent="¶";$("stage-title").textContent="Попробуйте ещё раз";$("stage-description").textContent="Ваше задание осталось в редакторе.";
+    }
+  }finally{clearTimeout(timeout);controller=null;loading(false)}
+}
+$("generate").addEventListener("click",generate);
+$("cancel").addEventListener("click",()=>{if(controller)controller.abort()});
+$("result-editor").addEventListener("input",updateStats);
+$("copy").addEventListener("click",async()=>{const content=$("result-editor").value;try{await navigator.clipboard.writeText(content);toast("Текст скопирован")}catch{const el=$("result-editor");el.focus();el.select();toast("Текст выделен — скопируйте его вручную")}});
+$("download").addEventListener("click",()=>{const text=$("result-editor").value;if(!text.trim())return;const link=document.createElement("a"),url=URL.createObjectURL(new Blob([text],{type:"text/plain;charset=utf-8"}));link.href=url;link.download="nexora-text.txt";document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast("TXT сохранён")});
+$("rework").addEventListener("click",()=>{const text=$("result-editor").value;if(!text.trim())return;mode("rewrite");$("source").value=text;$("source").focus();$("source").scrollIntoView({behavior:"smooth",block:"center"});toast("Текст перенесён для доработки")});
+$("print").addEventListener("click",()=>{const text=$("result-editor").value.trim();if(!text)return;const page=$("printer");page.replaceChildren();const title=document.createElement("h1");title.textContent="NEXORA Text Studio";page.appendChild(title);for(const part of text.split(/\n\s*\n/)){const p=document.createElement("p");p.textContent=part;page.appendChild(p)}window.print()});
+$("theme").addEventListener("click",()=>{const dark=document.documentElement.getAttribute("data-theme")!=="dark";document.documentElement.setAttribute("data-theme",dark?"dark":"light");$("theme").textContent=dark?"☀":"☾";$("theme").setAttribute("aria-label",dark?"Включить светлую тему":"Включить тёмную тему")});
+</script>
+</body>
+</html>
