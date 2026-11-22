@@ -96,9 +96,22 @@ export function appendFractionWorking(solution) {
   const answer=String(solution.answer);
   // Only append a complete conversion if the answer explicitly contains a numerical fraction.
   const matches=[...answer.matchAll(/(^|[^\d])([+-]?\d{1,6})\s*\/\s*(\d{1,6})(?![\d/])/g)];
-  if(matches.length!==1) return solution;
-  const [, ,n,d]=matches[0];
-  const worked=explainDecimalFraction(Number(n),Number(d));
+  let chosen=null;
+  if(matches.length===1) chosen=[Number(matches[0][2]),Number(matches[0][3])];
+  if(!chosen&&matches.length===0){
+    const expression=solution.steps.map(x=>[x.formula,x.substitution,x.calculation].join(' ')).join('\n');
+    const raw=[...expression.matchAll(/(^|[^\d])([+-]?\d{1,6})\s*\/\s*(\d{1,6})(?![\d/])/g)];
+    const hits=[];
+    for(const m of raw.slice(0,45)){
+      const n=Number(m[2]),d=Number(m[3]);
+      const check=explainDecimalFraction(n,d);
+      if(check?.terminates && check.decimal.includes(',') && answer.replace(/\./g,',').includes(check.decimal))
+        if(!hits.some(x=>x[0]*d===n*x[1]))hits.push([n,d]);
+    }
+    if(hits.length===1)chosen=hits[0];
+  }
+  if(!chosen) return solution;
+  const worked=explainDecimalFraction(chosen[0],chosen[1]);
   if(!worked?.terminates||worked.factor===1&&worked.base===1) return solution;
   const content=solution.steps.map(x=>[x.formula,x.text,x.substitution,x.calculation].join(' ')).join(' ');
   // Do not repeat if the AI has already shown this same rational-to-decimal expansion.
