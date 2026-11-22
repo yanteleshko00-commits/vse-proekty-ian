@@ -601,13 +601,13 @@ h1 span{background:linear-gradient(103deg,#7956e5 1%,#bc70c5 55%,#de9a99);backgr
       <p>Презентации, школьные проекты, доклады и документы.</p>
 
     </a>
-    <button class="tile" type="button" data-tool="math">
-      <span class="status">Скоро</span>
+    <a class="tile" data-tool="math" href="https://nexora-math-studio.onrender.com/">
+      <span class="status ready">Доступно</span>
       <span class="tile-top">∑</span>
       <h3>Решить задачу</h3>
-      <p>Математика с понятным решением и школьным оформлением.</p>
+      <p>Алгебра и геометрия: «Дано», «Найти», чертежи, вычисления и ответ.</p>
 
-    </button>
+    </a>
     <button class="tile" type="button" data-tool="chat">
       <span class="status">Скоро</span>
       <span class="tile-top">◌</span>
@@ -789,7 +789,7 @@ h1 span{background:linear-gradient(103deg,#7956e5 1%,#bc70c5 55%,#de9a99);backgr
   function makeRecentLink(item){var link=document.createElement('a');link.className='recent-item';link.href=item.href||'#';if(item.external){link.target='_blank';link.rel='noopener'}
     var icon=makeRecentIcon(item);
     var copy=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('span');strong.textContent=item.title;small.textContent=recentDate(item);copy.appendChild(strong);copy.appendChild(small);link.appendChild(icon);link.appendChild(copy);
-    if(item.id!=='project')link.addEventListener('click',function(e){e.preventDefault();var tile=document.querySelector('[data-tool="'+item.id+'"]');if(tile)tile.click()});
+    if(!['project','math','image'].includes(item.id))link.addEventListener('click',function(e){e.preventDefault();var tile=document.querySelector('[data-tool="'+item.id+'"]');if(tile)tile.click()});
     return link;
   }
   function renderRecent(){
@@ -867,7 +867,7 @@ h1 span{background:linear-gradient(103deg,#7956e5 1%,#bc70c5 55%,#de9a99);backgr
   };
   document.querySelectorAll('[data-tool]').forEach(function(button){
     button.addEventListener('click',function(){
-      if(button.getAttribute('data-tool')==='image')return;
+      if(['image','math','project'].includes(button.getAttribute('data-tool')))return;
       var item=labels[button.getAttribute('data-tool')];
       title.textContent=item[0];
       copy.textContent=item[1];
