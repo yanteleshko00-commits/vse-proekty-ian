@@ -655,7 +655,7 @@ async function run(){
   const files=await prepareAttachments();
   if(controller.signal.aborted)return;
   loaderStatus("Запрос отправлен…","ИИ анализирует условие и составляет пошаговое решение.");
-  timeout=setTimeout(()=>{timedOut=true;controller.abort()},files.some(x=>String(x.data).startsWith("data:image/"))?135000:110000);
+  timeout=setTimeout(()=>{timedOut=true;controller.abort()},files.some(x=>String(x.data).startsWith("data:image/"))?178000:115000);
   const response=await fetch("/api/solve",{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,body:JSON.stringify({problem,kind:mode,grade:Number($("grade").value),level:$("level").value,textbook:$("source-mode").value==="textbook"?$("textbook").value.trim():"",attachments:files})});
   const payload=await response.json().catch(()=>({}));
   if(!response.ok||!payload.ok||!payload.solution)throw new Error(payload.message||"Сервис не смог подготовить решение.");
