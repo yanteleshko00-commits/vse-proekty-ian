@@ -495,12 +495,14 @@ async function mathBridgeSolve(req, res) {
   ].join('\n');
   let lastFailure = 'Провайдеры ИИ не ответили.';
   for (const provider of providers) {
+    for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const response = await fetch(provider.url, {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + provider.key, 'Content-Type': 'application/json', 'HTTP-Referer': appUrl(req), 'X-Title': 'NEXORA Math Studio' },
         body: JSON.stringify({
-          model: provider.model, temperature: 0.15, max_tokens: 3200,
+          model: provider.model, temperature: 0.12, max_tokens: attempt === 0 ? 3400 : 4600,
+          ...(provider.name === 'OpenRouter' ? {reasoning:{effort:'low'}} : {}),
           messages: [
             { role: 'system', content: instructions },
             { role: 'user', content: JSON.stringify({ problem, requested_kind: solvedKind, grade, level: studyLevel, textbook_reference: textbook }) }
@@ -510,8 +512,14 @@ async function mathBridgeSolve(req, res) {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(provider.name + ' HTTP ' + response.status);
-      const raw = payload.choices?.[0]?.message?.content;
-      if (typeof raw !== 'string' || !raw.trim()) throw new Error('empty_provider_response');
+      const content = payload.choices?.[0]?.message?.content;
+      const raw = typeof content === 'string' ? content :
+        Array.isArray(content) ? content.filter(item => item?.type === 'text' && typeof item.text === 'string').map(item => item.text).join('\n') : '';
+      if (!raw.trim()) {
+        const reason = String(payload.choices?.[0]?.finish_reason || 'unspecified');
+        console.warn('Math provider returned no text:',provider.name,'attempt',attempt+1,'finish',reason);
+        throw new Error('empty_provider_response');
+      }
       const parsed = parseMathResponse(raw, solvedKind, problem);
       const solution = normalizeMathSolution(parsed, solvedKind);
       if (solvedKind === 'probability_statistics' && !solution.needs_clarification) {
@@ -522,7 +530,10 @@ async function mathBridgeSolve(req, res) {
       return mathJson(res, 200, { ok: true, solution, provider: provider.name });
     } catch (error) {
       lastFailure = error.message;
-      console.error('Math Studio provider failed:', provider.name, error.message);
+      console.error('Math Studio provider failed:', provider.name, 'attempt', attempt + 1, error.message);
+      const mayRetry = ['empty_provider_response','missing_expanded_formula','unstructured_ai_response','incomplete_ai_solution'].includes(error.message);
+      if (!mayRetry || attempt === 1) break;
+    }
     }
   }
   console.error('Math Studio all providers failed:', lastFailure);
