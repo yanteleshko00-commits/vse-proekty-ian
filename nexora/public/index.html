@@ -867,7 +867,7 @@ h1 span{background:linear-gradient(103deg,#7956e5 1%,#bc70c5 55%,#de9a99);backgr
   };
   document.querySelectorAll('[data-tool]').forEach(function(button){
     button.addEventListener('click',function(){
-      if(['image','math','project'].includes(button.getAttribute('data-tool')))return;
+      if(['image','math','project','text'].includes(button.getAttribute('data-tool')))return;
       var item=labels[button.getAttribute('data-tool')];
       title.textContent=item[0];
       copy.textContent=item[1];
