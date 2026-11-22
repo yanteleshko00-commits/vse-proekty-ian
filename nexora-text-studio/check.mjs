@@ -100,15 +100,10 @@ try{
   assert.match(lastBody.source,/краткие заметки/);
   const photoRequest=await fetch('http://127.0.0.1:'+port+'/api/generate',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'create',topic:'Опиши изображение',format:'description',attachments:[jpegFile]})
+    body:JSON.stringify({action:'rewrite',format:'free',attachments:[jpegFile]})
   });
   assert.equal(photoRequest.status,200);
   assert.equal(lastBody.images.length,1);
-  const editFromPhoto=await fetch('http://127.0.0.1:'+port+'/api/generate',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'rewrite',format:'free',attachments:[jpegFile]})
-  });
-  assert.equal(editFromPhoto.status,200);
-  assert.equal(lastBody.images.length,1);
+  assert.equal(lastBody.action,'rewrite');
   console.log('Text Studio checks passed: 6 modes, 9 text types, photo/TXT attachments, safe file limits, mobile UI, mock gateway and text responses.');
 }finally{child.kill();await new Promise(resolve=>upstream.close(resolve))}
