@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseMathResponse } from './math-response.js';
+import { inferMathKind, mathStudyGuide, datasetHint, MATH_KINDS, MATH_LEVELS } from './math-curriculum.js';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const publicDir = join(here, 'public');
@@ -341,7 +342,7 @@ function normalizeMathSolution(value, hint) {
   const kind = str(value.diagram?.kind, 24).toLowerCase();
   const allowedKinds = new Set(['triangle', 'right_triangle', 'rectangle', 'circle', 'coordinate', 'none']);
   return {
-    kind: ['algebra', 'geometry', 'other'].includes(value.kind) ? value.kind : hint,
+    kind: ['algebra', 'geometry', 'probability', 'statistics', 'other'].includes(value.kind) ? value.kind : hint,
     title: str(value.title, 120) || 'Решение задачи',
     given: list(value.given, 9),
     find: list(value.find, 7),
@@ -366,7 +367,9 @@ async function mathBridgeSolve(req, res) {
   try { input = await readJson(req, 10500000); }
   catch { return mathJson(res, 400, { error: 'invalid_input', message: 'Не удалось прочитать условие.' }); }
   let problem = typeof input.problem === 'string' ? input.problem.trim() : '';
-  const requestedKind = ['algebra', 'geometry', 'auto'].includes(input.kind) ? input.kind : 'auto';
+  const requestedKind = MATH_KINDS.includes(input.kind) ? input.kind : 'auto';
+  const studyLevel = MATH_LEVELS.includes(input.level) ? input.level : 'basic';
+  const textbook = typeof input.textbook === 'string' ? input.textbook.trim().slice(0, 220) : '';
   const grade = Number.isInteger(input.grade) && input.grade >= 5 && input.grade <= 11 ? input.grade : 8;
   if (problem.length > 9800) return mathJson(res, 413, { error: 'too_long', message: 'Слишком много текста в задаче.' });
   const images = Array.isArray(input.images) ? input.images : [];
@@ -440,14 +443,22 @@ async function mathBridgeSolve(req, res) {
     if (!extracted) return mathJson(res, 502, {error:'vision_unavailable',message:'ИИ не смог прочитать фотографию. Попробуйте более чёткое фото при хорошем освещении.'});
     problem = [problem, '[Условие и чертёж, считанные с прикреплённых фотографий]', extracted].filter(Boolean).join('\n\n').slice(0,15000);
   }
+  const solvedKind = inferMathKind(problem, requestedKind);
+  const studyContext = mathStudyGuide({grade, level:studyLevel, kind:solvedKind, textbook});
+  const exactStatistics = solvedKind === 'statistics' ? datasetHint(problem) : '';
   const instructions = [
     'Ты NEXORA Math — учитель математики. Дай правильное последовательное решение на русском языке для указанного школьного класса.',
     'Проверяй все вычисления, ОДЗ и единицы. Если условие неоднозначное, запроси уточнение и НЕ выдумывай значения.',
     'Для геометрии обязательны Дано, Найти, Решение, Ответ. Укажи применяемые теоремы. Чертёж схематический, не в масштабе.',
     'Для алгебры тоже опиши Дано и Найти, затем последовательные шаги с формулами и Ответ.',
+    'Для вероятностей: прежде вычисления определи все возможные элементарные исходы и благоприятные, когда они равновозможны; различай независимые и зависимые события, с возвращением и без возвращения.',
+    'Для комбинаторных задач: обоснуй выбор формулы (n!, C(n,k), A(n,k)) или правила умножения, учитывай порядок и повторения.',
+    'Для статистики: показывай упорядоченный ряд, частоты, n, вычисление среднего, медианы, моды, размаха или дисперсии в зависимости от вопроса. Не делай вывод о выборке из недостаточных данных.',
+    'Для задач о распределении вероятностей проверяй сумму вероятностей 1, формулы математического ожидания и дисперсии. Для условной вероятности указывай событие-условие и ненулевой знаменатель.',
+    'Если учебник, таблица или условие прикреплены, следуй именно их определениям и обозначениям. Если есть только номер задания, без самого текста запроси условие, не выдумывай его.',
     'Верни ПРОСТОЙ ТЕКСТ без JSON, без фигурных скобок, без блоков кода, без таблиц и без Markdown.',
     'Точный формат: ',
-    'ТИП: geometry (или algebra)',
+    'ТИП: geometry / algebra / probability / statistics',
     'НАЗВАНИЕ: краткая тема',
     'ДАНО:',
     '- исходные известные величины',
@@ -464,7 +475,9 @@ async function mathBridgeSolve(req, res) {
     'Каждый заголовок пиши с новой строки. Укажи ровно столько шагов, сколько необходимо, без пропусков.',
     'Если данных недостаточно, верни только строку УТОЧНЕНИЕ: и один конкретный вопрос. Не придумывай ответ.',
     'Не используй LaTeX, HTML, JSON, кавычки вокруг всего ответа; формулы обычными символами x², √, ∠, π, =, единицы через пробел.',
-    'Не утверждай соответствие универсальному ГОСТу: формат предназначен для школьного решения.'
+    'Не утверждай соответствие универсальному ГОСТу: формат предназначен для школьного решения.',
+    'Дополнительные требования по учебной программе и выбранной теме:\n' + studyContext,
+    exactStatistics ? 'Проверка статистических вычислений:\n' + exactStatistics : ''
   ].join('\n');
   let lastFailure = 'Провайдеры ИИ не ответили.';
   for (const provider of providers) {
@@ -476,7 +489,7 @@ async function mathBridgeSolve(req, res) {
           model: provider.model, temperature: 0.15, max_tokens: 3200,
           messages: [
             { role: 'system', content: instructions },
-            { role: 'user', content: JSON.stringify({ problem, requested_kind: requestedKind, grade }) }
+            { role: 'user', content: JSON.stringify({ problem, requested_kind: solvedKind, grade, level: studyLevel, textbook_reference: textbook }) }
           ]
         }),
         signal: AbortSignal.timeout(65000)
@@ -485,8 +498,9 @@ async function mathBridgeSolve(req, res) {
       if (!response.ok) throw new Error(provider.name + ' HTTP ' + response.status);
       const raw = payload.choices?.[0]?.message?.content;
       if (typeof raw !== 'string' || !raw.trim()) throw new Error('empty_provider_response');
-      const parsed = parseMathResponse(raw, requestedKind, problem);
-      const solution = normalizeMathSolution(parsed, requestedKind === 'auto' ? 'other' : requestedKind);
+      const parsed = parseMathResponse(raw, solvedKind, problem);
+      const solution = normalizeMathSolution(parsed, solvedKind);
+      if (solution.kind === 'other' || (requestedKind !== 'auto' && solution.kind !== requestedKind)) solution.kind = solvedKind;
       return mathJson(res, 200, { ok: true, solution, provider: provider.name });
     } catch (error) {
       lastFailure = error.message;
