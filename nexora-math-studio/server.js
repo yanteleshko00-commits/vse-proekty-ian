@@ -166,7 +166,10 @@ server.listen(port, '0.0.0.0', () => {
           });
           const body=await res.json().catch(()=>({}));
           const answer=String(body.solution?.answer||'');
-          const ok=Boolean(res.ok&&body.ok&&body.solution?.kind===sample.kind&&body.solution?.steps?.length);
+          const topicCheck=sample.kind==='probability' ? /(?:0[.,]625|5\s*\/\s*8)/.test(answer) : /(?=.*4)(?=.*3)/.test(answer);
+
+          const expanded=(body.solution?.steps||[]).some(step=>step.formula&&step.symbols&&step.substitution&&step.calculation);
+          const ok=Boolean(res.ok&&body.ok&&body.solution?.kind==='probability_statistics'&&body.solution?.steps?.length&&expanded&&topicCheck);
           console.info('MATH_TOPIC_SMOKE_RESULT',JSON.stringify({
             kind:sample.kind,passed:ok,status:res.status,provider:body.provider,
             answer:ok?answer.slice(0,140):undefined,
