@@ -1,3 +1,4 @@
+import { inferMathKind } from './math-curriculum.js';
 // Normalize inconsistent chat-model output without executing model-provided content.
 const sections = /^(?:#{1,5}\s*)?(?:\*{1,2}|__)?\s*(ТИП|НАЗВАНИЕ|ДАНО|НАЙТИ|УСЛОВИЕ|РЕШЕНИЕ|ОТВЕТ|ПРОВЕРКА|ЧЕРТ[ЕЁ]Ж|ПРИМЕЧАНИЕ|УТОЧНЕНИЕ)\s*(?:\*{1,2}|__)?\s*(?:[:：–—-]\s*(.*))?$/i;
 const trimLine = v => String(v || '').replace(/^\s*(?:[-•]\s*)/, '').replace(/^\s*\*\*(.*?)\*\*\s*$/, '$1').trim();
@@ -91,10 +92,11 @@ export function parseMathResponse(raw, hint = 'other', problem = '') {
   if (obj && typeof obj === 'object' && !Array.isArray(obj)) return obj;
   const parts = readTextSections(clean);
   const kindLine = (parts['ТИП'] || []).join(' ').toLowerCase();
-  const kind = kindLine.includes('geometry') || kindLine.includes('геометр') ? 'geometry'
+  const kind = kindLine.includes('probability') || kindLine.includes('вероятност') ? 'probability'
+    : kindLine.includes('statistics') || kindLine.includes('статистик') ? 'statistics'
+    : kindLine.includes('geometry') || kindLine.includes('геометр') ? 'geometry'
     : kindLine.includes('algebra') || kindLine.includes('алгебр') ? 'algebra'
-    : hint === 'geometry' || (hint === 'auto' && /треугольник|прямоугольник|окружност|радиус|площадь|угол/i.test(problem)) ? 'geometry'
-    : hint === 'algebra' ? 'algebra' : 'other';
+    : inferMathKind(problem, hint);
   const answer = max((parts['ОТВЕТ'] || []).join(' '), 600);
   const steps = stepItems(parts['РЕШЕНИЕ']);
   const clarification = max((parts['УТОЧНЕНИЕ'] || []).join(' '), 600);
@@ -102,8 +104,8 @@ export function parseMathResponse(raw, hint = 'other', problem = '') {
   if (answer && !steps.length) throw new Error('incomplete_ai_solution');
   const diagramKind = kind === 'geometry' ? guessGeometryKind(problem, parts['ЧЕРТЕЖ']) : 'none';
   return {
-    kind, title: max((parts['НАЗВАНИЕ'] || []).join(' '), 120) || (kind === 'geometry' ? 'Геометрическая задача' : 'Решение задачи'),
-    given: listItems(parts['ДАНО'] || parts['УСЛОВИЕ'] || (kind === 'geometry' ? [problem] : []), 9),
+    kind, title: max((parts['НАЗВАНИЕ'] || []).join(' '), 120) || (kind === 'geometry' ? 'Геометрическая задача' : kind === 'probability' ? 'Задача по теории вероятностей' : kind === 'statistics' ? 'Задача по статистике' : 'Решение задачи'),
+    given: listItems(parts['ДАНО'] || parts['УСЛОВИЕ'] || (kind !== 'algebra' ? [problem] : []), 9),
     find: listItems(parts['НАЙТИ'], 7),
     steps, answer,
     verification: max((parts['ПРОВЕРКА'] || []).join(' '), 900),
