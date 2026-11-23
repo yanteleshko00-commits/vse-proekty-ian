@@ -52,7 +52,52 @@ async function create(){
  }finally{loading=false;$("generate").disabled=false;$("stage").classList.remove("wait")}
  install(item);
 }
-$("generate").addEventListener("click",create);
+
+const nxqSteps=[
+ {key:"type",question:"Какая механика игры?",options:[["auto","✦ Определить автоматически"],["catch","★ Лови звёзды"],["snake","〰 Змейка"],["target","◎ Меткость"]]},
+ {key:"difficulty",question:"Какой уровень сложности?",options:[["easy","Лёгкий"],["normal","Обычный"],["hard","Сложный"]]},
+ {key:"color",question:"Как оформить игру?",options:[["violet","Сиреневый"],["blue","Голубой"],["mint","Мятный"],["sunset","Закат"]]}
+];
+let nxqIndex=0,nxqAnswers={};
+function nxqOpenGame(){
+ if(loading)return;
+ const idea=$("idea").value.trim();
+ if(idea.length<5){showError("Опишите идею игры хотя бы в нескольких словах.");$("idea").focus();return}
+ nxqIndex=0;
+ nxqAnswers={type,difficulty:$("difficulty").value,color:$("color").value};
+ $("nxq-preview").textContent=idea.slice(0,175);
+ $("nxquiz").hidden=false;nxqRenderGame();$("nxq-back").focus();
+}
+function nxqRenderGame(){
+ const step=nxqSteps[nxqIndex];
+ $("nxq-question").textContent=step.question;
+ $("nxq-count").textContent="Шаг "+(nxqIndex+1)+" из "+nxqSteps.length;
+ $("nxq-track").setAttribute("aria-valuenow",String(nxqIndex+1));
+ $("nxq-fill").style.width=((nxqIndex+1)*100/nxqSteps.length)+"%";
+ const host=$("nxq-options");host.replaceChildren();
+ for(const [value,label] of step.options){
+  const option=document.createElement("button");option.type="button";option.className="nxq-option";option.textContent=label;
+  option.setAttribute("aria-pressed",String(nxqAnswers[step.key]===value));
+  option.addEventListener("click",()=>{nxqAnswers[step.key]=value;nxqRenderGame()});
+  host.appendChild(option);
+ }
+ $("nxq-next").textContent=nxqIndex===nxqSteps.length-1?"✦ Создать игру":"Далее →";
+}
+function nxqAdvanceGame(skip=false){
+ const step=nxqSteps[nxqIndex];
+ if(skip)nxqAnswers[step.key]={type:"auto",difficulty:"normal",color:"violet"}[step.key];
+ if(nxqIndex<nxqSteps.length-1){nxqIndex++;nxqRenderGame();return}
+ $("nxquiz").hidden=true;
+ chooseType(nxqAnswers.type||"auto");
+ $("difficulty").value=nxqAnswers.difficulty||"normal";
+ $("color").value=nxqAnswers.color||"violet";
+ void create().then(()=>{if(plan&&status==="ready")start()});
+}
+$("nxq-next").addEventListener("click",()=>nxqAdvanceGame());
+$("nxq-skip").addEventListener("click",()=>nxqAdvanceGame(true));
+$("nxq-back").addEventListener("click",()=>{if(nxqIndex===0){$("nxquiz").hidden=true;return}nxqIndex--;nxqRenderGame()});
+
+$("generate").addEventListener("click",nxqOpenGame);
 function install(item){
  const t=["catch","snake","target"].includes(item.type)?item.type:"catch";
  const diff=["easy","normal","hard"].includes(item.difficulty)?item.difficulty:"normal";
