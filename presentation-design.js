@@ -102,7 +102,7 @@ export function imageCandidateScore(title, query, searchIndex = 0) {
   const solarMatched = /\b(?:solar|photovoltaic|panel|panels|inverter|renewables?|pv)\b/i.test(name);
   if (solarRequested && !solarMatched) return -100;
 
-  if (shared === 0 && !solarMatched) return -100;
+  if (shared === 0 && !(solarRequested && solarMatched)) return -100;
   return shared * 8 + (solarRequested && solarMatched ? 9 : 0) -
     Math.max(0, Number(searchIndex) || 0) * 0.15;
 }
