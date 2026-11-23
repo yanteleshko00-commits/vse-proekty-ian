@@ -719,10 +719,68 @@ $("theme").addEventListener("click",()=>{const dark=document.documentElement.get
 .nx-argosha-frame iframe{width:100%;height:100%;border:0;display:block;background:#121526}
 @media(max-width:550px){.nx-argosha-host{right:12px;bottom:max(11px,env(safe-area-inset-bottom))}.nx-argosha-host>summary{height:47px;min-width:106px;padding:0 12px}.nx-argosha-frame{right:8px;width:calc(100vw - 16px);height:min(605px,calc(100dvh - 96px));bottom:calc(max(70px,env(safe-area-inset-bottom) + 61px));border-radius:22px}}
 @media(prefers-reduced-motion:reduce){.nx-argosha-orb{animation:none!important}}
+
+/* Argosha design from reference: white round button, cobalt face and floating welcome bubble. */
+.nx-argosha-host{right:max(17px,env(safe-area-inset-right));bottom:max(17px,env(safe-area-inset-bottom));z-index:920}
+.nx-argosha-host>summary,.nx-argosha-host[open]>summary{width:84px;height:84px;min-width:84px;padding:0;display:grid;place-items:center;border:2px solid #edf0fa;border-radius:50%;background:#fff;box-shadow:0 8px 29px rgba(30,39,94,.19),0 2px 7px rgba(31,51,91,.08);color:#1a2a58;transform:none;transition:transform .16s ease,box-shadow .16s ease}
+.nx-argosha-host>summary:hover{transform:scale(1.045);box-shadow:0 10px 32px rgba(25,55,150,.24)}
+.nx-argosha-host>summary>span:nth-child(2),.nx-argosha-host .nx-argosha-close{display:none!important}
+.nx-argosha-host .nx-argosha-orb{position:relative;display:block;flex:none;width:56px;height:56px;border-radius:50%;background:#2950ec;box-shadow:none;animation:none;filter:none}
+.nx-argosha-host .nx-argosha-orb::before,.nx-argosha-host .nx-argosha-orb::after{content:"";position:absolute;top:19px;width:10px;height:17px;background:#fff;border-radius:50%;transform:rotate(-8deg)}
+.nx-argosha-host .nx-argosha-orb::before{left:16px}.nx-argosha-host .nx-argosha-orb::after{right:16px;transform:rotate(8deg)}
+.nx-argosha-frame{bottom:calc(max(110px,env(safe-area-inset-bottom) + 100px));height:min(570px,calc(100dvh - 125px));z-index:921}
+.nx-argosha-greeting[hidden]{display:none!important}
+.nx-argosha-greeting{position:fixed;z-index:919;right:max(21px,env(safe-area-inset-right));bottom:calc(max(118px,env(safe-area-inset-bottom) + 106px));width:min(330px,calc(100vw - 32px));padding:19px 49px 19px 20px;border-radius:25px;background:#fff;color:#111c40;border:1px solid #e9edf9;box-shadow:0 10px 36px rgba(14,26,79,.18);font:750 16px/1.54 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;pointer-events:auto;overflow-wrap:anywhere}
+.nx-argosha-greeting strong{display:block;font-weight:900;font-size:18px;line-height:1.35;margin-bottom:5px}
+.nx-argosha-greeting button{position:absolute;right:13px;top:13px;width:31px;height:31px;display:grid;place-items:center;border:0;border-radius:50%;color:#232e58;background:#eef1ff;font:850 21px/1 Arial,sans-serif;cursor:pointer}
+.nx-argosha-greeting button:focus-visible{outline:3px solid #385bf2;outline-offset:2px}
+.nx-argosha-host[open]~.nx-argosha-greeting{display:none!important}
+body:has(#nxquiz:not([hidden])) .nx-argosha-host,body:has(#nxquiz:not([hidden])) .nx-argosha-greeting,
+body:has(#topic-wizard:not([hidden])) .nx-argosha-host,body:has(#topic-wizard:not([hidden])) .nx-argosha-greeting,
+body:has(#nxq-project:not([hidden])) .nx-argosha-host,body:has(#nxq-project:not([hidden])) .nx-argosha-greeting,
+.standalone .nx-argosha-greeting{display:none!important}
+@media(max-width:550px){
+ .nx-argosha-host{right:13px;bottom:max(13px,env(safe-area-inset-bottom))}
+ .nx-argosha-host>summary,.nx-argosha-host[open]>summary{width:78px;height:78px;min-width:78px}
+ .nx-argosha-host .nx-argosha-orb{width:52px;height:52px}
+ .nx-argosha-host .nx-argosha-orb::before,.nx-argosha-host .nx-argosha-orb::after{top:18px;width:9px;height:16px}
+ .nx-argosha-host .nx-argosha-orb::before{left:15px}.nx-argosha-host .nx-argosha-orb::after{right:15px}
+ .nx-argosha-frame{bottom:calc(max(103px,env(safe-area-inset-bottom) + 94px));height:min(585px,calc(100dvh - 115px))}
+ .nx-argosha-greeting{right:16px;bottom:calc(max(107px,env(safe-area-inset-bottom) + 100px));width:min(315px,calc(100vw - 30px));font-size:15px;padding:17px 46px 17px 18px;border-radius:24px}
+ .nx-argosha-greeting strong{font-size:17px}
+}
+@media(prefers-reduced-motion:reduce){.nx-argosha-host>summary{transition:none!important}}
+
 </style>
 <details class="nx-argosha-host" aria-label="Чат с Аргошей">
  <summary aria-label="Открыть или закрыть Аргошу"><span class="nx-argosha-orb" aria-hidden="true"></span><span>Аргоша</span><span class="nx-argosha-close" aria-hidden="true">×</span></summary>
  <div class="nx-argosha-frame"><iframe loading="lazy" title="Аргоша — ИИ-помощник NEXORA" src="https://nexora-lobby.onrender.com/argosha/embed?studio=text" referrerpolicy="no-referrer"></iframe></div>
 </details>
+<aside class="nx-argosha-greeting" id="nx-argosha-greeting" hidden aria-label="Приветствие Аргоши">
+ <button type="button" id="nx-argosha-greeting-close" aria-label="Закрыть приветствие">×</button>
+ <strong>Привет! Я Аргоша</strong>
+ Помогу с темой, планом и оформлением текста.
+</aside>
+<script>
+(function(){
+ "use strict";
+ const host=document.querySelector(".nx-argosha-host");
+ const greeting=document.getElementById("nx-argosha-greeting");
+ const close=document.getElementById("nx-argosha-greeting-close");
+ if(!host||!greeting||!close)return;
+ const key="nexora-argosha-greeting-text-v1";
+ let seen=false;
+ try{seen=sessionStorage.getItem(key)==="seen"}catch{}
+ function dismiss(){
+  greeting.hidden=true;
+  try{sessionStorage.setItem(key,"seen")}catch{}
+ }
+ close.addEventListener("click",dismiss);
+ host.addEventListener("toggle",()=>{if(host.open)dismiss()});
+ if(!seen&&!host.open)greeting.hidden=false;
+ // Avoid covering the page once users have seen the introduction.
+ if(!seen)setTimeout(dismiss,11500);
+})();
+</script>
 </body>
 </html>
