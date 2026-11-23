@@ -357,6 +357,37 @@ body :is(.tile h3,.brand,.brand-text strong,.brand-wordmark,.card h3,.panel-head
 body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equation){font-weight:580}
 @media(max-width:600px){body p,body button,body input,body select,body textarea{font-weight:690}}
 
+
+/* NEXORA full-screen test flow shared by generation studios. */
+#nxquiz[hidden],#nxq-extra[hidden]{display:none!important}
+#nxquiz{position:fixed;z-index:4000;inset:0;width:100vw;height:100dvh;overflow-y:auto;overscroll-behavior:contain;background:radial-gradient(ellipse at 10% 18%,#dddfff,transparent 45%),radial-gradient(ellipse at 88% 73%,#f5d3e8,transparent 43%),linear-gradient(153deg,#f7f7ff,#f6ecf5);padding:clamp(15px,5vh,42px) 15px 32px;color:#28203c;display:flex;justify-content:center;align-items:center}
+#nxquiz .nxq-content{width:min(100%,490px);margin:auto;display:flex;flex-direction:column;flex-shrink:0}
+#nxquiz .nxq-brand{display:flex;align-items:center;gap:11px;margin-bottom:18px;color:#281e3e;font-size:18px;font-weight:900;letter-spacing:.12em}
+#nxquiz .nxq-mark{display:grid;place-items:center;width:41px;height:41px;flex:0 0 41px;border-radius:12px;background:#221a39;color:#fff;font-size:26px}
+#nxquiz .nxq-brand small{display:block;font-size:10px;font-weight:850;letter-spacing:.15em;margin-top:4px;color:#8676a2}
+#nxquiz .nxq-preview{min-height:110px;padding:22px 18px;border-radius:18px;border:1px solid #eee7f6;background:#fff;box-shadow:0 17px 35px rgba(76,54,120,.095);margin-bottom:24px}
+#nxquiz .nxq-preview span{display:block;margin-bottom:9px;font-size:10px;font-weight:850;letter-spacing:.14em;color:#9d86c9}
+#nxquiz .nxq-preview strong{display:block;font-weight:840;font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+#nxquiz .nxq-topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;color:#675a86;font-size:11px;font-weight:800}
+#nxquiz .nxq-back{background:transparent;border:0;border-radius:10px;color:#63557d;min-height:38px;padding:5px 7px;font-size:11px;font-weight:850;cursor:pointer}
+#nxquiz .nxq-track{height:6px;background:#dcd1ef;border-radius:99px;overflow:hidden;margin-bottom:22px}
+#nxquiz .nxq-track i{height:100%;width:20%;display:block;border-radius:99px;background:#3252ed;transition:width .18s}
+#nxquiz .nxq-question{font-size:clamp(20px,4.4vw,25px);letter-spacing:-.04em;font-weight:900;line-height:1.24;margin:0 0 18px;color:#29213c}
+#nxquiz .nxq-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#nxquiz .nxq-option{border:1px solid #ded6ec;background:rgba(255,255,255,.9);border-radius:99px;padding:11px 8px;min-height:51px;font-size:12px;font-weight:830;color:#615474;line-height:1.4;box-shadow:0 5px 15px rgba(89,65,123,.07);cursor:pointer}
+#nxquiz .nxq-option[aria-pressed=true]{border-color:#3353ed;color:#2944d3;background:#fff;box-shadow:0 0 0 2px rgba(46,77,236,.14)}
+#nxquiz .nxq-extra{margin-top:13px;display:grid;gap:7px}
+#nxquiz .nxq-extra label{font-size:11px;font-weight:800;color:#655779}
+#nxquiz .nxq-extra input{width:100%;font:inherit;font-size:13px;min-height:44px;padding:9px 12px;border:1px solid #d5c8e9;border-radius:11px;background:white;color:#322348}
+#nxquiz .nxq-actions{margin-top:22px;display:flex;gap:9px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+#nxquiz .nxq-next{min-height:47px;min-width:150px;padding:11px 24px;border:0;border-radius:99px;background:#3252ec;color:white;font-weight:850;font-size:13px;box-shadow:0 12px 22px rgba(49,79,229,.21);cursor:pointer}
+#nxquiz .nxq-skip{min-height:38px;padding:8px 10px;border:0;background:transparent;color:#8d819d;font-size:11px;font-weight:760;cursor:pointer}
+#nxquiz .nxq-error{color:#ad345c;font-size:11px;margin-top:10px;line-height:1.5}
+#nxquiz .nxq-error[hidden]{display:none}
+@media(max-width:570px){#nxquiz{align-items:flex-start;padding:18px 13px 28px}#nxquiz .nxq-content{margin:auto}#nxquiz .nxq-preview{min-height:105px;margin-bottom:25px}#nxquiz .nxq-question{font-size:22px}#nxquiz .nxq-option{min-height:50px;font-size:11px}}
+@media(max-height:640px){#nxquiz{align-items:flex-start}}
+
+.composer .settings{display:none!important}
 </style>
 </head>
 <body>
@@ -476,6 +507,20 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
  <footer class="site-footer"><span><strong>NEXORA</strong> · IMAGE STUDIO</span><span>Создавайте. Исследуйте. Вдохновляйтесь.</span></footer>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div id="nxquiz" hidden role="dialog" aria-modal="true" aria-labelledby="nxq-question">
+ <div class="nxq-content">
+  <div class="nxq-brand"><span class="nxq-mark">N</span><span>NEXORA<small>IMAGE STUDIO · ОПРОС</small></span></div>
+  <div class="nxq-preview"><span>ИДЕЯ ИЗОБРАЖЕНИЯ</span><strong id="nxq-preview"></strong></div>
+  <div class="nxq-topline"><button id="nxq-back" type="button" class="nxq-back">‹ Назад</button><span id="nxq-counter">Шаг 1 из 4</span></div>
+  <div class="nxq-track" role="progressbar" aria-label="Прогресс опроса" aria-valuemin="0" aria-valuemax="4" aria-valuenow="1" id="nxq-track"><i id="nxq-fill"></i></div>
+  <h2 id="nxq-question" class="nxq-question"></h2>
+  <div id="nxq-options" class="nxq-options" role="group" aria-label="Ответы на вопрос"></div>
+  <div id="nxq-extra" class="nxq-extra" hidden><label for="nxq-book">Учебник или номер задачи (необязательно)</label><input id="nxq-book" type="text" maxlength="220" placeholder="Например: Алгебра, 9 класс, № 241"></div>
+  <p id="nxq-error" class="nxq-error" hidden></p>
+  <div class="nxq-actions"><button id="nxq-next" type="button" class="nxq-next">Далее →</button><button id="nxq-skip" type="button" class="nxq-skip">Пропустить</button></div>
+ </div>
+</div>
 <script>
 (function(){
  const $=id=>document.getElementById(id);
@@ -492,7 +537,52 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
  function renderHistory(){const list=$('history-list');list.textContent='';$('history-count').textContent=versions.length+' из 8 версий';if(!versions.length){const e=document.createElement('div');e.className='history-empty';e.textContent='Здесь будут ваши версии. Можно вернуться к любой из них.';list.appendChild(e);return}versions.forEach((v,i)=>{const b=document.createElement('button');b.type='button';b.className='history-item'+(v.data===currentImage?' active':'');const im=document.createElement('img');im.src=v.data;im.alt='Версия '+(versions.length-i);const label=document.createElement('span');label.textContent=i===0?'Последняя':'Версия '+(versions.length-i);b.append(im,label);b.addEventListener('click',()=>{currentImage=v.data;currentPrompt=v.prompt;image.src=v.data;image.style.display='block';empty.style.display='none';actions.classList.add('visible');$('result-status').textContent='Открыта предыдущая версия';$('edit-prompt').value='';renderHistory()});list.appendChild(b)})}
  async function smallImageData(fileOrData){return new Promise((resolve,reject)=>{const src=typeof fileOrData==='string'?fileOrData:URL.createObjectURL(fileOrData);const im=new Image();im.onload=()=>{const scale=Math.min(1,500/Math.max(im.naturalWidth,im.naturalHeight));const w=Math.max(1,Math.round(im.naturalWidth*scale)),h=Math.max(1,Math.round(im.naturalHeight*scale));const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(im,0,0,w,h);if(typeof fileOrData!=='string')URL.revokeObjectURL(src);resolve(canvas.toDataURL('image/jpeg',.86))};im.onerror=()=>{if(typeof fileOrData!=='string')URL.revokeObjectURL(src);reject(new Error('Не удалось прочитать изображение.'))};im.src=src})}
  async function run(promptText,imageData){if(busy)return;const clean=String(promptText||'').trim();if(clean.length<4){showMessage('Опиши изображение чуть подробнее.','error');prompt.focus();return}setBusy(true);showMessage('');try{let small=null;if(imageData)small=await smallImageData(imageData);const response=await fetch('/api/images/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:clean,style:'realistic',ratio:$('ratio').value,quality:$('quality').value,image:small})});const data=await response.json().catch(()=>({}));if(!response.ok){let failureText=data.message||data.error||'Не удалось создать изображение.';if(Array.isArray(data.providers)&&data.providers.length){const diagnosticLines=data.providers.map(item=>{let line=item.provider+': HTTP '+(item.status||0)+', этап '+(item.stage||'unknown')+', код '+(item.code||'unknown');if(item.oauthScope)line+='; scope='+item.oauthScope;if(item.detail)line+='; ответ провайдера: '+item.detail;if(Array.isArray(item.authAttempts)&&item.authAttempts.length){line+='; попытки ключей: '+item.authAttempts.map(a=>(a.keySlot||'ключ')+' → HTTP '+(a.status||0)+', код '+(a.code||'unknown')+(a.detail?' ('+a.detail+')':'')).join('; ')}return line});failureText+='\\nДиагностика: '+diagnosticLines.join(' | ')}throw new Error(failureText)}if(!data.image||typeof data.image!=='string')throw new Error('Сервис не вернул готовое изображение.');showImage(data.image,clean,data.provider||data.model);showMessage('Изображение готово. Его можно скачать, отправить или изменить следующим промптом.','success')}catch(error){empty.style.display=currentImage?'none':'block';image.style.display=currentImage?'block':'none';if(currentImage)actions.classList.add('visible');showMessage(error.message==='Failed to fetch'?'Не удалось связаться с сервером NEXORA Image Studio. Проверьте подключение и попробуйте снова.':error.message,'error');$('result-status').textContent='Не удалось завершить генерацию'}finally{setBusy(false)}}
- generate.addEventListener('click',()=>run(prompt.value,null));
+ 
+const nxqSteps=[
+ {key:"style",title:"В каком стиле создать изображение?",options:[["photo","Фотореализм"],["illustration","Иллюстрация"],["threeD","3D-графика"],["watercolor","Акварель"],["anime","Аниме"],["cinema","Кинематографичный"]]},
+ {key:"ratio",title:"Какой формат изображения?",options:[["square","Квадрат · 1:1"],["portrait","Портрет · 3:4"],["landscape","Альбом · 4:3"],["vertical","Вертикальный · 9:16"],["wide","Широкий · 16:9"]]},
+ {key:"quality",title:"Какая нужна детализация?",options:[["standard","Стандартная"],["detailed","Повышенная"]]}
+];
+const nxqStyleLabels={photo:"фотореалистичная фотография",illustration:"красивая цифровая иллюстрация",threeD:"качественный 3D-рендер",watercolor:"акварельная живопись",anime:"рисунок в стиле аниме",cinema:"кинематографическая композиция"};
+let nxqIndex=0,nxqValues={};
+const nxqEl=id=>document.getElementById(id);
+function nxqOpenImage(){
+ if(busy)return;
+ if(prompt.value.trim().length<4){showMessage("Опиши изображение чуть подробнее.","error");prompt.focus();return}
+ nxqIndex=0;nxqValues={style:"photo",ratio:nxqEl("ratio").value,quality:nxqEl("quality").value};
+ nxqEl("nxq-preview").textContent=prompt.value.trim().slice(0,175);
+ nxqEl("nxquiz").hidden=false;nxqRenderImage();nxqEl("nxq-back").focus();
+}
+function nxqRenderImage(){
+ const step=nxqSteps[nxqIndex];nxqEl("nxq-question").textContent=step.title;
+ nxqEl("nxq-counter").textContent="Шаг "+(nxqIndex+1)+" из "+nxqSteps.length;
+ nxqEl("nxq-track").setAttribute("aria-valuemax",String(nxqSteps.length));
+ nxqEl("nxq-track").setAttribute("aria-valuenow",String(nxqIndex+1));
+ nxqEl("nxq-fill").style.width=((nxqIndex+1)*100/nxqSteps.length)+"%";
+ const host=nxqEl("nxq-options");host.replaceChildren();
+ for(const [value,label] of step.options){
+  const b=document.createElement("button");b.type="button";b.className="nxq-option";b.textContent=label;
+  b.setAttribute("aria-pressed",String(nxqValues[step.key]===value));
+  b.addEventListener("click",()=>{nxqValues[step.key]=value;nxqRenderImage()});
+  host.appendChild(b);
+ }
+ nxqEl("nxq-next").textContent=nxqIndex===nxqSteps.length-1?"✦ Создать изображение":"Далее →";
+}
+function nxqAdvanceImage(skip=false){
+ if(skip)nxqValues[nxqSteps[nxqIndex].key]={style:"photo",ratio:"square",quality:"standard"}[nxqSteps[nxqIndex].key];
+ if(nxqIndex<nxqSteps.length-1){nxqIndex++;nxqRenderImage();return}
+ nxqEl("nxquiz").hidden=true;
+ nxqEl("ratio").value=nxqValues.ratio||"square";
+ nxqEl("quality").value=nxqValues.quality||"standard";
+ const style=nxqStyleLabels[nxqValues.style]||nxqStyleLabels.photo;
+ const content=(prompt.value.trim()+". Визуальный стиль: "+style+".").slice(0,1200);
+ void run(content,null);
+}
+nxqEl("nxq-next").addEventListener("click",()=>nxqAdvanceImage());
+nxqEl("nxq-skip").addEventListener("click",()=>nxqAdvanceImage(true));
+nxqEl("nxq-back").addEventListener("click",()=>{if(nxqIndex===0){nxqEl("nxquiz").hidden=true;return}nxqIndex--;nxqRenderImage()});
+
+generate.addEventListener('click',nxqOpenImage);
  prompt.addEventListener('input',()=>count.textContent=prompt.value.length+' / 1200');
  document.querySelectorAll('[data-prompt]').forEach(b=>b.addEventListener('click',()=>{const addition=b.dataset.prompt||'';const existing=prompt.value.trim();const separator=existing?( /[.!?…]$/.test(existing)?' ':'; '):'';prompt.value=(existing+separator+addition).slice(0,1200);count.textContent=prompt.value.length+' / 1200';toast('Идея добавлена к описанию');prompt.focus()}));
 
