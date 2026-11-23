@@ -949,7 +949,12 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 })();
 </script>
 
-<button class="argosha-launcher" id="argosha-launcher" type="button" aria-label="Открыть Аргошу" aria-expanded="false"><span class="siri-glow" aria-hidden="true"></span><span class="siri-label">Аргоша</span></button>
+<button class="argosha-launcher" id="argosha-launcher" type="button" aria-label="Открыть Аргошу" aria-expanded="false"><span class="argosha-face" aria-hidden="true"><i></i><i></i></span></button>
+<aside id="argosha-greeting" class="argosha-greeting" hidden aria-label="Приветствие Аргоши">
+ <button id="argosha-greeting-close" type="button" aria-label="Закрыть приветствие">×</button>
+ <strong>Привет! Я Аргоша</strong>
+ Помогу выбрать инструмент, разобраться с задачей или создать что-нибудь новое.
+</aside>
 <section class="argosha-panel" id="argosha-panel" aria-label="Чат с Аргошей" aria-hidden="true">
   <header class="argosha-head"><div class="argosha-mini-orb" aria-hidden="true"></div><div class="argosha-head-copy"><strong>Аргоша</strong><span id="argosha-status">Помогу с инструментами NEXORA</span></div><button class="argosha-clear" id="argosha-clear" type="button" aria-label="Очистить переписку" title="Очистить переписку">Очистить</button><button class="argosha-close" id="argosha-close" type="button" aria-label="Закрыть">×</button></header>
   <div class="argosha-messages" id="argosha-messages" aria-live="polite"><div class="argosha-message assistant">Привет! Я Аргоша — помощник NEXORA. Помогу с задачами, текстами, картинками, играми и проектами.</div></div>
@@ -1041,5 +1046,55 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 })();
 </script>
 
+<style id="argosha-reference-style">
+
+/* Argosha's round blue-face assistant, based on reference visual. */
+.argosha-launcher{position:fixed!important;z-index:880!important;right:max(17px,env(safe-area-inset-right))!important;bottom:max(17px,env(safe-area-inset-bottom))!important;width:84px!important;height:84px!important;min-width:84px!important;display:grid!important;place-items:center!important;border:2px solid #ebeff8!important;border-radius:50%!important;padding:0!important;background:#fff!important;box-shadow:0 8px 29px rgba(30,39,94,.2),0 2px 7px rgba(31,51,91,.08)!important;animation:none!important;transition:transform .16s ease,opacity .2s ease!important;isolation:isolate!important}
+.argosha-launcher::before,.argosha-launcher::after{display:none!important}
+.argosha-launcher.thinking,.argosha-launcher.speaking,.argosha-launcher.listening{animation:none!important}
+.argosha-launcher:hover{transform:scale(1.045)!important}
+.argosha-launcher[aria-expanded=true]{opacity:0!important;transform:scale(.85)!important;pointer-events:none!important}
+.argosha-face{display:block;width:56px;height:56px;flex:none;border-radius:50%;background:#2950ec;position:relative}
+.argosha-face i{position:absolute;top:19px;width:10px;height:17px;background:#fff;border-radius:50%}
+.argosha-face i:first-child{left:16px;transform:rotate(-8deg)}
+.argosha-face i:last-child{right:16px;transform:rotate(8deg)}
+.argosha-panel{right:max(10px,env(safe-area-inset-right))!important;bottom:calc(max(110px,env(safe-area-inset-bottom) + 100px))!important;height:min(575px,calc(100dvh - 122px))!important;max-height:calc(100dvh - 118px)!important;z-index:881!important}
+.argosha-greeting[hidden]{display:none!important}
+.argosha-greeting{position:fixed;z-index:879;right:max(21px,env(safe-area-inset-right));bottom:calc(max(118px,env(safe-area-inset-bottom) + 106px));width:min(330px,calc(100vw - 32px));padding:19px 49px 19px 20px;border:1px solid #e9edf9;border-radius:25px;background:#fff;box-shadow:0 10px 36px rgba(14,26,79,.18);color:#111c40;font:750 16px/1.54 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow-wrap:anywhere}
+.argosha-greeting strong{display:block;font-size:18px;font-weight:900;line-height:1.35;margin-bottom:5px}
+.argosha-greeting button{position:absolute;right:13px;top:13px;width:31px;height:31px;border:0;border-radius:50%;background:#eef1ff;color:#232e58;font:850 21px/1 Arial,sans-serif;cursor:pointer}
+.argosha-greeting button:focus-visible{outline:3px solid #3252ec;outline-offset:2px}
+body:has(.modal.open) .argosha-greeting{display:none!important}
+@media(max-width:550px){
+ .argosha-launcher{width:78px!important;height:78px!important;min-width:78px!important;right:13px!important;bottom:max(13px,env(safe-area-inset-bottom))!important}
+ .argosha-face{width:52px;height:52px}
+ .argosha-face i{top:18px;width:9px;height:16px}
+ .argosha-face i:first-child{left:15px}.argosha-face i:last-child{right:15px}
+ .argosha-panel{right:8px!important;left:8px!important;width:calc(100vw - 16px)!important;bottom:calc(max(103px,env(safe-area-inset-bottom) + 94px))!important;height:min(585px,calc(100dvh - 115px))!important}
+ .argosha-greeting{right:16px;bottom:calc(max(107px,env(safe-area-inset-bottom) + 100px));width:min(315px,calc(100vw - 30px));padding:17px 46px 17px 18px;font-size:15px;border-radius:24px}
+ .argosha-greeting strong{font-size:17px}
+}
+@media(prefers-reduced-motion:reduce){.argosha-launcher{transition:none!important}}
+</style>
+<script id="argosha-reference-init">
+(function(){
+ "use strict";
+ const greeting=document.getElementById("argosha-greeting");
+ const launcher=document.getElementById("argosha-launcher");
+ const close=document.getElementById("argosha-greeting-close");
+ if(!greeting||!launcher||!close)return;
+ const key="nexora-argosha-greeting-lobby-v1";
+ let seen=false;
+ try{seen=sessionStorage.getItem(key)==="seen"}catch{}
+ function dismiss(){
+  greeting.hidden=true;
+  try{sessionStorage.setItem(key,"seen")}catch{}
+ }
+ close.addEventListener("click",dismiss);
+ launcher.addEventListener("click",dismiss);
+ if(!seen&&!document.getElementById("argosha-panel").classList.contains("open"))greeting.hidden=false;
+ if(!seen)setTimeout(dismiss,11500);
+})();
+</script>
 </body>
 </html>
