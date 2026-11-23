@@ -28,7 +28,7 @@ test('photo aspect ratio is chosen for each actual slide layout', () => {
 });
 test('photo search prioritizes a concrete subject over generic style words', () => {
   assert.deepEqual(imageSearchQueries('cinematic editorial solar panels on school rooftop natural light')[0],
-    'solar panels on school rooftop');
+    'solar panels school rooftop');
   assert.deepEqual(imageSearchQueries(''), []);
   assert.ok(imageCandidateScore('Solar panels on school rooftop.jpg', 'solar panels school rooftop') >
     imageCandidateScore('Generic abstract.png', 'solar panels school rooftop'));
@@ -41,4 +41,13 @@ test('accept modern Wikimedia thumbnail host and reject unrelated hosts', () => 
   assert.equal(isTrustedWikimediaImageUrl('https://thumb.wikimedia.org.evil.test/malicious.jpg'), false);
   assert.equal(isTrustedWikimediaImageUrl('http://thumb.wikimedia.org/file.jpg'), false);
   assert.equal(isTrustedWikimediaImageUrl('javascript:alert(1)'), false);
+});
+
+test('image scorer never accepts an unrelated bird as solar panels', () => {
+  const prompt = 'Photorealistic close-up of sunlight striking photovoltaic cells on a residential rooftop';
+  assert.ok(imageCandidateScore('File:Solar photovoltaic panels on rooftop.jpg', prompt) > 0);
+  assert.ok(imageCandidateScore('File:Close-up portrait of a Hoopoe perched on a branch in an African wildlife reserve.jpg', prompt) < -50);
+  assert.ok(imageCandidateScore('File:Rural Kitchen Setup.jpg', 'Rooftop solar panels visible beyond the kitchen window') < -50);
+  assert.ok(imageCandidateScore('File:Grand Canyon sunrise.jpg', 'Desert canyon sunrise from the ridge') > 0);
+  assert.ok(imageCandidateScore('File:Solar panels.jpg', 'A painting of medieval castle') < -50);
 });
