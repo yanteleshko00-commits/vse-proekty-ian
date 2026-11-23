@@ -8,6 +8,7 @@ import { mathAnswerPrompt } from './math-prompt.js';
 import { textBridge, textBridgeHealth } from './text-bridge.js';
 import { CONTEXT as ARGOSHA_CONTEXT, contextFor, messageHistory, toolForQuery, safeArgoshaAction, parseArgoshaAnswer, argoshaSystemPrompt, localArgoshaReply } from './argosha-core.js';
 import { makeGame } from './game-studio.js';
+import {makeCodeGame,prepareGamePreview} from './game-code.js';
 import { validateChatRequest } from './chat-core.js';
 import { appendFractionWorking, fractionHelpForProblem } from './math-fractions.js';
 import { inferMathKind, mathStudyGuide, datasetHint, MATH_KINDS, MATH_LEVELS } from './math-curriculum.js';
@@ -636,6 +637,12 @@ const server = http.createServer(async (req, res) => {
       });
     }catch(e){console.error('Game Studio page error:',e.message);return send(res,500,'Не удалось открыть Game Studio.')}
   }
+  if(req.method === 'GET' && url.pathname === '/game-builder.js'){
+    try{
+      const js=await readFile(join(publicDir,'game-builder.js'));
+      return send(res,200,js,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'public, max-age=120','X-Content-Type-Options':'nosniff'});
+    }catch(error){console.error('Game builder unavailable:',error.name);return send(res,503,'Конструктор игр временно недоступен.');}
+  }
   if(req.method === 'GET' && url.pathname === '/game.js'){
     try {
       const js=await readFile(join(publicDir,'game.js'));
@@ -647,6 +654,8 @@ const server = http.createServer(async (req, res) => {
     }catch(e){console.error('Game Studio engine error:',e.message);return send(res,500,'Движок игры недоступен.')}
   }
   if(req.method === 'POST' && url.pathname === '/api/game/generate')return makeGame(req,res);
+  if(req.method === 'POST' && url.pathname === '/api/game/code')return makeCodeGame(req,res,{authenticated:!!readSession(req)});
+  if(req.method === 'POST' && url.pathname === '/api/game/preview')return prepareGamePreview(req,res);
 
   if (url.pathname === '/api/images/generate') {
     return send(res, 410, JSON.stringify({
