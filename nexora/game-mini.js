@@ -1,5 +1,5 @@
 // Three compact offline games. Never embed the NEXORA Game Studio page in a preview.
-const TEMPLATE=String.raw\`<!doctype html><html lang="ru"><head><meta charset="utf-8">
+const TEMPLATE=String.raw`<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{box-sizing:border-box}body{margin:0;background:#10192d;color:#eef4ff;font:600 14px system-ui}
@@ -121,7 +121,7 @@ function loop(now){
 }
 reset();requestAnimationFrame(loop);
 })();
-</script></body></html>\`;
+</script></body></html>`;
 export function miniGameHTML(idea,mode){
  const title=String(idea||"Мини-игра").trim().slice(0,70);
  const cfg=JSON.stringify({title,mode}).replace(/</g,"\\u003c").replace(/>/g,"\\u003e");
