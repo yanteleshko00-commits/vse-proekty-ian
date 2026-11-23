@@ -52,7 +52,7 @@ export function imageSearchQueries(input) {
   const stop = new Set(['cinematic', 'photorealistic', 'photo', 'photograph', 'photography', 'editorial',
     'high', 'quality', 'sharp', 'focus', 'beautiful', 'background', 'view', 'wide', 'angle',
     'lighting', 'light', 'depth', 'field', 'close', 'up', 'ultra', 'realistic', 'educational',
-    'professional', 'image', 'shot', 'landscape', 'illustration', 'presentation']);
+    'professional', 'natural', 'image', 'shot', 'landscape', 'illustration', 'presentation']);
   const core = words.filter(w => !stop.has(w.toLowerCase()));
   const phrases = [
     core.slice(0, 7).join(' '),
