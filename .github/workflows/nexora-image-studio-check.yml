@@ -1,0 +1,24 @@
+name: NEXORA Image Studio checks
+
+on:
+  pull_request:
+    paths:
+      - 'nexora-image-studio/**'
+      - '.github/workflows/nexora-image-studio-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'nexora-image-studio/**'
+      - '.github/workflows/nexora-image-studio-check.yml'
+
+jobs:
+  test-image-studio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check image studio gateway and existing image UI
+        run: cd nexora-image-studio && npm install && npm run check

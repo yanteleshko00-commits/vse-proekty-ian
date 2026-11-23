@@ -1,5 +1,6 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
+import { internalAliceTokenValid, imageStudioAliceReady, forwardAliceText } from './alice-text.js';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -524,6 +525,34 @@ async function generateNexoraImage(req, res) {
 }
 
 
+// A secret-authenticated, server-to-server-only route. The Image Studio's
+// Yandex API key and folder ID never leave its environment.
+let aliceProxyWindow = { start: 0, count: 0 };
+async function handleInternalAliceText(req, res) {
+  const headers = { 'Content-Type': 'application/json; charset=utf-8' };
+  if (!internalAliceTokenValid(req.headers['x-nexora-internal-token'],
+    process.env.ALICE_INTERNAL_TOKEN)) {
+    return send(res, 403, JSON.stringify({ error: 'forbidden', message: 'Недоступно.' }), headers);
+  }
+  const now = Date.now();
+  if (now - aliceProxyWindow.start > 60000) aliceProxyWindow = { start: now, count: 0 };
+  if (++aliceProxyWindow.count > 60) {
+    return send(res, 429, JSON.stringify({ error: 'rate_limited', message: 'Лимит внутренних запросов Алисы.' }), headers);
+  }
+  try {
+    const body = await readJson(req, 180000);
+    const output = await forwardAliceText(body);
+    return send(res, 200, JSON.stringify({ output, provider: 'Alice AI LLM' }), headers);
+  } catch (error) {
+    const status = error.message === 'payload_too_large' ? 413
+      : Number.isInteger(error.status) && error.status >= 400 && error.status < 600 ? error.status : 502;
+    const message = status === 502 && !error.status ? 'Временная ошибка обращения к Яндексу.'
+      : status === 413 ? 'Слишком большой запрос.' : String(error.message || 'Не удалось создать текст.');
+    // Intentionally do not log request bodies, tokens or user project contents.
+    return send(res, status, JSON.stringify({ error: 'alice_unavailable', message: message.slice(0, 260) }), headers);
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   let url;
   try {
@@ -546,6 +575,14 @@ const server = http.createServer(async (req, res) => {
       imageGeneratorConfigured: providers.length > 0,
       imageProviders: providers,
       yandexImage: { configured: yandexMissing.length === 0, missing: yandexMissing, model: 'aliceai-image-art-3.0' },
+      aliceTextGateway: {
+        configured: imageStudioAliceReady(),
+        missing: [
+          ...yandexMissing,
+          ...(!process.env.ALICE_INTERNAL_TOKEN ? ['ALICE_INTERNAL_TOKEN'] : [])
+        ],
+        model: 'aliceai-llm'
+      },
       imageProvider: 'Parallel auto',
       imageModel: 'First successful provider',
       gigaChatAuth: {
@@ -556,6 +593,10 @@ const server = http.createServer(async (req, res) => {
         scopeSource: String(process.env.GIGACHAT_SCOPE || '').trim() ? 'Environment' : 'default'
       }
     }), { 'Content-Type': 'application/json; charset=utf-8' });
+  }
+
+  if (req.method === 'POST' && url.pathname === '/internal/alice/chat') {
+    return handleInternalAliceText(req, res);
   }
 
   if (req.method === 'POST' && url.pathname === '/api/images/generate') {

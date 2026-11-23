@@ -11,7 +11,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
 import { designProduct } from './productDesigner.js';
-import { aliceProviderFromEnv, requestAliceAIText } from './alice-provider.js';
+import { aliceProviderFromEnv, requestAliceAIText, requestAliceTextViaImageStudio } from './alice-provider.js';
 import { contentSlideCount, appendProductSlide, imageFrameRatio, imageSearchQueries, imageCandidateScore, isTrustedWikimediaImageUrl } from './presentation-design.js';
 
 const app = express();
@@ -410,6 +410,9 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
   if (provider.type === 'alice') {
     return requestAliceAIText(provider, instructions, input, jsonMode, requestTimeout);
   }
+  if (provider.type === 'alice-proxy') {
+    return requestAliceTextViaImageStudio(provider, instructions, input, jsonMode, requestTimeout);
+  }
   if (provider.type === 'openai') {
     const result = await withTimeout(openai.responses.create({
       model: MODEL, instructions, input, max_output_tokens: 10000,
@@ -583,7 +586,7 @@ function scoreAIJsonCandidate(parsed, payload) {
 
 async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task = 'text') {
   const input = 'Return a valid json object matching the requested schema.\nPayload: ' + JSON.stringify(payload);
-  const preferredType = configuredAIProviders().some(provider => provider.type === 'alice') ? 'alice' : (task === 'presentation' ? 'gemini' : 'openai');
+  const preferredType = configuredAIProviders().some(provider => provider.type.startsWith('alice')) ? 'alice-proxy' : (task === 'presentation' ? 'gemini' : 'openai');
   const providers = configuredAIProviders().filter(provider =>
     !(provider.name === 'OpenAI' && openAIQuotaBlockedUntil > Date.now())
   ).map(provider => ({ ...provider, taskPriority: provider.type === preferredType ? 0 : 1 }));
@@ -621,7 +624,7 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task 
       return { ok: false, provider: provider.name, error: message, elapsedMs: Date.now() - startedAt };
     }
   };
-  const preferredAlice = providers.find(provider => provider.type === 'alice');
+  const preferredAlice = providers.find(provider => provider.type.startsWith('alice'));
   const attempts = preferredAlice ? [await attemptProvider(preferredAlice)] : [];
   // On malformed or unsuccessful Alice output, preserve all existing fallbacks.
   if (!preferredAlice || !attempts[0].ok || attempts[0].issues.length > 0) {
@@ -640,13 +643,13 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task 
       || 'Провайдеры не успели ответить в отведённое время.';
     const safeReasons = failures.map(attempt => {
       let detail = cleanText(attempt.error || 'неизвестная ошибка', 180);
-      for (const secret of [process.env.OPENAI_API_KEY, process.env.GEMINI_API_KEY, process.env.OPENROUTER_API_KEY, process.env.GROQ_API_KEY, process.env.DEEPSEEK_API_KEY, process.env.MISTRAL_API_KEY, process.env.ANTHROPIC_API_KEY, process.env.CLOUDFLARE_API_TOKEN].filter(Boolean)) {
+      for (const secret of [process.env.OPENAI_API_KEY, process.env.GEMINI_API_KEY, process.env.OPENROUTER_API_KEY, process.env.GROQ_API_KEY, process.env.DEEPSEEK_API_KEY, process.env.MISTRAL_API_KEY, process.env.ANTHROPIC_API_KEY, process.env.CLOUDFLARE_API_TOKEN, process.env.ALICE_INTERNAL_TOKEN].filter(Boolean)) {
         detail = detail.split(secret).join('[ключ скрыт]');
       }
       return attempt.provider + ': ' + detail;
     }).join(' | ');
     console.error('[AI competition] Ни один провайдер не вернул корректный JSON:', safeReasons);
-    const aliceMissing = !providers.some(provider => provider.type === 'alice');
+    const aliceMissing = !providers.some(provider => provider.type.startsWith('alice'));
     const hint = aliceMissing
       ? ' Для генерации с Alice AI LLM добавь YANDEX_API_KEY и YANDEX_FOLDER_ID в Render → Environment. Нужен доступ ai.languageModels.user.'
       : '';
@@ -1950,13 +1953,12 @@ app.get('/api/health', asyncRoute(async (_req, res) => {
     ok: true, service: 'presentation-generator', model: MODEL,
     nexoraIdConfigured: projectOAuthReady(),
     aiProviders: providers.map(provider => provider.name),
-    aiProviderModels: providers.map(provider => ({ name: provider.name, model: provider.type === 'alice' ? provider.model.split('/').at(-1) : (provider.model || MODEL) })),
+    aiProviderModels: providers.map(provider => ({ name: provider.name, model: provider.type.startsWith('alice') ? provider.model.split('/').at(-1) : (provider.model || MODEL) })),
     aiProviderStatus: {
-      aliceTextConfigured: providers.some(provider => provider.type === 'alice'),
-      aliceMissingEnvironment: [
-        ...(!(process.env.YANDEX_API_KEY || process.env.ALICE_API_KEY) ? ['YANDEX_API_KEY'] : []),
-        ...(!process.env.YANDEX_FOLDER_ID ? ['YANDEX_FOLDER_ID'] : [])
-      ],
+      aliceTextConfigured: providers.some(provider => provider.type.startsWith('alice')),
+      aliceCredentialsViaImageStudio: providers.some(provider => provider.type === 'alice-proxy'),
+      aliceMissingEnvironment: providers.some(provider => provider.type.startsWith('alice'))
+        ? [] : ['ALICE_INTERNAL_TOKEN (защищённый доступ к Image Studio)'],
       geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY),
       openAIEnabledForText: Boolean(openai)
     },

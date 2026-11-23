@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { aliceProviderFromEnv, requestAliceAIText } from '../alice-provider.js';
+import { aliceProviderFromEnv, requestAliceAIText, requestAliceTextViaImageStudio } from '../alice-provider.js';
 
 test('Alice AI LLM uses a separate text model and requires both credentials', () => {
   assert.equal(aliceProviderFromEnv({ YANDEX_API_KEY: 'test-key' }), null);
@@ -38,4 +38,24 @@ test('Alice provider HTTP failures do not reveal API keys', async () => {
     })),
     error => error.message.includes('403') && !error.message.includes('secret-value')
   );
+});
+
+test('presentation uses Image Studio credentials without copying the image key', async () => {
+  const provider = aliceProviderFromEnv({ ALICE_INTERNAL_TOKEN: 't'.repeat(64) });
+  assert.equal(provider.type, 'alice-proxy');
+  assert.equal(provider.name, 'Alice AI LLM');
+  assert.equal(provider.key, undefined);
+  let request;
+  const result = await requestAliceTextViaImageStudio(provider, 'Составь слайды', '{"topic":"Школа"}', true, 22000,
+    async (url, options) => {
+      request = {url, options};
+      return {ok: true, json: async()=>({output:'{"slides":[]}'})};
+    });
+  assert.equal(result, '{"slides":[]}');
+  assert.equal(request.url, 'https://nexora-image-studio.onrender.com/internal/alice/chat');
+  assert.equal(request.options.headers['X-NEXORA-Internal-Token'], 't'.repeat(64));
+  assert.equal(request.options.body.includes('YANDEX_API_KEY'), false);
+});
+test('missing Image Studio shared token does not enable an unauthenticated proxy', () => {
+  assert.equal(aliceProviderFromEnv({ ALICE_INTERNAL_TOKEN: 'too-short' }), null);
 });
