@@ -122,8 +122,8 @@ test('Game Studio supports genuine editable HTML code and swipe-to-arrow control
  assert.equal(normalizeGameHTML(valid.replace('<canvas','<script src="https://evil.example/x.js"></script><canvas')),null);
  assert.equal(normalizeGameHTML(valid.replace('<canvas','<iframe src="/"></iframe><canvas')),null);
  const fallback=await fallbackGameHTML('Космическая змейка собирает фрукты');
- assert.ok(fallback.length>20000);
- assert.match(fallback,/__GAME_PRESET__/);
+ assert.ok(fallback.length>4000);
+ assert.match(fallback,/const cfg=/);
  assert.doesNotMatch(fallback,/id="ai-workspace"/);
  assert.doesNotMatch(fallback,/<script src="\/game\.js"/);
  assert.ok(normalizeGameHTML(fallback),'Fallback must be valid standalone HTML');
@@ -139,6 +139,31 @@ test('Game Studio supports genuine editable HTML code and swipe-to-arrow control
    new vm.Script(gameplay);
  }
 
+ const {miniGameHTML}=await import('../game-mini.js');
+ const {blockSandboxHTML}=await import('../game-block-world.js');
+ const world=await fallbackGameHTML('Майнкрафт');
+ assert.equal(gameFamily('Майнкрафт'),'blocks');
+ assert.equal(gameFamily('Minecraft строительство блоков'),'blocks');
+ assert.equal(world,blockSandboxHTML('Майнкрафт'));
+ assert.ok(normalizeGameHTML(world));
+ assert.match(world,/id="world"/);
+ assert.match(world,/id="mine"/);
+ assert.match(world,/id="place"/);
+ assert.match(world,/function interact/);
+ assert.match(world,/function render/);
+ new vm.Script(world.split('<script>')[1].split('</script>')[0]);
+ for(const family of ['snake','target','catch']){
+   const game=await fallbackGameHTML(family==='snake'?'Змейка':family==='target'?'Мишени на реакцию':'Лови звезды');
+   assert.ok(normalizeGameHTML(game),'Invalid mini game: '+family);
+   assert.equal(game,miniGameHTML(family==='snake'?'Змейка':family==='target'?'Мишени на реакцию':'Лови звезды',family));
+   assert.match(game,/id="board"/);
+   assert.doesNotMatch(game,/id="ai-workspace"|GAME STUDIO|id="nxquiz"/);
+   new vm.Script(game.split('<script>')[1].split('</script>')[0]);
+ }
+ for(const game of [world,fallback,arcadeGameHTML('Гонки','racing')]){
+   assert.doesNotMatch(game,/id="ai-workspace"|id="classic-workspace"|NEXORA GAME STUDIO|id="nxquiz"/,
+     'An actual game must never embed the Game Studio inside its own preview');
+ }
  assert.match(gameEngine,/authenticated/);
 });
 test('HTTP game build and live sandbox preview work for guests with no credentials',async()=>{
@@ -164,7 +189,7 @@ test('HTTP game build and live sandbox preview work for guests with no credentia
   const body=await generated.json();
   assert.equal(body.ok,true);
   assert.equal(body.source,'template');
-  assert.match(body.html,/__GAME_PRESET__/);
+  assert.match(body.html,/const cfg=/);
   const preview=await request('/api/game/preview',{html:body.html});
   assert.equal(preview.status,200);
   const p=await preview.json();
@@ -176,7 +201,7 @@ test('HTTP game build and live sandbox preview work for guests with no credentia
   assert.match(frame.headers.get('content-security-policy')||'',/connect-src 'none'/);
   const iframeHtml=await frame.text();
   assert.match(iframeHtml,/nexora-game-control/);
-  assert.match(iframeHtml,/__GAME_PRESET__/);
+  assert.match(iframeHtml,/const cfg=/);
   const blocked=await request('/api/game/preview',{html:'<html>not a game</html>'});
   assert.equal(blocked.status,400);
   const invalid=await request('/api/game/code',{idea:'A'});
