@@ -41,6 +41,16 @@ export function normalizeTextRequest(value){
   const format=FORMATS.includes(value.format)?value.format:'free';
   const tone=TONES.includes(value.tone)?value.tone:'neutral';
   const size=SIZES.includes(value.size)?value.size:'medium';
+  // Exact requested length is optional. Never infer it from free-form text.
+  const suppliedWords=value.targetWords;
+  let targetWords=null;
+  if(suppliedWords!==undefined&&suppliedWords!==null&&suppliedWords!==''){
+    const parsed=typeof suppliedWords==='number'?suppliedWords:
+      typeof suppliedWords==='string'&&/^\d+$/.test(suppliedWords)?Number(suppliedWords):NaN;
+    if(!Number.isSafeInteger(parsed)||parsed<50||parsed>1200)
+      throw new Error('Количество слов должно быть от 50 до 1200.');
+    targetWords=parsed;
+  }
   const language=LANGUAGES.includes(value.language)?value.language:'ru';
   const topic=trimInput(value.topic,1500),source=trimInput(value.source,16000);
   const requirements=trimInput(value.requirements,1300);
@@ -50,7 +60,7 @@ export function normalizeTextRequest(value){
   if(action!=='create' && source.length<15 && images.length===0) throw new Error('Вставьте исходный текст или прикрепите фото/документ.');
   if(typeof value.topic==='string' && value.topic.length>1500)throw new Error('Тема слишком длинная.');
   if(typeof value.source==='string' && value.source.length>16000)throw new Error('Исходный текст слишком длинный (максимум 16 000 символов).');
-  return {action,format,tone,size,language,topic,source,requirements,images};
+  return {action,format,tone,size,language,topic,source,requirements,images,targetWords};
 }
 export function buildTextPrompt(params){
   const lang=params.language==='en'?'английский':'русский';
@@ -58,7 +68,10 @@ export function buildTextPrompt(params){
     'Ты NEXORA Text Studio — профессиональный редактор и автор.',
     actionNames[params.action],
     'Язык: '+lang+'. Формат: '+formatNames[params.format]+'.',
-    'Тон: '+toneNames[params.tone]+'. Объём: '+sizeNames[params.size]+'.',
+    'Тон: '+toneNames[params.tone]+'. Объём: '+
+      (params.targetWords&&params.action!=='proofread'
+        ? 'ориентир '+params.targetWords+' слов (стремись к этому количеству, допуск примерно 10%, не повторяй предложения для объёма)'
+        : sizeNames[params.size])+'.',
     'Возвращай только ГОТОВЫЙ текст, без служебных фраз, JSON, приветствий от ИИ и Markdown-кодовых блоков.',
     'Разделы и абзацы делай читабельными. Не повторяй одно и то же ради длины.',
     'Не выдумывай даты, источники, исследования, цитаты, статистику или имена. Не выдавай предположения за факты.',
