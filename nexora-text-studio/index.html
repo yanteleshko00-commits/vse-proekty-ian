@@ -196,6 +196,36 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 :root[data-theme=dark] .wizard-words-custom input{color:#fff;background:#332a4c;border-color:#725a9e}
 @media(max-width:600px){.topic-wizard{min-height:285px;padding:17px 14px}.wizard-question{font-size:16px}.wizard-choice{font-size:11px;min-height:51px}.wizard-words-custom input{font-size:16px}}
 
+
+/* Unified NEXORA step-by-step questionnaire, inspired by a full-screen mobile test. */
+.topic-wizard:not([hidden]){position:fixed;z-index:3000;inset:0;width:100%;height:100dvh;max-height:100dvh;margin:0;overflow-y:auto;overscroll-behavior:contain;padding:clamp(15px,5vh,45px) 18px 32px;border:0;border-radius:0;background:radial-gradient(ellipse at 5% 24%,#e0ddff,transparent 43%),radial-gradient(ellipse at 93% 70%,#f8daee,transparent 43%),linear-gradient(160deg,#f8f6ff,#f8eff9);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:none}
+.topic-wizard:not([hidden]) > *{width:100%;max-width:490px;flex-shrink:0}
+.wizard-brand{display:flex;gap:11px;align-items:center;margin:0 0 18px;font-size:18px;font-weight:900;letter-spacing:.13em;color:#302545}
+.wizard-brand small{display:block;margin-top:4px;font-size:10px;letter-spacing:.16em;color:#8d7eac}
+.wizard-brand-mark{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:11px;background:#241c39;color:white;font-size:26px}
+.wizard-topic-preview{display:grid;gap:7px;min-height:108px;padding:22px 18px;margin-bottom:22px;border-radius:17px;background:white;border:1px solid #ece6f5;box-shadow:0 15px 30px rgba(81,58,121,.09)}
+.wizard-topic-preview span{font-size:10px;font-weight:820;letter-spacing:.13em;color:#9c85c5}
+.wizard-topic-preview strong{font-size:15px;font-weight:800;line-height:1.55;color:#403557;overflow-wrap:anywhere}
+.topic-wizard .wizard-top{margin-bottom:11px}
+.topic-wizard .wizard-track{height:6px;margin-bottom:21px;background:#d6ccef}
+.topic-wizard .wizard-track-fill{background:#3051ea}
+.topic-wizard .wizard-question{font-size:clamp(18px,4.2vw,23px);font-weight:900;letter-spacing:-.035em;color:#281f3b}
+.topic-wizard .wizard-description{font-size:12px;margin-bottom:20px}
+.topic-wizard .wizard-choice{min-height:51px;border-radius:99px;box-shadow:0 5px 12px rgba(76,57,133,.07);font-weight:800}
+.topic-wizard .wizard-choice[aria-pressed=true]{background:white;border-color:#3051ea;color:#2747d7;box-shadow:0 0 0 2px rgba(43,77,226,.16)}
+.topic-wizard .wizard-action.primary{background:#3051ea;box-shadow:0 10px 20px rgba(48,81,234,.24)}
+.topic-wizard .wizard-actions{margin-top:23px}
+.topic-wizard .wizard-action.skip{margin-left:0}
+.topic-wizard .wizard-action{border-radius:99px}
+.topic-wizard .wizard-action.primary{min-width:132px}
+:root[data-theme=dark] .topic-wizard:not([hidden]){background:radial-gradient(ellipse at 15% 20%,#342752,transparent 48%),linear-gradient(150deg,#241c36,#39243d)}
+:root[data-theme=dark] .wizard-brand{color:#f5efff}
+:root[data-theme=dark] .wizard-topic-preview{background:#312843;border-color:#514366}
+:root[data-theme=dark] .wizard-topic-preview strong{color:#eee6fa}
+:root[data-theme=dark] .topic-wizard .wizard-question{color:#f5edff}
+@media(max-width:600px){.topic-wizard:not([hidden]){padding:19px 14px 32px;justify-content:center}.wizard-brand{margin-bottom:17px}.wizard-topic-preview{margin-bottom:22px;min-height:105px}.topic-wizard .wizard-actions{gap:8px}.topic-wizard .wizard-action{font-size:11px}.topic-wizard .wizard-action.primary{min-width:124px}}
+@media(max-height:610px){.topic-wizard:not([hidden]){justify-content:flex-start}}
+
 </style>
 </head>
 <body>
@@ -239,7 +269,9 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
       </div>
       </div>
 
-      <section class="topic-wizard" id="topic-wizard" hidden aria-labelledby="wizard-heading">
+      <section class="topic-wizard" id="topic-wizard" hidden role="dialog" aria-modal="true" aria-labelledby="wizard-question">
+        <div class="wizard-brand"><span class="wizard-brand-mark">N</span><span>NEXORA <small>TEXT STUDIO · ОПРОС</small></span></div>
+        <div class="wizard-topic-preview"><span>ТЕМА ТЕКСТА</span><strong id="wizard-topic-preview"></strong></div>
         <div class="wizard-top"><span class="wizard-kicker" id="wizard-heading">✦ УТОЧНИМ ВАШ ТЕКСТ</span><span class="wizard-step-counter" id="wizard-count">Вопрос 1 из 6</span></div>
         <div class="wizard-track" role="progressbar" aria-label="Заполнение опросника" aria-valuemin="0" aria-valuemax="6" aria-valuenow="1" id="wizard-progress"><span class="wizard-track-fill" id="wizard-fill"></span></div>
         <div class="wizard-flow" id="wizard-flow">
@@ -426,7 +458,7 @@ const wizardSteps=[
  {key:"words",question:"Сколько слов должно быть в тексте?",description:"Выберите объём или укажите точное количество самостоятельно."},
  {key:"details",question:"Что обязательно включить?",description:"Последний вопрос. Можно добавить примеры, ключевые мысли или оставить пустым."}
 ];
-let wizardStep=0,wizardFinished=false,wizardSkipped=false,wizardAdvanceTimer=null;
+let wizardStep=0,wizardFinished=false,wizardSkipped=false,wizardAdvanceTimer=null,wizardOpened=false;
 const wizardAnswers={format:"",audience:"",purpose:"",tone:"",words:"",customWords:"",details:""};
 function wizardOptionsFor(key){
  if(key==="format")return wizardFormatOptions;
@@ -446,7 +478,7 @@ function wizardWordCount(){
 }
 function resetWizard(){
  clearTimeout(wizardAdvanceTimer);
- wizardStep=0;wizardFinished=false;wizardSkipped=false;
+ wizardStep=0;wizardFinished=false;wizardSkipped=false;wizardOpened=false;
  Object.assign(wizardAnswers,{format:"",audience:"",purpose:"",tone:"",words:"",customWords:"",details:""});
 }
 function wizardError(message){
@@ -467,16 +499,17 @@ function advanceWizard(){
    return;
  }
  wizardError("");
- if(wizardStep<wizardSteps.length-1)wizardStep++;
- else wizardFinished=true;
- renderWizard();
+ if(wizardStep<wizardSteps.length-1){wizardStep++;renderWizard();return;}
+ wizardFinished=true;wizardOpened=false;renderWizard();
+ void generate();
 }
 function renderWizard(){
  const panel=$("topic-wizard");
- const valid=action==="create"&&$("topic").value.trim().length>=4&&!wizardSkipped;
+ const valid=action==="create"&&$("topic").value.trim().length>=4&&!wizardSkipped&&wizardOpened;
  panel.hidden=!valid;
  $("creation-panel").classList.toggle("wizard-active",valid&&!wizardFinished);
  if(!valid)return;
+ $("wizard-topic-preview").textContent=$("topic").value.trim().slice(0,150);
  $("wizard-flow").hidden=wizardFinished;
  $("wizard-summary").hidden=!wizardFinished;
  $("wizard-edit").hidden=!wizardFinished;
@@ -517,7 +550,6 @@ function renderWizard(){
      option.setAttribute("aria-pressed",String(String(wizardAnswers[step.key])===value));
      option.addEventListener("click",()=>{
        clearTimeout(wizardAdvanceTimer);
-       const index=wizardStep;
        wizardAnswers[step.key]=isWords&&value!=="custom"?Number(value):value;
        if(step.key==="format"&&!wizardOptionsFor("audience").some(pair=>pair[0]===wizardAnswers.audience))
          wizardAnswers.audience="";
@@ -526,17 +558,15 @@ function renderWizard(){
          $("wizard-word-count").focus();
          return;
        }
-       // Like a test: choosing an answer automatically shows the next question.
-       wizardAdvanceTimer=setTimeout(()=>{
-         if(wizardStep===index&&!wizardFinished&&!wizardSkipped)advanceWizard();
-       },230);
+       // A quiz step is confirmed with "Далее"; no accidental progression.
+       $("wizard-next").focus();
      });
      host.appendChild(option);
    }
  }
- $("wizard-back").disabled=wizardStep===0;
+ $("wizard-back").disabled=false;
  $("wizard-next").disabled=!answeredCurrentQuestion();
- $("wizard-next").textContent=wizardStep===wizardSteps.length-1?"Завершить опрос":"Далее";
+ $("wizard-next").textContent=wizardStep===wizardSteps.length-1?"✦ Создать текст":"Далее →";
 }
 function wizardOnTopic(){
  if($("topic").value.trim().length>=4&&wizardSkipped)wizardSkipped=false;
@@ -562,16 +592,20 @@ $("wizard-next").addEventListener("click",advanceWizard);
 $("wizard-back").addEventListener("click",()=>{
  clearTimeout(wizardAdvanceTimer);
  if(wizardStep>0)wizardStep--;
+ else wizardOpened=false;
  renderWizard();
 });
 $("wizard-skip").addEventListener("click",()=>{
  clearTimeout(wizardAdvanceTimer);
- wizardSkipped=true;
- Object.assign(wizardAnswers,{format:"",audience:"",purpose:"",tone:"",words:"",customWords:"",details:""});
- renderWizard();
+ const key=wizardSteps[wizardStep].key;
+ if(key==="words"){wizardAnswers.words="";wizardAnswers.customWords="";}
+ else wizardAnswers[key]="";
+ if(wizardStep<wizardSteps.length-1){wizardStep++;renderWizard();return;}
+ wizardFinished=true;wizardOpened=false;renderWizard();
+ void generate();
 });
 $("wizard-edit").addEventListener("click",()=>{
- wizardFinished=false;wizardStep=0;renderWizard();
+ wizardFinished=false;wizardOpened=true;wizardStep=0;renderWizard();
 });
 function wizardRequirements(){
  if(action!=="create"||wizardSkipped)return "";
@@ -604,7 +638,7 @@ function mode(next){
  renderWizard();
 }
 actions.forEach(b=>b.addEventListener("click",()=>mode(b.dataset.action)));
-document.querySelectorAll(".example").forEach(b=>b.addEventListener("click",()=>{if(busy)return;mode("create");$("topic").value=b.dataset.topic;wizardAnswers.format=b.dataset.format;wizardSkipped=false;wizardStep=0;wizardFinished=false;wizardOnTopic();$("topic").focus()}));
+document.querySelectorAll(".example").forEach(b=>b.addEventListener("click",()=>{if(busy)return;mode("create");$("topic").value=b.dataset.topic;wizardAnswers.format=b.dataset.format;wizardSkipped=false;wizardStep=0;wizardFinished=false;wizardOpened=false;wizardOnTopic();$("topic").focus()}));
 function loading(active){
   busy=active;$("generate").disabled=active;
   if(active){
@@ -631,7 +665,8 @@ async function generate(){
   if(action!=="create"&&source.length<15&&!filesSelected.length){showError("Добавьте исходный текст или прикрепите фото/документ.");$("source").focus();return}
   clearError();
   if(action==="create"&&!wizardSkipped&&!wizardFinished&&topic.length>=4){
-    $("topic-wizard").scrollIntoView({behavior:"smooth",block:"center"});
+    wizardOpened=true;renderWizard();
+    $("wizard-back").focus();
     return;
   }
   const requirements=wizardRequirements().slice(0,1300);
