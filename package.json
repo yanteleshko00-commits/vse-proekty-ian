@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "postinstall": "playwright install chromium"
+    "start": "node scripts/playwright-runtime.mjs start",
+    "postinstall": "node scripts/playwright-runtime.mjs install"
   },
   "dependencies": {
     "archiver": "^7.0.1",
