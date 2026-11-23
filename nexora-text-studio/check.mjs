@@ -17,6 +17,10 @@ for(const action of ['create','rewrite','proofread','shorten','expand','summariz
   assert.ok(html.includes('data-action="'+action+'"'),'Missing action '+action);
 assert.match(html,/overflow-x:clip/);
 assert.match(html,/id="output-status"/);
+assert.match(html,/class="nx-argosha-host"/);
+assert.match(html,/argosha\/embed\?studio=text/);
+const textServerSource=await readFile(join(here,'server.js'),'utf8');
+assert.match(textServerSource,/frame-src https:\/\/nexora-lobby\.onrender\.com/);
 const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(js,'Client script is missing');
 new vm.Script(js);
