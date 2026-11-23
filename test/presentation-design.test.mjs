@@ -28,7 +28,7 @@ test('photo aspect ratio is chosen for each actual slide layout', () => {
 });
 test('photo search prioritizes a concrete subject over generic style words', () => {
   assert.deepEqual(imageSearchQueries('cinematic editorial solar panels on school rooftop natural light')[0],
-    'solar panels on school rooftop natural light');
+    'solar panels on school rooftop');
   assert.deepEqual(imageSearchQueries(''), []);
   assert.ok(imageCandidateScore('Solar panels on school rooftop.jpg', 'solar panels school rooftop') >
     imageCandidateScore('Generic abstract.png', 'solar panels school rooftop'));
