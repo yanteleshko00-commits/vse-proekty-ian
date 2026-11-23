@@ -158,3 +158,25 @@ test('signed-in chat forwards only validated messages to the internal AI server'
     assert.deepEqual(upstreamCalls[0].body.messages[0],{role:'user',content:'Что такое планеты?'});
   }finally{child.kill();await new Promise(resolve=>mock.close(resolve));}
 });
+
+
+test('minimal centered GPT-style UI avoids mislabeling the default model', async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const {join}=await import('node:path');
+  const {fileURLToPath}=await import('node:url');
+  const here=fileURLToPath(new URL('..',import.meta.url));
+  const page=await readFile(join(here,'public/chat.html'),'utf8');
+  const homepage=await readFile(join(here,'public/index.html'),'utf8');
+  assert.match(page,/<h1>Чем могу <em>помочь\?<\/em><\/h1>/);
+  assert.match(page,/class="workspace is-empty"/);
+  assert.match(page,/\.workspace\.is-empty \.scroll\{/);
+  assert.match(page,/\.workspace\.is-empty \.composer-shell\{/);
+  assert.ok(page.indexOf('id="composer"') < page.indexOf('class="prompts"'),
+    'Prompt suggestions should appear after the central composer');
+  assert.match(page,/<strong>Стандартный<\/strong>/);
+  assert.match(page,/data-model="gpt"/);
+  assert.match(page,/names=\{alice:"Стандартный",gpt:"GPT",auto:"Авто"\}/);
+  assert.doesNotMatch(page,/Алиса|Алисы|Алисой|Yandex AI/);
+  assert.match(homepage,/<h3>Чат GPT<\/h3>/);
+  assert.doesNotMatch(homepage,/<h3>Чат GPT \+ Алиса<\/h3>/);
+});
