@@ -10,16 +10,16 @@ generators = ["https://vse-proekty-ian.onrender.com", "https://vse-proekty-ian-1
 def get(url):
     with urllib.request.urlopen(urllib.request.Request(url, headers={
         "User-Agent": "NEXORA-chat-production-smoke/1.0"}), timeout=65) as r:
-        return r.status, r.read().decode("utf8"), dict(r.headers)
+        return r.status, r.read().decode("utf8"), {k.lower(): v for k, v in r.headers.items()}
 
 status, html, headers = get(lobby + "/chat")
-assert status == 200 and "text/html" in headers.get("Content-Type", "")
+assert status == 200 and "text/html" in headers.get("content-type", "")
 for field in ['id="sidebar"', 'id="conversation"', 'data-model="alice"',
               'data-model="gpt"', 'data-model="auto"', 'id="history"',
               'id="new-chat"', 'id="message-input"']:
     assert field in html, "Missing live UI: " + field
 assert "/api/nexora-chat" in html
-assert "frame-ancestors 'none'" in headers.get("Content-Security-Policy", "")
+assert "frame-ancestors 'none'" in headers.get("content-security-policy", "")
 print("CHAT PAGE", status, "menu=OK", "alice=OK", "gpt=OK", "auto=OK")
 
 status, content, headers = get(lobby + "/health")
