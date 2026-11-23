@@ -273,7 +273,12 @@
     if(on)$("send").disabled=true;else $("send").disabled=false;
   }
   async function askModel(current){
-    const latest=current.messages.slice(-16).map(m=>({role:m.role,content:m.content.slice(0,2400)}));
+    const latest=[];let total=0;
+    for(const m of current.messages.slice(-16).reverse()){
+      const content=m.content.slice(0,2400);
+      if(total+content.length>12500)break;
+      latest.unshift({role:m.role,content});total+=content.length;
+    }
     controller=new AbortController();
     const timeout=setTimeout(()=>controller?.abort(),83000);
     try{
