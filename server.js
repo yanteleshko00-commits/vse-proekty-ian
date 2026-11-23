@@ -2248,4 +2248,4 @@ if (process.env.NODE_ENV !== 'test') {
     if (!process.env.OPENAI_API_KEY) console.warn('OPENAI_API_KEY is not configured.');
   });
 }
-export { buildPptx, createPptxBuffer, createPresentationPdfBuffer, preparePhotosForDeck };
+export { buildPptx, createPptxBuffer, createPresentationPdfBuffer, preparePhotosForDeck, commonsImage };
