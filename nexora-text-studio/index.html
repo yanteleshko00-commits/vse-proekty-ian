@@ -316,7 +316,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
         <label for="language">Язык текста</label>
         <select id="language"><option value="ru">Русский</option><option value="en">English</option></select>
       </div>
-      <button id="generate" class="generate" type="button">✦ &nbsp; Создать текст</button>
+      <button id="generate" class="generate" type="button">Далее — к вопросам →</button>
       <div class="error" id="error" role="alert"></div>
       <p class="hint">ИИ учитывает тему, ответы опросника и вложения. Проверяйте факты перед публикацией. Сайт не сохраняет историю исходных текстов.</p>
     </section>
@@ -634,7 +634,7 @@ function mode(next){
  $("example-topics").hidden=next!=="create";
  $("topic-label").textContent=next==="create"?"Тема или идея":"Что изменить? (необязательно)";
  $("topic").placeholder=next==="create"?"Опишите, какой текст хотите получить…":"Например: сохранить имена, убрать повторы, сделать проще…";
- $("generate").textContent=next==="create"?"✦ Создать текст":next==="proofread"?"✓ Исправить ошибки":next==="shorten"?"− Сократить текст":next==="expand"?"＋ Расширить текст":next==="summarize"?"≡ Пересказать текст":"↻ Переписать текст";
+ $("generate").textContent=next==="create"?"Далее — к вопросам →":next==="proofread"?"✓ Исправить ошибки":next==="shorten"?"− Сократить текст":next==="expand"?"＋ Расширить текст":next==="summarize"?"≡ Пересказать текст":"↻ Переписать текст";
  renderWizard();
 }
 actions.forEach(b=>b.addEventListener("click",()=>mode(b.dataset.action)));
