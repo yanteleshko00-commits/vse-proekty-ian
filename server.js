@@ -1282,6 +1282,11 @@ function createPresentationPdfBuffer(plan) {
       const isQuote = slide.type === 'quote';
       const slideBg = theme.bg;
       doc.rect(0, 0, 960, 540).fill(isCover ? color(theme.accent) : color(slideBg));
+      if (isCover && slide.imageBytes) {
+        // Share the PowerPoint full-bleed cover style.
+        doc.image(slide.imageBytes, 0, 0, { width: 960, height: 540 });
+        doc.save().fillOpacity(0.62).rect(0, 0, 960, 540).fill('#101827').restore();
+      }
       if (!isCover) {
         doc.rect(0, 0, 12, 540).fill(color(theme.accent));
         // Soft layered glass-like shapes in the background, kept behind slide content.
@@ -1295,19 +1300,19 @@ function createPresentationPdfBuffer(plan) {
       if (isCover) {
         doc.fontSize(13).fillColor('#FFFFFF').text('ПРЕЗЕНТАЦИЯ', 50, 48, { width: 430 });
         doc.fontSize(34).fillColor('#FFFFFF').text(normalizeText(slide.title || plan.title, 95), 50, 108, {
-          width: slide.imageBytes ? 510 : 820,
+          width: 820,
           height: 150,
           ellipsis: true
         });
         doc.fontSize(17).fillColor('#F1F5FF').text(normalizeText(slide.subtitle || slide.body || plan.summary, 240), 52, 290, {
-          width: slide.imageBytes ? 470 : 780,
+          width: 780,
           height: 100,
           ellipsis: true
         });
       } else if (slide.type === 'quote') {
         doc.fontSize(12).fillColor(color(theme.ink)).text('КЛЮЧЕВАЯ МЫСЛЬ', 48, 55, { width: 800 });
         doc.fontSize(28).fillColor(color(theme.ink)).text(normalizeText(slide.quote || slide.body || slide.title, 250), 48, 125, {
-          width: 820,
+          width: slide.imageBytes ? 535 : 820,
           height: 230,
           ellipsis: true
         });
@@ -1341,7 +1346,7 @@ function createPresentationPdfBuffer(plan) {
             ? (slide.steps || []).slice(0, 4)
             : (slide.bullets || []).slice(0, 4);
         for (const item of bulletItems) {
-          if (y > 440) break;
+          if (y > 440 || slide.type === 'table') break;
           doc.circle(54, y + 8, 4).fill(color(theme.accent));
           doc.fontSize(14).fillColor(color(theme.ink)).text(normalizeText(item, 140), 68, y, {
             width: contentWidth - 20,
@@ -1352,16 +1357,37 @@ function createPresentationPdfBuffer(plan) {
         }
 
         if (slide.cards?.length && y < 430) {
-          for (const card of slide.cards.slice(0, 2)) {
+          for (const card of slide.cards.slice(0, 4)) {
+            if (y > 440) break;
             doc.roundedRect(48, y, Math.min(contentWidth, 500), 55, 8).fill(color(theme.surface || 'FFFFFF'));
             doc.fontSize(12).fillColor(color(theme.accent)).text(normalizeText(card.title, 55), 60, y + 7, { width: Math.min(contentWidth, 475), height: 18, ellipsis: true });
             doc.fontSize(10).fillColor(color(theme.ink)).text(normalizeText(card.text, 115), 60, y + 27, { width: Math.min(contentWidth, 475), height: 20, ellipsis: true });
             y += 62;
           }
         }
+        if (slide.type === 'table' && Array.isArray(slide.table) && slide.table.length) {
+          const rows = slide.table.slice(0, 6).filter(row => Array.isArray(row));
+          const columns = Math.max(1, Math.min(4, ...rows.map(row => row.length)));
+          const tableWidth = slide.imageBytes ? 540 : 855;
+          const colWidth = tableWidth / columns;
+          const rowHeight = Math.min(52, Math.max(27, (465 - y) / Math.max(rows.length, 1)));
+          rows.forEach((row, ri) => {
+            row.slice(0, columns).forEach((value, ci) => {
+              const xx = 48 + ci * colWidth, yy = y + ri * rowHeight;
+              const header = ri === 0;
+              const fill = header ? theme.accent : ci === 0 ? theme.accent2 : (theme.surface || 'FFFFFF');
+              doc.rect(xx, yy, colWidth, rowHeight).fill(color(fill));
+              doc.fontSize(header ? 11 : 10)
+                .fillColor(header ? '#FFFFFF' : color(theme.ink))
+                .text(normalizeText(value, 85), xx + 7, yy + 5, {
+                  width: colWidth - 14, height: rowHeight - 10, ellipsis: true
+                });
+            });
+          });
+        }
       }
 
-      if (slide.imageBytes) {
+      if (slide.imageBytes && !isCover) {
         try {
           const x = isCover ? 605 : 625;
           const y = isCover ? 95 : 130;
