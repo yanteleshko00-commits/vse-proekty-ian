@@ -95,3 +95,65 @@ test('chat page is public, but generation requires NEXORA ID', async()=>{
     assert.equal((await req({model:'unknown',messages:sample.messages},cookies)).status,400);
   }finally{child.kill();}
 });
+
+
+test('signed-in chat forwards only validated messages to the internal AI server', async()=>{
+  const {spawn}=await import('node:child_process');
+  const {createServer}=await import('node:http');
+  const {fileURLToPath}=await import('node:url');
+  const {join}=await import('node:path');
+  const {createHmac}=await import('node:crypto');
+  const here=fileURLToPath(new URL('..',import.meta.url));
+  const upstreamCalls=[];
+  const secret='test-internal-token-'.repeat(4);
+  const mock=createServer(async(req,res)=>{
+    const chunks=[];
+    for await(const chunk of req)chunks.push(chunk);
+    upstreamCalls.push({
+      url:req.url,token:req.headers['x-nexora-chat-token'],
+      body:JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    });
+    res.writeHead(200,{'Content-Type':'application/json'});
+    res.end(JSON.stringify({ok:true,provider:'Alice AI LLM',answer:'Объясняю: 4.'}));
+  });
+  await new Promise(resolve=>mock.listen(0,'127.0.0.1',resolve));
+  const upstreamPort=mock.address().port;
+  const port=22000+process.pid%17000;
+  const key='n'.repeat(48);
+  const child=spawn(process.execPath,[join(here,'server.js')],{
+    env:{...process.env,PORT:String(port),NODE_ENV:'test',SESSION_SECRET:key,
+      NEXORA_CHAT_INTERNAL_TOKEN:secret,
+      PROJECT_GENERATOR_URL:'http://127.0.0.1:'+upstreamPort},
+    stdio:'ignore'
+  });
+  try{
+    let ready=false;
+    for(let attempt=0;attempt<40;attempt++){
+      try{const r=await fetch('http://127.0.0.1:'+port+'/health');if(r.ok){ready=true;break;}}catch{}
+      await new Promise(resolve=>setTimeout(resolve,120));
+    }
+    assert.ok(ready);
+    const payload=Buffer.from(JSON.stringify({id:'learner',name:'Пользователь',issuedAt:Date.now()})).toString('base64url');
+    const sign=createHmac('sha256',key).update(payload).digest('base64url');
+    const url='http://127.0.0.1:'+port;
+    const response=await fetch(url+'/api/nexora-chat',{
+      method:'POST',headers:{
+        Cookie:'nexora_session='+payload+'.'+sign,
+        Origin:url,'Content-Type':'application/json'
+      },
+      body:JSON.stringify({model:'alice',messages:[
+        {role:'user',content:'Что такое планеты?',token:'ignored'},
+        {role:'assistant',content:'Планеты вращаются вокруг звёзд.'},
+        {role:'user',content:'А сколько планет в Солнечной системе?'}]})
+    });
+    assert.equal(response.status,200);
+    const body=await response.json();
+    assert.equal(body.provider,'Alice AI LLM');
+    assert.equal(body.answer,'Объясняю: 4.');
+    assert.equal(upstreamCalls.length,1);
+    assert.equal(upstreamCalls[0].url,'/api/nexora-chat/internal');
+    assert.equal(upstreamCalls[0].token,secret);
+    assert.equal(upstreamCalls[0].body.model,'alice');
+    assert.deepEqual(upstreamCalls[0].body.messages[0],{role:'user',content:'Что такое планеты?'});
+  }finally{child.kill();await new Promise(resolve=>mock.close(resolve));}
+});
