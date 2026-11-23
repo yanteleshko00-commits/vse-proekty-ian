@@ -8,7 +8,7 @@ import { mathAnswerPrompt } from './math-prompt.js';
 import { textBridge, textBridgeHealth } from './text-bridge.js';
 import { CONTEXT as ARGOSHA_CONTEXT, contextFor, messageHistory, toolForQuery, safeArgoshaAction, parseArgoshaAnswer, argoshaSystemPrompt, localArgoshaReply } from './argosha-core.js';
 import { makeGame } from './game-studio.js';
-import {makeCodeGame,prepareGamePreview} from './game-code.js';
+import {makeCodeGame,prepareGamePreview,serveGamePreview} from './game-code.js';
 import { validateChatRequest } from './chat-core.js';
 import { appendFractionWorking, fractionHelpForProblem } from './math-fractions.js';
 import { inferMathKind, mathStudyGuide, datasetHint, MATH_KINDS, MATH_LEVELS } from './math-curriculum.js';
@@ -656,6 +656,7 @@ const server = http.createServer(async (req, res) => {
   if(req.method === 'POST' && url.pathname === '/api/game/generate')return makeGame(req,res);
   if(req.method === 'POST' && url.pathname === '/api/game/code')return makeCodeGame(req,res,{authenticated:!!readSession(req)});
   if(req.method === 'POST' && url.pathname === '/api/game/preview')return prepareGamePreview(req,res);
+  if(req.method === 'GET' && url.pathname.startsWith('/game/preview/'))return serveGamePreview(res,url.pathname.slice('/game/preview/'.length));
 
   if (url.pathname === '/api/images/generate') {
     return send(res, 410, JSON.stringify({
