@@ -15,6 +15,16 @@ const tools=[
  {id:'game',name:'Сделать игру',status:'available',description:'Игры',url:'/game'},
  {id:'chat',name:'Не работает',status:'coming_soon',description:'',url:'https://wrong.example/'}
 ];
+test('NEXORA header and favicon use the same clean N-only SVG',async()=>{
+ const logo=await readFile(join(here,'public/nexora-mark.svg'),'utf8');
+ const html=await readFile(join(here,'public/index.html'),'utf8');
+ assert.match(logo,/<svg/);
+ assert.match(logo,/<path d="M34 94V34L94 94V34"/);
+ assert.doesNotMatch(logo,/<text|<image|🎮|🎨|📐/);
+ assert.match(html,/<link rel="icon" type="image\/svg\+xml" href="\/nexora-mark.svg">/);
+ assert.match(html,/<img src="\/nexora-mark.svg" alt="" width="40" height="40"/);
+});
+
 test('Argosha contexts are the six public NEXORA sites',()=>{
  assert.deepEqual(Object.keys(CONTEXT),['lobby','math','image','text','game','projects']);
  assert.equal(contextFor('unknown'),'lobby');
