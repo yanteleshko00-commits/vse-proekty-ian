@@ -34,6 +34,18 @@ assert.ok(html.includes('id="files"')&&html.includes('id="camera"')&&html.includ
 assert.equal((html.match(/data-format-choice=/g)||[]).length,9);
 assert.match(html,/function prepareFiles\(/);
 assert.match(html,/function compressPhoto\(/);
+for(const id of ['topic-wizard','wizard-question','wizard-options','wizard-details','wizard-count','wizard-progress','wizard-next','wizard-back','wizard-skip','wizard-summary','wizard-edit'])
+  assert.ok(html.includes('id="'+id+'"'),'Missing questionnaire control '+id);
+assert.match(html,/topic-wizard\[hidden\]/);
+assert.match(js,/const wizardSteps=\[/);
+assert.match(js,/function renderWizard\(/);
+assert.match(js,/function wizardOnTopic\(/);
+assert.match(js,/\$\("topic"\)\.addEventListener\("input",wizardOnTopic\)/);
+assert.match(js,/function wizardRequirements\(/);
+assert.match(js,/wizardRequirements\(\)/);
+assert.match(js,/const requirements=\[\$\("requirements"\)\.value\.trim\(\),wizardRequirements\(\)\]/);
+assert.equal((js.match(/\{key:"(?:format|audience|purpose|tone|details)"/g)||[]).length,5);
+
 assert.ok(normalizeTextRequest({action:'create',source:'Данные из документа для нового текста'}).source);
 assert.equal(normalizeTextRequest({action:'rewrite',images:[{mime:'image/jpeg',data:'stub'}]}).images.length,1);
 const sampleText=Buffer.from('Из документа: краткие заметки для будущего текста.', 'utf8');
@@ -84,7 +96,7 @@ try{
   assert.equal(invalid.status,400);
   const generation=await fetch('http://127.0.0.1:'+port+'/api/generate',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'create',topic:'Пост о пользе чтения',format:'post',tone:'friendly',size:'short',language:'ru'})
+    body:JSON.stringify({action:'create',topic:'Пост о пользе чтения',format:'post',tone:'friendly',size:'short',language:'ru',requirements:'Для кого: Подписчикам.\nЦель текста: Заинтересовать.\nОбязательно включить: пример из жизни.'})
   });
   assert.equal(generation.status,200);
   const result=await generation.json();
@@ -92,6 +104,9 @@ try{
   assert.equal(result.provider,'Mock model');
   assert.equal(lastBody.action,'create');
   assert.equal(lastBody.format,'post');
+  assert.match(lastBody.requirements,/Для кого: Подписчикам/);
+  assert.match(lastBody.requirements,/Цель текста: Заинтересовать/);
+  assert.match(lastBody.requirements,/Обязательно включить: пример из жизни/);
   const sourceRequest=await fetch('http://127.0.0.1:'+port+'/api/generate',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({action:'create',topic:'Сделай краткий рассказ по заметкам',format:'story',attachments:[txtFile]})
@@ -105,5 +120,5 @@ try{
   assert.equal(photoRequest.status,200);
   assert.equal(lastBody.images.length,1);
   assert.equal(lastBody.action,'rewrite');
-  console.log('Text Studio checks passed: 6 modes, 9 text types, photo/TXT attachments, safe file limits, mobile UI, mock gateway and text responses.');
+  console.log('Text Studio checks passed: 6 modes, 5-step topic questionnaire, 9 text types, photo/TXT attachments, safe limits, mobile UI, gateway and text responses.');
 }finally{child.kill();await new Promise(resolve=>upstream.close(resolve))}
