@@ -23,6 +23,9 @@ test('Game Studio UI has bold text, playable mobile controls and standalone expo
   assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
  for(const type of ['snake','catch','target'])assert.ok(html.includes('data-type="'+type+'"'));
  assert.match(html,/font-weight:680/);
+ assert.match(html,/class="nx-argosha-host"/);
+ assert.match(html,/argosha\/embed\?studio=game/);
+ assert.match(html,/\.standalone \.nx-argosha-host\{display:none!important\}/);
  for(const id of ['nxquiz','nxq-question','nxq-next','nxq-skip','nxq-back','nxq-options'])
   assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(html,/role="dialog" aria-modal="true"/);
