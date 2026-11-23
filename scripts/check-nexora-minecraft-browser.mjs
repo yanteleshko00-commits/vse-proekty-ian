@@ -54,7 +54,15 @@ try{
  assert.match(await game.locator('#place').getAttribute('class'),/active/);
  await game.locator('#mine').click();
  assert.match(await game.locator('#mine').getAttribute('class'),/active/);
- console.log('MINECRAFT INTERACTION','mining/building buttons functional');
+ await game.locator('#restart').click();
+ await page.waitForTimeout(120);
+ const initialResources=await game.locator('#resources').textContent();
+ await page.locator('[data-game-arrow="space"]').click();
+ await page.waitForTimeout(160);
+ const afterMine=await game.locator('#resources').textContent();
+ console.log('MINECRAFT ACTION TEST','before',initialResources,'after',afterMine,'message',await game.locator('#notice').textContent());
+ assert.notEqual(afterMine,initialResources,'Action button did not mine a block after reset');
+ console.log('MINECRAFT INTERACTION','mining/building buttons and action functional');
  await page.locator('#ai-code-tab').click();
  const source=await page.locator('#ai-source').inputValue();
  assert.ok(source.includes('function interact'));
