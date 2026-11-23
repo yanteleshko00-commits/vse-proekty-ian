@@ -130,7 +130,9 @@ export async function textBridge(req,res){
           headers:{'Authorization':'Bearer '+p.key,'Content-Type':'application/json','HTTP-Referer':process.env.APP_URL||'https://nexora-lobby.onrender.com','X-Title':'NEXORA Text Studio'},
           body:JSON.stringify({
             model:p.model,temperature:params.action==='proofread'?0.15:0.65,
-            max_tokens:params.size==='long'?3200:params.size==='short'?1100:2200,
+            max_tokens:params.targetWords
+              ? Math.min(4900,Math.max(850,Math.ceil(params.targetWords*3.5)+350))
+              : params.size==='long'?3200:params.size==='short'?1100:2200,
             ...(p.name.startsWith('OpenRouter')?{reasoning:{effort:'minimal'}}:{}),
             messages:[
               {role:'system',content:buildTextPrompt(params)},
