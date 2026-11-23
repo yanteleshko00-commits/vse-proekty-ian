@@ -918,7 +918,7 @@ async function commonsImage(query, used, additionalSubjects = []) {
             const title = (p.title || '').toLowerCase();
             return (mime === 'image/jpeg' ? 6 : mime === 'image/png' ? 2 : -10)
               + (/\.(jpg|jpeg)$/i.test(title) ? 2 : 0)
-              + imageCandidateScore(title, q, p.index || 0);
+              + imageCandidateScore(title, query, p.index || 0);
           };
           return score(b) - score(a);
         });
@@ -928,7 +928,7 @@ async function commonsImage(query, used, additionalSubjects = []) {
           if (!candidate || !isTrustedWikimediaImageUrl(candidate)) continue;
           if (used.has(candidate)) continue;
           if (!['image/jpeg', 'image/png'].includes(info?.mime || '')) continue;
-          if (imageCandidateScore(page.title, q, page.index || 0) <= -50) continue;
+          if (imageCandidateScore(page.title, query, page.index || 0) <= -50) continue;
           used.add(candidate);
           return {
             url: candidate,
