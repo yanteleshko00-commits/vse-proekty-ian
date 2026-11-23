@@ -85,10 +85,13 @@ export async function fallbackGameHTML(idea){
  const start=html.indexOf('<script src="/game.js"></script>');
  if(start<0)throw Error('Шаблон игры недоступен.');
  const preset=JSON.stringify(plan).replace(/</g,'\\u003c').replace(/>/g,'\\u003e');
+ // The standalone fallback does not need the legacy download handler; remove
+ // its literal script tags and network calls from the downloadable game.
+ const standaloneJs=js.replace(/async function download\(\)\{[\s\S]*?\n\}\n\$\("download"\)\.addEventListener\("click",download\);/, 'async function download(){}\n$("download").addEventListener("click",download);');
  return html.slice(0,start)
   .replace(/<!-- START AI STUDIO -->[\s\S]*?<!-- END AI STUDIO -->/,'')
   .replace('id="classic-workspace" hidden','id="classic-workspace"')
-  +'<script>window.__GAME_PRESET__='+preset+';\n'+js.replace(/<\/script/gi,'<\\/script')+'</script></body></html>';
+  +'<script>window.__GAME_PRESET__='+preset+';\n'+standaloneJs.replace(/<\/script/gi,'<\\/script')+'</script></body></html>';
 }
 async function generateWithAI(idea,secret){
  if(secret.length<32)return null;
