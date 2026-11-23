@@ -10,6 +10,11 @@ const dir = fileURLToPath(new URL('.', import.meta.url));
 const html = await readFile(join(dir, 'index.html'), 'utf8');
 assert.match(html, /id="problem"/);
 assert.match(html, /id="solve"/);
+assert.match(html,/class="nx-argosha-host"/);
+assert.match(html,/argosha\/embed\?studio=math/);
+assert.match(html,/class="nx-argosha-frame"/);
+const mathServerText=await readFile(join(dir,'server.js'),'utf8');
+assert.match(mathServerText,/frame-src https:\/\/nexora-lobby\.onrender\.com/);
 for(const id of ["nxquiz","nxq-next","nxq-back","nxq-skip","nxq-question","nxq-preview","nxq-options","nxq-book"])
  assert.ok(html.includes('id="'+id+'"'),'Missing quiz item '+id);
 assert.match(html,/role="dialog" aria-modal="true"/);
