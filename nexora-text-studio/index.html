@@ -173,6 +173,29 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 #final-settings{margin-top:5px}
 #topic-wizard{margin-top:10px}
 @media(max-width:600px){#example-topics .example{font-size:9.5px;padding:7px 9px}#final-settings{gap:9px}}
+
+/* Six sequential quiz questions. Hide other inputs until answers are complete. */
+.wizard-active #example-topics,
+.wizard-active #attachments-field,
+.wizard-active #final-settings,
+.wizard-active #generate,
+.wizard-active > .hint {display:none!important}
+.topic-wizard{min-height:272px;position:relative;padding:20px}
+.wizard-flow{animation:wizard-enter .16s ease-out}
+@keyframes wizard-enter{from{opacity:.7;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.wizard-question{font-size:17px;line-height:1.5;margin-bottom:8px}
+.wizard-options{grid-template-columns:repeat(2,minmax(0,1fr))}
+.wizard-choice{min-height:49px;font-size:12px}
+.wizard-action.primary:disabled{background:#cfc2e8;opacity:.58}
+.wizard-words-custom{display:grid;gap:7px;margin-top:14px}
+.wizard-words-custom[hidden],.wizard-options[hidden],.wizard-input-error[hidden]{display:none!important}
+.wizard-words-custom label{color:#6c5c88;font-size:11px;font-weight:820}
+.wizard-words-custom input{width:100%;max-width:220px;min-height:46px;padding:9px 12px;border:1px solid #d5c7f1;border-radius:10px;background:white;color:#2b2142;font-size:15px}
+.wizard-words-custom small{font-size:10px;color:#8b7d9e;line-height:1.5}
+.wizard-input-error{font-size:11px;color:#b74965;margin:9px 0 0;line-height:1.6}
+:root[data-theme=dark] .wizard-words-custom input{color:#fff;background:#332a4c;border-color:#725a9e}
+@media(max-width:600px){.topic-wizard{min-height:285px;padding:17px 14px}.wizard-question{font-size:16px}.wizard-choice{font-size:11px;min-height:51px}.wizard-words-custom input{font-size:16px}}
+
 </style>
 </head>
 <body>
@@ -192,7 +215,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
     <div><div class="eyebrow">NEXORA / CREATIVE WORKSPACE</div><h1>Идея превращается <em>в текст.</em></h1><p>Пишите, редактируйте и улучшайте тексты с помощью ИИ. От первой мысли до готового материала — в одном аккуратном пространстве.</p></div>
   </div>
   <div class="workspace">
-    <section class="panel" aria-labelledby="create-title">
+    <section class="panel" id="creation-panel" aria-labelledby="create-title">
       <div class="panel-head"><h2 id="create-title">Настройка текста</h2><span>01 / EDITOR</span></div>
       <span class="section-label">Выберите действие</span>
       <div class="actions" aria-label="Режим работы">
@@ -217,19 +240,25 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
       </div>
 
       <section class="topic-wizard" id="topic-wizard" hidden aria-labelledby="wizard-heading">
-        <div class="wizard-top"><span class="wizard-kicker" id="wizard-heading">✦ УТОЧНИМ ВАШ ТЕКСТ</span><span class="wizard-step-counter" id="wizard-count">Шаг 1 из 5</span></div>
-        <div class="wizard-track" role="progressbar" aria-label="Заполнение опросника" aria-valuemin="0" aria-valuemax="5" aria-valuenow="1" id="wizard-progress"><span class="wizard-track-fill" id="wizard-fill"></span></div>
+        <div class="wizard-top"><span class="wizard-kicker" id="wizard-heading">✦ УТОЧНИМ ВАШ ТЕКСТ</span><span class="wizard-step-counter" id="wizard-count">Вопрос 1 из 6</span></div>
+        <div class="wizard-track" role="progressbar" aria-label="Заполнение опросника" aria-valuemin="0" aria-valuemax="6" aria-valuenow="1" id="wizard-progress"><span class="wizard-track-fill" id="wizard-fill"></span></div>
         <div class="wizard-flow" id="wizard-flow">
           <h3 class="wizard-question" id="wizard-question"></h3>
           <p class="wizard-description" id="wizard-description"></p>
           <div class="wizard-options" id="wizard-options" role="group" aria-label="Варианты ответа"></div>
+          <div class="wizard-words-custom" id="wizard-words-custom" hidden>
+            <label for="wizard-word-count">Введите нужное количество слов</label>
+            <input id="wizard-word-count" type="number" min="50" max="1200" step="1" inputmode="numeric" placeholder="Например, 350">
+            <small>От 50 до 1200 слов. ИИ постарается приблизиться к этому объёму.</small>
+          </div>
+          <p class="wizard-input-error" id="wizard-input-error" hidden role="alert"></p>
           <div class="wizard-extra" id="wizard-extra" hidden>
             <label for="wizard-details">Необязательно — свои пожелания</label>
             <textarea id="wizard-details" maxlength="650" placeholder="Например: три аргумента, пример из жизни, вывод, без сложных терминов…"></textarea>
           </div>
           <div class="wizard-actions" id="wizard-actions">
             <button type="button" class="wizard-action" id="wizard-back">Назад</button>
-            <button type="button" class="wizard-action skip" id="wizard-skip">Пропустить</button>
+            <button type="button" class="wizard-action skip" id="wizard-skip">Пропустить опрос</button>
             <button type="button" class="wizard-action primary" id="wizard-next">Далее</button>
           </div>
         </div>
@@ -240,7 +269,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
         <label for="source">Исходный текст <small>до 16 000 знаков</small></label>
         <textarea id="source" maxlength="16000" style="min-height:164px" placeholder="Вставьте сюда текст, который нужно изменить, исправить, сократить или пересказать…"></textarea>
       </div>
-      <div class="field">
+      <div class="field" id="attachments-field">
         <span class="section-label">Прикрепить исходные материалы</span>
         <div class="attach-toolbar">
           <input id="files" class="file-hidden" type="file" accept="image/*,.heic,.heif,.pdf,.docx,.txt" multiple aria-label="Выбрать фотографии и документы">
@@ -251,9 +280,9 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
         <div id="file-list" class="file-list" aria-live="polite"></div>
         <p class="attach-hint">До 3 файлов: фото, PDF, Word (.docx) или TXT. ИИ читает содержимое и использует его в тексте. Для PDF со сканами лучше приложить снимок страницы.</p>
       </div>
-      <div class="field-row" id="final-settings">
-        <div class="field"><label for="size">Объём</label><select id="size"><option value="short">Короткий</option><option value="medium" selected>Средний</option><option value="long">Подробный</option></select></div>
-        <div class="field"><label for="language">Язык</label><select id="language"><option value="ru">Русский</option><option value="en">English</option></select></div>
+      <div class="field" id="final-settings">
+        <label for="language">Язык текста</label>
+        <select id="language"><option value="ru">Русский</option><option value="en">English</option></select>
       </div>
       <button id="generate" class="generate" type="button">✦ &nbsp; Создать текст</button>
       <div class="error" id="error" role="alert"></div>
@@ -385,49 +414,87 @@ const wizardAudience={
  letter:[["teacher","Учителю"],["work","Коллегам"],["clients","Клиентам"],["friends","Друзьям"]],
  general:[["school","Для школы"],["general","Для всех"],["work","Для работы"],["personal","Для себя"]]
 };
-const wizardSteps=[
- {key:"format",question:"Какой текст нужно составить?",description:"Этот формат будет использован при создании текста."},
- {key:"audience",question:"Для кого вы пишете?",description:"Это поможет выбрать понятные слова и подходящие примеры."},
- {key:"purpose",question:"Чего хотите добиться текстом?",description:"Например, объяснить тему или заинтересовать читателей."},
- {key:"tone",question:"Как должен звучать текст?",description:"Официально, легко, творчески или по-учебному."},
- {key:"details",question:"Что обязательно включить?",description:"Назовите ключевые мысли, примеры или детали. Этот вопрос можно пропустить."}
+const wizardWordsOptions=[
+ ["100","100 слов"],["200","200 слов"],["300","300 слов"],
+ ["500","500 слов"],["800","800 слов"],["custom","Своё количество"]
 ];
-let wizardStep=0,wizardFinished=false,wizardSkipped=false;
-const wizardAnswers={format:"free",audience:"",purpose:"",tone:"neutral",details:""};
+const wizardSteps=[
+ {key:"format",question:"Какой текст нужно составить?",description:"Выберите один вариант, и появится следующий вопрос."},
+ {key:"audience",question:"Для кого предназначен текст?",description:"Подберём слова и примеры для читателя."},
+ {key:"purpose",question:"Какова главная цель текста?",description:"Например, объяснить тему или заинтересовать читателей."},
+ {key:"tone",question:"В каком стиле написать?",description:"Выберите подходящее звучание текста."},
+ {key:"words",question:"Сколько слов должно быть в тексте?",description:"Выберите объём или укажите точное количество самостоятельно."},
+ {key:"details",question:"Что обязательно включить?",description:"Последний вопрос. Можно добавить примеры, ключевые мысли или оставить пустым."}
+];
+let wizardStep=0,wizardFinished=false,wizardSkipped=false,wizardAdvanceTimer=null;
+const wizardAnswers={format:"",audience:"",purpose:"",tone:"",words:"",customWords:"",details:""};
 function wizardOptionsFor(key){
  if(key==="format")return wizardFormatOptions;
  if(key==="audience")return wizardAudience[wizardAnswers.format]||wizardAudience.general;
  if(key==="purpose")return wizardPurposes;
  if(key==="tone")return wizardToneOptions;
+ if(key==="words")return wizardWordsOptions;
  return [];
 }
 function wizardOptionLabel(key,value){
  return wizardOptionsFor(key).find(pair=>pair[0]===value)?.[1]||"Не указано";
 }
+function wizardWordCount(){
+ const value=wizardAnswers.words==="custom"?wizardAnswers.customWords:wizardAnswers.words;
+ const number=Number(value);
+ return /^\d+$/.test(String(value))&&Number.isSafeInteger(number)&&number>=50&&number<=1200?number:null;
+}
 function resetWizard(){
+ clearTimeout(wizardAdvanceTimer);
  wizardStep=0;wizardFinished=false;wizardSkipped=false;
- Object.assign(wizardAnswers,{format:"free",audience:"",purpose:"",tone:"neutral",details:""});
+ Object.assign(wizardAnswers,{format:"",audience:"",purpose:"",tone:"",words:"",customWords:"",details:""});
+}
+function wizardError(message){
+ $("wizard-input-error").textContent=message;
+ $("wizard-input-error").hidden=!message;
+}
+function answeredCurrentQuestion(){
+ const key=wizardSteps[wizardStep].key;
+ if(key==="details")return true;
+ if(key==="words")return wizardWordCount()!==null;
+ return Boolean(wizardAnswers[key]);
+}
+function advanceWizard(){
+ clearTimeout(wizardAdvanceTimer);
+ if(!answeredCurrentQuestion()){
+   wizardError(wizardSteps[wizardStep].key==="words"?
+     "Введите целое количество слов от 50 до 1200.":"Выберите один вариант ответа.");
+   return;
+ }
+ wizardError("");
+ if(wizardStep<wizardSteps.length-1)wizardStep++;
+ else wizardFinished=true;
+ renderWizard();
 }
 function renderWizard(){
- const panel=$("topic-wizard"),valid=action==="create"&&$("topic").value.trim().length>=4&&!wizardSkipped;
+ const panel=$("topic-wizard");
+ const valid=action==="create"&&$("topic").value.trim().length>=4&&!wizardSkipped;
  panel.hidden=!valid;
+ $("creation-panel").classList.toggle("wizard-active",valid&&!wizardFinished);
  if(!valid)return;
  $("wizard-flow").hidden=wizardFinished;
  $("wizard-summary").hidden=!wizardFinished;
  $("wizard-edit").hidden=!wizardFinished;
- $("wizard-progress").setAttribute("aria-valuenow",String(wizardFinished?5:wizardStep+1));
- $("wizard-fill").style.width=(wizardFinished?100:(wizardStep+1)*20)+"%";
- $("wizard-count").textContent=wizardFinished?"Готово":"Шаг "+(wizardStep+1)+" из "+wizardSteps.length;
+ $("wizard-progress").setAttribute("aria-valuenow",String(wizardFinished?wizardSteps.length:wizardStep+1));
+ $("wizard-fill").style.width=(wizardFinished?100:(wizardStep+1)/wizardSteps.length*100)+"%";
+ $("wizard-count").textContent=wizardFinished?"Готово":"Вопрос "+(wizardStep+1)+" из "+wizardSteps.length;
+ wizardError("");
  if(wizardFinished){
    const parts=[
      "Формат: "+wizardOptionLabel("format",wizardAnswers.format),
-     wizardAnswers.audience?"Читатель: "+wizardOptionLabel("audience",wizardAnswers.audience):"",
+     wizardAnswers.audience?"Для кого: "+wizardOptionLabel("audience",wizardAnswers.audience):"",
      wizardAnswers.purpose?"Цель: "+wizardOptionLabel("purpose",wizardAnswers.purpose):"",
      "Стиль: "+wizardOptionLabel("tone",wizardAnswers.tone),
-     wizardAnswers.details?"Детали: "+wizardAnswers.details:""
+     wizardWordCount()?"Объём: "+wizardWordCount()+" слов":"",
+     wizardAnswers.details.trim()?"Детали: "+wizardAnswers.details.trim():""
    ].filter(Boolean);
    const summary=$("wizard-summary");summary.replaceChildren();
-   const heading=document.createElement("strong");heading.textContent="✓ Опросник заполнен";
+   const heading=document.createElement("strong");heading.textContent="✓ Все ответы сохранены";
    const info=document.createElement("p");info.textContent=parts.join(" · ");
    summary.append(heading,info);
    return;
@@ -436,48 +503,76 @@ function renderWizard(){
  $("wizard-question").textContent=step.question;
  $("wizard-description").textContent=step.description;
  const host=$("wizard-options");host.replaceChildren();
- const isDetails=step.key==="details";
+ const isDetails=step.key==="details",isWords=step.key==="words";
  host.hidden=isDetails;
  $("wizard-extra").hidden=!isDetails;
- if(isDetails){
-   $("wizard-details").value=wizardAnswers.details;
- }else{
+ $("wizard-words-custom").hidden=!isWords||wizardAnswers.words!=="custom";
+ if(isDetails)$("wizard-details").value=wizardAnswers.details;
+ if(isWords)$("wizard-word-count").value=wizardAnswers.customWords;
+ if(!isDetails){
    for(const [value,label] of wizardOptionsFor(step.key)){
-     const option=document.createElement("button");option.type="button";
-     option.className="wizard-choice";option.textContent=label;
-     option.setAttribute("aria-pressed",String(wizardAnswers[step.key]===value));
+     const option=document.createElement("button");
+     option.type="button";option.className="wizard-choice";
+     option.textContent=label;
+     option.setAttribute("aria-pressed",String(String(wizardAnswers[step.key])===value));
      option.addEventListener("click",()=>{
-       wizardAnswers[step.key]=value;
-       if(step.key==="format"){
-         if(!wizardOptionsFor("audience").some(pair=>pair[0]===wizardAnswers.audience))wizardAnswers.audience="";
-       }
+       clearTimeout(wizardAdvanceTimer);
+       const index=wizardStep;
+       wizardAnswers[step.key]=isWords&&value!=="custom"?Number(value):value;
+       if(step.key==="format"&&!wizardOptionsFor("audience").some(pair=>pair[0]===wizardAnswers.audience))
+         wizardAnswers.audience="";
        renderWizard();
+       if(isWords&&value==="custom"){
+         $("wizard-word-count").focus();
+         return;
+       }
+       // Like a test: choosing an answer automatically shows the next question.
+       wizardAdvanceTimer=setTimeout(()=>{
+         if(wizardStep===index&&!wizardFinished&&!wizardSkipped)advanceWizard();
+       },230);
      });
      host.appendChild(option);
    }
  }
  $("wizard-back").disabled=wizardStep===0;
- $("wizard-next").textContent=wizardStep===wizardSteps.length-1?"Готово":"Далее";
+ $("wizard-next").disabled=!answeredCurrentQuestion();
+ $("wizard-next").textContent=wizardStep===wizardSteps.length-1?"Завершить опрос":"Далее";
 }
 function wizardOnTopic(){
  if($("topic").value.trim().length>=4&&wizardSkipped)wizardSkipped=false;
  if(!$("topic").value.trim()){
    resetWizard();
    $("topic-wizard").hidden=true;
+   $("creation-panel").classList.remove("wizard-active");
    return;
  }
  renderWizard();
 }
 $("topic").addEventListener("input",wizardOnTopic);
 $("wizard-details").addEventListener("input",()=>{wizardAnswers.details=$("wizard-details").value.slice(0,650)});
-$("wizard-next").addEventListener("click",()=>{
- if(wizardStep<wizardSteps.length-1)wizardStep++;
- else wizardFinished=true;
+$("wizard-word-count").addEventListener("input",()=>{
+ wizardAnswers.customWords=$("wizard-word-count").value.trim();
+ $("wizard-next").disabled=!answeredCurrentQuestion();
+ wizardError("");
+});
+$("wizard-word-count").addEventListener("keydown",event=>{
+ if(event.key==="Enter"){event.preventDefault();advanceWizard();}
+});
+$("wizard-next").addEventListener("click",advanceWizard);
+$("wizard-back").addEventListener("click",()=>{
+ clearTimeout(wizardAdvanceTimer);
+ if(wizardStep>0)wizardStep--;
  renderWizard();
 });
-$("wizard-back").addEventListener("click",()=>{if(wizardStep>0)wizardStep--;renderWizard()});
-$("wizard-skip").addEventListener("click",()=>{wizardSkipped=true;Object.assign(wizardAnswers,{format:"free",audience:"",purpose:"",tone:"neutral",details:""});renderWizard()});
-$("wizard-edit").addEventListener("click",()=>{wizardFinished=false;wizardStep=0;renderWizard()});
+$("wizard-skip").addEventListener("click",()=>{
+ clearTimeout(wizardAdvanceTimer);
+ wizardSkipped=true;
+ Object.assign(wizardAnswers,{format:"",audience:"",purpose:"",tone:"",words:"",customWords:"",details:""});
+ renderWizard();
+});
+$("wizard-edit").addEventListener("click",()=>{
+ wizardFinished=false;wizardStep=0;renderWizard();
+});
 function wizardRequirements(){
  if(action!=="create"||wizardSkipped)return "";
  const parts=[];
@@ -488,7 +583,12 @@ function wizardRequirements(){
 }
 
 const stats=text=>({characters:text.length,words:(text.trim().match(/[\p{L}\p{N}]+(?:[-’'][\p{L}\p{N}]+)*/gu)||[]).length});
-function updateStats(){const s=stats($("result-editor").value);$("words").textContent=s.words+" слов";$("characters").textContent=s.characters+" символов"}
+let lastTargetWords=null;
+function updateStats(){
+ const s=stats($("result-editor").value);
+ $("words").textContent=s.words+" слов"+(lastTargetWords?" · цель "+lastTargetWords:"");
+ $("characters").textContent=s.characters+" символов";
+}
 function toast(message){const el=$("toast");el.textContent=message;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),2800)}
 function showError(message){$("error").textContent=message;$("error").classList.add("show");$("output-status").textContent="Нужна повторная попытка"}
 function clearError(){$("error").classList.remove("show");$("error").textContent=""}
@@ -530,10 +630,16 @@ async function generate(){
   if(action==="create"&&topic.length<4&&!filesSelected.length){showError("Опишите тему или прикрепите файл/фотографию.");$("topic").focus();return}
   if(action!=="create"&&source.length<15&&!filesSelected.length){showError("Добавьте исходный текст или прикрепите фото/документ.");$("source").focus();return}
   clearError();
+  if(action==="create"&&!wizardSkipped&&!wizardFinished&&topic.length>=4){
+    $("topic-wizard").scrollIntoView({behavior:"smooth",block:"center"});
+    return;
+  }
   const requirements=wizardRequirements().slice(0,1300);
   const format=action==="create"&&!wizardSkipped?wizardAnswers.format:"free";
   const tone=action==="create"&&!wizardSkipped?wizardAnswers.tone:"neutral";
-  const data={action,topic,source,format,tone,size:$("size").value,language:$("language").value,requirements};
+  const targetWords=action==="create"&&!wizardSkipped?wizardWordCount():null;
+  const size=targetWords===null?"medium":targetWords<=150?"short":targetWords>=600?"long":"medium";
+  const data={action,topic,source,format,tone,size,targetWords,language:$("language").value,requirements};
   controller=new AbortController();loading(true);
   let timedOut=false;const timeout=setTimeout(()=>{timedOut=true;controller.abort()},235000);
   try{
@@ -542,6 +648,7 @@ async function generate(){
     const response=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...data,attachments}),signal:controller.signal});
     const result=await response.json().catch(()=>({}));
     if(!response.ok||!result.ok||typeof result.text!=="string")throw Error(result.message||"Не удалось создать текст.");
+    lastTargetWords=targetWords;
     render(result.text,result.provider);
   }catch(error){
     if(error.name==="AbortError"&&!timedOut){$("output-status").textContent="Отменено";toast("Генерация отменена")}
