@@ -725,6 +725,20 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (url.pathname === '/nexora-mark.svg' || url.pathname === '/favicon.ico') {
+    try {
+      const logo = await readFile(join(publicDir, 'nexora-mark.svg'));
+      return send(res, 200, logo, {
+        'Content-Type': 'image/svg+xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600',
+        'X-Content-Type-Options': 'nosniff'
+      });
+    } catch (error) {
+      console.error('NEXORA logo unavailable:', error.message);
+      return send(res, 503, 'Logo unavailable');
+    }
+  }
+
   if (url.pathname === '/' || url.pathname === '/index.html') {
     try {
       const html = await readFile(join(publicDir, 'index.html'));
