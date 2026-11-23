@@ -579,6 +579,15 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 :root[data-theme=dark] .brand-mark{background:transparent!important}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .brand-mark{background:transparent!important}}
 </style>
+<style id="nexora-registration-pricing-style">
+.actions{flex-wrap:nowrap}
+.register-button{height:42px;border:1px solid rgba(167,143,235,.5);border-radius:14px;padding:0 12px;background:rgba(151,125,234,.13);color:var(--ink);font:800 12px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer;white-space:nowrap}
+.register-button:hover,.register-button:focus-visible{background:rgba(151,125,234,.24)}
+.hero-content .hero-meta{margin-top:23px}
+.plan-caption{max-width:690px}
+@media(max-width:520px){.register-button{height:37px;padding:0 8px;font-size:10px;border-radius:11px}.actions{gap:5px}.login-button{max-width:none!important;padding:0 9px!important}}
+@media(max-width:365px){.register-button{font-size:9px;padding:0 6px}.login-button{padding:0 7px!important}.brand-copy strong{font-size:11px}}
+</style>
 </head>
 <body>
 <header class="topbar">
@@ -596,7 +605,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
           <div id="notification-list"></div>
         </section>
       </div>
-      <a class="login-button" id="login-link" href="/auth/start">Войти в NEXORA ID <span aria-hidden="true">↗</span></a>
+      <button class="login-button" id="login-link" type="button" aria-haspopup="dialog" aria-controls="auth-backdrop">Войти <span aria-hidden="true">↗</span></button><button class="register-button" id="register-link" type="button" aria-haspopup="dialog" aria-controls="auth-backdrop">Регистрация</button>
       <form id="logout-form" action="/auth/logout" method="post" style="display:none"><button class="login-button" type="submit">Выйти</button></form>
     </div>
   </div>
@@ -608,7 +617,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
       <div class="eyebrow"><span class="pulse"></span> ПРОСТРАНСТВО ВАШИХ ИДЕЙ</div>
       <h1 id="greeting">Здравствуйте!<br><span>Что создадим сегодня?</span></h1>
       <p class="hero-copy">От первого замысла до готового результата. Исследуйте инструменты NEXORA и создавайте то, что раньше только представляли.</p>
-      <div class="hero-buttons"><a class="hero-start" href="#tools">Выбрать инструмент <span aria-hidden="true">↗</span></a><a class="hero-link" href="https://nexora-image-studio.onrender.com/">Создать изображение →</a></div>
+      
       <div class="hero-meta"><span class="hero-meta-dot"></span> Творчество, учёба и AI в одном месте</div>
     </div>
     <div class="hero-gallery" aria-hidden="true">
@@ -685,7 +694,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
       <article class="plan-card featured"><h3>Pro</h3><div class="plan-count">10</div><p>дополнительных генераций</p></article>
       <article class="plan-card"><h3>Max</h3><div class="plan-count">30</div><p>дополнительных генераций</p></article>
     </div>
-    <p class="plan-caption">Пакеты показывают количество запросов. Списание и покупка будут доступны после подключения генераторов и платёжного сценария.</p>
+    <p class="plan-caption">Цены на Mini, Pro и Max пока не утверждены. Покупка пакетов отключена до подключения оплаты.</p>
   </section>
 
   <footer class="footer" aria-label="Информация о NEXORA">
@@ -751,11 +760,11 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
    <div class="auth-email-row"><input class="auth-input" id="auth-email" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com" required><button class="auth-code-button auth-hidden" id="auth-get-code" type="button">Получить код</button></div>
    <div id="auth-code-wrap" class="auth-hidden"><label class="auth-field" for="auth-code">Код из письма</label><input class="auth-input" id="auth-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 цифр"></div>
    <label class="auth-field" for="auth-password">Пароль</label>
-   <input class="auth-input" id="auth-password" type="password" minlength="6" maxlength="128" autocomplete="current-password" placeholder="Не менее 6 символов" required>
+   <input class="auth-input" id="auth-password" type="password" minlength="8" maxlength="128" autocomplete="current-password" placeholder="Не менее 8 символов" required>
    <button class="auth-primary" id="auth-submit" type="submit">Войти</button>
   </form>
   <div class="auth-message" id="auth-message" role="status" aria-live="polite"></div>
-  <p class="auth-note">Код подтверждения действует 10 минут. Никому его не сообщайте.</p>
+  <p class="auth-note">Код подтверждения действует 10 минут. Никому его не сообщайте. Пароль должен быть не короче 8 символов.</p>
  </section>
 </div>
 
@@ -1045,10 +1054,13 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
  function close(){backdrop.classList.remove('open');document.body.style.overflow=''}
  function setMode(next){mode=next;registrationStarted=false;clearInterval(codeTimer);$('auth-name').disabled=false;$('auth-email').disabled=false;$('auth-password').disabled=false;$('auth-name-wrap').classList.toggle('auth-hidden',mode!=='register');getCode.classList.toggle('auth-hidden',mode!=='register');$('auth-code-wrap').classList.add('auth-hidden');$('auth-heading').textContent=mode==='login'?'Войти в NEXORA ID':'Создать NEXORA ID';$('auth-sub').textContent=mode==='login'?'Один аккаунт для всех сервисов экосистемы.':'Укажите данные, подтвердите почту и создайте единый аккаунт.';submit.textContent=mode==='login'?'Войти':'Зарегистрироваться';$('auth-password').autocomplete=mode==='login'?'current-password':'new-password';document.querySelectorAll('[data-auth-mode]').forEach(b=>b.classList.toggle('active',b.dataset.authMode===mode));getCode.disabled=false;getCode.textContent='Получить код';msg('')}
  async function request(path,payload){const r=await fetch('/api/auth/'+path,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(payload)});const d=await r.json().catch(()=>({}));if(!r.ok){const error=new Error(d.message||({invalid_credentials:'Неверная почта или пароль.',email_not_verified:'Сначала подтвердите электронную почту.',account_already_exists:'Аккаунт с этой почтой уже зарегистрирован. Если почта ещё не подтверждена, отправим новый код.',invalid_registration_data:'Проверьте имя, почту и пароль. Пароль должен содержать минимум 6 символов.',invalid_verification_data:'Введите шестизначный код.',invalid_or_expired_code:'Код неверный или срок его действия истёк.',email_delivery_unavailable:'Не удалось отправить письмо. Проверьте настройки почтового сервиса.',invalid_email:'Проверьте адрес электронной почты.'}[d.error]||'Не удалось выполнить запрос. Попробуйте ещё раз.'));error.code=d.error||'';error.status=r.status;throw error}return d}
- getCode.addEventListener('click',async()=>{const email=$('auth-email').value.trim(),name=$('auth-name').value.trim(),password=$('auth-password').value;if(!name){msg('Сначала укажите имя.');$('auth-name').focus();return}if(!email||!$('auth-email').checkValidity()){msg('Введите корректный адрес электронной почты.');$('auth-email').focus();return}if(password.length<6){msg('Сначала задайте пароль не короче 6 символов.');$('auth-password').focus();return}getCode.disabled=true;getCode.textContent='Отправляем…';msg('');try{let d;try{d=await request('register',{name,email,password})}catch(regError){if(regError.code!=='account_already_exists')throw regError;d=await request('resend-verification',{email})}registrationStarted=true;$('auth-name').disabled=true;$('auth-email').disabled=true;$('auth-password').disabled=true;$('auth-code-wrap').classList.remove('auth-hidden');$('auth-code').focus();msg(d.message||'Если адрес ещё не подтверждён, новый код отправлен. Проверьте Входящие и Спам. Если почта уже подтверждена, переключитесь на вкладку «Вход».',true);let left=60;getCode.textContent=left+' сек.';codeTimer=setInterval(()=>{left--;if(left<=0){clearInterval(codeTimer);getCode.disabled=false;getCode.textContent='Отправить ещё раз'}else getCode.textContent=left+' сек.'},1000)}catch(e){getCode.disabled=false;getCode.textContent='Получить код';msg(e.message)}});
+ getCode.addEventListener('click',async()=>{const email=$('auth-email').value.trim(),name=$('auth-name').value.trim(),password=$('auth-password').value;if(!name){msg('Сначала укажите имя.');$('auth-name').focus();return}if(!email||!$('auth-email').checkValidity()){msg('Введите корректный адрес электронной почты.');$('auth-email').focus();return}if(password.length<8){msg('Сначала задайте пароль не короче 8 символов.');$('auth-password').focus();return}getCode.disabled=true;getCode.textContent='Отправляем…';msg('');try{let d;try{d=await request('register',{name,email,password})}catch(regError){if(regError.code!=='account_already_exists')throw regError;d=await request('resend-verification',{email})}registrationStarted=true;$('auth-name').disabled=true;$('auth-email').disabled=true;$('auth-password').disabled=true;$('auth-code-wrap').classList.remove('auth-hidden');$('auth-code').focus();msg(d.message||'Если адрес ещё не подтверждён, новый код отправлен. Проверьте Входящие и Спам. Если почта уже подтверждена, переключитесь на вкладку «Вход».',true);let left=60;getCode.textContent=left+' сек.';codeTimer=setInterval(()=>{left--;if(left<=0){clearInterval(codeTimer);getCode.disabled=false;getCode.textContent='Отправить ещё раз'}else getCode.textContent=left+' сек.'},1000)}catch(e){getCode.disabled=false;getCode.textContent='Получить код';msg(e.message)}});
  form.addEventListener('submit',async e=>{e.preventDefault();if(submit.disabled)return;const email=$('auth-email').value.trim(),password=$('auth-password').value;submit.disabled=true;msg('');try{if(mode==='login'){await request('login',{email,password});location.reload();return}if(!registrationStarted){throw new Error('Сначала нажмите «Получить код» рядом с электронной почтой.')}const code=$('auth-code').value.trim();if(!/^\d{6}$/.test(code))throw new Error('Введите шестизначный код из письма.');await request('verify-email',{email,code});await request('login',{email,password});location.reload()}catch(e){msg(e.message)}finally{submit.disabled=false}});
  // Use the central NEXORA ID sign-in page so the auth-domain SSO session is shared across sites.
  $('auth-close').addEventListener('click',close);backdrop.addEventListener('click',e=>{if(e.target===backdrop)close()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&backdrop.classList.contains('open'))close()});document.querySelectorAll('[data-auth-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.authMode)));
+ const loginTrigger=$('login-link'),registerTrigger=$('register-link');
+ if(loginTrigger)loginTrigger.addEventListener('click',()=>{setMode('login');open()});
+ if(registerTrigger)registerTrigger.addEventListener('click',()=>{setMode('register');open()});
  const params=new URLSearchParams(location.search);if(params.get('login')==='failed'){setMode('login');open();msg('Не удалось войти. Проверьте данные и попробуйте ещё раз.');history.replaceState({},'',location.pathname)}
 })();
 </script>
