@@ -2,7 +2,7 @@ import json
 import urllib.request
 import urllib.error
 for service in ("https://vse-proekty-ian-1.onrender.com", "https://vse-proekty-ian.onrender.com"):
-    url=service+"/api/image-source-health"
+    url=service+"/api/image-providers-health"
     try:
         with urllib.request.urlopen(url, timeout=50) as resp:
             status=resp.status
