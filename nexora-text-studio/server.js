@@ -46,7 +46,7 @@ const server=http.createServer(async(req,res)=>{
       res.writeHead(200,{
         'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=90',
         'X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin',
-        'Content-Security-Policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+        'Content-Security-Policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; frame-src https://nexora-lobby.onrender.com; frame-ancestors 'none'; form-action 'self'"
       });
       return res.end(html);
     }catch(error){console.error('Text Studio page unavailable:',error.message);return respond(res,500,{message:'Страница временно недоступна.'});}
