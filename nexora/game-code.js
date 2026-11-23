@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -7,6 +8,7 @@ import {basicGamePlan,gameType} from './game-studio.js';
 // scripts enabled, but no same-origin, network, forms, or parent navigation.
 const here=fileURLToPath(new URL('.',import.meta.url));
 const recent=new Map();
+const previews=new Map();
 const API_URL=(process.env.PROJECT_GENERATOR_URL||'https://vse-proekty-ian.onrender.com').replace(/\/+$/,'');
 function send(res,status,data){
  res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
@@ -144,6 +146,26 @@ export async function prepareGamePreview(req,res){
   for await(const chunk of req){total+=chunk.length;if(total>100000)throw Error('Слишком большой файл игры.');parts.push(chunk);}
   const body=JSON.parse(Buffer.concat(parts).toString('utf8')||'{}');
   const html=sandboxGameHTML(body.html);
-  return send(res,200,{ok:true,html});
+  const id=crypto.randomUUID();
+  previews.set(id,{html,createdAt:Date.now()});
+  if(previews.size>250){
+    for(const [token,entry] of previews)if(Date.now()-entry.createdAt>1800000)previews.delete(token);
+    while(previews.size>250)previews.delete(previews.keys().next().value);
+  }
+  return send(res,200,{ok:true,url:'/game/preview/'+id,html});
  }catch(error){return send(res,400,{ok:false,message:error.message||'Ошибка в HTML-коде игры.'});}
+}
+
+export function serveGamePreview(res,token){
+ if(!/^[a-f0-9-]{36}$/.test(token))return send(res,404,{error:'not_found'});
+ const entry=previews.get(token);
+ if(!entry||Date.now()-entry.createdAt>1800000){
+  previews.delete(token);return send(res,404,{error:'expired_preview'});
+ }
+ res.writeHead(200,{
+  'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store',
+  'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
+  'Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+ });
+ res.end(entry.html);
 }
