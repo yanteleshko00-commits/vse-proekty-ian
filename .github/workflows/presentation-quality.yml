@@ -5,6 +5,8 @@ on:
     branches: ['fix/presentation-quality-2026-11-23', main]
     paths:
       - 'server.js'
+      - 'package.json'
+      - 'scripts/playwright-runtime.mjs'
       - 'productDesigner.js'
       - 'presentation-design.js'
       - 'test/presentation-*.test.mjs'
@@ -12,6 +14,8 @@ on:
   pull_request:
     paths:
       - 'server.js'
+      - 'package.json'
+      - 'scripts/playwright-runtime.mjs'
       - 'productDesigner.js'
       - 'presentation-design.js'
       - 'test/presentation-*.test.mjs'
@@ -26,7 +30,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --ignore-scripts --no-audit --no-fund
-      - run: node --check server.js && node --check productDesigner.js && node --check presentation-design.js
+      - run: node --check scripts/playwright-runtime.mjs && node --check server.js && node --check productDesigner.js && node --check presentation-design.js
       - run: node --test test/presentation-*.test.mjs
         env:
           NODE_ENV: test
