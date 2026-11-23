@@ -159,7 +159,7 @@ function normalizeSlideType(type, index) {
 }
 
 const PROJECT_CONTENT_INSTRUCTIONS = 'Ты — методист и автор школьных проектов. Верни только JSON с полями problem, goal, tasks (4-6), relevance, object, subject, hypothesis, theory [{heading,text}], practice {method,materials,steps,result,limitations}, mainPoints, conclusion, sources [{title,url}], defenseQuestions [{question,answer}]. Пиши по-русски на уровне 9 класса. Не выдумывай опросы, эксперименты, статистику, источники и ссылки. Если данных практики нет, предложи выполнимую работу и обозначь результат как планируемый.';
-const PRODUCT_INSTRUCTIONS = 'Ты — дизайнер учебных проектных продуктов. Создай самостоятельный готовый материал, который можно использовать отдельно от презентации. Верни только JSON: format, title, subtitle, audience, sections [{heading,body}], steps, checklist, takeaway. Выбери подходящий формат: памятка, буклет, чек-лист, мини-гайд, карточки, инструкция. Дай 3-5 содержательных разделов и конкретные практические пункты. Всё должно опираться на projectContent, не выдумывай факты.';
+const PRODUCT_INSTRUCTIONS = 'Ты — дизайнер учебных проектных продуктов. Создай самостоятельный готовый материал, который можно использовать отдельно от презентации. Верни только JSON: format, title, subtitle, audience, sections [{heading,body}], steps, checklist, takeaway. Выбери подходящий формат: памятка, буклет, чек-лист, мини-гайд, карточки, инструкция. Материал должен целиком помещаться на ОДИН лист A4 и быть красивым и читаемым: ровно 3 коротких раздела, в каждом текст не длиннее 160 символов; до 3 коротких steps и до 3 коротких checklist по 85 символов; takeaway до 125 символов. Не выдумывай факты. Всё опирай на projectContent.';
 function xmlEscape(value) {
   return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 }
@@ -189,12 +189,12 @@ async function generateProjectContent(topic, body) {
 async function generateFinalProduct(topic, projectContent, requestedFormat='') {
   const raw=await aiJson(PRODUCT_INSTRUCTIONS,{topic,requestedFormat:cleanText(requestedFormat,60),projectContent,outputRules:'Создай полезный самостоятельный продукт с конкретными рекомендациями и практическими пунктами.'},50000);
   const product={
-    format:normalizeText(raw.format||requestedFormat||'Памятка',40),title:normalizeText(raw.title||topic,90),
-    subtitle:normalizeText(raw.subtitle||'Практический материал по теме проекта',180),audience:normalizeText(raw.audience||'Для учащихся',100),
-    sections:(Array.isArray(raw.sections)?raw.sections:[]).map(x=>({heading:normalizeText(x?.heading||'',70),body:normalizeText(x?.body||'',420)})).filter(x=>x.heading&&x.body).slice(0,5),
-    steps:(Array.isArray(raw.steps)?raw.steps:[]).map(x=>normalizeText(x,180)).filter(Boolean).slice(0,5),
-    checklist:(Array.isArray(raw.checklist)?raw.checklist:[]).map(x=>normalizeText(x,150)).filter(Boolean).slice(0,5),
-    takeaway:normalizeText(raw.takeaway||projectContent.conclusion,300)
+    format:normalizeText(raw.format||requestedFormat||'Памятка',40),title:normalizeText(raw.title||topic,80),
+    subtitle:normalizeText(raw.subtitle||'Практический материал по теме проекта',110),audience:normalizeText(raw.audience||'Для учащихся',60),
+    sections:(Array.isArray(raw.sections)?raw.sections:[]).map(x=>({heading:normalizeText(x?.heading||'',55),body:normalizeText(x?.body||'',160)})).filter(x=>x.heading&&x.body).slice(0,3),
+    steps:(Array.isArray(raw.steps)?raw.steps:[]).map(x=>normalizeText(x,85)).filter(Boolean).slice(0,3),
+    checklist:(Array.isArray(raw.checklist)?raw.checklist:[]).map(x=>normalizeText(x,85)).filter(Boolean).slice(0,3),
+    takeaway:normalizeText(raw.takeaway||projectContent.conclusion,125)
   };
   if(product.sections.length<2||(!product.steps.length&&!product.checklist.length))throw new Error('Итоговый продукт неполный: нужны разделы и практические пункты.');
   return product;
