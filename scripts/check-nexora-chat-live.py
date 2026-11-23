@@ -63,4 +63,4 @@ for url in generators:
         print("GENERATOR",url,"Alice",True,"private endpoint status",error.code)
         assert error.code == 403
 
-print("NEXORA CHAT LIVE CHECK SUCCESS")
+print("NEXORA CHAT LIVE CHECK SUCCESS - idea suggestions send directly")
