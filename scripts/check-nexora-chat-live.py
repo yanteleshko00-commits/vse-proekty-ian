@@ -25,6 +25,8 @@ assert 'data-model="alice"' in html and "<strong>Стандартный</strong>
 assert "Алиса" not in html and "Yandex AI" not in html
 assert html.index('id="composer"') < html.index('class="prompts"')
 print("CHAT DESIGN", "centered prompt=OK", "no Alice branding=OK", "suggestions below input=OK")
+assert ".composer textarea,\n  .search { font-size: 16px; }" in html, "iPhone input zoom safeguard missing from deployed site"
+print("CHAT MOBILE", "iOS focus zoom fix=OK")
 
 assert "frame-ancestors 'none'" in headers.get("content-security-policy", "")
 print("CHAT PAGE", status, "menu=OK", "alice=OK", "gpt=OK", "auto=OK")
