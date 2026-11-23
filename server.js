@@ -248,10 +248,10 @@ async function renderProductImageFallback(product, theme) {
   parts.push('<circle cx="1040" cy="260" r="125" fill="' + accent2 + '" fill-opacity=".12"/>');
   parts.push(label(String(product.format || 'Памятка').toUpperCase() + '  /  ИТОГОВЫЙ ПРОДУКТ', 74, 68, 24, '#C9E0F3', true));
   let titleY = 132;
-  for (const line of wrap(product.title, 37).slice(0, 3)) {
+  for (const line of wrap(product.title, 45).slice(0, 2)) {
     parts.push(label(line, 74, titleY, 48, '#FFFFFF', true)); titleY += 55;
   }
-  const subtitleY = Math.max(228, titleY + 6);
+  const subtitleY = Math.max(231, titleY + 6);
   paragraph(product.subtitle, 76, subtitleY, 1060, 24, '#C9E0F3', 30, 78);
 
   const leftX = 72, rightX = 632, cardWidth = 536;
