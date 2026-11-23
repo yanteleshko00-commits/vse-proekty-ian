@@ -15,12 +15,14 @@ try{
  const iframe=await page.locator('#ai-frame').elementHandle(),game=await iframe.contentFrame();
  assert.ok(game);
  await game.locator('#world').waitFor({state:'visible',timeout:35000});
+ await page.waitForTimeout(1200);
  const info=await game.evaluate(()=>{
   const c=document.querySelector('#world'),ctx=c.getContext('2d');
   return {canvas:c.tagName,width:c.width,height:c.height,pixel:Array.from(ctx.getImageData(300,160,1,1).data),
    header:document.querySelector('header')?.textContent||'',mine:!!document.querySelector('#mine'),
    place:!!document.querySelector('#place'),studio:!!document.querySelector('#ai-workspace'),nested:!!document.querySelector('.top')};
  });
+ console.log('MINECRAFT FRAME DIAGNOSTIC',info,'page errors',errors,'game script length',await game.evaluate(()=>document.scripts[0]?.textContent.length));
  assert.equal(info.width,720);assert.equal(info.height,420);
  assert.equal(info.pixel[3],255,'2D Minecraft game canvas is blank');
  assert.equal(info.mine,true);assert.equal(info.place,true);
