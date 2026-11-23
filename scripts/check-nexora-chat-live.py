@@ -24,7 +24,7 @@ print("CHAT PAGE", status, "menu=OK", "alice=OK", "gpt=OK", "auto=OK")
 
 status, content, headers = get(lobby + "/health")
 health = json.loads(content)
-print("NEXORA HEALTH", status, "chatConfigured", health.get("chatConfigured"))
+print("NEXORA HEALTH", status, "chatConfigured", health.get("chatConfigured"), "oauthConfigured",health.get("oauthConfigured"))
 assert status == 200 and health.get("chatConfigured") is True
 
 data = json.dumps({"model": "alice", "messages": [{"role":"user", "content":"Привет"}]}).encode()
