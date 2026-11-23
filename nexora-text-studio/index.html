@@ -130,6 +130,40 @@ body :is(.tile h3,.brand,.brand-text strong,.brand-wordmark,.card h3,.panel-head
 body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equation){font-weight:580}
 @media(max-width:600px){body p,body button,body input,body select,body textarea{font-weight:690}}
 
+
+/* Topic questionnaire: compact progressive wizard in Text Studio. */
+.topic-wizard{margin:0 0 20px;padding:16px;border:1px solid #dacefa;border-radius:17px;background:linear-gradient(140deg,#f6f2ff,#fffaff);box-shadow:0 8px 21px rgba(103,80,174,.045)}
+.topic-wizard[hidden],.wizard-flow[hidden],.wizard-summary[hidden],.wizard-extra[hidden],.wizard-edit[hidden]{display:none!important}
+.wizard-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+.wizard-kicker{font-size:10px;letter-spacing:.09em;color:#8069c8;font-weight:850}
+.wizard-step-counter{color:#8478a5;font-size:10px;font-weight:800;white-space:nowrap}
+.wizard-track{height:5px;overflow:hidden;border-radius:99px;background:#e4dcf7;margin-bottom:15px}
+.wizard-track-fill{display:block;width:20%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8060e5,#c498f3);transition:width .2s}
+.wizard-question{margin:0 0 5px;color:#392a5c;font-size:15px;line-height:1.4;font-weight:850}
+.wizard-description{margin:0 0 13px;color:#857a9d;font-size:11px;line-height:1.65;font-weight:680}
+.wizard-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.wizard-choice{display:flex;align-items:center;justify-content:center;min-height:43px;padding:8px 8px;border:1px solid #e2d9f2;border-radius:11px;background:#fff;color:#6e5f88;font-size:11px;font-weight:800;text-align:center;line-height:1.4}
+.wizard-choice[aria-pressed=true]{color:#6545c5;border-color:#baa8f4;background:#eae2ff;box-shadow:inset 0 1px rgba(255,255,255,.95)}
+.wizard-choice:hover{border-color:#b7a0ec}
+.wizard-extra label{display:block;margin:0 0 8px;color:#72678c;font-size:11px;font-weight:750}
+.wizard-extra textarea{min-height:100px;width:100%;padding:11px;border:1px solid #dcd2f1;border-radius:12px;background:#fff;color:#271d40;font-size:12px;line-height:1.65;resize:vertical}
+.wizard-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px}
+.wizard-action{min-height:39px;padding:8px 12px;border-radius:10px;border:1px solid #dfd5f0;background:#fff;color:#755db0;font-size:11px;font-weight:800}
+.wizard-action.primary{border:0;background:#7959db;color:#fff;padding:8px 17px}
+.wizard-action:disabled{opacity:.45}
+.wizard-action.skip{margin-left:auto;background:transparent;border-color:transparent;color:#90839f}
+.wizard-summary{font-size:12px;line-height:1.65;color:#695a83}
+.wizard-summary strong{display:block;margin-bottom:4px;color:#443267;font-size:14px}
+.wizard-summary p{margin:0}
+.wizard-edit{margin-top:12px}
+:root[data-theme=dark] .topic-wizard{background:linear-gradient(145deg,#34284f,#2d2342);border-color:#60517a}
+:root[data-theme=dark] .wizard-question,:root[data-theme=dark] .wizard-summary strong{color:#f1e8ff}
+:root[data-theme=dark] .wizard-description,:root[data-theme=dark] .wizard-summary{color:#c8bdd9}
+:root[data-theme=dark] .wizard-choice,:root[data-theme=dark] .wizard-action,:root[data-theme=dark] .wizard-extra textarea{background:#2c2441;color:#efe8fa;border-color:#65527e}
+:root[data-theme=dark] .wizard-choice[aria-pressed=true]{background:#594186;color:#fff;border-color:#9f81de}
+:root[data-theme=dark] .wizard-action.primary{background:#8965e7}
+@media(max-width:600px){.topic-wizard{padding:13px;margin-bottom:17px;border-radius:14px}.wizard-question{font-size:14px}.wizard-choice{font-size:10px;min-height:43px}.wizard-actions{gap:4px}.wizard-action{padding:8px 10px;font-size:10px}}
+
 </style>
 </head>
 <body>
@@ -165,6 +199,26 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
         <label for="topic"><span id="topic-label">Тема или идея</span><small>до 1500 знаков</small></label>
         <textarea id="topic" maxlength="1500" placeholder="Например: Почему чтение книг развивает воображение? С примерами и простым выводом."></textarea>
       </div>
+      <section class="topic-wizard" id="topic-wizard" hidden aria-labelledby="wizard-heading">
+        <div class="wizard-top"><span class="wizard-kicker" id="wizard-heading">✦ УТОЧНИМ ВАШ ТЕКСТ</span><span class="wizard-step-counter" id="wizard-count">Шаг 1 из 5</span></div>
+        <div class="wizard-track" role="progressbar" aria-label="Заполнение опросника" aria-valuemin="0" aria-valuemax="5" aria-valuenow="1" id="wizard-progress"><span class="wizard-track-fill" id="wizard-fill"></span></div>
+        <div class="wizard-flow" id="wizard-flow">
+          <h3 class="wizard-question" id="wizard-question"></h3>
+          <p class="wizard-description" id="wizard-description"></p>
+          <div class="wizard-options" id="wizard-options" role="group" aria-label="Варианты ответа"></div>
+          <div class="wizard-extra" id="wizard-extra" hidden>
+            <label for="wizard-details">Необязательно — свои пожелания</label>
+            <textarea id="wizard-details" maxlength="650" placeholder="Например: три аргумента, пример из жизни, вывод, без сложных терминов…"></textarea>
+          </div>
+          <div class="wizard-actions" id="wizard-actions">
+            <button type="button" class="wizard-action" id="wizard-back">Назад</button>
+            <button type="button" class="wizard-action skip" id="wizard-skip">Пропустить</button>
+            <button type="button" class="wizard-action primary" id="wizard-next">Далее</button>
+          </div>
+        </div>
+        <div class="wizard-summary" id="wizard-summary" hidden role="status"></div>
+        <button type="button" class="wizard-action wizard-edit" id="wizard-edit" hidden>Изменить ответы</button>
+      </section>
       <div class="field" id="source-field" hidden>
         <label for="source">Исходный текст <small>до 16 000 знаков</small></label>
         <textarea id="source" maxlength="16000" style="min-height:164px" placeholder="Вставьте сюда текст, который нужно изменить, исправить, сократить или пересказать…"></textarea>
@@ -320,18 +374,145 @@ function pickFormat(format){
     x.setAttribute("aria-pressed",String(active));
   });
 }
-document.querySelectorAll("[data-format-choice]").forEach(b=>b.addEventListener("click",()=>pickFormat(b.dataset.formatChoice)));
-$("format").addEventListener("change",()=>pickFormat($("format").value));
+document.querySelectorAll("[data-format-choice]").forEach(b=>b.addEventListener("click",()=>{pickFormat(b.dataset.formatChoice);if(typeof wizardAnswers!=="undefined"){wizardAnswers.format=b.dataset.formatChoice;if(!wizardOptionsFor("audience").some(x=>x[0]===wizardAnswers.audience))wizardAnswers.audience="";if(!$("topic-wizard").hidden)renderWizard()}}));
+$("format").addEventListener("change",()=>{pickFormat($("format").value);wizardAnswers.format=$("format").value;if(!$("topic-wizard").hidden)renderWizard()});
+$("tone").addEventListener("change",()=>{wizardAnswers.tone=$("tone").value;if(!$("topic-wizard").hidden)renderWizard()});
 
 let action="create",busy=false,controller=null,loadingTimer=null,toastTimer=null,currentText="";
+
+// Topic questionnaire opens inline after the user has entered a topic.
+const wizardFormatOptions=[
+ ["essay","✎ Сочинение"],["article","▤ Статья"],["post","✦ Пост"],
+ ["letter","✉ Письмо"],["email","@ E-mail"],["story","◇ Рассказ"],
+ ["report","≡ Доклад"],["description","▧ Описание"],["free","＋ Другое"]
+];
+const wizardToneOptions=[
+ ["neutral","Нейтральный"],["friendly","Дружелюбный"],["formal","Официальный"],
+ ["creative","Творческий"],["academic","Учебный"],["persuasive","Убедительный"]
+];
+const wizardPurposes=[
+ ["explain","Объяснить тему"],["engage","Заинтересовать"],["persuade","Убедить"],
+ ["inform","Рассказать факты"],["share","Поделиться мыслями"],["other","Другое"]
+];
+const wizardAudience={
+ essay:[["teacher","Учителю"],["school","Школьникам"],["general","Широкому кругу"],["personal","Для себя"]],
+ report:[["teacher","Учителю"],["school","Одноклассникам"],["general","Всем читателям"],["work","Коллегам"]],
+ post:[["subscribers","Подписчикам"],["friends","Друзьям"],["clients","Клиентам"],["general","Всем"]],
+ email:[["teacher","Учителю"],["work","Коллегам"],["clients","Клиентам"],["friends","Друзьям"]],
+ letter:[["teacher","Учителю"],["work","Коллегам"],["clients","Клиентам"],["friends","Друзьям"]],
+ general:[["school","Для школы"],["general","Для всех"],["work","Для работы"],["personal","Для себя"]]
+};
+const wizardSteps=[
+ {key:"format",question:"Какой текст нужно составить?",description:"Выберите формат. Его можно будет изменить и ниже на странице."},
+ {key:"audience",question:"Для кого вы пишете?",description:"Это поможет выбрать понятные слова и подходящие примеры."},
+ {key:"purpose",question:"Чего хотите добиться текстом?",description:"Например, объяснить тему или заинтересовать читателей."},
+ {key:"tone",question:"Как должен звучать текст?",description:"Официально, легко, творчески или по-учебному."},
+ {key:"details",question:"Что обязательно включить?",description:"Назовите ключевые мысли, примеры или детали. Этот вопрос можно пропустить."}
+];
+let wizardStep=0,wizardFinished=false,wizardSkipped=false;
+const wizardAnswers={format:"free",audience:"",purpose:"",tone:"neutral",details:""};
+function wizardOptionsFor(key){
+ if(key==="format")return wizardFormatOptions;
+ if(key==="audience")return wizardAudience[$("format").value]||wizardAudience.general;
+ if(key==="purpose")return wizardPurposes;
+ if(key==="tone")return wizardToneOptions;
+ return [];
+}
+function wizardOptionLabel(key,value){
+ return wizardOptionsFor(key).find(pair=>pair[0]===value)?.[1]||"Не указано";
+}
+function resetWizard(){
+ wizardStep=0;wizardFinished=false;wizardSkipped=false;
+ Object.assign(wizardAnswers,{format:$("format").value,audience:"",purpose:"",tone:$("tone").value,details:""});
+}
+function renderWizard(){
+ const panel=$("topic-wizard"),valid=action==="create"&&$("topic").value.trim().length>=4&&!wizardSkipped;
+ panel.hidden=!valid;
+ if(!valid)return;
+ $("wizard-flow").hidden=wizardFinished;
+ $("wizard-summary").hidden=!wizardFinished;
+ $("wizard-edit").hidden=!wizardFinished;
+ $("wizard-progress").setAttribute("aria-valuenow",String(wizardFinished?5:wizardStep+1));
+ $("wizard-fill").style.width=(wizardFinished?100:(wizardStep+1)*20)+"%";
+ $("wizard-count").textContent=wizardFinished?"Готово":"Шаг "+(wizardStep+1)+" из "+wizardSteps.length;
+ if(wizardFinished){
+   const parts=[
+     "Формат: "+wizardOptionLabel("format",wizardAnswers.format),
+     wizardAnswers.audience?"Читатель: "+wizardOptionLabel("audience",wizardAnswers.audience):"",
+     wizardAnswers.purpose?"Цель: "+wizardOptionLabel("purpose",wizardAnswers.purpose):"",
+     "Стиль: "+wizardOptionLabel("tone",wizardAnswers.tone),
+     wizardAnswers.details?"Детали: "+wizardAnswers.details:""
+   ].filter(Boolean);
+   const summary=$("wizard-summary");summary.replaceChildren();
+   const heading=document.createElement("strong");heading.textContent="✓ Опросник заполнен";
+   const info=document.createElement("p");info.textContent=parts.join(" · ");
+   summary.append(heading,info);
+   return;
+ }
+ const step=wizardSteps[wizardStep];
+ $("wizard-question").textContent=step.question;
+ $("wizard-description").textContent=step.description;
+ const host=$("wizard-options");host.replaceChildren();
+ const isDetails=step.key==="details";
+ host.hidden=isDetails;
+ $("wizard-extra").hidden=!isDetails;
+ if(isDetails){
+   $("wizard-details").value=wizardAnswers.details;
+ }else{
+   for(const [value,label] of wizardOptionsFor(step.key)){
+     const option=document.createElement("button");option.type="button";
+     option.className="wizard-choice";option.textContent=label;
+     option.setAttribute("aria-pressed",String(wizardAnswers[step.key]===value));
+     option.addEventListener("click",()=>{
+       wizardAnswers[step.key]=value;
+       if(step.key==="format"){
+         pickFormat(value);
+         if(!wizardOptionsFor("audience").some(pair=>pair[0]===wizardAnswers.audience))wizardAnswers.audience="";
+       }
+       if(step.key==="tone")$("tone").value=value;
+       renderWizard();
+     });
+     host.appendChild(option);
+   }
+ }
+ $("wizard-back").disabled=wizardStep===0;
+ $("wizard-next").textContent=wizardStep===wizardSteps.length-1?"Готово":"Далее";
+}
+function wizardOnTopic(){
+ if(!$("topic").value.trim()){
+   resetWizard();
+   $("topic-wizard").hidden=true;
+   return;
+ }
+ renderWizard();
+}
+$("topic").addEventListener("input",wizardOnTopic);
+$("wizard-details").addEventListener("input",()=>{wizardAnswers.details=$("wizard-details").value.slice(0,650)});
+$("wizard-next").addEventListener("click",()=>{
+ if(wizardStep<wizardSteps.length-1)wizardStep++;
+ else wizardFinished=true;
+ renderWizard();
+});
+$("wizard-back").addEventListener("click",()=>{if(wizardStep>0)wizardStep--;renderWizard()});
+$("wizard-skip").addEventListener("click",()=>{wizardSkipped=true;renderWizard()});
+$("wizard-edit").addEventListener("click",()=>{wizardFinished=false;wizardStep=0;renderWizard()});
+function wizardRequirements(){
+ if(action!=="create"||wizardSkipped)return "";
+ const parts=[];
+ if(wizardAnswers.audience)parts.push("Для кого: "+wizardOptionLabel("audience",wizardAnswers.audience)+".");
+ if(wizardAnswers.purpose)parts.push("Цель текста: "+wizardOptionLabel("purpose",wizardAnswers.purpose)+".");
+ if(wizardAnswers.details.trim())parts.push("Обязательно включить: "+wizardAnswers.details.trim());
+ return parts.join("\n");
+}
+
 const stats=text=>({characters:text.length,words:(text.trim().match(/[\p{L}\p{N}]+(?:[-’'][\p{L}\p{N}]+)*/gu)||[]).length});
 function updateStats(){const s=stats($("result-editor").value);$("words").textContent=s.words+" слов";$("characters").textContent=s.characters+" символов"}
 function toast(message){const el=$("toast");el.textContent=message;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),2800)}
 function showError(message){$("error").textContent=message;$("error").classList.add("show");$("output-status").textContent="Нужна повторная попытка"}
 function clearError(){$("error").classList.remove("show");$("error").textContent=""}
-function mode(next){if(busy)return;action=next;actions.forEach(b=>{const yes=b.dataset.action===action;b.classList.toggle("active",yes);b.setAttribute("aria-pressed",String(yes))});$("source-field").hidden=next==="create";$("topic-label").textContent=next==="create"?"Тема или идея":"Пожелания к результату (необязательно)";$("topic").placeholder=next==="create"?"Опишите, какой текст хотите получить…":"Например: сохранить стиль и имена, убрать повторы…";$("generate").textContent=next==="create"?"✦ Создать текст":next==="proofread"?"✓ Исправить ошибки":next==="shorten"?"− Сократить текст":next==="expand"?"＋ Расширить текст":next==="summarize"?"≡ Пересказать текст":"↻ Переписать текст"}
+function mode(next){if(busy)return;action=next;actions.forEach(b=>{const yes=b.dataset.action===action;b.classList.toggle("active",yes);b.setAttribute("aria-pressed",String(yes))});$("source-field").hidden=next==="create";$("topic-label").textContent=next==="create"?"Тема или идея":"Пожелания к результату (необязательно)";$("topic").placeholder=next==="create"?"Опишите, какой текст хотите получить…":"Например: сохранить стиль и имена, убрать повторы…";$("generate").textContent=next==="create"?"✦ Создать текст":next==="proofread"?"✓ Исправить ошибки":next==="shorten"?"− Сократить текст":next==="expand"?"＋ Расширить текст":next==="summarize"?"≡ Пересказать текст":"↻ Переписать текст";renderWizard()}
 actions.forEach(b=>b.addEventListener("click",()=>mode(b.dataset.action)));
-document.querySelectorAll(".example").forEach(b=>b.addEventListener("click",()=>{if(busy)return;mode("create");$("topic").value=b.dataset.topic;pickFormat(b.dataset.format);$("topic").focus()}));
+document.querySelectorAll(".example").forEach(b=>b.addEventListener("click",()=>{if(busy)return;mode("create");$("topic").value=b.dataset.topic;pickFormat(b.dataset.format);wizardAnswers.format=b.dataset.format;wizardOnTopic();$("topic").focus()}));
 function loading(active){
   busy=active;$("generate").disabled=active;
   if(active){
@@ -356,7 +537,9 @@ async function generate(){
   const topic=$("topic").value.trim(),source=$("source").value.trim();
   if(action==="create"&&topic.length<4&&!filesSelected.length){showError("Опишите тему или прикрепите файл/фотографию.");$("topic").focus();return}
   if(action!=="create"&&source.length<15&&!filesSelected.length){showError("Добавьте исходный текст или прикрепите фото/документ.");$("source").focus();return}
-  clearError();const data={action,topic,source,format:$("format").value,tone:$("tone").value,size:$("size").value,language:$("language").value,requirements:$("requirements").value.trim()};
+  clearError();
+  const requirements=[$("requirements").value.trim(),wizardRequirements()].filter(Boolean).join("\n").slice(0,1300);
+  const data={action,topic,source,format:$("format").value,tone:$("tone").value,size:$("size").value,language:$("language").value,requirements};
   controller=new AbortController();loading(true);
   let timedOut=false;const timeout=setTimeout(()=>{timedOut=true;controller.abort()},235000);
   try{
