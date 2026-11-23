@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {basicGamePlan,gameType} from './game-studio.js';
+import {arcadeGameHTML} from './game-arcade.js';
 
 // Never execute AI output in NEXORA's own document. The frontend sandbox has
 // scripts enabled, but no same-origin, network, forms, or parent navigation.
@@ -79,6 +80,8 @@ export function sandboxGameHTML(source){
  return html.replace(/<html([\s>])/i,(all,after)=>'<html'+after+'<head>'+ADAPTER+'</head>');
 }
 export async function fallbackGameHTML(idea){
+ const family=gameFamily(idea);
+ if(!['snake','target','catch'].includes(family))return arcadeGameHTML(idea,family);
  const plan=basicGamePlan({idea,type:gameType(idea)});
  const [html,js]=await Promise.all([
   readFile(join(here,'public/game.html'),'utf8'),
