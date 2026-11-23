@@ -115,9 +115,7 @@
   b.addEventListener("click",()=>control(dir,"tap"));
  });
  document.querySelectorAll("[data-ai-example]").forEach(b=>b.addEventListener("click",()=>{
-  idea.value=b.dataset.aiExample||"";idea.focus();
-  // The user can edit the description first; one-tap generation is done by
-  // the primary, clearly labelled Create button.
+  idea.value=b.dataset.aiExample||"";void createGame();
  }));
  build.addEventListener("click",createGame);
  playTab.addEventListener("click",()=>showTab("play"));
