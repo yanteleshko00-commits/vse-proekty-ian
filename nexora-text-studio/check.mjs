@@ -10,7 +10,7 @@ import {decodeAttachments} from './attachments.js';
 
 const here=fileURLToPath(new URL('.',import.meta.url));
 const html=await readFile(join(here,'index.html'),'utf8');
-for(const id of ['generate','source','topic','size','language','result-editor','stage','copy','download','print','rework','example-topics','final-settings']){
+for(const id of ['generate','source','topic','language','result-editor','stage','copy','download','print','rework','example-topics','final-settings']){
   assert.ok(html.includes('id="'+id+'"'),'Missing UI control '+id);
 }
 for(const action of ['create','rewrite','proofread','shorten','expand','summarize'])
@@ -26,6 +26,13 @@ assert.ok(css&&css.match(/{/g).length===css.match(/}/g).length,'Styles must be b
 const valid=normalizeTextRequest({action:'create',topic:'Написать статью о путешествиях',format:'article'});
 assert.equal(valid.language,'ru');
 assert.match(buildTextPrompt(valid),/статья/);
+const withWordCount=normalizeTextRequest({action:'create',topic:'Подробный рассказ о космосе',format:'story',targetWords:500});
+assert.equal(withWordCount.targetWords,500);
+assert.match(buildTextPrompt(withWordCount),/ориентир 500 слов/);
+assert.equal(normalizeTextRequest({action:'create',topic:'Короткий рассказ о космосе'}).targetWords,null);
+for(const invalid of [49,1201,25.5,'слова'])assert.throws(
+  ()=>normalizeTextRequest({action:'create',topic:'Рассказ о космосе',targetWords:invalid}),
+  /от 50 до 1200/);
 assert.throws(()=>normalizeTextRequest({action:'rewrite',source:'кратко'}),/источник|исходный текст/i);
 assert.throws(()=>normalizeTextRequest({action:'create',topic:'а'}),/тему/);
 assert.throws(()=>normalizeTextRequest({action:'create',topic:'тема',source:'x'.repeat(17000)}),/длинный/);
@@ -43,7 +50,7 @@ assert.match(js,/const requirements=wizardRequirements\(\)\.slice\(0,1300\)/);
 assert.match(js,/\$\("example-topics"\)\.hidden=next!=="create"/);
 assert.match(html,/function prepareFiles\(/);
 assert.match(html,/function compressPhoto\(/);
-for(const id of ['topic-wizard','wizard-question','wizard-options','wizard-details','wizard-count','wizard-progress','wizard-next','wizard-back','wizard-skip','wizard-summary','wizard-edit'])
+for(const id of ['topic-wizard','wizard-question','wizard-options','wizard-details','wizard-count','wizard-progress','wizard-next','wizard-back','wizard-skip','wizard-summary','wizard-edit','wizard-word-count','wizard-words-custom','wizard-input-error','creation-panel'])
   assert.ok(html.includes('id="'+id+'"'),'Missing questionnaire control '+id);
 assert.match(html,/topic-wizard\[hidden\]/);
 assert.match(js,/const wizardSteps=\[/);
@@ -53,7 +60,15 @@ assert.match(js,/\$\("topic"\)\.addEventListener\("input",wizardOnTopic\)/);
 assert.match(js,/function wizardRequirements\(/);
 assert.match(js,/wizardRequirements\(\)/);
 assert.match(js,/const requirements=wizardRequirements\(\)\.slice\(0,1300\)/);
-assert.equal((js.match(/\{key:"(?:format|audience|purpose|tone|details)"/g)||[]).length,5);
+assert.equal((js.match(/\{key:"(?:format|audience|purpose|tone|words|details)"/g)||[]).length,6);
+assert.match(js,/wizardAdvanceTimer=setTimeout/);
+assert.match(js,/wizardStep===index/);
+assert.match(js,/function wizardWordCount\(/);
+assert.match(js,/targetWords=action==="create"/);
+assert.match(html,/id="wizard-word-count" type="number" min="50" max="1200"/);
+assert.match(html,/aria-valuemax="6"/);
+assert.doesNotMatch(html,/id="size"/);
+assert.match(html,/wizard-active #generate/);
 
 assert.ok(normalizeTextRequest({action:'create',source:'Данные из документа для нового текста'}).source);
 assert.equal(normalizeTextRequest({action:'rewrite',images:[{mime:'image/jpeg',data:'stub'}]}).images.length,1);
@@ -105,7 +120,7 @@ try{
   assert.equal(invalid.status,400);
   const generation=await fetch('http://127.0.0.1:'+port+'/api/generate',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'create',topic:'Пост о пользе чтения',format:'post',tone:'friendly',size:'short',language:'ru',requirements:'Для кого: Подписчикам.\nЦель текста: Заинтересовать.\nОбязательно включить: пример из жизни.'})
+    body:JSON.stringify({action:'create',topic:'Пост о пользе чтения',format:'post',tone:'friendly',size:'short',targetWords:500,language:'ru',requirements:'Для кого: Подписчикам.\nЦель текста: Заинтересовать.\nОбязательно включить: пример из жизни.'})
   });
   assert.equal(generation.status,200);
   const result=await generation.json();
@@ -113,6 +128,7 @@ try{
   assert.equal(result.provider,'Mock model');
   assert.equal(lastBody.action,'create');
   assert.equal(lastBody.format,'post');
+  assert.equal(lastBody.targetWords,500);
   assert.match(lastBody.requirements,/Для кого: Подписчикам/);
   assert.match(lastBody.requirements,/Цель текста: Заинтересовать/);
   assert.match(lastBody.requirements,/Обязательно включить: пример из жизни/);
@@ -129,5 +145,5 @@ try{
   assert.equal(photoRequest.status,200);
   assert.equal(lastBody.images.length,1);
   assert.equal(lastBody.action,'rewrite');
-  console.log('Text Studio checks passed: 6 modes, 5-step questionnaire as the only format/tone selector, 4 example topics, photo/TXT attachments, mobile UI, gateway and text responses.');
+  console.log('Text Studio checks passed: 6 modes, 6 auto-advancing quiz questions, target word count, 4 example topics, photo/TXT attachments, mobile UI, gateway and text responses.');
 }finally{child.kill();await new Promise(resolve=>upstream.close(resolve))}
