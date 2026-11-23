@@ -7,7 +7,19 @@ export function aliceProviderFromEnv(env = process.env) {
   const key = String(env.YANDEX_API_KEY || env.ALICE_API_KEY || '')
     .trim().replace(/^Api-Key\s+/i, '').trim();
   const folderId = String(env.YANDEX_FOLDER_ID || '').trim();
-  if (!key || !folderId) return null;
+  if (!key || !folderId) {
+    // The Image Studio already owns the Yandex credentials. Never copy or expose
+    // them: proxy text generation over a secret-authenticated server-to-server API.
+    const internalToken = String(env.ALICE_INTERNAL_TOKEN || '').trim();
+    if (internalToken.length < 32) return null;
+    return {
+      name: 'Alice AI LLM',
+      type: 'alice-proxy',
+      model: 'aliceai-llm',
+      internalToken,
+      url: 'https://nexora-image-studio.onrender.com/internal/alice/chat'
+    };
+  }
 
   const selected = String(env.YANDEX_TEXT_MODEL || env.YANDEX_MODEL || 'aliceai-llm').trim();
   const model = selected.startsWith('gpt://')
@@ -52,4 +64,37 @@ export async function requestAliceAIText(provider, instructions, input, jsonMode
     : Array.isArray(content) ? content.map(item => item?.text || '').join('') : '';
   if (!text.trim()) throw new Error('Alice AI LLM вернула пустой ответ.');
   return text;
+}
+
+
+export async function requestAliceTextViaImageStudio(provider, instructions, input, jsonMode, timeoutMs, fetchImpl = fetch) {
+  if (provider.type !== 'alice-proxy' || !provider.internalToken || provider.internalToken.length < 32) {
+    throw new Error('Внутренний шлюз Алисы не настроен.');
+  }
+  const timeout = Math.max(1000, Math.min(60000, Number(timeoutMs) || 35000));
+  const response = await fetchImpl(provider.url, {
+    method: 'POST',
+    signal: AbortSignal.timeout(timeout),
+    headers: {
+      'Content-Type': 'application/json',
+      'X-NEXORA-Internal-Token': provider.internalToken
+    },
+    body: JSON.stringify({
+      instructions: String(instructions).slice(0, 30000),
+      input: String(input).slice(0, 100000),
+      jsonMode: Boolean(jsonMode),
+      timeoutMs: timeout
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const reason = String(data.message || 'Ошибка сервиса Алисы').replaceAll(provider.internalToken, '[скрыто]');
+    const error = new Error('Alice AI LLM через Image Studio: HTTP ' + response.status + ': ' + reason.slice(0, 220));
+    error.status = response.status;
+    throw error;
+  }
+  if (typeof data.output !== 'string' || !data.output.trim()) {
+    throw new Error('Alice AI LLM через Image Studio вернула пустой ответ.');
+  }
+  return data.output;
 }
