@@ -11,6 +11,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
 import { designProduct } from './productDesigner.js';
+import { contentSlideCount, appendProductSlide, imageFrameRatio, imageSearchQueries, imageCandidateScore } from './presentation-design.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -103,7 +104,7 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 const COLORS = {
   blue: { bg: 'F3F6FC', ink: '18243A', muted: '63718A', accent: '315EDB', accent2: 'AFC5FF' },
   business: { bg: 'F3F5F8', ink: '172033', muted: '637083', accent: '244B83', accent2: 'A8BDD4' },
-  it: { bg: '10172A', ink: 'F3F7FF', muted: 'B8C4DA', accent: '6D5DFB', accent2: '28D7C5' },
+  it: { bg: '10172A', surface: '1D2940', ink: 'F3F7FF', muted: 'B8C4DA', accent: '6D5DFB', accent2: '28D7C5' },
   eco: { bg: 'F2F7F0', ink: '20382B', muted: '617667', accent: '26734B', accent2: 'B9D9A8' },
   education: { bg: 'F7F3FF', ink: '28223A', muted: '736A83', accent: '7452C8', accent2: 'D6C9FA' },
   science: { bg: 'F1F7FA', ink: '18313E', muted: '5B7682', accent: '167D9A', accent2: 'A8DCE8' }
@@ -877,12 +878,8 @@ ${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
 }
 
 async function commonsImage(query, used) {
-  // Несколько коротких запросов повышают шанс найти тематическую фотографию.
-  const queries = [
-    String(query || '').replace(/[^\p{L}\p{N}\s-]/gu, ' ').trim(),
-    String(query || '').split(/[—:,.!?]/)[0].trim(),
-    String(query || '').split(/\s+/).slice(0, 5).join(' ').trim()
-  ].filter((q, i, a) => q.length >= 3 && a.indexOf(q) === i);
+  // Search the actual subject, not the image model's aesthetic instructions.
+  const queries = imageSearchQueries(query);
   for (const q of queries) {
     try {
       const url = new URL('https://commons.wikimedia.org/w/api.php');
@@ -906,7 +903,7 @@ async function commonsImage(query, used) {
           const title = (p.title || '').toLowerCase();
           return (['image/jpeg', 'image/png'].includes(mime) ? 4 : 0)
             + (/\.(jpg|jpeg|png)$/i.test(title) ? 2 : 0)
-            - (/logo|icon|flag|map|diagram|symbol/i.test(title) ? 5 : 0);
+            + imageCandidateScore(title, query, p.index || 0);
         };
         return score(b) - score(a);
       });
@@ -916,6 +913,7 @@ async function commonsImage(query, used) {
         if (!candidate || !/^https:\/\/upload\.wikimedia\.org\//i.test(candidate)) continue;
         if (used.has(candidate)) continue;
         if (!['image/jpeg', 'image/png'].includes(info?.mime || '')) continue;
+        if (imageCandidateScore(page.title, query, page.index || 0) <= -50) continue;
         used.add(candidate);
         return { url: candidate, credit: `${page.title || 'Изображение'} — Wikimedia Commons`, title: page.title || '' };
       }
@@ -993,6 +991,39 @@ async function attachImages(plan) {
     }
   }
 }
+
+// Normalize aspect ratio before PPTX embedding, otherwise PowerPoint stretches
+// portrait photos into landscape frames. Product screenshots are never cropped.
+async function preparePhotosForDeck(plan) {
+  let next = 0;
+  const workers = Array.from({ length: Math.min(4, plan.slides.length) }, async () => {
+    while (next < plan.slides.length) {
+      const index = next++;
+      const slide = plan.slides[index];
+      if (!slide.imageBytes) continue;
+      const ratio = imageFrameRatio(slide, index);
+      const width = index === 0 ? 1600 : 1100;
+      const height = Math.max(320, Math.round(width / ratio));
+      try {
+        slide.imageBytes = await sharp(slide.imageBytes).rotate()
+          .resize(width, height, {
+            fit: slide.isProductSlide ? 'contain' : 'cover',
+            position: sharp.strategy.attention,
+            background: { r: 255, g: 255, b: 255, alpha: 1 }
+          })
+          .flatten({ background: '#FFFFFF' })
+          .jpeg({ quality: 84, mozjpeg: true })
+          .toBuffer();
+        slide.imageMime = 'image/jpeg';
+      } catch (error) {
+        console.warn('[presentation-images] Image processing failed:', cleanText(error?.message || error, 200));
+        slide.imageBytes = null;
+        slide.imageMime = null;
+      }
+    }
+  });
+  await Promise.all(workers);
+}
 function addText(slide, text, x, y, w, h, opts = {}) {
   if (!text) return;
   slide.addText(String(text), {
@@ -1005,7 +1036,7 @@ function addImageOrPlaceholder(slide, s, x, y, w, h, theme) {
   slide.addShape('roundRect', { x, y, w, h, rectRadius: 0.16, fill: { color: theme.accent2, transparency: 4 }, line: { color: theme.accent2, transparency: 100 } });
   if (s.imageBytes) {
     try {
-      slide.addImage({ data: `data:${s.imageMime};base64,${s.imageBytes.toString('base64')}`, x, y, w, h, sizingCrop: true });
+      slide.addImage({ data: `data:${s.imageMime};base64,${s.imageBytes.toString('base64')}`, x, y, w, h });
       return;
     } catch (error) { console.warn('PPTX image embed failed:', error.message); }
   }
@@ -1067,7 +1098,7 @@ function addBullets(slide, items, x, y, w, theme, max = 4) {
   let yy = y;
   for (const item of (items || []).slice(0, max)) {
     slide.addShape('ellipse', { x, y: yy + 0.09, w: 0.12, h: 0.12, fill: { color: theme.accent }, line: { color: theme.accent } });
-    addText(slide, normalizeText(item, 110), x + 0.22, yy, w - 0.22, 0.55, { fontSize: 17, color: theme.ink, valign: 'top' });
+    addText(slide, normalizeText(item, 110), x + 0.22, yy, w - 0.22, 0.55, { fontSize: String(item).length > 75 ? 12.5 : String(item).length > 45 ? 14.5 : 17, color: theme.ink, valign: 'top' });
     yy += 0.62;
   }
 }
@@ -1085,6 +1116,7 @@ function buildPptx(plan) {
   pptx.company = 'Все проекты #Ian';
   pptx.lang = 'ru-RU';
   const theme = plan.theme || COLORS.blue;
+  const panelColor = theme.surface || 'FFFFFF';
   pptx.theme = { headFontFace: 'Aptos Display', bodyFontFace: 'Aptos', lang: 'ru-RU' };
 
   plan.slides.forEach((s, i) => {
@@ -1095,7 +1127,7 @@ function buildPptx(plan) {
       if (s.imageBytes) {
         // Editorial cover: one full-bleed photograph, restrained dark overlay, large readable title.
         slide.background = { color: '142033' };
-        slide.addImage({ data: `data:${s.imageMime};base64,${s.imageBytes.toString('base64')}`, x: 0, y: 0, w: 13.333, h: 7.5, sizingCrop: true });
+        slide.addImage({ data: `data:${s.imageMime};base64,${s.imageBytes.toString('base64')}`, x: 0, y: 0, w: 13.333, h: 7.5 });
         slide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: '101827', transparency: 34 }, line: { color: '101827', transparency: 100 } });
         slide.addShape('rect', { x: 0.72, y: 0.82, w: 0.07, h: 5.55, fill: { color: '4E7BFF' }, line: { color: '4E7BFF' } });
         addText(slide, 'ИССЛЕДОВАНИЕ  /  ВСЕ ПРОЕКТЫ #IAN', 1.05, 0.88, 8.8, 0.34, { fontSize: 10, bold: true, color: 'FFFFFF', charSpacing: 1.8 });
@@ -1115,10 +1147,10 @@ function buildPptx(plan) {
       return;
     }
 
-    slide.background = { color: i % 4 === 2 ? 'FFFFFF' : theme.bg };
+    slide.background = { color: theme.bg };
     slide.addShape('rect', { x: 0, y: 0, w: 0.12, h: 7.5, fill: { color: theme.accent }, line: { color: theme.accent } });
     slide.addShape('ellipse', { x: 11.55, y: -0.8, w: 2.45, h: 2.45, fill: { color: theme.accent2, transparency: 76 }, line: { color: theme.accent2, transparency: 100 } });
-    addText(slide, title, 0.72, 0.43, 8.45, 0.78, { fontSize: 27, bold: true, color: theme.ink, valign: 'mid' });
+    addText(slide, title, 0.72, 0.38, 11.6, 0.88, { fontSize: title.length > 90 ? 19 : title.length > 60 ? 23 : 28, bold: true, color: theme.ink, valign: 'mid' });
     slide.addShape('line', { x: 0.72, y: 1.29, w: 11.88, h: 0, line: { color: theme.accent2, transparency: 18, width: 1.1 } });
 
     if (type === 'cards') {
@@ -1130,7 +1162,7 @@ function buildPptx(plan) {
         const col = index % columns, row = Math.floor(index / columns);
         const x = 0.72 + col * (8.45 / columns);
         const y = cards.length <= 2 ? 2.0 : 1.55 + row * 2.37;
-        slide.addShape('roundRect', { x, y, w: cardW, h: cardH, rectRadius: 0.14, fill: { color: 'FFFFFF', transparency: 7 }, line: { color: theme.accent2, transparency: 37, width: 1 } });
+        slide.addShape('roundRect', { x, y, w: cardW, h: cardH, rectRadius: 0.14, fill: { color: panelColor, transparency: 0 }, line: { color: theme.accent2, transparency: 37, width: 1 } });
         if (card.value) addText(slide, card.value, x + 0.22, y + 0.2, cardW - 0.45, 0.4, { fontSize: 19, bold: true, color: theme.accent });
         addText(slide, card.title, x + 0.22, y + (card.value ? 0.68 : 0.25), cardW - 0.45, 0.48, { fontSize: 16, bold: true, color: theme.ink });
         addText(slide, card.text, x + 0.22, y + (card.value ? 1.18 : 0.83), cardW - 0.45, cardH - (card.value ? 1.35 : 0.98), { fontSize: 12.5, color: theme.muted, valign: 'top' });
@@ -1140,7 +1172,7 @@ function buildPptx(plan) {
       const panelY = 1.55, panelH = 4.85, panelW = 4.1;
       [s.leftTitle, s.rightTitle].forEach((label, side) => {
         const x = 0.72 + side * 4.35;
-        slide.addShape('roundRect', { x, y: panelY, w: panelW, h: panelH, rectRadius: 0.14, fill: { color: 'FFFFFF', transparency: 5 }, line: { color: theme.accent2, transparency: 35, width: 1 } });
+        slide.addShape('roundRect', { x, y: panelY, w: panelW, h: panelH, rectRadius: 0.14, fill: { color: panelColor, transparency: 0 }, line: { color: theme.accent2, transparency: 35, width: 1 } });
         slide.addShape('roundRect', { x: x + 0.18, y: panelY + 0.18, w: panelW - 0.36, h: 0.67, rectRadius: 0.1, fill: { color: side === 0 ? theme.accent : theme.accent2 }, line: { color: side === 0 ? theme.accent : theme.accent2, transparency: 100 } });
         addText(slide, label, x + 0.32, panelY + 0.28, panelW - 0.64, 0.42, { fontSize: 16, bold: true, color: side === 0 ? 'FFFFFF' : theme.ink });
         addBullets(slide, side ? s.rightItems : s.leftItems, x + 0.3, panelY + 1.08, panelW - 0.6, theme, 4);
@@ -1157,7 +1189,7 @@ function buildPptx(plan) {
       steps.forEach((step, index) => {
         const col = index % 2, row = Math.floor(index / 2);
         const x = 0.72 + col * 4.25, y = 1.52 + row * 1.58;
-        slide.addShape('roundRect', { x, y, w: cardW, h: 1.36, rectRadius: 0.13, fill: { color: 'FFFFFF', transparency: 5 }, line: { color: theme.accent2, transparency: 35, width: 1 } });
+        slide.addShape('roundRect', { x, y, w: cardW, h: 1.36, rectRadius: 0.13, fill: { color: panelColor, transparency: 0 }, line: { color: theme.accent2, transparency: 35, width: 1 } });
         slide.addShape('ellipse', { x: x + 0.18, y: y + 0.25, w: 0.55, h: 0.55, fill: { color: theme.accent }, line: { color: theme.accent, transparency: 100 } });
         addText(slide, String(index + 1), x + 0.18, y + 0.35, 0.55, 0.28, { fontSize: 14, bold: true, color: 'FFFFFF', align: 'center' });
         addText(slide, step, x + 0.88, y + 0.18, cardW - 1.05, 0.98, { fontSize: 14, color: theme.ink, valign: 'mid' });
@@ -1170,11 +1202,11 @@ function buildPptx(plan) {
       if (s.subtitle) addText(slide, s.subtitle, 0.9, 5.5, 6.8, 0.62, { fontSize: 14, color: theme.muted, valign: 'top' });
       addImageOrPlaceholder(slide, s, 8.15, 1.55, 4.42, 4.9, theme);
     } else if (type === 'table') {
-      const rows = (s.table || []).slice(0, 6), columns = Math.max(1, ...rows.map(row => row.length));
+      const rows = (s.table || []).slice(0, 6), columns = Math.max(1, Math.min(4, ...rows.map(row => row.length)));
       const tableX = 0.72, tableY = 1.58, tableW = 8.45, colW = tableW / columns, rowH = 0.74;
       rows.forEach((row, rowIndex) => row.slice(0, 4).forEach((cell, colIndex) => {
         const x = tableX + colIndex * colW, y = tableY + rowIndex * rowH;
-        slide.addShape('rect', { x, y, w: colW, h: rowH, fill: { color: rowIndex === 0 ? theme.accent : (colIndex === 0 ? theme.accent2 : 'FFFFFF'), transparency: rowIndex === 0 ? 0 : 5 }, line: { color: theme.accent2, transparency: 12, width: 0.7 } });
+        slide.addShape('rect', { x, y, w: colW, h: rowH, fill: { color: rowIndex === 0 ? theme.accent : (colIndex === 0 ? theme.accent2 : panelColor), transparency: rowIndex === 0 ? 0 : 5 }, line: { color: theme.accent2, transparency: 12, width: 0.7 } });
         addText(slide, cell, x + 0.08, y + 0.07, colW - 0.16, rowH - 0.14, { fontSize: rowIndex === 0 ? 12.5 : 11.5, bold: rowIndex === 0 || colIndex === 0, color: rowIndex === 0 ? 'FFFFFF' : theme.ink, valign: 'mid' });
       }));
       addImageOrPlaceholder(slide, s, 9.58, 1.58, 2.95, 4.7, theme);
@@ -1248,15 +1280,15 @@ function createPresentationPdfBuffer(plan) {
       doc.addPage({ size: [960, 540], margin: 0 });
       const isCover = slide.type === 'cover';
       const isQuote = slide.type === 'quote';
-      const slideBg = (i % 4 === 2 && !isCover && !isQuote) ? theme.accent2 : theme.bg;
+      const slideBg = theme.bg;
       doc.rect(0, 0, 960, 540).fill(isCover ? color(theme.accent) : color(slideBg));
       if (!isCover) {
         doc.rect(0, 0, 12, 540).fill(color(theme.accent));
         // Soft layered glass-like shapes in the background, kept behind slide content.
         if (!isQuote) {
-          doc.circle(910, 28, 118).fill(color('FFFFFF')).opacity(0.32);
-          doc.circle(930, 62, 42).fill(color(theme.accent2)).opacity(0.7);
-          doc.moveTo(48, 92).lineTo(912, 92).lineWidth(1).strokeColor(color(theme.accent2)).strokeOpacity(0.85).stroke();
+          doc.save().fillOpacity(0.18).circle(910, 28, 118).fill(color(theme.accent2)).restore();
+          doc.save().fillOpacity(0.36).circle(930, 62, 42).fill(color(theme.accent2)).restore();
+          doc.save().strokeOpacity(0.65).moveTo(48, 92).lineTo(912, 92).lineWidth(1).strokeColor(color(theme.accent2)).stroke().restore();
         }
       }
 
@@ -1321,7 +1353,7 @@ function createPresentationPdfBuffer(plan) {
 
         if (slide.cards?.length && y < 430) {
           for (const card of slide.cards.slice(0, 2)) {
-            doc.roundedRect(48, y, Math.min(contentWidth, 500), 55, 8).fill(color('FFFFFF'));
+            doc.roundedRect(48, y, Math.min(contentWidth, 500), 55, 8).fill(color(theme.surface || 'FFFFFF'));
             doc.fontSize(12).fillColor(color(theme.accent)).text(normalizeText(card.title, 55), 60, y + 7, { width: Math.min(contentWidth, 475), height: 18, ellipsis: true });
             doc.fontSize(10).fillColor(color(theme.ink)).text(normalizeText(card.text, 115), 60, y + 27, { width: Math.min(contentWidth, 475), height: 20, ellipsis: true });
             y += 62;
@@ -1604,6 +1636,7 @@ async function generateProject(body, onProgress = () => {}, onCheckpoint = async
   const topic = cleanText(body.topic, 180);
   if (!topic) { const error = new Error('Укажи тему проекта или презентации.'); error.status = 400; throw error; }
   const count = clampInt(body.slidesCount ?? body.slides ?? body.presentationSlides, 7, MAX_SLIDES, 12);
+  const contentCount = contentSlideCount(count);
   const theme = inferTheme(topic, body.style || '');
 
   // Stage 1: prepare the factual project foundation.
@@ -1629,7 +1662,7 @@ async function generateProject(body, onProgress = () => {}, onCheckpoint = async
   // Stage 3: the presentation planner receives the completed product, not a promise to create one later.
   onProgress(38, 'presentation', '📊 Составляем план презентации с учётом готового продукта...');
   const payload = {
-    topic, requestedSlides: count, projectContent,
+    topic, requestedSlides: contentCount, projectContent,
     finalProduct: {
       format: product.format, title: product.title, subtitle: product.subtitle,
       audience: product.audience, sections: product.sections,
@@ -1647,10 +1680,10 @@ async function generateProject(body, onProgress = () => {}, onCheckpoint = async
     outputRules: 'Верни ровно requestedSlides слайдов, каждый с конкретным содержанием и собственным imageQuery. Свяжи практическую часть с finalProduct. Не добавляй фиктивную статистику, результаты, шаблоны или вымышленные ссылки.'
   };
   const raw = await generateValidatedPresentation(
-    topic, count, payload,
+    topic, contentCount, payload,
     PLANNER_INSTRUCTIONS + '\nОБЯЗАТЕЛЬНО опирайся на projectContent и finalProduct. Итоговый продукт уже создан: отрази его реальное название, назначение и содержание. Не выдумывай результаты практики.'
   );
-  const plan = normalizePlan(raw, topic, count, theme);
+  const plan = normalizePlan(raw, topic, contentCount, theme);
   plan.projectContent = projectContent;
   plan.product = product;
   await onCheckpoint({ stage: 'presentation-plan', project: publicProject(plan) });
@@ -1665,15 +1698,8 @@ async function generateProject(body, onProgress = () => {}, onCheckpoint = async
   // Stage 5: fetch slide-specific photos, then add the exact saved product image.
   onProgress(78, 'images', '🖼️ Подбираем фотографии для слайдов...');
   await attachImages(plan);
-  plan.slides.push({
-    type: 'image',
-    title: 'Практический результат: ' + product.title,
-    subtitle: product.format,
-    body: 'Итоговый продукт проекта — готовый материал на основе исследования.',
-    bullets: [product.takeaway, ...product.checklist.slice(0, 2)].filter(Boolean),
-    imageBytes: product.imageBytes, imageMime: 'image/png',
-    imageCredit: 'Итоговый продукт проекта', isProductSlide: true
-  });
+  appendProductSlide(plan, product, count);
+  await preparePhotosForDeck(plan);
   await onCheckpoint({ stage: 'images-ready', project: publicProject(plan) });
 
   // Stage 6: build deliverables independently so one broken format does not discard the others.
@@ -1918,15 +1944,16 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
   }
   const allOldSlides = project.presentation || project.slides;
   const oldSlides = allOldSlides.filter(slide => !slide?.isProductSlide);
-  const count = clampInt(oldSlides.length, 7, MAX_SLIDES, 8);
+  const count = clampInt(allOldSlides.length, 7, MAX_SLIDES, 8);
+  const contentCount = contentSlideCount(count);
   const editTopic = cleanText(project.title, 180) || 'Презентация';
   const editPayload = {
-    topic: editTopic, requestedSlides: count, currentProject: project, instruction,
-    outputRules: `Верни ровно ${count} качественных слайдов. Не теряй полезные факты и практическую часть. Не добавляй общие шаблоны.`
+    topic: editTopic, requestedSlides: contentCount, currentProject: project, instruction,
+    outputRules: `Верни ровно ${contentCount} качественных содержательных слайдов. Не теряй полезные факты и практическую часть. Не добавляй общие шаблоны.`
   };
   const editInstructions = PLANNER_INSTRUCTIONS + '\nРедактируй переданный проект с учётом инструкции. Сохрани тему и точное число слайдов. Сохрани качественный материал, но исправляй повторы, пустые поля и неясные объяснения.';
-  const raw = await generateValidatedPresentation(editTopic, count, editPayload, editInstructions);
-  const plan = normalizePlan(raw, editTopic, count, inferTheme(project.title || '', ''));
+  const raw = await generateValidatedPresentation(editTopic, contentCount, editPayload, editInstructions);
+  const plan = normalizePlan(raw, editTopic, contentCount, inferTheme(project.title || '', ''));
   plan.projectContent = project.projectContent || null;
   plan.product = await generateFinalProduct(editTopic, plan.projectContent || { conclusion: plan.summary }, project.product?.format || 'памятка');
   plan.product.imageBytes = await renderProductImage(plan.product, plan.theme);
@@ -1941,7 +1968,8 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
     }
   });
   await attachImages(plan);
-  plan.slides.push({ type: 'image', title: 'Практический результат: ' + plan.product.title, subtitle: plan.product.format, body: 'Итоговый продукт проекта.', bullets: [plan.product.takeaway, ...plan.product.checklist.slice(0, 2)].filter(Boolean), imageBytes: plan.product.imageBytes, imageMime: 'image/png', imageCredit: 'Итоговый продукт проекта', isProductSlide: true });
+  appendProductSlide(plan, plan.product, count);
+  await preparePhotosForDeck(plan);
   const built = await withTimeout(buildFiles(plan), 55000, 'Сборка файлов');
   res.json({ project: publicProject(plan), files: built.files, fileErrors: built.fileErrors });
 }));
