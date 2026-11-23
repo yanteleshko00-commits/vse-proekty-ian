@@ -9,6 +9,10 @@ const html=await readFile(join(here,'public/index.html'),'utf8');
 for(const id of ['prompt','generate','ratio','quality','nxquiz','nxq-question','nxq-preview','nxq-next','nxq-skip','nxq-back','nxq-options'])
  assert.ok(html.includes('id="'+id+'"'),'Missing Image Studio item: '+id);
 assert.match(html,/role="dialog" aria-modal="true"/);
+assert.match(html,/class="nx-argosha-host"/);
+assert.match(html,/argosha\/embed\?studio=image/);
+const imageServer=await readFile(join(here,'server.js'),'utf8');
+assert.match(imageServer,/frame-src https:\/\/nexora-lobby\.onrender\.com/);
 assert.match(html,/Шаг 1 из 3/);
 assert.match(html,/nxqOpenImage\(\)/);
 assert.match(html,/generate\.addEventListener\('click',nxqOpenImage\)/);
