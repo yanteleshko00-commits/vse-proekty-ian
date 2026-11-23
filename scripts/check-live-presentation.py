@@ -88,6 +88,8 @@ def main():
             files = {item["name"]: item for item in result.get("files") or []}
             print("GENERATION COMPLETED slides:", len(slides), "files:", list(files))
             if len(slides) != 7: raise AssertionError("Expected 7 content and product slides")
+            if "Итоговый_продукт.png" not in files:
+                raise AssertionError("Final product illustration is missing")
             photo_slides = [x for x in slides if x.get("imageUrl") and x.get("imageCredit")]
             print("PHOTO SLIDES:", len(photo_slides))
             for i, slide in enumerate(slides):
