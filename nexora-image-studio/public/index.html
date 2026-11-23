@@ -455,7 +455,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
     <div class="setting"><label for="ratio">Формат изображения</label><select id="ratio"><option value="square">Квадрат · 1:1</option><option value="portrait">Портрет · 3:4</option><option value="landscape">Альбом · 4:3</option><option value="vertical">Вертикальный · 9:16</option><option value="wide">Широкий · 16:9</option></select></div>
     <div class="setting"><label for="quality">Детализация</label><select id="quality"><option value="standard">Стандартная</option><option value="detailed">Повышенная</option></select></div>
    </div>
-   <button class="primary" id="generate" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="m19 16 .9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16Z"/></svg><span>Создать изображение</span></button>
+   <button class="primary" id="generate" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="m19 16 .9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16Z"/></svg><span>Далее — к вопросам</span></button>
    <p class="footnote">Генератор работает через сервер NEXORA. API-ключ хранится на сервере и не передаётся в браузер.</p>
    <div class="message" id="message" role="status" aria-live="polite"></div>
   </div>
@@ -512,8 +512,8 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
  <div class="nxq-content">
   <div class="nxq-brand"><span class="nxq-mark">N</span><span>NEXORA<small>IMAGE STUDIO · ОПРОС</small></span></div>
   <div class="nxq-preview"><span>ИДЕЯ ИЗОБРАЖЕНИЯ</span><strong id="nxq-preview"></strong></div>
-  <div class="nxq-topline"><button id="nxq-back" type="button" class="nxq-back">‹ Назад</button><span id="nxq-counter">Шаг 1 из 4</span></div>
-  <div class="nxq-track" role="progressbar" aria-label="Прогресс опроса" aria-valuemin="0" aria-valuemax="4" aria-valuenow="1" id="nxq-track"><i id="nxq-fill"></i></div>
+  <div class="nxq-topline"><button id="nxq-back" type="button" class="nxq-back">‹ Назад</button><span id="nxq-counter">Шаг 1 из 3</span></div>
+  <div class="nxq-track" role="progressbar" aria-label="Прогресс опроса" aria-valuemin="0" aria-valuemax="3" aria-valuenow="1" id="nxq-track"><i id="nxq-fill"></i></div>
   <h2 id="nxq-question" class="nxq-question"></h2>
   <div id="nxq-options" class="nxq-options" role="group" aria-label="Ответы на вопрос"></div>
   <div id="nxq-extra" class="nxq-extra" hidden><label for="nxq-book">Учебник или номер задачи (необязательно)</label><input id="nxq-book" type="text" maxlength="220" placeholder="Например: Алгебра, 9 класс, № 241"></div>
