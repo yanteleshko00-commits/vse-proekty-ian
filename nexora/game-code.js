@@ -36,7 +36,9 @@ export function normalizeGameHTML(text){
  if(!/<html[\s>]/i.test(html)||!/<\/html>/i.test(html)||!/<script(?:\s|>)/i.test(html)||!/<\/script>/i.test(html))return null;
  if(/<script\b[^>]*\bsrc\s*=|<iframe\b|<object\b|<embed\b|<base\b|<form\b|<meta[^>]*http-equiv\s*=\s*["']?refresh/i.test(html))return null;
  if(/<script\b[^>]*\btype\s*=\s*["']?module/i.test(html))return null;
- if(/https?:\/\/|(?:fetch|XMLHttpRequest|WebSocket|Worker)\s*\(/i.test(html))return null;
+ // The iframe CSP blocks connect-src, workers and external loads even when a
+ // bundled classic engine contains unreachable fetch() functions.
+ if(/https?:\/\//i.test(html))return null;
  return html;
 }
 const ADAPTER=[
