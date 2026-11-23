@@ -180,3 +180,14 @@ test('minimal centered GPT-style UI avoids mislabeling the default model', async
   assert.match(homepage,/<h3>Чат GPT<\/h3>/);
   assert.doesNotMatch(homepage,/<h3>Чат GPT \+ Алиса<\/h3>/);
 });
+
+test('iPhone keyboard focus does not automatically zoom the chat viewport', async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const {join}=await import('node:path');
+  const {fileURLToPath}=await import('node:url');
+  const html=await readFile(join(fileURLToPath(new URL('..',import.meta.url)),'public/chat.html'),'utf8');
+  // Mobile Safari zooms form fields smaller than 16px at focus.
+  assert.match(html, /@media\\s*\\(max-width:\\s*740px\\)\\s*\\{\\s*\\.composer textarea,\\s*\\.search\\s*\\{\\s*font-size:\\s*16px;\\s*\\}/);
+  // Do not disable intentional pinch zoom or accessibility scaling.
+  assert.doesNotMatch(html, /user-scalable=no|maximum-scale=1/);
+});
