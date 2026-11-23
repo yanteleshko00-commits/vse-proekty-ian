@@ -1,0 +1,14 @@
+name: Live Alice with existing Image Studio Yandex key
+on:
+  push:
+    branches: ['test/live-presentation-2026-11-23']
+    paths:
+      - 'scripts/check-alice-live.py'
+      - '.github/workflows/live-alice-key-check.yml'
+jobs:
+  test-live-alice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check-alice-live.py
