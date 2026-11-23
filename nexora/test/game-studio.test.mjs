@@ -183,3 +183,51 @@ test('HTTP game build and live sandbox preview work for guests with no credentia
   assert.equal(invalid.status,400);
  }finally{child.kill();}
 });
+
+
+test('signed-in game maker requests original HTML from protected AI gateway',async()=>{
+ const {createServer}=await import('node:http');
+ const {createHmac}=await import('node:crypto');
+ const secret='m'.repeat(48),sessionSecret='s'.repeat(48);
+ const resultHtml='<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>AI Game</title><style>canvas{display:block;width:100%;background:black}body{margin:0}</style></head><body><canvas width="720" height="420"></canvas><script>const canvas=document.querySelector("canvas");const context=canvas.getContext("2d");let t=0;document.addEventListener("keydown",event=>{t+=event.key==="ArrowLeft"?1:2});function loop(){t++;context.fillRect(t%720,0,10,10);requestAnimationFrame(loop)}loop();</script></body></html>';
+ let calls=0;
+ const mock=createServer(async(req,res)=>{
+  calls++;
+  assert.equal(req.url,'/api/nexora-chat/internal');
+  assert.equal(req.headers['x-nexora-chat-token'],secret);
+  const parts=[];for await(const chunk of req)parts.push(chunk);
+  const input=JSON.parse(Buffer.concat(parts).toString('utf8'));
+  assert.equal(input.model,'alice');
+  assert.match(input.messages[0].content,/ОПИСАНИЕ ИГРЫ: Платформер с монетами/);
+  res.writeHead(200,{'Content-Type':'application/json'});
+  res.end(JSON.stringify({ok:true,answer:resultHtml,provider:'Alice AI LLM'}));
+ });
+ await new Promise(resolve=>mock.listen(0,'127.0.0.1',resolve));
+ const port=22500+process.pid%17000;
+ const child=spawn(process.execPath,[join(root,'server.js')],{
+  env:{...process.env,PORT:String(port),NODE_ENV:'test',SESSION_SECRET:sessionSecret,
+   NEXORA_CHAT_INTERNAL_TOKEN:secret,
+   PROJECT_GENERATOR_URL:'http://127.0.0.1:'+mock.address().port},
+  stdio:'ignore'
+ });
+ try{
+  let ready=false;
+  for(let i=0;i<40;i++){
+   try{const r=await fetch('http://127.0.0.1:'+port+'/health');if(r.ok){ready=true;break;}}catch{}
+   await new Promise(resolve=>setTimeout(resolve,130));
+  }
+  assert.ok(ready);
+  const encoded=Buffer.from(JSON.stringify({id:'game-maker',name:'Игрок',issuedAt:Date.now()})).toString('base64url');
+  const sig=createHmac('sha256',sessionSecret).update(encoded).digest('base64url');
+  const response=await fetch('http://127.0.0.1:'+port+'/api/game/code',{
+   method:'POST',headers:{'Content-Type':'application/json',Cookie:'nexora_session='+encoded+'.'+sig},
+   body:JSON.stringify({idea:'Платформер с монетами'})
+  });
+  assert.equal(response.status,200);
+  const game=await response.json();
+  assert.equal(game.source,'ai');
+  assert.equal(game.provider,'Alice AI LLM');
+  assert.equal(game.html,resultHtml);
+  assert.equal(calls,1);
+ }finally{child.kill();await new Promise(resolve=>mock.close(resolve));}
+});
