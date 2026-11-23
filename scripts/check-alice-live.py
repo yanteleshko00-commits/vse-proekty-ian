@@ -38,3 +38,11 @@ print("ALICE LIVE RESULT",{"status":status,"provider":provider,
                            "answer":str(answer.get("answer",""))[:90],
                            "error":str(answer.get("error",""))[:190]})
 assert status == 200 and provider == "Alice AI LLM", "Alice AI LLM did not answer directly"
+
+
+# JSON-generation path used for project planning must work too.
+status, suggestion = fetch_json(url + "/api/suggest-topics", {"interests": "космос"})
+topic = str(suggestion.get("topic") or "")
+print("ALICE JSON TOPIC", {"status": status, "topic": topic[:90],
+                          "error": str(suggestion.get("error", ""))[:170]})
+assert status == 200 and len(topic) >= 8, "Alice JSON generation failed"
