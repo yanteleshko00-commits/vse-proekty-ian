@@ -134,7 +134,7 @@ test('Game Studio supports genuine editable HTML code and swipe-to-arrow control
    assert.equal(generated,arcadeGameHTML(idea,family));
    assert.match(generated,new RegExp('mode":"'+family+'"'));
    assert.ok(normalizeGameHTML(generated),'Invalid offline '+family+' game');
-   const gameplay=generated.match(/<script>([\\s\\S]*?)<\\/script>/)?.[1];
+   const gameplay=generated.split('<script>')[1]?.split('</script>')[0];
    assert.ok(gameplay,'Missing active gameplay script '+family);
    new vm.Script(gameplay);
  }
