@@ -164,6 +164,15 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 :root[data-theme=dark] .wizard-action.primary{background:#8965e7}
 @media(max-width:600px){.topic-wizard{padding:13px;margin-bottom:17px;border-radius:14px}.wizard-question{font-size:14px}.wizard-choice{font-size:10px;min-height:43px}.wizard-actions{gap:4px}.wizard-action{padding:8px 10px;font-size:10px}}
 
+
+/* Clear writing flow: no repeated format, tone or extra-instructions controls. */
+#example-topics{margin:-3px 0 16px}
+#example-topics .section-label{color:#988ba9;font-size:10px;margin-bottom:8px}
+#example-topics .examples{margin:0}
+#example-topics .example{font-size:10px;padding:7px 9px}
+#final-settings{margin-top:5px}
+#topic-wizard{margin-top:10px}
+@media(max-width:600px){#example-topics .example{font-size:9.5px;padding:7px 9px}#final-settings{gap:9px}}
 </style>
 </head>
 <body>
@@ -181,12 +190,11 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 <main class="container">
   <div class="hero">
     <div><div class="eyebrow">NEXORA / CREATIVE WORKSPACE</div><h1>Идея превращается <em>в текст.</em></h1><p>Пишите, редактируйте и улучшайте тексты с помощью ИИ. От первой мысли до готового материала — в одном аккуратном пространстве.</p></div>
-    <div class="hero-pill"><i></i> 6 режимов работы с текстом</div>
   </div>
   <div class="workspace">
     <section class="panel" aria-labelledby="create-title">
-      <div class="panel-head"><h2 id="create-title">Создать текст</h2><span>01 / EDITOR</span></div>
-      <span class="section-label">Что будем делать?</span>
+      <div class="panel-head"><h2 id="create-title">Настройка текста</h2><span>01 / EDITOR</span></div>
+      <span class="section-label">Выберите действие</span>
       <div class="actions" aria-label="Режим работы">
         <button class="action active" data-action="create" aria-pressed="true" type="button">✦ Написать</button>
         <button class="action" data-action="rewrite" aria-pressed="false" type="button">↻ Переписать</button>
@@ -199,6 +207,15 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
         <label for="topic"><span id="topic-label">Тема или идея</span><small>до 1500 знаков</small></label>
         <textarea id="topic" maxlength="1500" placeholder="Например: Почему чтение книг развивает воображение? С примерами и простым выводом."></textarea>
       </div>
+      <div id="example-topics"><span class="section-label">Или выберите готовую тему</span>
+      <div class="examples" id="examples-field">
+        <button class="example" type="button" data-format="essay" data-topic="Сочинение на тему «Почему важно беречь природу» с введением, примерами и выводом.">Сочинение о природе</button>
+        <button class="example" type="button" data-format="post" data-topic="Короткий интересный пост о пользе ежедневного чтения для подростков.">Пост о книгах</button>
+        <button class="example" type="button" data-format="email" data-topic="Вежливое письмо преподавателю с просьбой объяснить пропущенную тему.">Письмо</button>
+        <button class="example" type="button" data-format="description" data-topic="Красивое описание уютной кофейни для сайта.">Описание</button>
+      </div>
+      </div>
+
       <section class="topic-wizard" id="topic-wizard" hidden aria-labelledby="wizard-heading">
         <div class="wizard-top"><span class="wizard-kicker" id="wizard-heading">✦ УТОЧНИМ ВАШ ТЕКСТ</span><span class="wizard-step-counter" id="wizard-count">Шаг 1 из 5</span></div>
         <div class="wizard-track" role="progressbar" aria-label="Заполнение опросника" aria-valuemin="0" aria-valuemax="5" aria-valuenow="1" id="wizard-progress"><span class="wizard-track-fill" id="wizard-fill"></span></div>
@@ -234,35 +251,13 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
         <div id="file-list" class="file-list" aria-live="polite"></div>
         <p class="attach-hint">До 3 файлов: фото, PDF, Word (.docx) или TXT. ИИ читает содержимое и использует его в тексте. Для PDF со сканами лучше приложить снимок страницы.</p>
       </div>
-      <span class="section-label">Примеры заданий</span>
-      <div class="examples">
-        <button class="example" type="button" data-format="essay" data-topic="Сочинение на тему «Почему важно беречь природу» с введением, примерами и выводом.">Сочинение о природе</button>
-        <button class="example" type="button" data-format="post" data-topic="Короткий интересный пост о пользе ежедневного чтения для подростков.">Пост о книгах</button>
-        <button class="example" type="button" data-format="email" data-topic="Вежливое письмо преподавателю с просьбой объяснить пропущенную тему.">Письмо</button>
-        <button class="example" type="button" data-format="description" data-topic="Красивое описание уютной кофейни для сайта.">Описание</button>
-      </div>
-      <span class="section-label">Какой текст составить?</span>
-      <div class="format-picker" id="format-picker" aria-label="Вид текста">
-        <button type="button" class="format-choice" data-format-choice="essay">✎ Сочинение</button>
-        <button type="button" class="format-choice" data-format-choice="article">▤ Статья</button>
-        <button type="button" class="format-choice" data-format-choice="post">✦ Пост</button>
-        <button type="button" class="format-choice" data-format-choice="letter">✉ Письмо</button>
-        <button type="button" class="format-choice" data-format-choice="email">@ E-mail</button>
-        <button type="button" class="format-choice" data-format-choice="story">◇ Рассказ</button>
-        <button type="button" class="format-choice" data-format-choice="report">≡ Доклад</button>
-        <button type="button" class="format-choice" data-format-choice="description">▧ Описание</button>
-        <button type="button" class="format-choice active" data-format-choice="free">＋ Другое</button>
-      </div>
-      <div class="field-row">
-        <div class="field"><label for="format">Формат</label><select id="format"><option value="article">Статья</option><option value="essay">Сочинение / эссе</option><option value="post">Пост</option><option value="letter">Письмо</option><option value="email">E-mail</option><option value="description">Описание</option><option value="story">Рассказ</option><option value="report">Доклад</option><option value="free" selected>Свободный</option></select></div>
-        <div class="field"><label for="tone">Стиль</label><select id="tone"><option value="neutral">Нейтральный</option><option value="formal">Официальный</option><option value="friendly">Дружелюбный</option><option value="creative">Творческий</option><option value="persuasive">Убедительный</option><option value="academic">Учебный</option></select></div>
+      <div class="field-row" id="final-settings">
         <div class="field"><label for="size">Объём</label><select id="size"><option value="short">Короткий</option><option value="medium" selected>Средний</option><option value="long">Подробный</option></select></div>
         <div class="field"><label for="language">Язык</label><select id="language"><option value="ru">Русский</option><option value="en">English</option></select></div>
       </div>
-      <div class="field"><label for="requirements">Дополнительные пожелания <small>необязательно</small></label><textarea id="requirements" maxlength="1300" style="min-height:75px" placeholder="Например: без сложных слов, для 8 класса, на 3 абзаца…"></textarea></div>
       <button id="generate" class="generate" type="button">✦ &nbsp; Создать текст</button>
       <div class="error" id="error" role="alert"></div>
-      <p class="hint">Текст создаётся через подключённые модели NEXORA. Проверяйте факты перед публикацией. Исходные тексты не сохраняются этим сайтом в истории.</p>
+      <p class="hint">ИИ учитывает тему, ответы опросника и вложения. Проверяйте факты перед публикацией. Сайт не сохраняет историю исходных текстов.</p>
     </section>
     <section class="panel preview" id="preview" aria-labelledby="result-title">
       <div class="panel-head"><h2 id="result-title">Результат</h2><span id="output-status" class="output-status">Здесь появится ваш текст</span></div>
@@ -366,18 +361,6 @@ async function prepareFiles(){
   }
   return encoded;
 }
-function pickFormat(format){
-  $("format").value=format;
-  document.querySelectorAll("[data-format-choice]").forEach(x=>{
-    const active=x.dataset.formatChoice===format;
-    x.classList.toggle("active",active);
-    x.setAttribute("aria-pressed",String(active));
-  });
-}
-document.querySelectorAll("[data-format-choice]").forEach(b=>b.addEventListener("click",()=>{pickFormat(b.dataset.formatChoice);if(typeof wizardAnswers!=="undefined"){wizardAnswers.format=b.dataset.formatChoice;if(!wizardOptionsFor("audience").some(x=>x[0]===wizardAnswers.audience))wizardAnswers.audience="";if(!$("topic-wizard").hidden)renderWizard()}}));
-$("format").addEventListener("change",()=>{pickFormat($("format").value);wizardAnswers.format=$("format").value;if(!$("topic-wizard").hidden)renderWizard()});
-$("tone").addEventListener("change",()=>{wizardAnswers.tone=$("tone").value;if(!$("topic-wizard").hidden)renderWizard()});
-
 let action="create",busy=false,controller=null,loadingTimer=null,toastTimer=null,currentText="";
 
 // Topic questionnaire opens inline after the user has entered a topic.
@@ -403,7 +386,7 @@ const wizardAudience={
  general:[["school","Для школы"],["general","Для всех"],["work","Для работы"],["personal","Для себя"]]
 };
 const wizardSteps=[
- {key:"format",question:"Какой текст нужно составить?",description:"Выберите формат. Его можно будет изменить и ниже на странице."},
+ {key:"format",question:"Какой текст нужно составить?",description:"Этот формат будет использован при создании текста."},
  {key:"audience",question:"Для кого вы пишете?",description:"Это поможет выбрать понятные слова и подходящие примеры."},
  {key:"purpose",question:"Чего хотите добиться текстом?",description:"Например, объяснить тему или заинтересовать читателей."},
  {key:"tone",question:"Как должен звучать текст?",description:"Официально, легко, творчески или по-учебному."},
@@ -413,7 +396,7 @@ let wizardStep=0,wizardFinished=false,wizardSkipped=false;
 const wizardAnswers={format:"free",audience:"",purpose:"",tone:"neutral",details:""};
 function wizardOptionsFor(key){
  if(key==="format")return wizardFormatOptions;
- if(key==="audience")return wizardAudience[$("format").value]||wizardAudience.general;
+ if(key==="audience")return wizardAudience[wizardAnswers.format]||wizardAudience.general;
  if(key==="purpose")return wizardPurposes;
  if(key==="tone")return wizardToneOptions;
  return [];
@@ -423,7 +406,7 @@ function wizardOptionLabel(key,value){
 }
 function resetWizard(){
  wizardStep=0;wizardFinished=false;wizardSkipped=false;
- Object.assign(wizardAnswers,{format:$("format").value,audience:"",purpose:"",tone:$("tone").value,details:""});
+ Object.assign(wizardAnswers,{format:"free",audience:"",purpose:"",tone:"neutral",details:""});
 }
 function renderWizard(){
  const panel=$("topic-wizard"),valid=action==="create"&&$("topic").value.trim().length>=4&&!wizardSkipped;
@@ -466,10 +449,8 @@ function renderWizard(){
      option.addEventListener("click",()=>{
        wizardAnswers[step.key]=value;
        if(step.key==="format"){
-         pickFormat(value);
          if(!wizardOptionsFor("audience").some(pair=>pair[0]===wizardAnswers.audience))wizardAnswers.audience="";
        }
-       if(step.key==="tone")$("tone").value=value;
        renderWizard();
      });
      host.appendChild(option);
@@ -479,6 +460,7 @@ function renderWizard(){
  $("wizard-next").textContent=wizardStep===wizardSteps.length-1?"Готово":"Далее";
 }
 function wizardOnTopic(){
+ if($("topic").value.trim().length>=4&&wizardSkipped)wizardSkipped=false;
  if(!$("topic").value.trim()){
    resetWizard();
    $("topic-wizard").hidden=true;
@@ -494,7 +476,7 @@ $("wizard-next").addEventListener("click",()=>{
  renderWizard();
 });
 $("wizard-back").addEventListener("click",()=>{if(wizardStep>0)wizardStep--;renderWizard()});
-$("wizard-skip").addEventListener("click",()=>{wizardSkipped=true;renderWizard()});
+$("wizard-skip").addEventListener("click",()=>{wizardSkipped=true;Object.assign(wizardAnswers,{format:"free",audience:"",purpose:"",tone:"neutral",details:""});renderWizard()});
 $("wizard-edit").addEventListener("click",()=>{wizardFinished=false;wizardStep=0;renderWizard()});
 function wizardRequirements(){
  if(action!=="create"||wizardSkipped)return "";
@@ -510,9 +492,19 @@ function updateStats(){const s=stats($("result-editor").value);$("words").textCo
 function toast(message){const el=$("toast");el.textContent=message;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),2800)}
 function showError(message){$("error").textContent=message;$("error").classList.add("show");$("output-status").textContent="Нужна повторная попытка"}
 function clearError(){$("error").classList.remove("show");$("error").textContent=""}
-function mode(next){if(busy)return;action=next;actions.forEach(b=>{const yes=b.dataset.action===action;b.classList.toggle("active",yes);b.setAttribute("aria-pressed",String(yes))});$("source-field").hidden=next==="create";$("topic-label").textContent=next==="create"?"Тема или идея":"Пожелания к результату (необязательно)";$("topic").placeholder=next==="create"?"Опишите, какой текст хотите получить…":"Например: сохранить стиль и имена, убрать повторы…";$("generate").textContent=next==="create"?"✦ Создать текст":next==="proofread"?"✓ Исправить ошибки":next==="shorten"?"− Сократить текст":next==="expand"?"＋ Расширить текст":next==="summarize"?"≡ Пересказать текст":"↻ Переписать текст";renderWizard()}
+function mode(next){
+ if(busy)return;
+ action=next;
+ actions.forEach(b=>{const yes=b.dataset.action===action;b.classList.toggle("active",yes);b.setAttribute("aria-pressed",String(yes))});
+ $("source-field").hidden=next==="create";
+ $("example-topics").hidden=next!=="create";
+ $("topic-label").textContent=next==="create"?"Тема или идея":"Что изменить? (необязательно)";
+ $("topic").placeholder=next==="create"?"Опишите, какой текст хотите получить…":"Например: сохранить имена, убрать повторы, сделать проще…";
+ $("generate").textContent=next==="create"?"✦ Создать текст":next==="proofread"?"✓ Исправить ошибки":next==="shorten"?"− Сократить текст":next==="expand"?"＋ Расширить текст":next==="summarize"?"≡ Пересказать текст":"↻ Переписать текст";
+ renderWizard();
+}
 actions.forEach(b=>b.addEventListener("click",()=>mode(b.dataset.action)));
-document.querySelectorAll(".example").forEach(b=>b.addEventListener("click",()=>{if(busy)return;mode("create");$("topic").value=b.dataset.topic;pickFormat(b.dataset.format);wizardAnswers.format=b.dataset.format;wizardOnTopic();$("topic").focus()}));
+document.querySelectorAll(".example").forEach(b=>b.addEventListener("click",()=>{if(busy)return;mode("create");$("topic").value=b.dataset.topic;wizardAnswers.format=b.dataset.format;wizardSkipped=false;wizardStep=0;wizardFinished=false;wizardOnTopic();$("topic").focus()}));
 function loading(active){
   busy=active;$("generate").disabled=active;
   if(active){
@@ -538,8 +530,10 @@ async function generate(){
   if(action==="create"&&topic.length<4&&!filesSelected.length){showError("Опишите тему или прикрепите файл/фотографию.");$("topic").focus();return}
   if(action!=="create"&&source.length<15&&!filesSelected.length){showError("Добавьте исходный текст или прикрепите фото/документ.");$("source").focus();return}
   clearError();
-  const requirements=[$("requirements").value.trim(),wizardRequirements()].filter(Boolean).join("\n").slice(0,1300);
-  const data={action,topic,source,format:$("format").value,tone:$("tone").value,size:$("size").value,language:$("language").value,requirements};
+  const requirements=wizardRequirements().slice(0,1300);
+  const format=action==="create"&&!wizardSkipped?wizardAnswers.format:"free";
+  const tone=action==="create"&&!wizardSkipped?wizardAnswers.tone:"neutral";
+  const data={action,topic,source,format,tone,size:$("size").value,language:$("language").value,requirements};
   controller=new AbortController();loading(true);
   let timedOut=false;const timeout=setTimeout(()=>{timedOut=true;controller.abort()},235000);
   try{
