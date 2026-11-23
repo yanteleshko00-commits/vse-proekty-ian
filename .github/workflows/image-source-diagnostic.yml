@@ -1,0 +1,14 @@
+name: Diagnose presentation photo search
+on:
+  push:
+    branches: ['test/live-presentation-2026-11-23']
+    paths:
+      - 'scripts/diagnose-images.py'
+      - '.github/workflows/image-source-diagnostic.yml'
+jobs:
+  public-image-availability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/diagnose-images.py
