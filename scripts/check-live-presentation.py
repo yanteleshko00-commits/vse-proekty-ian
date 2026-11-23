@@ -95,7 +95,7 @@ def main():
                       "query:", str(slide.get("imageQuery", ""))[:130],
                       "credit:", str(slide.get("imageCredit", ""))[:90])
             if len(photo_slides) < 3: raise AssertionError("Too few topic-appropriate photos")
-            disallowed = ("hoopoe", "bird", "parrot", "cat ", "dog ", "rural kitchen")
+            disallowed = ("hoopoe", "bird", "parrot", "cat ", "dog ", "rural kitchen", "wildlife reserve")
             wrong = [x.get("imageCredit") for x in photo_slides if any(
                 term in str(x.get("imageCredit", "")).lower() for term in disallowed)]
             if wrong: raise AssertionError("Off-topic image still selected: " + repr(wrong))
