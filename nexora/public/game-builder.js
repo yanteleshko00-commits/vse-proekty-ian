@@ -46,7 +46,7 @@
   const description=idea.value.trim();
   if(description.length<2){fail("Напишите название или короткое описание игры.");idea.focus();return;}
   if(description.length>500){fail("Описание не должно превышать 500 символов.");return;}
-  setBusy(true);setStatus("ИИ пишет HTML, CSS и JavaScript для вашей игры…");
+  setBusy(true);setStatus("Собираю игровую механику и исходный код…");
   $("ai-placeholder").hidden=false;
   $("ai-result").hidden=true;$("ai-toolbar").hidden=true;
   $("ai-placeholder-title").textContent="Создаю вашу игру…";
@@ -112,7 +112,7 @@
   b.addEventListener("pointerup",stop);
   b.addEventListener("pointercancel",stop);
   b.addEventListener("lostpointercapture",stop);
-  b.addEventListener("click",()=>control(dir,"tap"));
+  b.addEventListener("click",e=>{if(e.detail===0)control(dir,"tap")});
  });
  document.querySelectorAll("[data-ai-example]").forEach(b=>b.addEventListener("click",()=>{
   idea.value=b.dataset.aiExample||"";void createGame();
