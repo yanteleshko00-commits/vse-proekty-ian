@@ -11,6 +11,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
 import { designProduct } from './productDesigner.js';
+import { aliceProviderFromEnv, requestAliceAIText } from './alice-provider.js';
 import { contentSlideCount, appendProductSlide, imageFrameRatio, imageSearchQueries, imageCandidateScore, isTrustedWikimediaImageUrl } from './presentation-design.js';
 
 const app = express();
@@ -380,7 +381,11 @@ async function withTimeout(promise, ms, label = 'Операция') {
 }
 function configuredAIProviders() {
   const providers = [];
-  // Route school-project text and structure through GPT-6 Luna when its API key is configured.
+  // Alice AI LLM writes content, layout descriptions and project text.
+  // Alice AI ART is a separate image model, not a text model.
+  const alice = aliceProviderFromEnv();
+  if (alice) providers.push(alice);
+  // OpenAI stays as a fallback, not the first choice.
   if (openai) providers.push({ name: 'OpenAI', type: 'openai', key: process.env.OPENAI_API_KEY, model: MODEL });
   // Presentations use Gemini 3.8 Flash as the preferred model.
   // Accept the common Google AI Studio environment-variable names.
@@ -402,6 +407,9 @@ function providerErrorMessage(data, status) {
 async function callAIProvider(provider, instructions, input, jsonMode, timeout) {
   const requestTimeout = Math.min(timeout, 55000);
   const signal = AbortSignal.timeout(requestTimeout);
+  if (provider.type === 'alice') {
+    return requestAliceAIText(provider, instructions, input, jsonMode, requestTimeout);
+  }
   if (provider.type === 'openai') {
     const result = await withTimeout(openai.responses.create({
       model: MODEL, instructions, input, max_output_tokens: 10000,
@@ -520,8 +528,10 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
   throw new Error('Неизвестный ИИ-провайдер: ' + provider.name);
 }
 async function runAIWithFallback(instructions, input, jsonMode, timeout = REQUEST_TIMEOUT_MS) {
-  const providers = configuredAIProviders();
-  if (!providers.length) throw new Error('Не подключены ИИ-провайдеры. Проверь GEMINI_API_KEY и другие ключи в Render → Environment.');
+  const providers = configuredAIProviders().filter(provider =>
+    !(provider.name === 'OpenAI' && openAIQuotaBlockedUntil > Date.now())
+  );
+  if (!providers.length) throw new Error('Не подключены ИИ-провайдеры. Для Alice AI LLM настрой YANDEX_API_KEY и YANDEX_FOLDER_ID в Render → Environment.');
   const failures = [];
   // Use one shared AI time budget instead of spending 18 seconds on every provider.
   // Otherwise several unavailable providers can outlive the Render request timeout.
@@ -573,7 +583,7 @@ function scoreAIJsonCandidate(parsed, payload) {
 
 async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task = 'text') {
   const input = 'Return a valid json object matching the requested schema.\nPayload: ' + JSON.stringify(payload);
-  const preferredType = task === 'presentation' ? 'gemini' : 'openai';
+  const preferredType = configuredAIProviders().some(provider => provider.type === 'alice') ? 'alice' : (task === 'presentation' ? 'gemini' : 'openai');
   const providers = configuredAIProviders().filter(provider =>
     !(provider.name === 'OpenAI' && openAIQuotaBlockedUntil > Date.now())
   ).map(provider => ({ ...provider, taskPriority: provider.type === preferredType ? 0 : 1 }));
@@ -581,10 +591,10 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task 
     throw new Error('Нет доступных ИИ-провайдеров: проверь ключи в Render. OpenAI может быть временно пропущен после ошибки исчерпанной квоты.');
   }
 
-  // All configured providers start together. A failed provider cannot cancel the others.
-  const perProviderTimeout = Math.max(15000, Math.min(35000, timeout));
+  // Give Alice the first chance before invoking billable alternatives.
+  const perProviderTimeout = Math.max(15000, Math.min(55000, timeout));
   const waveStartedAt = Date.now();
-  const attempts = await Promise.all(providers.map(async provider => {
+  const attemptProvider = async provider => {
     const startedAt = Date.now();
     try {
       const output = await callAIProvider(provider, instructions, input, true, perProviderTimeout);
@@ -610,7 +620,14 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task 
         .replace(/Bearer\s+\S+/gi, 'Bearer [скрыт]');
       return { ok: false, provider: provider.name, error: message, elapsedMs: Date.now() - startedAt };
     }
-  }));
+  };
+  const preferredAlice = providers.find(provider => provider.type === 'alice');
+  const attempts = preferredAlice ? [await attemptProvider(preferredAlice)] : [];
+  // On malformed or unsuccessful Alice output, preserve all existing fallbacks.
+  if (!preferredAlice || !attempts[0].ok || attempts[0].issues.length > 0) {
+    const alternatives = preferredAlice ? providers.filter(provider => provider !== preferredAlice) : providers;
+    attempts.push(...await Promise.all(alternatives.map(attemptProvider)));
+  }
 
   const successes = attempts.filter(attempt => attempt.ok);
   const failures = attempts.filter(attempt => !attempt.ok);
@@ -629,8 +646,10 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task 
       return attempt.provider + ': ' + detail;
     }).join(' | ');
     console.error('[AI competition] Ни один провайдер не вернул корректный JSON:', safeReasons);
-    const geminiMissing = !providers.some(provider => provider.type === 'gemini') && failures.some(item => item.provider === 'OpenAI' && /429|quota|credits remaining|insufficient_quota/i.test(item.error || ''));
-    const hint = geminiMissing ? ' Google Gemini не подключён на сервере: добавь GEMINI_API_KEY в Render → Environment и выполни Deploy.' : '';
+    const aliceMissing = !providers.some(provider => provider.type === 'alice');
+    const hint = aliceMissing
+      ? ' Для генерации с Alice AI LLM добавь YANDEX_API_KEY и YANDEX_FOLDER_ID в Render → Environment. Нужен доступ ai.languageModels.user.'
+      : '';
     const error = new Error('Не удалось получить корректный ответ. Причины по нейросетям: ' + (safeReasons || 'нет ответов') + '. Ошибка одного сервиса не отменяет результаты остальных. Проверь список подключений в /api/health.' + hint);
     error.status = 503;
     error.code = 'AI_PROVIDERS_UNAVAILABLE';
@@ -1931,8 +1950,16 @@ app.get('/api/health', asyncRoute(async (_req, res) => {
     ok: true, service: 'presentation-generator', model: MODEL,
     nexoraIdConfigured: projectOAuthReady(),
     aiProviders: providers.map(provider => provider.name),
-    aiProviderModels: providers.map(provider => ({ name: provider.name, model: provider.model || MODEL })),
-    aiProviderStatus: { geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY), openAIEnabledForText: Boolean(openai) },
+    aiProviderModels: providers.map(provider => ({ name: provider.name, model: provider.type === 'alice' ? provider.model.split('/').at(-1) : (provider.model || MODEL) })),
+    aiProviderStatus: {
+      aliceTextConfigured: providers.some(provider => provider.type === 'alice'),
+      aliceMissingEnvironment: [
+        ...(!(process.env.YANDEX_API_KEY || process.env.ALICE_API_KEY) ? ['YANDEX_API_KEY'] : []),
+        ...(!process.env.YANDEX_FOLDER_ID ? ['YANDEX_FOLDER_ID'] : [])
+      ],
+      geminiKeyConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY),
+      openAIEnabledForText: Boolean(openai)
+    },
     imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true',
     generationJobStorage: generationJobStorage.status,
     generationJobStorageWritable: generationJobStorage.writable,
