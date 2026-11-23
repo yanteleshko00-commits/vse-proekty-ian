@@ -25,5 +25,12 @@ for key, base in sources:
       pages=list(data.get("query",{}).get("pages",{}).values())
       candidates=[(p.get("title"),p.get("imageinfo",[{}])[0].get("thumburl"),p.get("imageinfo",[{}])[0].get("mime")) for p in pages if p.get("imageinfo")]
       print(key,query,"pages",len(pages),"images",len(candidates),"examples",candidates[:2],"errors",data.get("error"))
+      if key == "commons" and query == "solar panels":
+        image = next((x for x in candidates if x[1] and x[2] == "image/jpeg"), None)
+        if image:
+          image_request=urllib.request.Request(image[1],headers={"User-Agent":"NEXORA-presentation-image-check/1.0"})
+          with urllib.request.urlopen(image_request,timeout=20) as response:
+            payload=response.read(8 * 1024 * 1024 + 1)
+            print("PHOTO DOWNLOAD",response.status,response.headers.get("Content-Type"),"bytes",len(payload),"jpeg",payload[:2]==bytes([255,216]))
     except Exception as e:
       print(key,query,"ERROR",type(e).__name__,str(e)[:180])
