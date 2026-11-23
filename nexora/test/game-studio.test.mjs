@@ -127,6 +127,18 @@ test('Game Studio supports genuine editable HTML code and swipe-to-arrow control
  assert.doesNotMatch(fallback,/id="ai-workspace"/);
  assert.doesNotMatch(fallback,/<script src="\/game\.js"/);
  assert.ok(normalizeGameHTML(fallback),'Fallback must be valid standalone HTML');
+ const {arcadeGameHTML}=await import('../game-arcade.js');
+ for(const [idea,family] of [['Гонки на трассе','racing'],['Марио платформер','platform'],['Flappy Bird','flappy'],['Космический шутер','shooter'],['Пинг-понг','pong'],['Арканоид разбей кирпичи','breakout'],['Лабиринт с выходом','maze']]){
+   const generated=await fallbackGameHTML(idea);
+   assert.equal(gameFamily(idea),family);
+   assert.equal(generated,arcadeGameHTML(idea,family));
+   assert.match(generated,new RegExp('mode":"'+family+'"'));
+   assert.ok(normalizeGameHTML(generated),'Invalid offline '+family+' game');
+   const gameplay=generated.match(/<script>([\\s\\S]*?)<\\/script>/)?.[1];
+   assert.ok(gameplay,'Missing active gameplay script '+family);
+   new vm.Script(gameplay);
+ }
+
  assert.match(gameEngine,/authenticated/);
 });
 test('HTTP game build and live sandbox preview work for guests with no credentials',async()=>{
