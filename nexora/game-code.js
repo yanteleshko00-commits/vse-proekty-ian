@@ -22,6 +22,7 @@ export function gameFamily(idea){
  if(/гонк|машин|автомоб|racing/.test(s))return 'racing';
  if(/платформ|марио|прыж|runner|раннер/.test(s))return 'platform';
  if(/пинг.?понг|pong|теннис|ракетк/.test(s))return 'pong';
+ if(/арканоид|breakout|кирпич|блоки/.test(s))return 'breakout';
  if(/лабиринт|maze/.test(s))return 'maze';
  if(/шутер|стреля|космос|инопланет|shoot/.test(s))return 'shooter';
  if(/мишен|реакци|попади/.test(s))return 'target';
