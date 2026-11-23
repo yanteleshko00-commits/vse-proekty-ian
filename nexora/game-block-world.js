@@ -1,6 +1,6 @@
 // Original 2D block sandbox, inspired by common voxel survival game mechanics.
 // Completely offline: no external assets, packages, iframe, or network access.
-const SOURCE=String.raw\`<!doctype html>
+const SOURCE=String.raw`<!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{box-sizing:border-box}html,body{margin:0;background:#10182a;color:#e9f3ff;font:600 14px system-ui;overscroll-behavior:none}
@@ -171,7 +171,7 @@ function loop(now){
 }
 init();requestAnimationFrame(loop);
 })();
-</script></body></html>\`;
+</script></body></html>`;
 export function blockSandboxHTML(idea){
  const title=String(idea||'Блочный мир').trim().slice(0,75).replace(/[&<>]/g,'');
  return SOURCE.replace('⛏ Блочный мир · NEXORA','⛏ '+title+' · 2D');
