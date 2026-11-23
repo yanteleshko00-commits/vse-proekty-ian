@@ -744,4 +744,22 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, () => {
   console.log('NEXORA lobby listening on port ' + port);
+  if(process.env.ARGOSHA_SMOKE_TEST==='1'&&process.env.NODE_ENV==='production'){
+    setTimeout(async()=>{
+      try{
+        const r=await fetch('http://127.0.0.1:'+port+'/api/argosha',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({context:'text',messages:[{role:'user',content:'Составь короткий план сочинения о дружбе из трёх пунктов.'}]}),
+          signal:AbortSignal.timeout(84000)
+        });
+        const data=await r.json().catch(()=>({}));
+        const passed=!!(r.ok&&typeof data.reply==='string'&&data.reply.length>=35&&!data.limited);
+        console.info('ARGOSHA_SMOKE_RESULT',JSON.stringify({
+          passed,status:r.status,provider:data.provider||null,
+          characters:typeof data.reply==='string'?data.reply.length:0,
+          fallback:!!data.limited
+        }));
+      }catch(error){console.error('ARGOSHA_SMOKE_RESULT',JSON.stringify({passed:false,error:error.message}));}
+    },3500);
+  }
 });
