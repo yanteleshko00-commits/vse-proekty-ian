@@ -94,7 +94,11 @@ def main():
                 print("SLIDE", i+1, "title:", str(slide.get("title", ""))[:75],
                       "query:", str(slide.get("imageQuery", ""))[:130],
                       "credit:", str(slide.get("imageCredit", ""))[:90])
-            if len(photo_slides) < 3: raise AssertionError("Wikimedia photos are still missing")
+            if len(photo_slides) < 3: raise AssertionError("Too few topic-appropriate photos")
+            disallowed = ("hoopoe", "bird", "parrot", "cat ", "dog ", "rural kitchen")
+            wrong = [x.get("imageCredit") for x in photo_slides if any(
+                term in str(x.get("imageCredit", "")).lower() for term in disallowed)]
+            if wrong: raise AssertionError("Off-topic image still selected: " + repr(wrong))
             for name in ("Презентация_проекта.pptx", "Презентация_проекта.pdf"):
                 if name not in files: raise AssertionError("Missing "+name)
                 scan_file(files[name], name)
