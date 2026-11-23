@@ -1,0 +1,41 @@
+name: Keep NEXORA Lobby responsive
+
+# Render Free web services sleep after 15 minutes of inactivity.
+# IMPORTANT: Render shares 750 free instance hours among ALL services in the
+# workspace. Warming every service around the clock would exhaust that quota.
+# This job warms ONLY the main NEXORA Lobby during 11:00–22:59 UTC, leaving
+# substantial monthly free hours for Image, Math, Text and Projects services.
+# Scheduled GitHub Actions may be delayed or skipped at times; no 100% guarantee.
+
+on:
+  schedule:
+    # Every 10 minutes at non-peak cron minutes, 11:00–22:59 UTC (12 hours/day).
+    - cron: '7,17,27,37,47,57 11-22 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexora-lobby-keep-warm
+  cancel-in-progress: true
+
+jobs:
+  ping-lobby:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping NEXORA Lobby health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://nexora-lobby.onrender.com/health'
+          echo "Checking main NEXORA Lobby (not generating AI content)"
+          curl --fail --silent --show-error --location \
+            --connect-timeout 15 --max-time 110 \
+            --retry 1 --retry-delay 8 \
+            -o /tmp/nexora-health.json \
+            -w 'HTTP %{http_code}; duration %{time_total}s\n' \
+            "$endpoint"
+          grep -Eq '"(ok|status)"[[:space:]]*:' /tmp/nexora-health.json || \
+            (echo 'Health endpoint did not return a recognized status key' && exit 1)
