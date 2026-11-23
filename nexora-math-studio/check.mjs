@@ -10,6 +10,15 @@ const dir = fileURLToPath(new URL('.', import.meta.url));
 const html = await readFile(join(dir, 'index.html'), 'utf8');
 assert.match(html, /id="problem"/);
 assert.match(html, /id="solve"/);
+for(const id of ["nxquiz","nxq-next","nxq-back","nxq-skip","nxq-question","nxq-preview","nxq-options","nxq-book"])
+ assert.ok(html.includes('id="'+id+'"'),'Missing quiz item '+id);
+assert.match(html,/role="dialog" aria-modal="true"/);
+assert.match(html,/Шаг 1 из 4/);
+assert.match(html,/solve\.addEventListener\("click",nxqOpenMath\)/);
+assert.match(html,/nxqEl\("nxquiz"\)\.hidden=true;/);
+assert.match(html,/void run\(\)/);
+assert.match(html,/Какой раздел математики\?/);
+assert.match(html,/Откуда взята задача\?/);
 assert.match(html, /Двухэтажная дробь/);
 assert.match(html, /Дробь 5\/8/);
 assert.match(html, /function mathText\(/);
