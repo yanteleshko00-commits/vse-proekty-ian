@@ -74,7 +74,8 @@ export function argoshaSystemPrompt(studio,tools){
 }
 export function localArgoshaReply(message,studio,tools){
  const s=String(message||"").toLowerCase(),ctx=contextFor(studio),item=tools.find(t=>t.id===toolForQuery(message)&&t.status==="available");
- if(item)return {reply:"Для этого подходит «"+item.name+"». "+item.description+" Можешь открыть инструмент и начать с описания своей задачи.",action:safeArgoshaAction({toolId:item.id,label:"Открыть "+item.name},tools,ctx)};
+ const samePage={math:"solve",image:"image",text:"text",game:"game",projects:"project"}[ctx];
+ if(item&&item.id!==samePage)return {reply:"Для этого подходит «"+item.name+"». "+item.description+" Можешь открыть инструмент и начать с описания своей задачи.",action:safeArgoshaAction({toolId:item.id,label:"Открыть "+item.name},tools,ctx)};
  if(/что (ты )?умееш|какие (сайты|инструмент)|что работает|помоги выбрать/.test(s))return {reply:"В NEXORA работают Math Studio, Image Studio, Text Studio, Game Studio и школьные проекты. Напиши, что хочешь сделать, и я помогу выбрать подходящий сервис.",action:null};
  if(/(прикреп|загруз|файл|фото|документ)/.test(s)&&(ctx==="math"||ctx==="text"))return {reply:"В "+CONTEXT[ctx].name+" нажми «Прикрепить файл» или «Сфотографировать». После выбора материала пройди вопросы и запусти генерацию.",action:null};
  const tips={
