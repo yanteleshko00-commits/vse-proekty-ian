@@ -23,6 +23,12 @@ test('Game Studio UI has bold text, playable mobile controls and standalone expo
   assert.ok(html.includes('id="'+id+'"'),'Missing '+id);
  for(const type of ['snake','catch','target'])assert.ok(html.includes('data-type="'+type+'"'));
  assert.match(html,/font-weight:680/);
+ for(const id of ['nxquiz','nxq-question','nxq-next','nxq-skip','nxq-back','nxq-options'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/role="dialog" aria-modal="true"/);
+ assert.match(js,/generate"\)\.addEventListener\("click",nxqOpenGame\)/);
+ assert.match(js,/void create\(\)\.then/);
+ assert.match(js,/if\(plan&&status==="ready"\)start\(\)/);
  assert.match(html,/script src="\/game\.js"/);
  assert.match(js,/requestAnimationFrame/);
  assert.match(js,/window\.__GAME_PRESET__/);
