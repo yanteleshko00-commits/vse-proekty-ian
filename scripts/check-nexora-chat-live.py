@@ -19,6 +19,13 @@ for field in ['id="sidebar"', 'id="conversation"', 'data-model="alice"',
               'id="new-chat"', 'id="message-input"']:
     assert field in html, "Missing live UI: " + field
 assert "/api/nexora-chat" in html
+assert "Чем могу" in html and "помочь?" in html
+assert 'class="workspace is-empty"' in html
+assert 'data-model="alice"' in html and "<strong>Стандартный</strong>" in html
+assert "Алиса" not in html and "Yandex AI" not in html
+assert html.index('id="composer"') < html.index('class="prompts"')
+print("CHAT DESIGN", "centered prompt=OK", "no Alice branding=OK", "suggestions below input=OK")
+
 assert "frame-ancestors 'none'" in headers.get("content-security-policy", "")
 print("CHAT PAGE", status, "menu=OK", "alice=OK", "gpt=OK", "auto=OK")
 
