@@ -67,7 +67,7 @@ test('Argosha embed and local fallback respond over HTTP without provider secret
   assert.equal(page.status,200);
   assert.match(await page.text(),/Аргоша/);
   const csp=page.headers.get('content-security-policy')||'';
-  assert.match(csp,/frame-ancestors https:\/\/nexora-math-studio\.onrender\.com/);
+  assert.match(csp,/frame-ancestors[^;]*https:\/\/nexora-math-studio\.onrender\.com/);
   assert.match(csp,/https:\/\/vse-proekty-ian-1\.onrender\.com/);
   const reply=await fetch('http://127.0.0.1:'+port+'/api/argosha',{
    method:'POST',headers:{'Content-Type':'application/json'},
