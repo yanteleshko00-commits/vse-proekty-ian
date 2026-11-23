@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   contentSlideCount, appendProductSlide, imageFrameRatio,
-  imageSearchQueries, imageCandidateScore
+  imageSearchQueries, imageCandidateScore, isTrustedWikimediaImageUrl
 } from '../presentation-design.js';
 
 test('the final product slide is included in the requested total', () => {
@@ -33,4 +33,12 @@ test('photo search prioritizes a concrete subject over generic style words', () 
   assert.ok(imageCandidateScore('Solar panels on school rooftop.jpg', 'solar panels school rooftop') >
     imageCandidateScore('Generic abstract.png', 'solar panels school rooftop'));
   assert.ok(imageCandidateScore('school logo.png', 'school') < 0);
+});
+
+test('accept modern Wikimedia thumbnail host and reject unrelated hosts', () => {
+  assert.equal(isTrustedWikimediaImageUrl('https://thumb.wikimedia.org/wikipedia/commons/thumb/d/da/Example.jpg/1400px-Example.jpg'), true);
+  assert.equal(isTrustedWikimediaImageUrl('https://upload.wikimedia.org/wikipedia/commons/d/da/Example.jpg'), true);
+  assert.equal(isTrustedWikimediaImageUrl('https://thumb.wikimedia.org.evil.test/malicious.jpg'), false);
+  assert.equal(isTrustedWikimediaImageUrl('http://thumb.wikimedia.org/file.jpg'), false);
+  assert.equal(isTrustedWikimediaImageUrl('javascript:alert(1)'), false);
 });
