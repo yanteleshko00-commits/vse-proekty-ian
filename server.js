@@ -1795,6 +1795,45 @@ app.get('/api/image-source-health', asyncRoute(async (_req, res) => {
   res.set('Cache-Control', 'no-store');
   res.status(result.ok ? 200 : 503).json({ service: 'presentation-images', ...result });
 }));
+
+let imageProviderProbeCache = { expires: 0, promise: null };
+app.get('/api/image-providers-health', asyncRoute(async (_req, res) => {
+  if (Date.now() >= imageProviderProbeCache.expires || !imageProviderProbeCache.promise) {
+    imageProviderProbeCache.expires = Date.now() + 5 * 60 * 1000;
+    const candidates = {
+      wikipedia: 'https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=solar%20panels&gsrnamespace=6&gsrlimit=4&prop=imageinfo&iiprop=url%7Cmime&iiurlwidth=1400&format=json',
+      openverse: 'https://api.openverse.org/v1/images/?q=solar%20panels&page_size=4',
+      thumbnail: 'https://thumb.wikimedia.org/wikipedia/commons/thumb/d/da/As_solar_firmengebaude.jpg/1920px-As_solar_firmengebaude.jpg',
+      imageStudio: 'https://nexora-image-studio.onrender.com/health'
+    };
+    imageProviderProbeCache.promise = Promise.all(Object.entries(candidates).map(async ([name, url]) => {
+      try {
+        const upstream = await fetch(url, {
+          headers: { 'User-Agent': 'NEXORA-image-source-health/1.0 (https://vse-proekty-ian.onrender.com)' },
+          signal: AbortSignal.timeout(11000)
+        });
+        const status = upstream.status;
+        if (!upstream.ok) {
+          await upstream.body?.cancel().catch(() => {});
+          return { name, status };
+        }
+        if (name === 'thumbnail') {
+          const mime = upstream.headers.get('content-type') || '';
+          const bytes = (await upstream.arrayBuffer()).byteLength;
+          return { name, status, mime, bytes };
+        }
+        const data = await upstream.json();
+        if (name === 'wikipedia') return { name, status, count: Object.keys(data.query?.pages || {}).length };
+        if (name === 'openverse') return { name, status, count: Array.isArray(data.results) ? data.results.length : 0 };
+        return { name, status, providers: data.imageProviders || [] };
+      } catch (error) {
+        return { name, status: 0, error: cleanText(error?.message || error, 100) };
+      }
+    }));
+  }
+  res.set('Cache-Control', 'no-store');
+  res.json({ service: 'presentation-photo-providers', sources: await imageProviderProbeCache.promise });
+}));
 app.get('/api/health', asyncRoute(async (_req, res) => {
   const providers = configuredAIProviders();
   const generationJobStorage = await inspectGenerationJobStorage();
