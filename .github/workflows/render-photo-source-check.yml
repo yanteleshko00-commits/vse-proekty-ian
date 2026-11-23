@@ -1,0 +1,14 @@
+name: Check Render photo source health
+on:
+  push:
+    branches: ['test/live-presentation-2026-11-23']
+    paths:
+      - 'scripts/diagnose-render-photo-source.py'
+      - '.github/workflows/render-photo-source-check.yml'
+jobs:
+  photo-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/diagnose-render-photo-source.py
