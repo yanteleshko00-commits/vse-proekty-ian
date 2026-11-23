@@ -159,7 +159,7 @@ function normalizeSlideType(type, index) {
 }
 
 const PROJECT_CONTENT_INSTRUCTIONS = 'Ты — методист и автор школьных проектов. Верни только JSON с полями problem, goal, tasks (4-6), relevance, object, subject, hypothesis, theory [{heading,text}], practice {method,materials,steps,result,limitations}, mainPoints, conclusion, sources [{title,url}], defenseQuestions [{question,answer}]. Пиши по-русски на уровне 9 класса. Не выдумывай опросы, эксперименты, статистику, источники и ссылки. Если данных практики нет, предложи выполнимую работу и обозначь результат как планируемый.';
-const PRODUCT_INSTRUCTIONS = 'Ты — дизайнер учебных проектных продуктов. Создай самостоятельный готовый материал, который можно использовать отдельно от презентации. Верни только JSON: format, title, subtitle, audience, sections [{heading,body}], steps, checklist, takeaway. Выбери подходящий формат: памятка, буклет, чек-лист, мини-гайд, карточки, инструкция. Дай 3-5 содержательных разделов и конкретные практические пункты. Всё должно опираться на projectContent, не выдумывай факты.';
+const PRODUCT_INSTRUCTIONS = 'Ты — дизайнер учебных проектных продуктов. Создай самостоятельный готовый материал, который можно использовать отдельно от презентации. Верни только JSON: format, title, subtitle, audience, sections [{heading,body}], steps, checklist, takeaway. Выбери подходящий формат: памятка, буклет, чек-лист, мини-гайд, карточки, инструкция. Материал должен целиком помещаться на ОДИН лист A4 и быть красивым и читаемым: ровно 3 коротких раздела, в каждом текст не длиннее 160 символов; до 3 коротких steps и до 3 коротких checklist по 85 символов; takeaway до 125 символов. Не выдумывай факты. Всё опирай на projectContent.';
 function xmlEscape(value) {
   return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 }
@@ -189,12 +189,12 @@ async function generateProjectContent(topic, body) {
 async function generateFinalProduct(topic, projectContent, requestedFormat='') {
   const raw=await aiJson(PRODUCT_INSTRUCTIONS,{topic,requestedFormat:cleanText(requestedFormat,60),projectContent,outputRules:'Создай полезный самостоятельный продукт с конкретными рекомендациями и практическими пунктами.'},50000);
   const product={
-    format:normalizeText(raw.format||requestedFormat||'Памятка',40),title:normalizeText(raw.title||topic,90),
-    subtitle:normalizeText(raw.subtitle||'Практический материал по теме проекта',180),audience:normalizeText(raw.audience||'Для учащихся',100),
-    sections:(Array.isArray(raw.sections)?raw.sections:[]).map(x=>({heading:normalizeText(x?.heading||'',70),body:normalizeText(x?.body||'',420)})).filter(x=>x.heading&&x.body).slice(0,5),
-    steps:(Array.isArray(raw.steps)?raw.steps:[]).map(x=>normalizeText(x,180)).filter(Boolean).slice(0,5),
-    checklist:(Array.isArray(raw.checklist)?raw.checklist:[]).map(x=>normalizeText(x,150)).filter(Boolean).slice(0,5),
-    takeaway:normalizeText(raw.takeaway||projectContent.conclusion,300)
+    format:normalizeText(raw.format||requestedFormat||'Памятка',40),title:normalizeText(raw.title||topic,80),
+    subtitle:normalizeText(raw.subtitle||'Практический материал по теме проекта',110),audience:normalizeText(raw.audience||'Для учащихся',60),
+    sections:(Array.isArray(raw.sections)?raw.sections:[]).map(x=>({heading:normalizeText(x?.heading||'',55),body:normalizeText(x?.body||'',160)})).filter(x=>x.heading&&x.body).slice(0,3),
+    steps:(Array.isArray(raw.steps)?raw.steps:[]).map(x=>normalizeText(x,85)).filter(Boolean).slice(0,3),
+    checklist:(Array.isArray(raw.checklist)?raw.checklist:[]).map(x=>normalizeText(x,85)).filter(Boolean).slice(0,3),
+    takeaway:normalizeText(raw.takeaway||projectContent.conclusion,125)
   };
   if(product.sections.length<2||(!product.steps.length&&!product.checklist.length))throw new Error('Итоговый продукт неполный: нужны разделы и практические пункты.');
   return product;
@@ -207,23 +207,96 @@ async function renderProductImage(product,theme) {
     return renderProductImageFallback(product, theme);
   }
 }
-async function renderProductImageFallback(product,theme) {
-  const accent='#'+(theme?.accent||COLORS.blue.accent),ink='#'+(theme?.ink||COLORS.blue.ink),muted='#'+(theme?.muted||COLORS.blue.muted),pale='#'+(theme?.accent2||COLORS.blue.accent2);
-  const chunks=[];let y=330;
-  for(const section of product.sections.slice(0,4)){
-    chunks.push('<rect x="72" y="'+y+'" width="1096" height="210" rx="28" fill="#fff" stroke="'+pale+'" stroke-width="3"/>');
-    chunks.push('<text x="112" y="'+(y+58)+'" font-family="Arial" font-size="34" font-weight="700" fill="'+accent+'">'+xmlEscape(section.heading)+'</text>');
-    wrapProductText(section.body,62,3).forEach((line,i)=>chunks.push('<text x="112" y="'+(y+112+i*42)+'" font-family="Arial" font-size="25" fill="'+ink+'">'+xmlEscape(line)+'</text>'));
-    y+=232;
+async function renderProductImageFallback(product, theme) {
+  // A usable, attractive local print layout when the AI designer is rate-limited.
+  // All supplied product text stays in the image (unlike the old clipped SVG).
+  const color = (value, fallback) => /^[0-9a-fA-F]{6}$/.test(String(value || '')) ? '#' + value : fallback;
+  const bg = color(theme?.bg, '#F3F6FB');
+  const ink = color(theme?.ink, '#15243B');
+  const muted = color(theme?.muted, '#63758D');
+  const accent = color(theme?.accent, '#315EDB');
+  const accent2 = color(theme?.accent2, '#8ECFE5');
+  const surface = color(theme?.surface, '#FFFFFF');
+  const parts = [];
+  const rect = (x, y, w, h, r, fill, extra = '') =>
+    '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h +
+    '" rx="' + r + '" fill="' + fill + '" ' + extra + '/>';
+  const label = (text, x, y, size = 26, fill = ink, bold = false) =>
+    '<text x="' + x + '" y="' + y + '" font-family="Arial,sans-serif" font-size="' + size +
+    '" font-weight="' + (bold ? 700 : 400) + '" fill="' + fill + '">' + xmlEscape(text) + '</text>';
+  const wrap = (value, limit) => {
+    const words = String(value || '').trim().split(/\s+/).filter(Boolean);
+    const lines = []; let current = '';
+    for (const word of words) {
+      const candidate = current ? current + ' ' + word : word;
+      if (current && candidate.length > limit) { lines.push(current); current = word; }
+      else current = candidate;
+    }
+    if (current) lines.push(current);
+    return lines;
+  };
+  const paragraph = (value, x, y, width, size, fill, lineHeight, cap) => {
+    const lines = wrap(value, cap);
+    lines.forEach((line, i) => parts.push(label(line, x, y + i * lineHeight, size, fill)));
+    return lines.length * lineHeight;
+  };
+  parts.push('<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1754" viewBox="0 0 1240 1754">');
+  parts.push(rect(0, 0, 1240, 1754, 0, bg));
+  parts.push(rect(0, 0, 1240, 310, 0, '#13253D'));
+  parts.push(rect(0, 0, 1240, 12, 0, accent));
+  parts.push('<circle cx="1180" cy="42" r="180" fill="' + accent + '" fill-opacity=".19"/>');
+  parts.push('<circle cx="1040" cy="260" r="125" fill="' + accent2 + '" fill-opacity=".12"/>');
+  parts.push(label(String(product.format || 'Памятка').toUpperCase() + '  /  ИТОГОВЫЙ ПРОДУКТ', 74, 68, 24, '#C9E0F3', true));
+  let titleY = 132;
+  for (const line of wrap(product.title, 45).slice(0, 2)) {
+    parts.push(label(line, 74, titleY, 48, '#FFFFFF', true)); titleY += 55;
   }
-  const items=(product.checklist.length?product.checklist:product.steps).slice(0,4), listY=Math.min(y+8,1370);
-  chunks.push('<rect x="72" y="'+listY+'" width="1096" height="250" rx="28" fill="'+pale+'" opacity=".34"/>');
-  chunks.push('<text x="112" y="'+(listY+58)+'" font-family="Arial" font-size="32" font-weight="700" fill="'+accent+'">'+(product.checklist.length?'Проверь себя':'Что делать')+'</text>');
-  items.forEach((item,i)=>{chunks.push('<circle cx="126" cy="'+(listY+108+i*42)+'" r="8" fill="'+accent+'"/>');chunks.push('<text x="152" y="'+(listY+117+i*42)+'" font-family="Arial" font-size="23" fill="'+ink+'">'+xmlEscape(wrapProductText(item,65,1)[0]||item)+'</text>');});
-  const takeaway=wrapProductText(product.takeaway,75,2).join(' ');
-  const subtitle=wrapProductText(product.subtitle,75,2).map((line,i)=>'<text x="84" y="'+(250+i*38)+'" font-family="Arial" font-size="25" fill="'+muted+'">'+xmlEscape(line)+'</text>').join('');
-  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1754" viewBox="0 0 1240 1754"><rect width="1240" height="1754" fill="#f7f9fc"/><rect width="1240" height="24" fill="'+accent+'"/><text x="82" y="100" font-family="Arial" font-size="24" font-weight="700" fill="'+accent+'">'+xmlEscape(product.format.toUpperCase())+' • ИТОГОВЫЙ ПРОДУКТ</text><text x="82" y="190" font-family="Arial" font-size="52" font-weight="700" fill="'+ink+'">'+xmlEscape(product.title)+'</text>'+subtitle+chunks.join('')+'<text x="82" y="1655" font-family="Arial" font-size="22" fill="'+muted+'">'+xmlEscape(takeaway)+'</text><text x="82" y="1710" font-family="Arial" font-size="18" fill="'+muted+'">Все проекты #Ian • '+xmlEscape(product.audience)+'</text></svg>';
-  return sharp(Buffer.from(svg)).png().toBuffer();
+  const subtitleY = Math.max(231, titleY + 6);
+  paragraph(product.subtitle, 76, subtitleY, 1060, 24, '#C9E0F3', 30, 78);
+
+  const leftX = 72, rightX = 632, cardWidth = 536;
+  let leftY = 352, rightY = 352;
+  const sectionList = Array.isArray(product.sections) ? product.sections.slice(0, 3) : [];
+  sectionList.forEach((section, i) => {
+    const headline = wrap(section.heading, 29);
+    const details = wrap(section.body, 40);
+    const h = 70 + headline.length * 36 + details.length * 33 + 28;
+    parts.push(rect(leftX, leftY, cardWidth, h, 25, surface));
+    parts.push(rect(leftX, leftY, 8, h, 4, accent));
+    parts.push(label(('0' + (i + 1)).slice(-2), leftX + 30, leftY + 47, 22, accent, true));
+    let y = leftY + 47;
+    headline.forEach(line => { parts.push(label(line, leftX + 87, y, 29, ink, true)); y += 36; });
+    y += 16;
+    details.forEach(line => { parts.push(label(line, leftX + 30, y, 24, ink)); y += 33; });
+    leftY += h + 17;
+  });
+  const listBlock = (heading, items, fallbackIcon) => {
+    if (!items.length) return;
+    const linesPerItem = items.map(item => wrap(item, 39));
+    const h = 86 + linesPerItem.reduce((sum, lines) => sum + Math.max(1, lines.length) * 32 + 20, 0) + 12;
+    parts.push(rect(rightX, rightY, cardWidth, h, 25, surface));
+    parts.push(rect(rightX, rightY, cardWidth, 8, 4, accent2));
+    parts.push(label(heading, rightX + 30, rightY + 53, 30, ink, true));
+    let y = rightY + 96;
+    linesPerItem.forEach((lines, i) => {
+      parts.push('<circle cx="' + (rightX + 42) + '" cy="' + (y - 8) + '" r="13" fill="' + accent + '"/>');
+      parts.push(label(fallbackIcon === 'number' ? String(i + 1) : '✓', rightX + 34, y - 2, 19, '#FFFFFF', true));
+      lines.forEach(line => { parts.push(label(line, rightX + 67, y, 23, ink)); y += 32; });
+      y += 20;
+    });
+    rightY += h + 18;
+  };
+  listBlock('КАК ПРИМЕНЯТЬ', (product.steps || []).slice(0, 3), 'number');
+  listBlock('ПРОВЕРОЧНЫЙ СПИСОК', (product.checklist || []).slice(0, 3), 'check');
+  const takeawayY = Math.min(1540, Math.max(leftY, rightY, 1430) + 16);
+  const footerY = Math.min(1515, takeawayY);
+  parts.push(rect(72, footerY, 1096, 174, 28, '#13253D'));
+  parts.push(rect(72, footerY, 10, 174, 4, accent2));
+  parts.push(label('ГЛАВНЫЙ ВЫВОД', 110, footerY + 44, 21, '#BBD6EB', true));
+  paragraph(product.takeaway, 110, footerY + 85, 1030, 26, '#FFFFFF', 32, 77);
+  parts.push(label('NEXORA  •  ' + String(product.audience || 'Учебный проект'), 75, 1740, 20, muted));
+  parts.push('</svg>');
+  return sharp(Buffer.from(parts.join(''))).png().toBuffer();
 }
 function createProductPdfBuffer(plan) {
   return new Promise((resolve,reject)=>{
@@ -2248,4 +2321,4 @@ if (process.env.NODE_ENV !== 'test') {
     if (!process.env.OPENAI_API_KEY) console.warn('OPENAI_API_KEY is not configured.');
   });
 }
-export { buildPptx, createPptxBuffer, createPresentationPdfBuffer, preparePhotosForDeck, commonsImage };
+export { buildPptx, createPptxBuffer, createPresentationPdfBuffer, preparePhotosForDeck, commonsImage, renderProductImageFallback };

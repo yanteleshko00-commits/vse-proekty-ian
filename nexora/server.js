@@ -169,7 +169,7 @@ async function finishLogin(req, res, url) {
 
 
 const ARGOSHA_TOOLS = [
-  { id: 'project', name: 'Сделать проект', status: 'available', description: 'Школьные проекты, презентации, доклады и документы.', url: 'https://vse-proekty-ian-1.onrender.com/' },
+  { id: 'project', name: 'Сделать проект', status: 'available', description: 'Школьные проекты, презентации, доклады и документы.', url: 'https://vse-proekty-ian.onrender.com/' },
   { id: 'solve', name: 'Решить задачу', status: 'available', description: 'Математика и геометрия с оформлением Дано — Найти — Решение — Ответ.', url: 'https://nexora-math-studio.onrender.com/' },
   { id: 'chat', name: 'Чат с ИИ', status: 'coming_soon', description: 'Отдельный универсальный чат с ИИ.' },
   { id: 'image', name: 'Создать картинку', status: 'available', description: 'Генерация и редактирование изображений.', url: 'https://nexora-image-studio.onrender.com/' },
