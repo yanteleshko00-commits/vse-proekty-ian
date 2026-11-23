@@ -15,6 +15,20 @@ const tools=[
  {id:'game',name:'Сделать игру',status:'available',description:'Игры',url:'/game'},
  {id:'chat',name:'Не работает',status:'coming_soon',description:'',url:'https://wrong.example/'}
 ];
+test('NEXORA homepage has clean hero and working registration entry points',async()=>{
+ const html=await readFile(join(here,'public/index.html'),'utf8');
+ assert.doesNotMatch(html,/Выбрать инструмент <span/);
+ assert.doesNotMatch(html,/Создать изображение →/);
+ assert.match(html,/id="login-link" type="button"/);
+ assert.match(html,/id="register-link" type="button"/);
+ assert.match(html,/registerTrigger\.addEventListener\('click'/);
+ assert.match(html,/setMode\('register'\);open\(\)/);
+ assert.match(html,/id="auth-form"/);
+ assert.match(html,/request\('verify-email'/);
+ assert.match(html,/request\('login'/);
+ assert.match(html,/Цены на Mini, Pro и Max пока не утверждены/);
+});
+
 test('NEXORA header and favicon use the same clean N-only SVG',async()=>{
  const logo=await readFile(join(here,'public/nexora-mark.svg'),'utf8');
  const html=await readFile(join(here,'public/index.html'),'utf8');
