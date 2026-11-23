@@ -570,7 +570,7 @@ const server = http.createServer(async (req, res) => {
     const html = await readFile(join(publicDir, 'index.html'));
     return send(res, 200, html, {
       'Content-Type': 'text/html; charset=utf-8',
-      'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+      'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-src https://nexora-lobby.onrender.com; frame-ancestors 'none'",
       'Referrer-Policy': 'strict-origin-when-cross-origin'
     });
   } catch (error) {
