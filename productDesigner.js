@@ -165,18 +165,18 @@ function timeout(promise, ms, message) {
 export async function designProduct(product, theme, aiJson, reviewScreenshot = null) {
   if (typeof aiJson !== 'function') throw new Error('Не подключён генератор дизайн-концепций.');
   const started = Date.now();
-  const budget = Math.max(25000, Math.min(70000, Number(process.env.PRODUCT_BUDGET_MS) || 55000));
+  const budget = Math.max(30000, Math.min(120000, Number(process.env.PRODUCT_BUDGET_MS) || 100000));
   const maxVariants = Math.max(1, Math.min(2, Number(process.env.PRODUCT_VARIANTS) || 2));
   const remaining = () => Math.max(0, budget - (Date.now() - started));
 
-  const conceptData = await timeout(aiJson(CONCEPT_PROMPT, productPayload(product, theme, null, maxVariants), Math.min(22000, remaining())), Math.max(1000, Math.min(23000, remaining())), 'Арт-директор не уложился в лимит времени.');
+  const conceptData = await timeout(aiJson(CONCEPT_PROMPT, productPayload(product, theme, null, maxVariants), Math.min(28000, remaining())), Math.max(1000, Math.min(30000, remaining())), 'Арт-директор не уложился в лимит времени.');
   const rawConcepts = Array.isArray(conceptData?.concepts) ? conceptData.concepts : (conceptData?.palette ? [conceptData] : []);
   const concepts = rawConcepts.slice(0, maxVariants).filter(c => c && c.palette && c.fonts);
   if (!concepts.length) throw new Error('Не удалось получить ни одной дизайн-концепции.');
 
   const layouts = await Promise.all(concepts.map(async (concept, index) => {
     try {
-      const result = await timeout(aiJson(LAYOUT_PROMPT, productPayload(product, theme, concept, 1), Math.min(23000, remaining())), Math.max(1000, Math.min(24000, remaining())), 'Верстальщик не уложился в лимит времени.');
+      const result = await timeout(aiJson(LAYOUT_PROMPT, productPayload(product, theme, concept, 1), Math.min(35000, remaining())), Math.max(1000, Math.min(38000, remaining())), 'Верстальщик не уложился в лимит времени.');
       const html = safeHtml(typeof result === 'string' ? parseJson(result).html : result?.html);
       return { concept, html, index };
     } catch (error) {
@@ -225,8 +225,8 @@ export async function designProduct(product, theme, aiJson, reviewScreenshot = n
           const revised = await timeout(aiJson(
             LAYOUT_PROMPT + '\nИсправь переданный полный HTML по issuesToFix. Сохрани все исходные тексты дословно и удачную композицию. Верни JSON {"html":"..."} без пояснений.',
             { ...productPayload(product, theme, best.concept, 1), previousHtml: best.html, issuesToFix: fixes },
-            Math.min(22000, remaining())
-          ), Math.max(1000, Math.min(23000, remaining())), 'Автоисправление не уложилось в лимит времени.');
+            Math.min(35000, remaining())
+          ), Math.max(1000, Math.min(38000, remaining())), 'Автоисправление не уложилось в лимит времени.');
           const revisedHtml = safeHtml(typeof revised === 'string' ? parseJson(revised).html : revised?.html);
           const next = await render(browser, revisedHtml, product);
           const candidate = { ...best, html: revisedHtml, ...next, critic: null, total: scoreIssues(next.issues) };
