@@ -32,8 +32,14 @@ try{
    window.__nexoraTestKeys=[];
    document.addEventListener('keydown',event=>window.__nexoraTestKeys.push(event.key));
  });
+ await page.locator('#ai-frame').scrollIntoViewIfNeeded();
+ await page.waitForTimeout(700);
  const rectangle=await gameFrame.locator('#play').boundingBox();
  assert.ok(rectangle);
+ console.log('BROWSER TOUCH TARGET',rectangle,'viewport',page.viewportSize(),'scroll',await page.evaluate(()=>scrollY));
+ await page.locator('[data-game-arrow="left"]').click();
+ await page.waitForTimeout(160);
+ console.log('BROWSER D-PAD KEYS',await gameFrame.evaluate(()=>window.__nexoraTestKeys));
  const cdp=await page.context().newCDPSession(page);
  const x=rectangle.x+rectangle.width*.67,y=rectangle.y+rectangle.height*.56;
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
