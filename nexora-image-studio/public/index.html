@@ -603,5 +603,27 @@ generate.addEventListener('click',nxqOpenImage);
  fetch('/health').then(r=>r.json()).then(d=>{if(!d.imageGeneratorConfigured)showMessage('Сервер генерации изображений временно не подключён. Проверьте ключи провайдеров в Environment сервиса NEXORA Image Studio.','')}).catch(()=>showMessage('Не удалось проверить подключение к серверу NEXORA Image Studio.',''));
 })();
 </script>
+<style id="nexora-argosha-widget-style">
+
+/* Shared Argosha launcher across NEXORA sites: one widget, no duplicate AI keys. */
+.nx-argosha-host{position:fixed;z-index:900;right:max(15px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));width:max-content;max-width:calc(100vw - 20px);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;pointer-events:none;isolation:isolate;color:#fff}
+.nx-argosha-host>summary{pointer-events:auto;list-style:none;display:flex;align-items:center;gap:9px;min-width:106px;height:48px;border-radius:28px;padding:0 15px;background:linear-gradient(145deg,#161825,#080b17) padding-box,conic-gradient(from 60deg,#5a91ff,#d084ff,#ffacb8,#86d2ff,#5a91ff) border-box;border:1.5px solid transparent;box-shadow:0 10px 28px rgba(26,24,61,.26),0 0 22px rgba(108,134,250,.26);font-size:12px;font-weight:830;letter-spacing:.01em;cursor:pointer;user-select:none;-webkit-user-select:none}
+.nx-argosha-host>summary::-webkit-details-marker{display:none}
+.nx-argosha-host>summary::marker{content:""}
+.nx-argosha-host>summary:focus-visible{outline:3px solid #8b80ff;outline-offset:3px}
+.nx-argosha-orb{width:24px;height:24px;flex:0 0 24px;border-radius:50%;background:radial-gradient(circle at 34% 25%,#fff 0 7%,#b0ddff 16%,#7d88ff 38%,#bd73f2 66%,#f2a5a2 84%,#2c1e5a 100%);box-shadow:0 0 13px rgba(157,149,255,.75);animation:nx-argosha-glow 4s ease-in-out infinite}
+@keyframes nx-argosha-glow{50%{filter:hue-rotate(35deg);box-shadow:0 0 21px rgba(180,130,255,.85)}}
+.nx-argosha-host .nx-argosha-close{display:none;font-size:18px;line-height:1;font-weight:700}
+.nx-argosha-host[open]>summary{box-shadow:0 6px 24px rgba(35,29,81,.3)}
+.nx-argosha-host[open] .nx-argosha-close{display:inline}
+.nx-argosha-frame{pointer-events:auto;position:fixed;right:max(10px,env(safe-area-inset-right));bottom:calc(max(78px,env(safe-area-inset-bottom) + 65px));width:min(405px,calc(100vw - 20px));height:min(570px,calc(100dvh - 100px));min-height:240px;overflow:hidden;border-radius:25px;border:1px solid rgba(151,138,218,.25);box-shadow:0 25px 85px rgba(18,12,51,.35);background:#121526}
+.nx-argosha-frame iframe{width:100%;height:100%;border:0;display:block;background:#121526}
+@media(max-width:550px){.nx-argosha-host{right:12px;bottom:max(11px,env(safe-area-inset-bottom))}.nx-argosha-host>summary{height:47px;min-width:106px;padding:0 12px}.nx-argosha-frame{right:8px;width:calc(100vw - 16px);height:min(605px,calc(100dvh - 96px));bottom:calc(max(70px,env(safe-area-inset-bottom) + 61px));border-radius:22px}}
+@media(prefers-reduced-motion:reduce){.nx-argosha-orb{animation:none!important}}
+</style>
+<details class="nx-argosha-host" aria-label="Чат с Аргошей">
+ <summary aria-label="Открыть или закрыть Аргошу"><span class="nx-argosha-orb" aria-hidden="true"></span><span>Аргоша</span><span class="nx-argosha-close" aria-hidden="true">×</span></summary>
+ <div class="nx-argosha-frame"><iframe loading="lazy" title="Аргоша — ИИ-помощник NEXORA" src="https://nexora-lobby.onrender.com/argosha/embed?studio=image" referrerpolicy="no-referrer"></iframe></div>
+</details>
 </body>
 </html>
