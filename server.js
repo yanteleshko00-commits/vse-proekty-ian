@@ -2134,7 +2134,11 @@ app.use((err, req, res, _next) => {
   });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Presentation server listening on port ${PORT}`);
-  if (!process.env.OPENAI_API_KEY) console.warn('OPENAI_API_KEY is not configured.');
-});
+// Test mode can create real PPTX/PDF without binding a network port.
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Presentation server listening on port ${PORT}`);
+    if (!process.env.OPENAI_API_KEY) console.warn('OPENAI_API_KEY is not configured.');
+  });
+}
+export { buildPptx, createPptxBuffer, createPresentationPdfBuffer, preparePhotosForDeck };
