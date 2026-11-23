@@ -30,7 +30,7 @@ export function normalizeGameHTML(text){
  if(start>0)html=html.slice(start);
  const end=html.toLowerCase().lastIndexOf('</html>');
  if(end>=0)html=html.slice(0,end+7);
- if(html.length<300||html.length>16500)return null;
+ if(html.length<300||html.length>90000)return null;
  if(!/<html[\s>]/i.test(html)||!/<\/html>/i.test(html)||!/<script(?:\s|>)/i.test(html)||!/<\/script>/i.test(html))return null;
  if(/<script\b[^>]*\bsrc\s*=|<iframe\b|<object\b|<embed\b|<base\b|<form\b|<meta[^>]*http-equiv\s*=\s*["']?refresh/i.test(html))return null;
  if(/<script\b[^>]*\btype\s*=\s*["']?module/i.test(html))return null;
@@ -83,7 +83,10 @@ export async function fallbackGameHTML(idea){
  const start=html.indexOf('<script src="/game.js"></script>');
  if(start<0)throw Error('Шаблон игры недоступен.');
  const preset=JSON.stringify(plan).replace(/</g,'\\u003c').replace(/>/g,'\\u003e');
- return html.slice(0,start)+'<script>window.__GAME_PRESET__='+preset+';\n'+js.replace(/<\/script/gi,'<\\/script')+'</script></body></html>';
+ return html.slice(0,start)
+  .replace(/<!-- START AI STUDIO -->[\s\S]*?<!-- END AI STUDIO -->/,'')
+  .replace('id="classic-workspace" hidden','id="classic-workspace"')
+  +'<script>window.__GAME_PRESET__='+preset+';\n'+js.replace(/<\/script/gi,'<\\/script')+'</script></body></html>';
 }
 async function generateWithAI(idea,secret){
  if(secret.length<32)return null;
@@ -106,7 +109,7 @@ async function generateWithAI(idea,secret){
  if(!response.ok)return null;
  const result=await response.json().catch(()=>null);
  const html=normalizeGameHTML(result?.answer);
- return html?{html,provider:String(result.provider||'NEXORA AI').slice(0,70)}:null;
+ return html&&html.length<=16500?{html,provider:String(result.provider||'NEXORA AI').slice(0,70)}:null;
 }
 async function parseBody(req){
  if(!String(req.headers['content-type']||'').startsWith('application/json'))throw Error('Ожидался JSON.');
@@ -131,4 +134,16 @@ export async function makeCodeGame(req,res,{authenticated=false}={}){
  const html=await fallbackGameHTML(idea);
  return send(res,200,{ok:true,html,title:idea.slice(0,75),source:'template',provider:'NEXORA Game Engine',
   family:gameFamily(idea),message:authenticated?'ИИ не смог создать новый код. Запущена готовая мини-игра; код можно редактировать.':'Готовый игровой шаблон. Войдите в NEXORA ID, чтобы создавать новые игры с помощью ИИ.'});
+}
+
+export async function prepareGamePreview(req,res){
+ let total=0;const parts=[];
+ if(!String(req.headers['content-type']||'').startsWith('application/json'))
+  return send(res,415,{ok:false,message:'Ожидается JSON.'});
+ try{
+  for await(const chunk of req){total+=chunk.length;if(total>100000)throw Error('Слишком большой файл игры.');parts.push(chunk);}
+  const body=JSON.parse(Buffer.concat(parts).toString('utf8')||'{}');
+  const html=sandboxGameHTML(body.html);
+  return send(res,200,{ok:true,html});
+ }catch(error){return send(res,400,{ok:false,message:error.message||'Ошибка в HTML-коде игры.'});}
 }
