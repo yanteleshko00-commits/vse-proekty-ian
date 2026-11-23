@@ -1,0 +1,14 @@
+name: Live NEXORA Game Studio acceptance
+on:
+  push:
+    branches: ['test/live-presentation-2026-11-23']
+    paths:
+      - 'scripts/check-nexora-game-live.py'
+      - '.github/workflows/live-nexora-game-check.yml'
+jobs:
+  live-game:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check-nexora-game-live.py
