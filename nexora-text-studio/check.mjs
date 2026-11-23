@@ -10,7 +10,7 @@ import {decodeAttachments} from './attachments.js';
 
 const here=fileURLToPath(new URL('.',import.meta.url));
 const html=await readFile(join(here,'index.html'),'utf8');
-for(const id of ['generate','source','topic','format','tone','size','language','requirements','result-editor','stage','copy','download','print','rework']){
+for(const id of ['generate','source','topic','size','language','result-editor','stage','copy','download','print','rework','example-topics','final-settings']){
   assert.ok(html.includes('id="'+id+'"'),'Missing UI control '+id);
 }
 for(const action of ['create','rewrite','proofread','shorten','expand','summarize'])
@@ -31,7 +31,16 @@ assert.throws(()=>normalizeTextRequest({action:'create',topic:'а'}),/тему/)
 assert.throws(()=>normalizeTextRequest({action:'create',topic:'тема',source:'x'.repeat(17000)}),/длинный/);
 assert.equal(summarizeTextStats('Привет, мир!\n\nЕщё два слова.').paragraphs,2);
 assert.ok(html.includes('id="files"')&&html.includes('id="camera"')&&html.includes('id="file-list"'));
-assert.equal((html.match(/data-format-choice=/g)||[]).length,9);
+assert.doesNotMatch(html,/data-format-choice=/);
+assert.doesNotMatch(html,/id="format"/);
+assert.doesNotMatch(html,/id="tone"/);
+assert.doesNotMatch(html,/id="requirements"/);
+assert.equal((html.match(/class="example"/g)||[]).length,4);
+assert.equal((html.match(/id="final-settings"/g)||[]).length,1);
+assert.match(js,/const format=action==="create"&&!wizardSkipped\?wizardAnswers.format:"free"/);
+assert.match(js,/const tone=action==="create"&&!wizardSkipped\?wizardAnswers.tone:"neutral"/);
+assert.match(js,/const requirements=wizardRequirements\(\)\.slice\(0,1300\)/);
+assert.match(js,/\$\("example-topics"\)\.hidden=next!=="create"/);
 assert.match(html,/function prepareFiles\(/);
 assert.match(html,/function compressPhoto\(/);
 for(const id of ['topic-wizard','wizard-question','wizard-options','wizard-details','wizard-count','wizard-progress','wizard-next','wizard-back','wizard-skip','wizard-summary','wizard-edit'])
@@ -43,7 +52,7 @@ assert.match(js,/function wizardOnTopic\(/);
 assert.match(js,/\$\("topic"\)\.addEventListener\("input",wizardOnTopic\)/);
 assert.match(js,/function wizardRequirements\(/);
 assert.match(js,/wizardRequirements\(\)/);
-assert.match(js,/const requirements=\[\$\("requirements"\)\.value\.trim\(\),wizardRequirements\(\)\]/);
+assert.match(js,/const requirements=wizardRequirements\(\)\.slice\(0,1300\)/);
 assert.equal((js.match(/\{key:"(?:format|audience|purpose|tone|details)"/g)||[]).length,5);
 
 assert.ok(normalizeTextRequest({action:'create',source:'Данные из документа для нового текста'}).source);
@@ -120,5 +129,5 @@ try{
   assert.equal(photoRequest.status,200);
   assert.equal(lastBody.images.length,1);
   assert.equal(lastBody.action,'rewrite');
-  console.log('Text Studio checks passed: 6 modes, 5-step topic questionnaire, 9 text types, photo/TXT attachments, safe limits, mobile UI, gateway and text responses.');
+  console.log('Text Studio checks passed: 6 modes, 5-step questionnaire as the only format/tone selector, 4 example topics, photo/TXT attachments, mobile UI, gateway and text responses.');
 }finally{child.kill();await new Promise(resolve=>upstream.close(resolve))}
