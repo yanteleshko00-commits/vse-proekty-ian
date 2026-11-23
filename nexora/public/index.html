@@ -566,6 +566,11 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 .tile[data-tool="game"] .tile-top:before{content:"🎮";position:absolute;top:17%;left:50%;transform:translateX(-50%) rotate(-7deg);color:white;font-size:86px;line-height:1;filter:drop-shadow(0 16px 14px rgba(13,4,44,.2));opacity:.82}
 .tile[data-tool="game"] .tile-top:after{background:linear-gradient(180deg,rgba(16,8,37,.07),rgba(20,10,46,.18) 37%,rgba(18,10,35,.93))}
 @media(max-width:600px){.tile[data-tool="game"] .tile-top:before{font-size:69px}}
+
+/* Argosha 2.0: compact clear-history control alongside the Siri orb. */
+.argosha-clear{border:1px solid rgba(184,168,248,.18);border-radius:9px;background:rgba(154,145,236,.1);color:#dcd8ff;font-size:10px;font-weight:780;padding:7px 8px;cursor:pointer;white-space:nowrap}
+.argosha-clear:hover{background:rgba(164,149,255,.19)}
+@media(max-width:520px){.argosha-clear{font-size:9px;padding:6px 7px}}
 </style>
 </head>
 <body>
@@ -946,9 +951,9 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 
 <button class="argosha-launcher" id="argosha-launcher" type="button" aria-label="Открыть Аргошу" aria-expanded="false"><span class="siri-glow" aria-hidden="true"></span><span class="siri-label">Аргоша</span></button>
 <section class="argosha-panel" id="argosha-panel" aria-label="Чат с Аргошей" aria-hidden="true">
-  <header class="argosha-head"><div class="argosha-mini-orb" aria-hidden="true"></div><div class="argosha-head-copy"><strong>Аргоша</strong><span id="argosha-status">ИИ-помощник NEXORA</span></div><button class="argosha-close" id="argosha-close" type="button" aria-label="Закрыть">×</button></header>
-  <div class="argosha-messages" id="argosha-messages" aria-live="polite"><div class="argosha-message assistant">Привет! Я Аргоша, помощник NEXORA. Расскажи, что хочешь сделать, и я подскажу подходящий инструмент.</div></div>
-  <div class="argosha-suggestions" id="argosha-suggestions"><button type="button">Подобрать инструмент</button><button type="button">Сделать проект</button><button type="button">Что уже работает?</button></div>
+  <header class="argosha-head"><div class="argosha-mini-orb" aria-hidden="true"></div><div class="argosha-head-copy"><strong>Аргоша</strong><span id="argosha-status">Помогу с инструментами NEXORA</span></div><button class="argosha-clear" id="argosha-clear" type="button" aria-label="Очистить переписку" title="Очистить переписку">Очистить</button><button class="argosha-close" id="argosha-close" type="button" aria-label="Закрыть">×</button></header>
+  <div class="argosha-messages" id="argosha-messages" aria-live="polite"><div class="argosha-message assistant">Привет! Я Аргоша — помощник NEXORA. Помогу с задачами, текстами, картинками, играми и проектами.</div></div>
+  <div class="argosha-suggestions" id="argosha-suggestions"><button type="button">Что ты умеешь?</button><button type="button">Как решить задачу?</button><button type="button">Как сделать красивое фото?</button><button type="button">Помоги написать текст</button></div>
   <form class="argosha-compose" id="argosha-form"><textarea class="argosha-input" id="argosha-input" rows="1" maxlength="1200" placeholder="Напиши, что нужно сделать…" aria-label="Сообщение Аргоше"></textarea><button class="argosha-send" id="argosha-send" type="submit" aria-label="Отправить">↑</button></form>
 </section>
 
@@ -956,6 +961,19 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 (function(){
  const launcher=document.getElementById('argosha-launcher'),panel=document.getElementById('argosha-panel'),close=document.getElementById('argosha-close'),form=document.getElementById('argosha-form'),input=document.getElementById('argosha-input'),messages=document.getElementById('argosha-messages'),status=document.getElementById('argosha-status'),send=document.getElementById('argosha-send'),suggestions=document.getElementById('argosha-suggestions');
  let history=[];
+ const argoStorageKey='nexora-argosha-lobby-v2';
+ try{
+   const stored=JSON.parse(sessionStorage.getItem(argoStorageKey)||'[]');
+   if(Array.isArray(stored))history=stored.filter(x=>x&&['user','assistant'].includes(x.role)&&typeof x.content==='string').slice(-10);
+ }catch{}
+ function persistHistory(){try{sessionStorage.setItem(argoStorageKey,JSON.stringify(history.slice(-10)))}catch{}}
+ if(history.length){messages.replaceChildren();history.forEach(item=>{const node=document.createElement('div');node.className='argosha-message '+item.role;node.textContent=item.content;messages.appendChild(node)});}
+ document.getElementById('argosha-clear').addEventListener('click',()=>{
+   history=[];persistHistory();messages.replaceChildren();
+   const node=document.createElement('div');node.className='argosha-message assistant';
+   node.textContent='Переписка очищена. Чем могу помочь?';messages.appendChild(node);
+   suggestions.style.display='flex';input.focus();
+ });
  function setOpen(open){panel.classList.toggle('open',open);panel.setAttribute('aria-hidden',String(!open));launcher.setAttribute('aria-expanded',String(open));if(open){launcher.classList.add('listening');setTimeout(()=>input.focus(),250)}else{launcher.classList.remove('listening','thinking','speaking')}}
  launcher.addEventListener('click',()=>setOpen(true));close.addEventListener('click',()=>setOpen(false));
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.classList.contains('open'))setOpen(false)});
@@ -993,8 +1011,8 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
  }
  function addMessage(text,who,action){const node=document.createElement('div');node.className='argosha-message '+who;node.textContent=text;if(action&&action.url){const a=document.createElement('a');a.className='argosha-action';a.href=action.url;a.textContent=action.label||'Перейти к инструменту';if(action.external){a.target='_blank';a.rel='noopener'}node.appendChild(document.createElement('br'));node.appendChild(a)}messages.appendChild(node);messages.scrollTop=messages.scrollHeight}
  function typing(show){let old=messages.querySelector('.argosha-typing');if(show&&!old){old=document.createElement('div');old.className='argosha-message assistant argosha-typing';old.innerHTML='<i></i><i></i><i></i>';messages.appendChild(old)}if(!show&&old)old.remove();messages.scrollTop=messages.scrollHeight}
- async function submit(text){text=(text||input.value).trim();if(!text||send.disabled)return;input.value='';input.style.height='auto';suggestions.style.display='none';addMessage(text,'user');history.push({role:'user',content:text});history=history.slice(-10);send.disabled=true;status.textContent='Обдумываю запрос…';launcher.classList.remove('listening');launcher.classList.add('thinking');typing(true);
-  try{const response=await fetch('/api/argosha',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({messages:history})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Не удалось получить ответ.');typing(false);launcher.classList.remove('thinking');launcher.classList.add('speaking');status.textContent='Отвечаю';addMessage(data.reply||'Не получилось сформировать ответ.', 'assistant',data.action);if(data.action&&data.action.type==='generate_project')void startProjectGeneration(data.action);history.push({role:'assistant',content:data.reply||''});setTimeout(()=>{launcher.classList.remove('speaking');status.textContent='ИИ-помощник NEXORA'},1800);
+ async function submit(text){text=(text||input.value).trim();if(!text||send.disabled)return;input.value='';input.style.height='auto';suggestions.style.display='none';addMessage(text,'user');history.push({role:'user',content:text});history=history.slice(-10);persistHistory();send.disabled=true;status.textContent='Обдумываю запрос…';launcher.classList.remove('listening');launcher.classList.add('thinking');typing(true);
+  try{const response=await fetch('/api/argosha',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({context:'lobby',messages:history})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Не удалось получить ответ.');typing(false);launcher.classList.remove('thinking');launcher.classList.add('speaking');status.textContent='Отвечаю';addMessage((data.reply||'Не получилось сформировать ответ.')+(data.limited?'\n\nПодсказка NEXORA: нейросеть сейчас недоступна.':''), 'assistant',data.action);if(data.action&&data.action.type==='generate_project')void startProjectGeneration(data.action);history.push({role:'assistant',content:data.reply||''});history=history.slice(-10);persistHistory();setTimeout(()=>{launcher.classList.remove('speaking');status.textContent='ИИ-помощник NEXORA'},1800);
   }catch(error){typing(false);launcher.classList.remove('thinking');status.textContent='ИИ-помощник NEXORA';addMessage(error.message==='argosha_not_configured'?'Аргоша пока не подключён к ИИ. Владелец сайта должен добавить ключ провайдера в переменные Render.':'Сейчас не получилось связаться с ИИ. Попробуй немного позже.','assistant')}
   finally{send.disabled=false;input.focus()}
  }
