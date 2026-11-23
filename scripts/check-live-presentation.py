@@ -90,7 +90,10 @@ def main():
             if len(slides) != 7: raise AssertionError("Expected 7 content and product slides")
             photo_slides = [x for x in slides if x.get("imageUrl") and x.get("imageCredit")]
             print("PHOTO SLIDES:", len(photo_slides))
-            for x in photo_slides: print("PHOTO:", str(x["imageCredit"])[:145])
+            for i, slide in enumerate(slides):
+                print("SLIDE", i+1, "title:", str(slide.get("title", ""))[:75],
+                      "query:", str(slide.get("imageQuery", ""))[:130],
+                      "credit:", str(slide.get("imageCredit", ""))[:90])
             if len(photo_slides) < 3: raise AssertionError("Wikimedia photos are still missing")
             for name in ("Презентация_проекта.pptx", "Презентация_проекта.pdf"):
                 if name not in files: raise AssertionError("Missing "+name)
