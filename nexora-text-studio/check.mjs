@@ -18,6 +18,10 @@ for(const action of ['create','rewrite','proofread','shorten','expand','summariz
 assert.match(html,/overflow-x:clip/);
 assert.match(html,/id="output-status"/);
 assert.match(html,/class="nx-argosha-host"/);
+assert.match(html,/class="nx-argosha-greeting"/);
+assert.match(html,/nx-argosha-orb::before/);
+assert.match(html,/sessionStorage\.setItem\(key,"seen"\)/);
+assert.match(html,/greeting\.hidden=false/);
 assert.match(html,/argosha\/embed\?studio=text/);
 const textServerSource=await readFile(join(here,'server.js'),'utf8');
 assert.match(textServerSource,/frame-src https:\/\/nexora-lobby\.onrender\.com/);
