@@ -191,3 +191,22 @@ test('iPhone keyboard focus does not automatically zoom the chat viewport', asyn
   // Do not disable intentional pinch zoom or accessibility scaling.
   assert.doesNotMatch(html, /user-scalable=no|maximum-scale=1/);
 });
+
+
+test('example idea cards immediately send a prompt and guests see a login action',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const {join}=await import('node:path');
+  const {fileURLToPath}=await import('node:url');
+  const html=await readFile(join(fileURLToPath(new URL('..',import.meta.url)),'public/chat.html'),'utf8');
+  assert.ok(html.includes('data-prompt="Помоги придумать интересную идею проекта'), 'Idea suggestion missing');
+  assert.match(html, /document\.querySelectorAll\("\[data-prompt\]"\)\.forEach\(b=>b\.addEventListener\("click"/);
+  assert.match(html, /void submit\(suggestion\)/, 'Suggestion must directly send, not only prefill input');
+  assert.match(html, /if\(!signedIn\)\{showSignInNotice\(suggestion\);return;\}/);
+  assert.match(html, /id="chat-signin-notice"/);
+  assert.match(html, /id="chat-signin-link"/);
+  assert.match(html, /href="\/auth\/start" id="chat-signin-link"/);
+  assert.match(html, /localStorage\.setItem\("nexora-chat-draft-v1",value\)/);
+  assert.match(html, /localStorage\.getItem\("nexora-chat-draft-v1"\)/);
+  assert.doesNotMatch(html, /data-prompt"\]\)\.forEach[\s\S]{0,180}\.focus\(\)/,
+    'One-click suggestions should not open the phone keyboard instead of sending');
+});
