@@ -49,7 +49,11 @@ function productPayload(product, theme, concept, requestedVariants) {
   };
 }
 function safeHtml(input) {
-  const html = String(input || '').trim();
+  // Model-generated charset/viewport metadata is harmless but unnecessary for
+  // a Playwright setContent() render. Drop it instead of discarding the design.
+  // Retain http-equiv metadata only for the forbidden-element check below.
+  const html = String(input || '').trim()
+    .replace(/<meta\b[^>]*>/gi, tag => /\bhttp-equiv\s*=/i.test(tag) ? tag : '');
   if (html.length < 1000 || html.length > MAX_HTML) throw new Error('HTML-макет имеет неподходящий размер.');
   if (!/^<!doctype\s+html/i.test(html) || !/<html[\s>]/i.test(html) || !/<\/html>/i.test(html) || !/<head[\s>]/i.test(html)) {
     throw new Error('Дизайнер не вернул полный HTML-документ.');
@@ -58,7 +62,7 @@ function safeHtml(input) {
   const forbidden = [
     [/<\s*script\b/i, 'JavaScript'], [/<\s*(iframe|object|embed|form|video|audio|base|img)\b/i, 'активный или внешний элемент'],
     [/<\s*foreignObject\b/i, 'SVG foreignObject'], [/<\s*link\b/i, 'внешний ресурс'],
-    [/<\s*meta\b(?![^>]*\bcharset\s*=)[^>]*>/i, 'внешняя мета-настройка'],
+    [/<\s*meta\b/i, 'внешняя мета-настройка'],
     [/\son[a-z0-9_-]+\s*=/i, 'обработчик события'], [/javascript\s*:/i, 'javascript URL'],
     [/@import\b/i, 'CSS import'], [/url\s*\(/i, 'CSS URL'],
     [/\s(?:src|href|xlink:href)\s*=/i, 'внешняя ссылка или ресурс']
@@ -254,3 +258,5 @@ export async function designProduct(product, theme, aiJson, reviewScreenshot = n
     }
   });
 }
+
+export { safeHtml };
