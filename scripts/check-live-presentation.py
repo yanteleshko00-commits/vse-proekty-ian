@@ -34,7 +34,7 @@ def scan_file(file, name):
             images = [f for f in members if f.startswith("ppt/media/") and not f.endswith("/")]
             print(f"pptx pages={len(pages)}, embedded images={len(images)}, bytes={len(data)}")
             if len(pages) != 7: raise AssertionError("PowerPoint page count incorrect")
-            if len(images) < 1: raise AssertionError("PowerPoint has no images")
+            if len(images) < 4: raise AssertionError("PowerPoint still contains too few photos")
     elif name.endswith(".pdf"):
         if not data.startswith(b"%PDF"): raise AssertionError("Not a valid PDF")
         pages = len(re.findall(rb"/Type\s*/Page\b", data))
@@ -88,6 +88,10 @@ def main():
             files = {item["name"]: item for item in result.get("files") or []}
             print("GENERATION COMPLETED slides:", len(slides), "files:", list(files))
             if len(slides) != 7: raise AssertionError("Expected 7 content and product slides")
+            photo_slides = [x for x in slides if x.get("imageUrl") and x.get("imageCredit")]
+            print("PHOTO SLIDES:", len(photo_slides))
+            for x in photo_slides: print("PHOTO:", str(x["imageCredit"])[:145])
+            if len(photo_slides) < 3: raise AssertionError("Wikimedia photos are still missing")
             for name in ("Презентация_проекта.pptx", "Презентация_проекта.pdf"):
                 if name not in files: raise AssertionError("Missing "+name)
                 scan_file(files[name], name)
