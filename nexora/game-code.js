@@ -50,7 +50,7 @@ const ADAPTER=[
 'const keycodes={left:37,right:39,up:38,down:40,space:32};',
 'function press(dir,kind){',
 ' if(!Object.prototype.hasOwnProperty.call(dirs,dir))return;',
-' const e=new KeyboardEvent(kind,{key:dirs[dir],code:dirs[dir],bubbles:true,cancelable:true});',
+' const e=new KeyboardEvent(kind,{key:dirs[dir],code:dir==="space"?"Space":dirs[dir],bubbles:true,cancelable:true});',
 ' try{Object.defineProperty(e,"keyCode",{get:()=>keycodes[dir]})}catch{}',
 ' document.dispatchEvent(e);',
 '}',
@@ -170,7 +170,7 @@ export function serveGamePreview(res,token){
  res.writeHead(200,{
   'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store',
   'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer',
-  'Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+  'Content-Security-Policy':"sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
  });
  res.end(entry.html);
 }
