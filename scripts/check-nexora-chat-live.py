@@ -26,6 +26,9 @@ assert "Алиса" not in html and "Yandex AI" not in html
 assert html.index('id="composer"') < html.index('class="prompts"')
 print("CHAT DESIGN", "centered prompt=OK", "no Alice branding=OK", "suggestions below input=OK")
 assert ".composer textarea,\n  .search { font-size: 16px; }" in html, "iPhone input zoom safeguard missing from deployed site"
+assert "void submit(suggestion)" in html, "Idea cards only prefill without sending"
+assert 'id="chat-signin-notice"' in html, "Guests do not see a sign-in action"
+print("CHAT IDEAS", "one-tap send=OK", "guest sign-in guidance=OK")
 print("CHAT MOBILE", "iOS focus zoom fix=OK")
 
 assert "frame-ancestors 'none'" in headers.get("content-security-policy", "")
