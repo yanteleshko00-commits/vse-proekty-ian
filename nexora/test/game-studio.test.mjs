@@ -160,6 +160,7 @@ test('HTTP game build and live sandbox preview work for guests with no credentia
   const frame=await fetch(base+p.url);
   assert.equal(frame.status,200);
   assert.match(frame.headers.get('content-security-policy')||'',/script-src 'unsafe-inline'/);
+  assert.match(frame.headers.get('content-security-policy')||'',/sandbox allow-scripts/);
   assert.match(frame.headers.get('content-security-policy')||'',/connect-src 'none'/);
   const iframeHtml=await frame.text();
   assert.match(iframeHtml,/nexora-game-control/);
