@@ -70,3 +70,18 @@ export function imageCandidateScore(title, query, searchIndex = 0) {
   const common = [...tokens].filter(t => name.includes(t)).length;
   return common * 5 - Math.max(0, Number(searchIndex) || 0) * 0.35;
 }
+
+/**
+ * Wikimedia Commons imageinfo currently serves thumbnails from thumb.wikimedia.org
+ * (and some original images from upload.wikimedia.org).
+ * Keep an explicit host allow-list to prevent SSRF.
+ */
+export function isTrustedWikimediaImageUrl(value) {
+  try {
+    const parsed = new URL(String(value || ''));
+    return parsed.protocol === 'https:' &&
+      (parsed.hostname === 'thumb.wikimedia.org' || parsed.hostname === 'upload.wikimedia.org');
+  } catch {
+    return false;
+  }
+}
