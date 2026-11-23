@@ -146,6 +146,10 @@
   .composer textarea,
   .search { font-size: 16px; }
 }
+/* Visible sign-in guidance for one-tap suggestions without an account. */
+.chat-signin-notice{margin:12px 0 0;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:14px;background:var(--paper2);color:var(--text);font-size:13px}
+.chat-signin-notice a{flex:none;border-radius:10px;background:var(--text);color:var(--paper);padding:7px 13px;font-size:12px;font-weight:750}
+@media(max-width:460px){.chat-signin-notice{font-size:12px;flex-wrap:wrap}.chat-signin-notice a{margin-left:auto}}
 </style>
 </head>
 <body>
@@ -223,6 +227,10 @@
           <button class="prompt" type="button" data-prompt="Составь простой план изучения английского на неделю: по 20 минут каждый день."><span class="prompt-top"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M4 5h16v14H4zM8 9h8m-8 4h5"/></svg></span><span><strong>Помоги с учёбой</strong><span>Планы, задания и объяснения</span></span></button>
           <button class="prompt" type="button" data-prompt="Помоги составить план дня: учёба, отдых, спорт и время на свои проекты."><span class="prompt-top"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span><strong>Организуй мой день</strong><span>Расписание и полезные привычки</span></span></button>
         </div>
+      <div class="chat-signin-notice" id="chat-signin-notice" role="status" hidden>
+        <span>Чтобы получить ответ, войдите в NEXORA ID.</span>
+        <a href="/auth/start" id="chat-signin-link">Войти</a>
+      </div>
       <p class="composer-caption">Ответы ИИ могут содержать ошибки. Проверяйте важную информацию.</p>
     </div></div>
   </section>
@@ -422,15 +430,24 @@
     if(current.messages.at(-1).role!=="user")return;
     lastError="";setPending(true);renderAll();askModel(current);
   }
+  function showSignInNotice(promptText){
+    const value=String(promptText||"").slice(0,2400);
+    $("message-input").value=value;
+    autoGrow();
+    $("chat-signin-notice").hidden=false;
+    try{localStorage.setItem("nexora-chat-draft-v1",value);}catch{}
+  }
   async function submit(text){
     const value=String(text||"").trim();
     if(pending||!value)return;
     if(value.length>2400){toast("Максимум 2400 символов");return;}
-    if(!signedIn){toast("Для отправки войдите в NEXORA ID");$("account-link").focus();return;}
+    if(!signedIn){showSignInNotice(value);return;}
     const current=getOrCreate();
     current.messages.push({role:"user",content:value,provider:""});
     if(current.title==="Новый диалог")current.title=value.replace(/\s+/g," ").slice(0,46);
     current.updated=Date.now();lastError="";save();
+    $("chat-signin-notice").hidden=true;
+    try{localStorage.removeItem("nexora-chat-draft-v1");}catch{}
     $("message-input").value="";autoGrow();setPending(true);renderAll();await askModel(current);
   }
   function autoGrow(){
@@ -456,7 +473,9 @@
       const response=await fetch("/api/me",{credentials:"same-origin"});
       if(!response.ok)throw Error("not_signed_in");
       const data=await response.json();window.__chatUser=data.user;signedIn=Boolean(data.user?.id);
-    }catch{signedIn=false;}updateAccount();
+    }catch{signedIn=false;}
+    if(signedIn)$("chat-signin-notice").hidden=true;
+    updateAccount();
   }
   $("new-chat").addEventListener("click",newChat);
   $("menu-toggle").addEventListener("click",()=>toggleMenu(true));
@@ -465,7 +484,13 @@
   $("search").addEventListener("input",renderHistory);
   document.querySelectorAll("[data-model]").forEach(b=>b.addEventListener("click",()=>setModel(b.dataset.model)));
   document.querySelectorAll("[data-prompt]").forEach(b=>b.addEventListener("click",()=>{
-    $("message-input").value=b.dataset.prompt;autoGrow();$("message-input").focus();
+    const suggestion=String(b.dataset.prompt||"").trim();
+    if(!suggestion)return;
+    if(pending){toast("Сначала дождитесь текущего ответа");return;}
+    // A suggestion is an action, not just a text shortcut: send it immediately.
+    // Without NEXORA ID show an explicit sign-in action and preserve the draft.
+    if(!signedIn){showSignInNotice(suggestion);return;}
+    void submit(suggestion);
   }));
   $("composer").addEventListener("submit",event=>{event.preventDefault();submit($("message-input").value);});
   $("message-input").addEventListener("keydown",event=>{
@@ -480,7 +505,9 @@
     try{localStorage.setItem(THEME,next);}catch{}
   });
   document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu();});
-  load();renderAll();autoGrow();auth();
+  load();
+  try{const draft=localStorage.getItem("nexora-chat-draft-v1");if(draft)$("message-input").value=draft.slice(0,2400);}catch{}
+  renderAll();autoGrow();auth();
 })();
 </script>
 </body>
