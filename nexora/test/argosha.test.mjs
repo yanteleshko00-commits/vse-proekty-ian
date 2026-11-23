@@ -26,7 +26,10 @@ test('NEXORA homepage has clean hero and working registration entry points',asyn
  assert.match(html,/id="auth-form"/);
  assert.match(html,/request\('verify-email'/);
  assert.match(html,/request\('login'/);
- assert.match(html,/Цены на Mini, Pro и Max пока не утверждены/);
+ assert.match(html,/Стоимость пакетов указана в рублях/);
+ assert.match(html,/<h3>Mini<\/h3><div class="plan-count">5<\/div><div class="plan-price">99 ₽<\/div>/);
+ assert.match(html,/<h3>Pro<\/h3><div class="plan-count">10<\/div><div class="plan-price">299 ₽<\/div>/);
+ assert.match(html,/<h3>Max<\/h3><div class="plan-count">30<\/div><div class="plan-price">499 ₽<\/div>/);
 });
 
 test('NEXORA header and favicon use the same clean N-only SVG',async()=>{
