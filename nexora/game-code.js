@@ -1,13 +1,10 @@
 import crypto from 'node:crypto';
-import {readFile} from 'node:fs/promises';
-import {join} from 'node:path';
-import {fileURLToPath} from 'node:url';
-import {basicGamePlan,gameType} from './game-studio.js';
 import {arcadeGameHTML} from './game-arcade.js';
+import {miniGameHTML} from './game-mini.js';
+import {blockSandboxHTML} from './game-block-world.js';
 
 // Never execute AI output in NEXORA's own document. The frontend sandbox has
 // scripts enabled, but no same-origin, network, forms, or parent navigation.
-const here=fileURLToPath(new URL('.',import.meta.url));
 const recent=new Map();
 const previews=new Map();
 const API_URL=(process.env.PROJECT_GENERATOR_URL||'https://vse-proekty-ian.onrender.com').replace(/\/+$/,'');
@@ -17,6 +14,7 @@ function send(res,status,data){
 }
 export function gameFamily(idea){
  const s=String(idea||'').toLowerCase();
+ if(/майнкрафт|майнкраф|minecraft|mine\s*craft|выживание.*блок|песочниц.*блок|строить.*блок|копать.*блок/i.test(s))return 'blocks';
  if(/змейк|snake/.test(s))return 'snake';
  if(/флаппи|flappy|птиц|полёт|полет/.test(s))return 'flappy';
  if(/гонк|машин|автомоб|racing/.test(s))return 'racing';
@@ -82,22 +80,9 @@ export function sandboxGameHTML(source){
 }
 export async function fallbackGameHTML(idea){
  const family=gameFamily(idea);
- if(!['snake','target','catch'].includes(family))return arcadeGameHTML(idea,family);
- const plan=basicGamePlan({idea,type:gameType(idea)});
- const [html,js]=await Promise.all([
-  readFile(join(here,'public/game.html'),'utf8'),
-  readFile(join(here,'public/game.js'),'utf8')
- ]);
- const start=html.indexOf('<script src="/game.js"></script>');
- if(start<0)throw Error('Шаблон игры недоступен.');
- const preset=JSON.stringify(plan).replace(/</g,'\\u003c').replace(/>/g,'\\u003e');
- // The standalone fallback does not need the legacy download handler; remove
- // its literal script tags and network calls from the downloadable game.
- const standaloneJs=js.replace(/async function download\(\)\{[\s\S]*?\n\}\n\$\("download"\)\.addEventListener\("click",download\);/, 'async function download(){}\n$("download").addEventListener("click",download);');
- return html.slice(0,start)
-  .replace(/<!-- START AI STUDIO -->[\s\S]*?<!-- END AI STUDIO -->/,'')
-  .replace('id="classic-workspace" hidden','id="classic-workspace"')
-  +'<script>window.__GAME_PRESET__='+preset+';\n'+standaloneJs.replace(/<\/script/gi,'<\\/script')+'</script></body></html>';
+ if(family==='blocks')return blockSandboxHTML(idea);
+ if(['snake','target','catch'].includes(family))return miniGameHTML(idea,family);
+ return arcadeGameHTML(idea,family);
 }
 async function generateWithAI(idea,secret){
  if(secret.length<32)return null;
@@ -144,7 +129,7 @@ export async function makeCodeGame(req,res,{authenticated=false}={}){
  if(result)return send(res,200,{ok:true,html:result.html,title:idea.slice(0,75),source:'ai',provider:result.provider,family:gameFamily(idea)});
  const html=await fallbackGameHTML(idea);
  return send(res,200,{ok:true,html,title:idea.slice(0,75),source:'template',provider:'NEXORA Game Engine',
-  family:gameFamily(idea),message:authenticated?'ИИ не смог создать новый код. Запущена готовая мини-игра; код можно редактировать.':'Готовый игровой шаблон. Войдите в NEXORA ID, чтобы создавать новые игры с помощью ИИ.'});
+  family:gameFamily(idea),message:authenticated?'ИИ не смог создать новый код. Запущена готовая мини-игра; код можно редактировать.':(gameFamily(idea)==='blocks'?'Создана 2D-игра с блоками, добычей и строительством. Войдите в NEXORA ID для генерации игры по своим правилам.':'Запущена готовая мини-игра. Войдите в NEXORA ID для генерации собственного кода игры.')});
 }
 
 export async function prepareGamePreview(req,res){
