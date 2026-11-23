@@ -360,6 +360,37 @@ body :is(.tile h3,.brand,.brand-text strong,.brand-wordmark,.card h3,.panel-head
 body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equation){font-weight:580}
 @media(max-width:600px){body p,body button,body input,body select,body textarea{font-weight:690}}
 
+
+/* NEXORA full-screen test flow shared by generation studios. */
+#nxquiz[hidden],#nxq-extra[hidden]{display:none!important}
+#nxquiz{position:fixed;z-index:4000;inset:0;width:100vw;height:100dvh;overflow-y:auto;overscroll-behavior:contain;background:radial-gradient(ellipse at 10% 18%,#dddfff,transparent 45%),radial-gradient(ellipse at 88% 73%,#f5d3e8,transparent 43%),linear-gradient(153deg,#f7f7ff,#f6ecf5);padding:clamp(15px,5vh,42px) 15px 32px;color:#28203c;display:flex;justify-content:center;align-items:center}
+#nxquiz .nxq-content{width:min(100%,490px);margin:auto;display:flex;flex-direction:column;flex-shrink:0}
+#nxquiz .nxq-brand{display:flex;align-items:center;gap:11px;margin-bottom:18px;color:#281e3e;font-size:18px;font-weight:900;letter-spacing:.12em}
+#nxquiz .nxq-mark{display:grid;place-items:center;width:41px;height:41px;flex:0 0 41px;border-radius:12px;background:#221a39;color:#fff;font-size:26px}
+#nxquiz .nxq-brand small{display:block;font-size:10px;font-weight:850;letter-spacing:.15em;margin-top:4px;color:#8676a2}
+#nxquiz .nxq-preview{min-height:110px;padding:22px 18px;border-radius:18px;border:1px solid #eee7f6;background:#fff;box-shadow:0 17px 35px rgba(76,54,120,.095);margin-bottom:24px}
+#nxquiz .nxq-preview span{display:block;margin-bottom:9px;font-size:10px;font-weight:850;letter-spacing:.14em;color:#9d86c9}
+#nxquiz .nxq-preview strong{display:block;font-weight:840;font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+#nxquiz .nxq-topline{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;color:#675a86;font-size:11px;font-weight:800}
+#nxquiz .nxq-back{background:transparent;border:0;border-radius:10px;color:#63557d;min-height:38px;padding:5px 7px;font-size:11px;font-weight:850;cursor:pointer}
+#nxquiz .nxq-track{height:6px;background:#dcd1ef;border-radius:99px;overflow:hidden;margin-bottom:22px}
+#nxquiz .nxq-track i{height:100%;width:20%;display:block;border-radius:99px;background:#3252ed;transition:width .18s}
+#nxquiz .nxq-question{font-size:clamp(20px,4.4vw,25px);letter-spacing:-.04em;font-weight:900;line-height:1.24;margin:0 0 18px;color:#29213c}
+#nxquiz .nxq-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#nxquiz .nxq-option{border:1px solid #ded6ec;background:rgba(255,255,255,.9);border-radius:99px;padding:11px 8px;min-height:51px;font-size:12px;font-weight:830;color:#615474;line-height:1.4;box-shadow:0 5px 15px rgba(89,65,123,.07);cursor:pointer}
+#nxquiz .nxq-option[aria-pressed=true]{border-color:#3353ed;color:#2944d3;background:#fff;box-shadow:0 0 0 2px rgba(46,77,236,.14)}
+#nxquiz .nxq-extra{margin-top:13px;display:grid;gap:7px}
+#nxquiz .nxq-extra label{font-size:11px;font-weight:800;color:#655779}
+#nxquiz .nxq-extra input{width:100%;font:inherit;font-size:13px;min-height:44px;padding:9px 12px;border:1px solid #d5c8e9;border-radius:11px;background:white;color:#322348}
+#nxquiz .nxq-actions{margin-top:22px;display:flex;gap:9px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+#nxquiz .nxq-next{min-height:47px;min-width:150px;padding:11px 24px;border:0;border-radius:99px;background:#3252ec;color:white;font-weight:850;font-size:13px;box-shadow:0 12px 22px rgba(49,79,229,.21);cursor:pointer}
+#nxquiz .nxq-skip{min-height:38px;padding:8px 10px;border:0;background:transparent;color:#8d819d;font-size:11px;font-weight:760;cursor:pointer}
+#nxquiz .nxq-error{color:#ad345c;font-size:11px;margin-top:10px;line-height:1.5}
+#nxquiz .nxq-error[hidden]{display:none}
+@media(max-width:570px){#nxquiz{align-items:flex-start;padding:18px 13px 28px}#nxquiz .nxq-content{margin:auto}#nxquiz .nxq-preview{min-height:105px;margin-bottom:25px}#nxquiz .nxq-question{font-size:22px}#nxquiz .nxq-option{min-height:50px;font-size:11px}}
+@media(max-height:640px){#nxquiz{align-items:flex-start}}
+
+.composer .modes,.composer .controls,.composer > .category-label,.composer #topic-guide,.composer #textbook-field{display:none!important}
 </style>
 </head>
 <body>
@@ -453,6 +484,20 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 <footer><span><b>NEXORA</b> · MATH STUDIO</span><span>Думай. Решай. Понимай.</span></footer>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div id="nxquiz" hidden role="dialog" aria-modal="true" aria-labelledby="nxq-question">
+ <div class="nxq-content">
+  <div class="nxq-brand"><span class="nxq-mark">N</span><span>NEXORA<small>MATH STUDIO · ОПРОС</small></span></div>
+  <div class="nxq-preview"><span>УСЛОВИЕ ЗАДАЧИ</span><strong id="nxq-preview"></strong></div>
+  <div class="nxq-topline"><button id="nxq-back" type="button" class="nxq-back">‹ Назад</button><span id="nxq-counter">Шаг 1 из 4</span></div>
+  <div class="nxq-track" role="progressbar" aria-label="Прогресс опроса" aria-valuemin="0" aria-valuemax="4" aria-valuenow="1" id="nxq-track"><i id="nxq-fill"></i></div>
+  <h2 id="nxq-question" class="nxq-question"></h2>
+  <div id="nxq-options" class="nxq-options" role="group" aria-label="Ответы на вопрос"></div>
+  <div id="nxq-extra" class="nxq-extra" hidden><label for="nxq-book">Учебник или номер задачи (необязательно)</label><input id="nxq-book" type="text" maxlength="220" placeholder="Например: Алгебра, 9 класс, № 241"></div>
+  <p id="nxq-error" class="nxq-error" hidden></p>
+  <div class="nxq-actions"><button id="nxq-next" type="button" class="nxq-next">Далее →</button><button id="nxq-skip" type="button" class="nxq-skip">Пропустить</button></div>
+ </div>
+</div>
 <script>
 (()=>{"use strict";
 const $=id=>document.getElementById(id);
@@ -684,7 +729,57 @@ async function run(){
 }
 $("cancel-solve").addEventListener("click",()=>{if(requestController&&!requestController.signal.aborted){loaderStatus("Отменяю…","Останавливаю ожидание ответа.");requestController.abort()}});
 
-solve.addEventListener("click",run);
+
+const nxqSteps=[
+ {key:"kind",title:"Какой раздел математики?",options:[["auto","✦ Определить автоматически"],["algebra","∑ Алгебра"],["geometry","△ Геометрия"],["probability_statistics","◈ Вероятность и статистика"]]},
+ {key:"grade",title:"В каком ты классе?",options:[["5","5 класс"],["6","6 класс"],["7","7 класс"],["8","8 класс"],["9","9 класс"],["10","10 класс"],["11","11 класс"]]},
+ {key:"level",title:"Какая сложность решения?",options:[["basic","Базовый уровень"],["advanced","Углублённый уровень"]]},
+ {key:"format",title:"Как оформить решение?",options:[["full","Подробно, по шагам"],["compact","Кратко, с формулами"]]},
+ {key:"source",title:"Откуда взята задача?",options:[["general","Обычная задача"],["textbook","Из учебника"]]}
+];
+let nxqIndex=0,nxqValues={},nxqBusy=false;
+const nxqEl=id=>document.getElementById(id);
+function nxqOpenMath(){
+ if(busy||nxqBusy)return;
+ if(input.value.trim().length<5&&!attachments.length){fail("Напишите условие или прикрепите фото/файл.");input.focus();return}
+ nxqIndex=0;nxqValues={kind:mode,grade:nxqEl("grade").value,level:nxqEl("level").value,format:nxqEl("format").value,source:nxqEl("source-mode").value};
+ nxqEl("nxq-book").value=nxqEl("textbook").value;
+ nxqEl("nxq-preview").textContent=input.value.trim().slice(0,170)||(attachments.length+" вложение(й) с задачей");
+ nxqEl("nxquiz").hidden=false;nxqRenderMath();nxqEl("nxq-back").focus();
+}
+function nxqRenderMath(){
+ const step=nxqSteps[nxqIndex];nxqEl("nxq-question").textContent=step.title;
+ nxqEl("nxq-counter").textContent="Шаг "+(nxqIndex+1)+" из "+nxqSteps.length;
+ nxqEl("nxq-track").setAttribute("aria-valuemax",String(nxqSteps.length));
+ nxqEl("nxq-track").setAttribute("aria-valuenow",String(nxqIndex+1));
+ nxqEl("nxq-fill").style.width=((nxqIndex+1)*100/nxqSteps.length)+"%";
+ const host=nxqEl("nxq-options");host.replaceChildren();
+ for(const [value,label] of step.options){
+  const b=document.createElement("button");b.type="button";b.className="nxq-option";b.textContent=label;
+  b.setAttribute("aria-pressed",String(nxqValues[step.key]===value));
+  b.addEventListener("click",()=>{nxqValues[step.key]=value;nxqRenderMath()});
+  host.appendChild(b);
+ }
+ nxqEl("nxq-extra").hidden=step.key!=="source"||nxqValues.source!=="textbook";
+ nxqEl("nxq-next").textContent=nxqIndex===nxqSteps.length-1?"✦ Решить задачу":"Далее →";
+ nxqEl("nxq-error").hidden=true;
+}
+function nxqAdvanceMath(skip=false){
+ const step=nxqSteps[nxqIndex];
+ if(skip)nxqValues[step.key]=step.key==="grade"?"8":{kind:"auto",level:"basic",format:"full",source:"general"}[step.key];
+ if(nxqIndex<nxqSteps.length-1){nxqIndex++;nxqRenderMath();return}
+ nxqEl("nxquiz").hidden=true;
+ setMode(nxqValues.kind||"auto");nxqEl("grade").value=nxqValues.grade||"8";
+ nxqEl("level").value=nxqValues.level||"basic";nxqEl("format").value=nxqValues.format||"full";
+ nxqEl("source-mode").value=nxqValues.source||"general";
+ nxqEl("textbook").value=nxqValues.source==="textbook"?nxqEl("nxq-book").value.trim():"";
+ void run();
+}
+nxqEl("nxq-next").addEventListener("click",()=>nxqAdvanceMath());
+nxqEl("nxq-skip").addEventListener("click",()=>nxqAdvanceMath(true));
+nxqEl("nxq-back").addEventListener("click",()=>{if(nxqIndex===0){nxqEl("nxquiz").hidden=true;return}nxqIndex--;nxqRenderMath()});
+
+solve.addEventListener("click",nxqOpenMath);
 $("copy").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(solutionText());toast("Решение скопировано")}catch{toast("Копирование недоступно, используйте скачивание")}});
 $("download").addEventListener("click",()=>{if(!last)return;const url=URL.createObjectURL(new Blob([solutionText()],{type:"text/plain;charset=utf-8"}));const a=make("a");a.href=url;a.download="nexora-math-solution.txt";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast("Решение сохранено")});
 $("print").addEventListener("click",()=>{if(last)window.print()});
