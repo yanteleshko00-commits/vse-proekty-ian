@@ -30,6 +30,33 @@ textarea,select{width:100%;min-width:0;border:1px solid #e6dfef;border-radius:13
 @media(max-width:900px){.workspace{grid-template-columns:1fr}.stage{min-height:330px}}
 @media(max-width:550px){.top-inner{min-height:74px}.brand .logo{width:43px;height:43px;flex-basis:43px;font-size:24px;border-radius:12px}.brand strong{font-size:16px}.brand small{font-size:9px}.back{padding:0 10px;min-height:40px;font-size:11px}.shell{padding:28px 15px 45px}.hero h1{font-size:34px}.hero p{font-size:12px}.card{padding:19px 15px;border-radius:21px}.card h2{font-size:19px}.choices{gap:7px}.choice{font-size:10px}.stage{min-height:260px;padding:16px}.stage-icon{width:76px;height:76px;font-size:39px}.game-head h3{font-size:17px}.ctrl{min-width:41px;min-height:44px}.hero{margin-bottom:20px}}
 @media(prefers-reduced-motion:reduce){.stage.wait .stage-icon{animation:none}}
+
+/* Full-screen NEXORA game quiz matching the reference step-by-step flow. */
+#nxquiz[hidden]{display:none!important}
+#nxquiz{position:fixed;inset:0;z-index:4000;width:100vw;height:100dvh;overflow-y:auto;overscroll-behavior:contain;padding:clamp(18px,5vh,44px) 15px 32px;display:flex;justify-content:center;align-items:center;background:radial-gradient(ellipse at 12% 18%,#e0e0ff,transparent 43%),radial-gradient(ellipse at 90% 73%,#f7d8ee,transparent 43%),linear-gradient(147deg,#f8f7ff,#f7eef8);color:#2b213d}
+#nxquiz .nxq-inner{width:min(100%,490px);display:flex;flex-direction:column;flex-shrink:0;margin:auto}
+#nxquiz .nxq-brand{display:flex;gap:11px;align-items:center;font-size:18px;font-weight:900;letter-spacing:.12em;margin-bottom:17px}
+#nxquiz .nxq-brandmark{width:41px;height:41px;flex:0 0 41px;display:grid;place-items:center;border-radius:12px;color:#fff;background:#231a39;font-size:26px}
+#nxquiz .nxq-brand small{display:block;margin-top:4px;font-size:10px;font-weight:850;letter-spacing:.15em;color:#87779d}
+#nxquiz .nxq-preview{background:white;box-shadow:0 17px 36px rgba(71,48,113,.09);border:1px solid #eee8f5;border-radius:18px;min-height:105px;padding:21px 18px;margin-bottom:25px}
+#nxquiz .nxq-preview span{display:block;color:#9e85ca;font-weight:850;font-size:10px;letter-spacing:.13em;margin-bottom:8px}
+#nxquiz .nxq-preview strong{font-size:15px;font-weight:850;line-height:1.55;overflow-wrap:anywhere}
+#nxquiz .nxq-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px;font-size:11px;color:#675b83;font-weight:850}
+#nxquiz .nxq-back{border:0;background:transparent;border-radius:10px;color:#61537c;font-size:11px;font-weight:850;min-height:39px;padding:6px 5px}
+#nxquiz .nxq-track{height:6px;overflow:hidden;border-radius:99px;background:#dcd1ee;margin-bottom:22px}
+#nxquiz .nxq-track i{display:block;height:100%;width:33%;border-radius:99px;background:#3151ed;transition:width .17s}
+#nxquiz .nxq-question{font-size:clamp(20px,4.3vw,25px);font-weight:900;letter-spacing:-.04em;margin:0 0 20px;color:#292039}
+#nxquiz .nxq-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#nxquiz .nxq-option{border:1px solid #ddd4eb;background:white;box-shadow:0 6px 16px rgba(80,53,125,.07);color:#665776;border-radius:99px;padding:12px 8px;min-height:53px;font-size:12px;line-height:1.35;font-weight:830}
+#nxquiz .nxq-option[aria-pressed=true]{border-color:#3151ed;color:#2944d3;box-shadow:0 0 0 2px rgba(46,77,236,.13)}
+#nxquiz .nxq-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:22px;flex-wrap:wrap}
+#nxquiz .nxq-next{min-height:48px;min-width:150px;padding:11px 24px;border:0;border-radius:99px;background:#3151ed;color:#fff;font-size:13px;font-weight:850;box-shadow:0 11px 22px rgba(46,78,231,.23)}
+#nxquiz .nxq-skip{border:0;background:transparent;color:#897c99;padding:10px;font-size:11px;font-weight:780}
+@media(max-width:570px){#nxquiz{align-items:flex-start;padding:17px 14px 30px}#nxquiz .nxq-inner{margin:auto}#nxquiz .nxq-question{font-size:22px}#nxquiz .nxq-option{font-size:11px;min-height:50px}}
+@media(max-height:650px){#nxquiz{align-items:flex-start}}
+/* Choices only exist in the quiz, not twice in the builder. */
+.edit-pane #types,.edit-pane .options,.edit-pane > .label:not([for="idea"]){display:none!important}
+
 </style>
 </head>
 <body>
@@ -85,6 +112,18 @@ textarea,select{width:100%;min-width:0;border:1px solid #e6dfef;border-radius:13
  </div>
  <div class="footer-note">NEXORA Game Studio · Для мини-игр и экспериментов с идеями</div>
 </main>
+
+<div id="nxquiz" hidden role="dialog" aria-modal="true" aria-labelledby="nxq-question">
+ <div class="nxq-inner">
+  <div class="nxq-brand"><span class="nxq-brandmark">N</span><span>NEXORA<small>GAME STUDIO · ОПРОС</small></span></div>
+  <div class="nxq-preview"><span>ИДЕЯ ИГРЫ</span><strong id="nxq-preview"></strong></div>
+  <div class="nxq-header"><button type="button" id="nxq-back" class="nxq-back">‹ Назад</button><span id="nxq-count">Шаг 1 из 3</span></div>
+  <div class="nxq-track" id="nxq-track" role="progressbar" aria-valuemin="0" aria-valuemax="3" aria-valuenow="1" aria-label="Прогресс опроса"><i id="nxq-fill"></i></div>
+  <h2 class="nxq-question" id="nxq-question"></h2>
+  <div class="nxq-options" id="nxq-options" role="group" aria-label="Варианты ответа"></div>
+  <div class="nxq-footer"><button class="nxq-next" type="button" id="nxq-next">Далее →</button><button class="nxq-skip" type="button" id="nxq-skip">Пропустить</button></div>
+ </div>
+</div>
 <script src="/game.js"></script>
 </body>
 </html>
