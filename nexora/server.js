@@ -177,8 +177,8 @@ const ARGOSHA_TOOLS = [
   { id: 'text', name: 'Создать текст', status: 'available', description: 'Писать, переписывать и редактировать тексты.', url: 'https://nexora-text-studio.onrender.com/' },
   { id: 'game', name: 'Сделать игру', status: 'available', description: 'Создавать и запускать мини-игры с ИИ.', url: '/game' }
 ];
-const ARGOSHA_PROJECT_URL = 'https://vse-proekty-ian-1.onrender.com/';
-const PROJECT_GENERATOR_BASE = (process.env.PROJECT_GENERATOR_URL || 'https://vse-proekty-ian-1.onrender.com').replace(/\/$/, '');
+const ARGOSHA_PROJECT_URL = 'https://vse-proekty-ian.onrender.com/';
+const PROJECT_GENERATOR_BASE = (process.env.PROJECT_GENERATOR_URL || 'https://vse-proekty-ian.onrender.com').replace(/\/$/, '');
 const authServiceApiKey = process.env.AUTH_SERVICE_API_KEY || '';
 const authServiceClientId = process.env.AUTH_SERVICE_CLIENT_ID || 'nexora';
 
