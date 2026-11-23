@@ -892,7 +892,10 @@ async function commonsImage(query, used) {
         headers: { 'User-Agent': 'IanProjectPresentation/1.1 (educational presentation generator; contact: site owner)' },
         signal: AbortSignal.timeout(4200)
       }), 4500, 'Поиск изображения');
-      if (!res.ok) continue;
+      if (!res.ok) {
+        console.warn('[image-source] Wikimedia search HTTP ' + res.status + ' for query ' + JSON.stringify(q.slice(0, 70)));
+        continue;
+      }
       const data = await res.json();
       const pages = Object.values(data.query?.pages || {});
       // Prefer real photographic formats and skip SVG/animated assets.
@@ -1770,6 +1773,28 @@ app.get('/api/keep-alive', (_req, res) => {
   res.json({ ok: true, timestamp: Date.now() });
 });
 
+// An inexpensive cached check of production image-search and download connectivity.
+let photoSourceHealthCache = { expires: 0, promise: null };
+app.get('/api/image-source-health', asyncRoute(async (_req, res) => {
+  if (Date.now() >= photoSourceHealthCache.expires || !photoSourceHealthCache.promise) {
+    photoSourceHealthCache.expires = Date.now() + 5 * 60 * 1000;
+    photoSourceHealthCache.promise = (async () => {
+      const match = await commonsImage('solar panels', new Set());
+      if (!match) return { ok: false, search: 'no-image', download: 'not-attempted' };
+      try {
+        const picture = await downloadImage(match.url);
+        return { ok: true, search: 'found', download: 'ok', host: new URL(match.url).hostname,
+          mime: picture.mime, bytes: picture.bytes.length };
+      } catch (error) {
+        return { ok: false, search: 'found', download: 'failed', host: new URL(match.url).hostname,
+          message: cleanText(error?.message || error, 140) };
+      }
+    })().catch(error => ({ ok: false, search: 'failed', message: cleanText(error?.message || error, 140) }));
+  }
+  const result = await photoSourceHealthCache.promise;
+  res.set('Cache-Control', 'no-store');
+  res.status(result.ok ? 200 : 503).json({ service: 'presentation-images', ...result });
+}));
 app.get('/api/health', asyncRoute(async (_req, res) => {
   const providers = configuredAIProviders();
   const generationJobStorage = await inspectGenerationJobStorage();
