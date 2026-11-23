@@ -645,13 +645,13 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
       <p>Алгебра и геометрия: «Дано», «Найти», чертежи, вычисления и ответ.</p>
 
     </a>
-    <button class="tile" type="button" data-tool="chat">
-      <span class="status">Скоро</span>
-      <span class="tile-top">◌</span>
-      <h3>Спросить ChatGPT</h3>
-      <p>Объяснения, идеи и помощь с вопросами в одном чате.</p>
+    <a class="tile" data-tool="chat" href="/chat">
+      <span class="status ready">Доступно</span>
+      <span class="tile-top">✦</span>
+      <h3>Чат GPT + Алиса</h3>
+      <p>Общайтесь с двумя нейросетями, сохраняйте диалоги и воплощайте идеи.</p>
 
-    </button>
+    </a>
     <a class="tile" data-tool="image" href="https://nexora-image-studio.onrender.com/">
       <span class="status ready">Доступно</span>
       <span class="tile-top">▧</span>
@@ -903,14 +903,14 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
   var copy=document.getElementById('modal-copy');
   var labels={
     math:['Решить задачу','Инструмент для решения задач ещё подключается. Здесь появится ввод условия, выбор класса и оформление решения по школьным требованиям.'],
-    chat:['Спросить ChatGPT','Чат подключается к общей системе ИИ. Здесь можно будет задавать вопросы и получать объяснения.'],
+    chat:['Чат GPT + Алиса','Откройте NEXORA Chat, чтобы общаться с Алисой и GPT в одном пространстве.'],
     image:['Создать картинку','Создавайте новые изображения, скачивайте их и редактируйте следующим промптом.'],
     lesson:['Подготовиться к уроку','Здесь появятся конспекты с объяснениями, определениями, примерами и самопроверкой.'],
     text:['Создать текст','Здесь можно будет задать тему, тип текста, стиль и объём через компактные настройки под полем ввода.']
   };
   document.querySelectorAll('[data-tool]').forEach(function(button){
     button.addEventListener('click',function(){
-      if(['image','math','project','text','game'].includes(button.getAttribute('data-tool')))return;
+      if(['image','math','project','text','game','chat'].includes(button.getAttribute('data-tool')))return;
       var item=labels[button.getAttribute('data-tool')];
       title.textContent=item[0];
       copy.textContent=item[1];

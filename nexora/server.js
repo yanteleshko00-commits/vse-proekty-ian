@@ -8,6 +8,7 @@ import { mathAnswerPrompt } from './math-prompt.js';
 import { textBridge, textBridgeHealth } from './text-bridge.js';
 import { CONTEXT as ARGOSHA_CONTEXT, contextFor, messageHistory, toolForQuery, safeArgoshaAction, parseArgoshaAnswer, argoshaSystemPrompt, localArgoshaReply } from './argosha-core.js';
 import { makeGame } from './game-studio.js';
+import { validateChatRequest } from './chat-core.js';
 import { appendFractionWorking, fractionHelpForProblem } from './math-fractions.js';
 import { inferMathKind, mathStudyGuide, datasetHint, MATH_KINDS, MATH_LEVELS } from './math-curriculum.js';
 
@@ -171,7 +172,7 @@ async function finishLogin(req, res, url) {
 const ARGOSHA_TOOLS = [
   { id: 'project', name: 'Сделать проект', status: 'available', description: 'Школьные проекты, презентации, доклады и документы.', url: 'https://vse-proekty-ian.onrender.com/' },
   { id: 'solve', name: 'Решить задачу', status: 'available', description: 'Математика и геометрия с оформлением Дано — Найти — Решение — Ответ.', url: 'https://nexora-math-studio.onrender.com/' },
-  { id: 'chat', name: 'Чат с ИИ', status: 'coming_soon', description: 'Отдельный универсальный чат с ИИ.' },
+  { id: 'chat', name: 'NEXORA Chat', status: 'available', description: 'Общение с Алисой и GPT, диалоги и история.', url: '/chat' },
   { id: 'image', name: 'Создать картинку', status: 'available', description: 'Генерация и редактирование изображений.', url: 'https://nexora-image-studio.onrender.com/' },
   { id: 'lesson', name: 'Подготовиться к уроку', status: 'coming_soon', description: 'Конспекты, объяснения и самопроверка.' },
   { id: 'text', name: 'Создать текст', status: 'available', description: 'Писать, переписывать и редактировать тексты.', url: 'https://nexora-text-studio.onrender.com/' },
@@ -508,6 +509,83 @@ async function authApi(path, payload, req) {
   return { response, data };
 }
 
+
+// Chat messages remain on the user's device; only the recent context is
+// forwarded to the generator for one answer. A signed NEXORA ID is required.
+const chatActivity = new Map();
+const chatInFlight = new Set();
+async function nexoraChatReply(req, res) {
+  const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
+  const user = readSession(req);
+  if (!user) return send(res, 401, JSON.stringify({
+    error: 'not_signed_in', message: 'Войдите в NEXORA ID, чтобы начать диалог.'
+  }), jsonHeaders);
+  const secret = process.env.NEXORA_CHAT_INTERNAL_TOKEN || '';
+  if (secret.length < 32) return send(res, 503, JSON.stringify({
+    error: 'chat_unavailable', message: 'Чат ещё подключается. Попробуйте позднее.'
+  }), jsonHeaders);
+  const origin = String(req.headers.origin || '');
+  if (origin) {
+    let expected;
+    try { expected = new URL(appUrl(req)).origin; } catch { expected = ''; }
+    if (origin !== expected) return send(res, 403,
+      JSON.stringify({error:'invalid_origin',message:'Недопустимый источник запроса.'}),jsonHeaders);
+  }
+  if (!String(req.headers['content-type'] || '').startsWith('application/json')) {
+    return send(res,415,JSON.stringify({error:'content_type',message:'Ожидается JSON.'}),jsonHeaders);
+  }
+  const chunks=[];let length=0;
+  try {
+    for await(const chunk of req){
+      length+=chunk.length;
+      if(length>20000)throw Object.assign(new Error('Слишком длинная история чата.'),{status:413});
+      chunks.push(chunk);
+    }
+  } catch (error) {
+    return send(res,error.status||400,JSON.stringify({error:'request_too_large',message:'Сократите переписку.'}),jsonHeaders);
+  }
+  let input;
+  try {input=validateChatRequest(JSON.parse(Buffer.concat(chunks).toString('utf8')));}
+  catch(error){return send(res,error.status||400,JSON.stringify({error:'invalid_request',message:error.message||'Некорректный запрос.'}),jsonHeaders);}
+  const key=String(user.id);
+  const now=Date.now();
+  const prev=(chatActivity.get(key)||[]).filter(t=>now-t<3600000);
+  if(prev.length>=30)return send(res,429,JSON.stringify({
+    error:'rate_limited',message:'Вы достигли 30 сообщений за час. Попробуйте немного позже.'
+  }),jsonHeaders);
+  if(chatInFlight.has(key))return send(res,409,JSON.stringify({
+    error:'chat_busy',message:'Предыдущее сообщение ещё обрабатывается.'
+  }),jsonHeaders);
+  prev.push(now);chatActivity.set(key,prev);
+  chatInFlight.add(key);
+  if(chatActivity.size>3000)for(const [id,list] of chatActivity)
+    if(list.every(t=>now-t>3600000))chatActivity.delete(id);
+  try {
+    const response=await fetch(PROJECT_GENERATOR_BASE+'/api/nexora-chat/internal',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-NEXORA-Chat-Token':secret},
+      body:JSON.stringify(input),
+      signal:AbortSignal.timeout(80000)
+    });
+    const payload=await response.json().catch(()=>({}));
+    const status=response.ok?200:response.status>=400&&response.status<600?response.status:502;
+    if(status!==200)return send(res,status,JSON.stringify({
+      error:'provider_unavailable',message:String(payload.message||'Нейросеть временно недоступна.').slice(0,350)
+    }),jsonHeaders);
+    if(typeof payload.answer!=='string'||!payload.answer.trim())throw Error('Empty provider answer');
+    return send(res,200,JSON.stringify({
+      ok:true,answer:payload.answer.slice(0,9000),
+      provider:String(payload.provider||'NEXORA AI').slice(0,50),
+      model:input.model
+    }),jsonHeaders);
+  }catch(error){
+    console.warn('[nexora-chat] upstream unavailable:',error.name||'error');
+    return send(res,502,JSON.stringify({
+      error:'chat_unavailable',message:'Не удалось получить ответ. Попробуйте ещё раз.'
+    }),jsonHeaders);
+  }finally{chatInFlight.delete(key);}
+}
+
 const server = http.createServer(async (req, res) => {
   const base = appUrl(req);
   let url;
@@ -520,10 +598,24 @@ const server = http.createServer(async (req, res) => {
       service: 'nexora-lobby',
       oauthConfigured: ready,
       argoshaConfigured: Boolean(process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY),
+      chatConfigured: (process.env.NEXORA_CHAT_INTERNAL_TOKEN || '').length >= 32,
       imageStudio: imageStudioUrl,
       authService: authBase
     }), { 'Content-Type': 'application/json; charset=utf-8' });
   }
+
+  if(req.method === 'GET' && ['/chat','/chat/','/chat.html'].includes(url.pathname)){
+    try{
+      const html=await readFile(join(publicDir,'chat.html'));
+      return send(res,200,html,{
+        'Content-Type':'text/html; charset=utf-8',
+        'Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'",
+        'Referrer-Policy':'same-origin'
+      });
+    }catch(error){console.error('[nexora-chat] page error:',error.name);return send(res,500,'Чат временно недоступен.');}
+  }
+  if(req.method === 'POST' && url.pathname === '/api/nexora-chat')
+    return nexoraChatReply(req,res);
 
   if (req.method === 'GET' && ['/game','/game/','/game.html'].includes(url.pathname)) {
     try {
