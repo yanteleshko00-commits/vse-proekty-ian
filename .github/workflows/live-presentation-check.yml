@@ -1,0 +1,17 @@
+name: Live presentation service diagnostic
+on:
+  push:
+    branches: ['test/live-presentation-2026-11-23']
+    paths:
+      - 'scripts/check-live-presentation.py'
+      - '.github/workflows/live-presentation-check.yml'
+jobs:
+  production-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check health and presentation endpoints
+        run: python3 scripts/check-live-presentation.py
+        env:
+          LIVE_GENERATE: 'false'
