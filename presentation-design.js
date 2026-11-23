@@ -45,30 +45,66 @@ export function imageFrameRatio(slide, index = 1) {
   return ratioByType[type] || 3.7 / 4.85;
 }
 
+// Ignore words describing the photograph rather than its subject.
+const IMAGE_GENERIC_WORDS = new Set([
+  'cinematic', 'photorealistic', 'photo', 'photograph', 'photography', 'editorial',
+  'high', 'quality', 'sharp', 'focus', 'beautiful', 'background', 'view', 'wide', 'angle',
+  'lighting', 'light', 'depth', 'field', 'close', 'up', 'ultra', 'realistic',
+  'educational', 'professional', 'natural', 'image', 'shot', 'landscape',
+  'illustration', 'presentation', 'showing', 'visible', 'soft', 'bright',
+  'sunny', 'morning', 'afternoon', 'daylight', 'texture', 'generic',
+  'clear', 'detail', 'oblique', 'diagonal', 'three', 'quarter', 'full',
+  'style', 'portrait', 'horizontal', 'vertical', 'facing', 'foreground',
+  'person', 'adult', 'scene', 'composition', 'with', 'from', 'into',
+  'over', 'under', 'while', 'near', 'against', 'this', 'that', 'about',
+  'their', 'there', 'along', 'beside', 'including', 'using', 'through',
+  'the', 'and', 'for', 'are', 'has', 'have', 'its', 'was', 'were', 'not',
+  'out', 'one', 'two', 'of', 'on', 'an', 'in', 'at', 'to', 'a'
+]);
+
+function imageSubjectTokens(input) {
+  return String(input || '').toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+    .split(/[\s-]+/)
+    .filter(word => word.length >= 4 && !IMAGE_GENERIC_WORDS.has(word));
+}
+
 export function imageSearchQueries(input) {
-  const text = String(input || '').replace(/[^\p{L}\p{N}\s-]/gu, ' ').replace(/\s+/g, ' ').trim();
-  if (!text) return [];
-  const words = text.split(' ').filter(Boolean);
-  const stop = new Set(['cinematic', 'photorealistic', 'photo', 'photograph', 'photography', 'editorial',
-    'high', 'quality', 'sharp', 'focus', 'beautiful', 'background', 'view', 'wide', 'angle',
-    'lighting', 'light', 'depth', 'field', 'close', 'up', 'ultra', 'realistic', 'educational',
-    'professional', 'natural', 'image', 'shot', 'landscape', 'illustration', 'presentation']);
-  const core = words.filter(w => !stop.has(w.toLowerCase()));
+  const core = imageSubjectTokens(input);
+  if (!core.length) return [];
   const phrases = [
     core.slice(0, 7).join(' '),
     core.slice(0, 4).join(' '),
-    words.slice(0, 4).join(' ')
+    core.slice(-4).join(' ')
   ];
+  // Common scientific synonyms improve recall for descriptive AI prompts.
+  if (core.some(w => /^(?:photovoltaic|solar|inverter)$/.test(w))) {
+    phrases.push('solar panels', 'photovoltaic solar panels');
+  }
   return [...new Set(phrases.filter(q => q.length >= 3))];
 }
 
+// The title must describe the *subject*, not just a camera style or location.
+// Without a match, intentionally use a diagram rather than a random stock photo.
 export function imageCandidateScore(title, query, searchIndex = 0) {
-  const name = String(title || '').toLowerCase();
-  if (/\b(?:logo|emblem|flag|icon|watermark|coat of arms|svg|map|diagram|chart|clipart|screenshot)\b/.test(name)) return -100;
-  const tokens = new Set(String(query || '').toLowerCase().split(/[^\p{L}\p{N}]+/u)
-    .filter(t => t.length >= 4));
-  const common = [...tokens].filter(t => name.includes(t)).length;
-  return common * 5 - Math.max(0, Number(searchIndex) || 0) * 0.35;
+  const name = String(title || '').toLowerCase()
+    .replace(/^file:/, '').replace(/\.[a-z0-9]{2,5}$/i, '');
+  if (/\b(?:logo|emblem|flag|icon|watermark|coat of arms|svg|map|diagram|chart|clipart|screenshot)\b/i.test(name)) return -100;
+  const words = [...new Set(imageSubjectTokens(query))];
+  if (!words.length) return -100;
+  const titleWords = new Set(imageSubjectTokens(name));
+  const shared = words.filter(word => titleWords.has(word) ||
+    [...titleWords].some(t => t.startsWith(word) || word.startsWith(t))).length;
+
+  // Images of unrelated objects (e.g. a bird on a solar-cell slide) must fail
+  // even if their titles accidentally contain generic photography vocabulary.
+  const solarRequested = words.some(word =>
+    /^(solar|photovoltaic|inverter|renewables?)$/.test(word));
+  const solarMatched = /\b(?:solar|photovoltaic|panel|panels|inverter|renewables?|pv)\b/i.test(name);
+  if (solarRequested && !solarMatched) return -100;
+
+  if (shared === 0 && !solarMatched) return -100;
+  return shared * 8 + (solarRequested && solarMatched ? 9 : 0) -
+    Math.max(0, Number(searchIndex) || 0) * 0.15;
 }
 
 /**
