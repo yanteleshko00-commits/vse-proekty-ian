@@ -877,57 +877,74 @@ ${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
   return raw;
 }
 
-async function commonsImage(query, used) {
-  // Search the actual subject, not the image model's aesthetic instructions.
-  const queries = imageSearchQueries(query);
-  for (const q of queries) {
-    try {
-      const url = new URL('https://commons.wikimedia.org/w/api.php');
-      url.search = new URLSearchParams({
-        action: 'query', generator: 'search', gsrsearch: q,
-        gsrnamespace: '6', gsrlimit: '12', prop: 'imageinfo',
-        iiprop: 'url|mime', iiurlwidth: '1400', format: 'json', origin: '*'
-      }).toString();
-      const res = await withTimeout(fetch(url, {
-        headers: { 'User-Agent': 'IanProjectPresentation/1.1 (educational presentation generator; contact: site owner)' },
-        signal: AbortSignal.timeout(4200)
-      }), 4500, 'Поиск изображения');
-      if (!res.ok) {
-        console.warn('[image-source] Wikimedia search HTTP ' + res.status + ' for query ' + JSON.stringify(q.slice(0, 70)));
-        continue;
+async function commonsImage(query, used, additionalSubjects = []) {
+  // Wikipedia's public API is accessible to Render; Commons API sometimes
+  // responds with HTTP 429 from shared hosting IPs. Keep both as fallbacks.
+  const queries = [...new Set([query, ...additionalSubjects]
+    .flatMap(value => imageSearchQueries(value)))].slice(0, 7);
+  const endpoints = [
+    'https://en.wikipedia.org/w/api.php',
+    'https://commons.wikimedia.org/w/api.php'
+  ];
+  for (const [sourceIndex, endpoint] of endpoints.entries()) {
+    // Do not repeatedly hammer an already rate-limited Commons endpoint.
+    for (const q of (sourceIndex === 0 ? queries : queries.slice(0, 2))) {
+      try {
+        const url = new URL(endpoint);
+        url.search = new URLSearchParams({
+          action: 'query', generator: 'search', gsrsearch: q,
+          gsrnamespace: '6', gsrlimit: '15', prop: 'imageinfo',
+          iiprop: 'url|mime', iiurlwidth: '1400', format: 'json'
+        }).toString();
+        const res = await withTimeout(fetch(url, {
+          headers: {
+            'User-Agent': 'NEXORA/1.3 (https://vse-proekty-ian.onrender.com; educational presentations)',
+            'Accept': 'application/json'
+          },
+          signal: AbortSignal.timeout(5500)
+        }), 6000, 'Поиск изображения');
+        if (!res.ok) {
+          console.warn('[image-source] ' + url.hostname + ' HTTP ' + res.status);
+          if (res.status === 429) break;
+          continue;
+        }
+        const data = await res.json();
+        const pages = Object.values(data.query?.pages || {});
+        // Select meaningful real photographs, not flags, icons, diagrams or PDFs.
+        pages.sort((a, b) => {
+          const score = p => {
+            const info = p.imageinfo?.[0] || {};
+            const mime = info.mime || '';
+            const title = (p.title || '').toLowerCase();
+            return (mime === 'image/jpeg' ? 6 : mime === 'image/png' ? 2 : -10)
+              + (/\.(jpg|jpeg)$/i.test(title) ? 2 : 0)
+              + imageCandidateScore(title, q, p.index || 0);
+          };
+          return score(b) - score(a);
+        });
+        for (const page of pages) {
+          const info = page.imageinfo?.[0];
+          const candidate = info?.thumburl || info?.url;
+          if (!candidate || !isTrustedWikimediaImageUrl(candidate)) continue;
+          if (used.has(candidate)) continue;
+          if (!['image/jpeg', 'image/png'].includes(info?.mime || '')) continue;
+          if (imageCandidateScore(page.title, q, page.index || 0) <= -50) continue;
+          used.add(candidate);
+          return {
+            url: candidate,
+            credit: (page.title || 'Изображение') + ' — Wikimedia Commons',
+            title: page.title || ''
+          };
+        }
+      } catch (err) {
+        console.warn('[image-source] ' + new URL(endpoint).hostname + ': ' + cleanText(err?.message || err, 150));
       }
-      const data = await res.json();
-      const pages = Object.values(data.query?.pages || {});
-      // Prefer real photographic formats and skip SVG/animated assets.
-      pages.sort((a, b) => {
-        const score = p => {
-          const info = p.imageinfo?.[0] || {};
-          const mime = info.mime || '';
-          const title = (p.title || '').toLowerCase();
-          return (['image/jpeg', 'image/png'].includes(mime) ? 4 : 0)
-            + (/\.(jpg|jpeg|png)$/i.test(title) ? 2 : 0)
-            + imageCandidateScore(title, query, p.index || 0);
-        };
-        return score(b) - score(a);
-      });
-      for (const page of pages) {
-        const info = page.imageinfo?.[0];
-        const candidate = info?.thumburl || info?.url;
-        if (!candidate || !isTrustedWikimediaImageUrl(candidate)) continue;
-        if (used.has(candidate)) continue;
-        if (!['image/jpeg', 'image/png'].includes(info?.mime || '')) continue;
-        if (imageCandidateScore(page.title, query, page.index || 0) <= -50) continue;
-        used.add(candidate);
-        return { url: candidate, credit: `${page.title || 'Изображение'} — Wikimedia Commons`, title: page.title || '' };
-      }
-    } catch (err) {
-      console.warn('Wikimedia search attempt failed:', err.message);
     }
   }
   return null;
 }
 async function downloadImage(url) {
-  const response = await withTimeout(fetch(url, { signal: AbortSignal.timeout(3000) }), 4000, 'Загрузка изображения');
+  const response = await withTimeout(fetch(url, { signal: AbortSignal.timeout(6500) }), 7000, 'Загрузка изображения');
   if (!response.ok) throw new Error(`Изображение вернуло HTTP ${response.status}`);
   const mime = (response.headers.get('content-type') || '').split(';')[0].trim();
   // Не переименовываем WebP в PNG: это повреждает файл при встраивании в PPTX.
@@ -952,13 +969,13 @@ async function attachImages(plan) {
   // Ограниченный пул: не перегружаем Wikimedia и уменьшаем вероятность тайм-аутов.
   // commonsImage резервирует URL в Set сразу после ответа, поэтому повторов меньше.
   let nextSlide = 0;
-  const workerCount = Math.min(10, plan.slides.length);
+  const workerCount = Math.min(3, plan.slides.length);
   const workers = Array.from({ length: workerCount }, async () => {
     while (nextSlide < plan.slides.length) {
       const slide = plan.slides[nextSlide++];
       try {
-    const query = cleanText(slide.imageQuery, 180).toLocaleLowerCase('en').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-        const found = await commonsImage(query, used);
+        const query = cleanText(slide.imageQuery, 180).toLocaleLowerCase('en');
+        const found = await commonsImage(query, used, [slide.title, plan.title]);
         if (!found) continue;
         const image = await downloadImage(found.url);
         slide.imageUrl = found.url;
@@ -2231,4 +2248,4 @@ if (process.env.NODE_ENV !== 'test') {
     if (!process.env.OPENAI_API_KEY) console.warn('OPENAI_API_KEY is not configured.');
   });
 }
-export { buildPptx, createPptxBuffer, createPresentationPdfBuffer, preparePhotosForDeck };
+export { buildPptx, createPptxBuffer, createPresentationPdfBuffer, preparePhotosForDeck, commonsImage };

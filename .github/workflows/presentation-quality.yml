@@ -25,6 +25,6 @@ jobs:
           node-version: '22'
       - run: npm install --ignore-scripts --no-audit --no-fund
       - run: node --check server.js && node --check presentation-design.js
-      - run: node --test test/presentation-design.test.mjs test/presentation-smoke.test.mjs
+      - run: node --test test/presentation-*.test.mjs
         env:
           NODE_ENV: test
