@@ -82,3 +82,91 @@ test('Lobby serves Game Studio and handles generation with built-in fallback',as
   assert.equal(invalid.status,400);
  }finally{child.kill()}
 });
+
+
+test('Game Studio supports genuine editable HTML code and swipe-to-arrow controls in an isolated frame',async()=>{
+ const {gameFamily,normalizeGameHTML,sandboxGameHTML,fallbackGameHTML}=await import('../game-code.js');
+ const html=await readFile(join(root,'public/game.html'),'utf8');
+ const client=await readFile(join(root,'public/game-builder.js'),'utf8');
+ const gameEngine=await readFile(join(root,'game-code.js'),'utf8');
+ for(const id of ['ai-workspace','ai-build','ai-idea','ai-source','ai-frame','ai-play-tab','ai-code-tab','ai-run-code','ai-download','ai-game-view','classic-workspace']){
+  assert.ok(html.includes('id="'+id+'"'),'Missing AI game UI: '+id);
+ }
+ assert.match(html,/id="ai-frame"[^>]*sandbox="allow-scripts"/);
+ assert.doesNotMatch(html,/id="ai-frame"[^>]*allow-same-origin/);
+ assert.match(html,/data-game-arrow="left"/);
+ assert.match(html,/data-game-arrow="right"/);
+ assert.match(html,/data-game-arrow="up"/);
+ assert.match(html,/data-game-arrow="down"/);
+ assert.match(html,/data-game-arrow="space"/);
+ assert.match(client,/\/api\/game\/code/);
+ assert.match(client,/\/api\/game\/preview/);
+ assert.match(client,/frame\.src=data\.url/);
+ assert.match(client,/nexora-game-control/);
+ assert.match(client,/function runEdited/);
+ assert.match(client,/function saveGame/);
+ new vm.Script(client);
+ assert.equal(gameFamily('Платформер как Марио'),'platform');
+ assert.equal(gameFamily('Гонки на машине'),'racing');
+ assert.equal(gameFamily('Змейка'),'snake');
+ assert.equal(gameFamily('Сделай Flappy Bird'),'flappy');
+ assert.equal(gameFamily('Пинг-понг'),'pong');
+ const standalone='<html><head><title>Test</title></head><body><canvas width="720" height="420"></canvas><script>document.body.dataset.ok="yes";</script></body></html>';
+ assert.ok(normalizeGameHTML(standalone)===null,'Tiny or static games should not pass AI validation');
+ const valid='<html><head><title>Game</title></head><body><canvas width="720" height="420"></canvas><script>'+ 'const game=()=>{const c=document.querySelector("canvas");const x=c.getContext("2d");requestAnimationFrame(function loop(){x.fillRect(0,0,10,10);requestAnimationFrame(loop)});};game();'+'</script></body></html>';
+ assert.ok(normalizeGameHTML(valid));
+ const sandbox=sandboxGameHTML(valid);
+ assert.match(sandbox,/touchend/);
+ assert.match(sandbox,/nexora-game-control/);
+ assert.match(sandbox,/connect-src 'none'/);
+ assert.equal(normalizeGameHTML(valid.replace('<canvas','<script src="https://evil.example/x.js"></script><canvas')),null);
+ assert.equal(normalizeGameHTML(valid.replace('<canvas','<iframe src="/"></iframe><canvas')),null);
+ const fallback=await fallbackGameHTML('Космическая змейка собирает фрукты');
+ assert.ok(fallback.length>20000);
+ assert.match(fallback,/__GAME_PRESET__/);
+ assert.doesNotMatch(fallback,/id="ai-workspace"/);
+ assert.doesNotMatch(fallback,/<script src="\/game\.js"/);
+ assert.ok(normalizeGameHTML(fallback),'Fallback must be valid standalone HTML');
+ assert.match(gameEngine,/authenticated/);
+});
+test('HTTP game build and live sandbox preview work for guests with no credentials',async()=>{
+ const port=24000+process.pid%15000;
+ const child=spawn(process.execPath,[join(root,'server.js')],{
+  env:{...process.env,PORT:String(port),NEXORA_CHAT_INTERNAL_TOKEN:'',SESSION_SECRET:'',NODE_ENV:'test'},stdio:'ignore'
+ });
+ try{
+  let ready=false;
+  for(let i=0;i<40;i++){
+   try{const r=await fetch('http://127.0.0.1:'+port+'/health');if(r.ok){ready=true;break;}}catch{}
+   await new Promise(resolve=>setTimeout(resolve,130));
+  }
+  assert.ok(ready);
+  const base='http://127.0.0.1:'+port;
+  const page=await fetch(base+'/game');
+  assert.equal(page.status,200);
+  const client=await fetch(base+'/game-builder.js');
+  assert.equal(client.status,200);
+  const request=(path,data)=>fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  const generated=await request('/api/game/code',{idea:'Змейка космос'});
+  assert.equal(generated.status,200);
+  const body=await generated.json();
+  assert.equal(body.ok,true);
+  assert.equal(body.source,'template');
+  assert.match(body.html,/__GAME_PRESET__/);
+  const preview=await request('/api/game/preview',{html:body.html});
+  assert.equal(preview.status,200);
+  const p=await preview.json();
+  assert.ok(p.url.startsWith('/game/preview/'));
+  const frame=await fetch(base+p.url);
+  assert.equal(frame.status,200);
+  assert.match(frame.headers.get('content-security-policy')||'',/script-src 'unsafe-inline'/);
+  assert.match(frame.headers.get('content-security-policy')||'',/connect-src 'none'/);
+  const iframeHtml=await frame.text();
+  assert.match(iframeHtml,/nexora-game-control/);
+  assert.match(iframeHtml,/__GAME_PRESET__/);
+  const blocked=await request('/api/game/preview',{html:'<html>not a game</html>'});
+  assert.equal(blocked.status,400);
+  const invalid=await request('/api/game/code',{idea:'A'});
+  assert.equal(invalid.status,400);
+ }finally{child.kill();}
+});
