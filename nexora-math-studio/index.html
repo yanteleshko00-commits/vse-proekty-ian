@@ -461,7 +461,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 <div class="controls"><div class="setting"><label for="grade">Класс</label><select id="grade"><option>5</option><option>6</option><option>7</option><option selected>8</option><option>9</option><option>10</option><option>11</option></select></div><div class="setting"><label for="level">Уровень</label><select id="level"><option value="basic">Базовый</option><option value="advanced">Углублённый</option></select></div></div>
 <div class="controls"><div class="setting"><label for="format">Оформление</label><select id="format"><option value="full">Полное решение</option><option value="compact">Краткое объяснение</option></select></div><div class="setting"><label for="source-mode">Источник задачи</label><select id="source-mode"><option value="general">Обычная задача</option><option value="textbook">Из учебника</option></select></div></div>
 <div class="textbook-field" id="textbook-field" hidden><label for="textbook">Учебник, автор, номер задачи (необязательно)</label><input type="text" id="textbook" maxlength="220" placeholder="Например: Алгебра, 9 класс, № 241"><p class="textbook-hint">Название и номер сами по себе не содержат условие. Прикрепите фото страницы или напишите текст задачи.</p></div>
-<button type="button" class="solve" id="solve"><span>✦</span><span id="solve-label">Решить задачу</span></button>
+<button type="button" class="solve" id="solve"><span>✦</span><span id="solve-label">Далее — к вопросам</span></button>
 <div class="error" id="error" role="alert"></div>
 <p class="subnote">Используются подключённые модели NEXORA. Для задач по конкретным учебникам приложите страницу с условием; проверяйте ответ и вычисления.</p>
 </div>
@@ -489,8 +489,8 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
  <div class="nxq-content">
   <div class="nxq-brand"><span class="nxq-mark">N</span><span>NEXORA<small>MATH STUDIO · ОПРОС</small></span></div>
   <div class="nxq-preview"><span>УСЛОВИЕ ЗАДАЧИ</span><strong id="nxq-preview"></strong></div>
-  <div class="nxq-topline"><button id="nxq-back" type="button" class="nxq-back">‹ Назад</button><span id="nxq-counter">Шаг 1 из 4</span></div>
-  <div class="nxq-track" role="progressbar" aria-label="Прогресс опроса" aria-valuemin="0" aria-valuemax="4" aria-valuenow="1" id="nxq-track"><i id="nxq-fill"></i></div>
+  <div class="nxq-topline"><button id="nxq-back" type="button" class="nxq-back">‹ Назад</button><span id="nxq-counter">Шаг 1 из 5</span></div>
+  <div class="nxq-track" role="progressbar" aria-label="Прогресс опроса" aria-valuemin="0" aria-valuemax="5" aria-valuenow="1" id="nxq-track"><i id="nxq-fill"></i></div>
   <h2 id="nxq-question" class="nxq-question"></h2>
   <div id="nxq-options" class="nxq-options" role="group" aria-label="Ответы на вопрос"></div>
   <div id="nxq-extra" class="nxq-extra" hidden><label for="nxq-book">Учебник или номер задачи (необязательно)</label><input id="nxq-book" type="text" maxlength="220" placeholder="Например: Алгебра, 9 класс, № 241"></div>
