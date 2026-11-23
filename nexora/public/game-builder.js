@@ -64,7 +64,9 @@
    $("ai-source-label").classList.toggle("generated",data.source==="ai");
    $("ai-description").textContent=data.source==="ai"
     ?"Новая игра создана по описанию. Свайпайте по игровому полю или используйте стрелки."
-    :"Запущен рабочий шаблон. Для своей механики войдите в NEXORA ID и создайте игру снова.";
+    :data.family==="blocks"
+     ?"Готовый 2D-мир с блоками: двигайтесь стрелками и свайпами, добывайте блоки касанием и стройте."
+     :"Запущена отдельная мини-игра по выбранному типу. Для генерации новой механики ИИ войдите в NEXORA ID.";
    if(data.message)setStatus(data.message);
    else setStatus("Код создан. Игра готова к запуску.");
    await compileGame(raw);showReady();
