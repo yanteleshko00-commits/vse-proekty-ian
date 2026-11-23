@@ -123,6 +123,7 @@ test('signed-in chat forwards only validated messages to the internal AI server'
   const child=spawn(process.execPath,[join(here,'server.js')],{
     env:{...process.env,PORT:String(port),NODE_ENV:'test',SESSION_SECRET:key,
       NEXORA_CHAT_INTERNAL_TOKEN:secret,
+      APP_URL:'',RENDER_EXTERNAL_URL:'',
       PROJECT_GENERATOR_URL:'http://127.0.0.1:'+upstreamPort},
     stdio:'ignore'
   });

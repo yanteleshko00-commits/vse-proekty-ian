@@ -526,9 +526,17 @@ async function nexoraChatReply(req, res) {
   }), jsonHeaders);
   const origin = String(req.headers.origin || '');
   if (origin) {
-    let expected;
-    try { expected = new URL(appUrl(req)).origin; } catch { expected = ''; }
-    if (origin !== expected) return send(res, 403,
+    const allowed = new Set();
+    try { allowed.add(new URL(appUrl(req)).origin); } catch {}
+    // Use the actual request host too: Render may set APP_URL while a local
+    // integration test or a custom domain legitimately uses another origin.
+    const host = String(req.headers.host || '');
+    const protocol = String(req.headers['x-forwarded-proto'] || (production ? 'https' : 'http'))
+      .split(',')[0].trim();
+    if (/^[a-z0-9.-]+(?::[0-9]{1,5})?$/i.test(host) && ['http','https'].includes(protocol)) {
+      allowed.add(protocol + '://' + host);
+    }
+    if (!allowed.has(origin)) return send(res, 403,
       JSON.stringify({error:'invalid_origin',message:'Недопустимый источник запроса.'}),jsonHeaders);
   }
   if (!String(req.headers['content-type'] || '').startsWith('application/json')) {
