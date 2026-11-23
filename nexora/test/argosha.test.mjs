@@ -46,6 +46,13 @@ test('Shared iframe is only allowed from known NEXORA origins, with clear histor
  const html=await readFile(join(here,'public/argosha-embed.html'),'utf8');
  for(const id of ['messages','input','send','clear','suggestions'])assert.ok(html.includes('id="'+id+'"'));
  assert.match(html,/sessionStorage/);
+ assert.match(html,/sessionStorage/);
+ const lobby=await readFile(join(here,'public/index.html'),'utf8');
+ assert.match(lobby,/class="argosha-face"/);
+ assert.match(lobby,/class="argosha-greeting"/);
+ assert.match(lobby,/id="argosha-greeting-close"/);
+ assert.match(lobby,/argosha-reference-style/);
+ assert.match(lobby,/nexora-argosha-greeting-lobby-v1/);
  assert.match(html,/const context=/);
  assert.match(html,/\/api\/argosha/);
  assert.match(html,/noopener noreferrer/);
