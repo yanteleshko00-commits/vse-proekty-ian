@@ -8,7 +8,7 @@ import {CONTEXT,contextFor,messageHistory,toolForQuery,safeArgoshaAction,parseAr
 
 const here=fileURLToPath(new URL('..',import.meta.url));
 const tools=[
- {id:'project',name:'Сделать проект',status:'available',description:'Школьные проекты',url:'https://vse-proekty-ian-1.onrender.com/'},
+ {id:'project',name:'Сделать проект',status:'available',description:'Школьные проекты',url:'https://vse-proekty-ian.onrender.com/'},
  {id:'solve',name:'Решить задачу',status:'available',description:'Математика',url:'https://nexora-math-studio.onrender.com/'},
  {id:'text',name:'Создать текст',status:'available',description:'Сочинения',url:'https://nexora-text-studio.onrender.com/'},
  {id:'image',name:'Создать картинку',status:'available',description:'Фото',url:'https://nexora-image-studio.onrender.com/'},
@@ -119,6 +119,6 @@ test('Argosha embed and local fallback respond over HTTP without provider secret
   assert.equal(projectReply.status,200);
   const action=(await projectReply.json()).action;
   assert.equal(action.toolId,'project');
-  assert.ok(action.url.startsWith('https://vse-proekty-ian-1.onrender.com'));
+  assert.ok(action.url.startsWith('https://vse-proekty-ian.onrender.com'));
  }finally{child.kill()}
 });
