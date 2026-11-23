@@ -11,7 +11,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
 import { designProduct } from './productDesigner.js';
-import { contentSlideCount, appendProductSlide, imageFrameRatio, imageSearchQueries, imageCandidateScore } from './presentation-design.js';
+import { contentSlideCount, appendProductSlide, imageFrameRatio, imageSearchQueries, imageCandidateScore, isTrustedWikimediaImageUrl } from './presentation-design.js';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -910,7 +910,7 @@ async function commonsImage(query, used) {
       for (const page of pages) {
         const info = page.imageinfo?.[0];
         const candidate = info?.thumburl || info?.url;
-        if (!candidate || !/^https:\/\/upload\.wikimedia\.org\//i.test(candidate)) continue;
+        if (!candidate || !isTrustedWikimediaImageUrl(candidate)) continue;
         if (used.has(candidate)) continue;
         if (!['image/jpeg', 'image/png'].includes(info?.mime || '')) continue;
         if (imageCandidateScore(page.title, query, page.index || 0) <= -50) continue;
