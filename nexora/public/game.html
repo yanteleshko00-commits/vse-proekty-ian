@@ -109,17 +109,24 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
    <p class="ai-help">Напишите <strong>любое название, жанр или свою механику игры</strong>. ИИ проанализирует запрос и напишет HTML, CSS и JavaScript именно для этой идеи. Это не выбор из готовых игр.</p>
    <label class="label" for="ai-idea">Название или описание игры</label>
    <textarea id="ai-idea" maxlength="500" rows="5" placeholder="Например: платформер с прыжками, монетками и врагами. Игрок управляется стрелками, цель — дойти до финиша."></textarea>
-   <div class="ai-suggestions" aria-label="Примеры игр">
+   <div class="ai-dimension" role="group" aria-label="Графика игры">
+     <span>Формат графики</span>
+     <button type="button" data-game-dimension="auto" aria-pressed="true" class="selected">✦ Авто</button>
+     <button type="button" data-game-dimension="2d" aria-pressed="false">▣ 2D</button>
+     <button type="button" data-game-dimension="3d" aria-pressed="false">⬡ 3D</button>
+    </div>
+    <div class="ai-suggestions" aria-label="Примеры игр">
     <button type="button" data-ai-example="Платформер: герой прыгает по платформам, собирает монеты и избегает врагов. Счёт и финиш.">🎮 Платформер</button>
     <button type="button" data-ai-example="Гонки сверху: игрок ведёт машину по дороге, уворачивается от других машин, зарабатывает очки.">🏎️ Гонки</button>
     <button type="button" data-ai-example="Космический шутер: мой корабль стреляет во врагов, можно двигаться во все стороны.">🚀 Шутер</button>
-    <button type="button" data-ai-example="Майнкрафт: двухмерный блочный мир, где можно ходить, прыгать, добывать камень и строить из блоков.">⛏ Блочный мир</button>
+    <button type="button" data-ai-example="Трёхмерный блочный мир: ходить по объёмной карте, добывать камень, строить из кубов, поворачивать камеру." data-ai-dimension="3d">⛏ 3D мир</button>
+     <button type="button" data-ai-example="3D лабиринт от первого лица на WebGL: пройти к выходу, уклоняться от ловушек, управление движением и камерой." data-ai-dimension="3d">🧭 3D лабиринт</button>
     <button type="button" data-ai-example="Змейка с очками: управлять стрелками или свайпами, собирать яблоки, не врезаться.">🐍 Змейка</button>
     <button type="button" data-ai-example="Flappy Bird: маленькая птица летает через трубы по нажатию и набирает очки.">🐦 Flappy</button>
     <button type="button" data-ai-example="Арканоид: ракетка отбивает мяч и разбивает ряды кирпичей, уровни и очки.">🧱 Арканоид</button>
    </div>
    <button id="ai-build" type="button" class="create">✦ Создать и запустить игру</button>
-   <p class="hint">Регистрация и вход не нужны. Напишите название или правила игры — ИИ создаст код. Если генерация не получится, покажем причину вместо случайного шаблона. На телефоне есть свайпы и экранные кнопки.</p>
+   <p class="hint">Без входа в аккаунт. ИИ анализирует любую идею и создаёт 2D или настоящую 3D-игру на WebGL. На телефоне есть свайпы и экранные кнопки. Если ИИ не справится, покажем ошибку, а не другую игру.</p>
    <button type="button" id="ai-classic-toggle" class="ai-classic-link">Открыть классические мини-игры →</button>
    <div id="ai-error" class="error" role="alert" hidden></div>
 
@@ -128,6 +135,26 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
    <div class="card-top"><h2 id="ai-result-heading">Ваша игра</h2><span class="card-note" id="ai-source-label">02 / PREVIEW</span></div>
    <div id="ai-placeholder" class="stage">
     <span class="stage-icon">🎮</span>
+    <div id="ai-loading" class="ai-build-scene" hidden aria-hidden="true">
+     <div class="ai-build-backdrop"></div>
+     <div class="ai-build-composition">
+      <div class="ai-code-editor">
+       <div class="ai-code-editor-top"><i></i><i></i><i></i><small>game.js</small></div>
+       <div class="ai-code-editor-lines">
+        <span class="ai-code-text">const world = new Game();</span>
+        <span class="ai-code-text">world.createPlayer();</span>
+        <span class="ai-code-text">world.addPhysics();</span>
+        <span class="ai-code-text">render(world);</span>
+       </div>
+      </div>
+      <div class="ai-build-transfer" aria-hidden="true"><span>✧</span><i></i><span>➜</span></div>
+      <div class="ai-world-render">
+       <div class="ai-voxel"><i class="ai-cube-front"></i><i class="ai-cube-back"></i><i class="ai-cube-right"></i><i class="ai-cube-left"></i><i class="ai-cube-top"></i><i class="ai-cube-bottom"></i></div>
+       <span class="ai-render-spark ai-spark-one">✦</span><span class="ai-render-spark ai-spark-two">✧</span>
+      </div>
+     </div>
+     <div class="ai-build-indicator"><i></i><i></i><i></i><span>Генерация игрового кода</span></div>
+    </div>
     <strong id="ai-placeholder-title">Игра появится здесь</strong>
     <p id="ai-placeholder-description">Опишите любую игру, её цель и управление — ИИ создаст исходный код и запустит результат здесь.</p>
    </div>
@@ -144,7 +171,7 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
      <div class="ai-game-frame">
       <iframe id="ai-frame" title="Игра NEXORA — изолированный предпросмотр" sandbox="allow-scripts" referrerpolicy="no-referrer" allow="fullscreen"></iframe>
      </div>
-     <div class="ai-control-hint">Свайпайте по игровому полю или используйте кнопки. На компьютере — стрелки, WASD и пробел.</div>
+     <div class="ai-control-hint" id="ai-control-hint">Свайпайте по игровому полю или используйте кнопки. На компьютере — стрелки, WASD и пробел.</div>
      <div class="ai-dpad" aria-label="Управление игрой на телефоне">
       <div class="ai-dpad-arrows">
        <button type="button" data-game-arrow="up" aria-label="Вверх">↑</button>
