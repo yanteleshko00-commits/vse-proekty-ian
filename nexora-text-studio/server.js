@@ -1,3 +1,4 @@
+import {serveBrand} from './brand.js';
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {join} from 'node:path';
@@ -39,6 +40,7 @@ const server=http.createServer(async(req,res)=>{
   let url;
   try{url=new URL(req.url||'/','http://localhost');}
   catch{return respond(res,400,{message:'Некорректный адрес.'});}
+  if(serveBrand(req,res,url.pathname,"NEXORA Text Studio"))return;
   if(req.method==='GET'&&url.pathname==='/health')return respond(res,200,{ok:true,service:'nexora-text-studio',bridgeConfigured:key.length>=32});
   if(req.method==='GET'&&(url.pathname==='/'||url.pathname==='/index.html')){
     try{

@@ -1,3 +1,4 @@
+import {serveBrand} from './brand.js';
 import http from 'node:http';
 import {requestGeminiImage, requestGeminiImageRelay, firstImageProvider, DEFAULT_IMAGE_MODEL} from './gemini-image.js';
 import crypto from 'node:crypto';
@@ -562,6 +563,7 @@ const server = http.createServer(async (req, res) => {
     return send(res, 400, 'Bad Request');
   }
 
+  if(serveBrand(req,res,url.pathname,"NEXORA Image Studio"))return;
   if (req.method === 'GET' && url.pathname === '/health') {
     const keys = gigaChatKeys();
     const hasGigaChat = keys.length > 0;

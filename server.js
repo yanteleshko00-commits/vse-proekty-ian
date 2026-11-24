@@ -1,3 +1,4 @@
+import {serveBrand} from './nexora/brand.js';
 import 'dotenv/config';
 import express from 'express';
 import OpenAI from 'openai';
@@ -2366,6 +2367,7 @@ app.get('/api/me', (req, res) => {
 
 // Static site support for the existing Render deployment.
 const publicDir = path.resolve(process.cwd(), 'public');
+app.use((req,res,next)=>{if(!serveBrand(req,res,req.path,"Все проекты #Ian"))next();});
 if (fs.existsSync(publicDir)) app.use(express.static(publicDir));
 app.get('/', (_req, res, next) => {
   const indexPath = path.join(publicDir, 'index.html');

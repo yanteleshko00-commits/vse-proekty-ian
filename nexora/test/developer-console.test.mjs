@@ -60,3 +60,5 @@ test('history and maintenance are private',async()=>{
 test('maintenance is disabled by default and excludes auth and health',()=>{
  for(const p of ['/api/nexora-chat','/api/game/code','/health','/developer','/api/auth/login'])assert.equal(activeMaintenance(p),null);
 });
+
+test('brand assets have valid PNG dimensions and app manifest paths',async()=>{const {brandPNG,serveBrand}=await import('../brand.js');for(const n of [180,192,512]){const png=brandPNG(n);assert.equal(png.subarray(0,8).toString('hex'),'89504e470d0a1a0a');assert.equal(png.readUInt32BE(16),n);assert.equal(png.readUInt32BE(20),n);}let result;const res={writeHead(status,headers){result={status,headers};},end(body){result.body=body;}};assert.equal(serveBrand({method:'GET'},res,'/nexora-admin.webmanifest'),true);assert.equal(JSON.parse(result.body).start_url,'/developer');assert.equal(serveBrand({method:'GET'},res,'/api/health'),false);});
