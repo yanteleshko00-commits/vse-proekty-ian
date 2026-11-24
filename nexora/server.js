@@ -1,5 +1,6 @@
 import http from 'node:http';
 import {recordDeepSeek,verifyDeepSeek,deepSeekUsage,isUsageAdmin} from './deepseek-quality.js';
+import {passwordConfigured,checkAdminPassword,createAdminSession,validAdminSession,allowAdminAttempt,adminSessionSeconds,adminLoginPage} from './admin-auth.js';
 import {deepSeekProvider,deepSeekText,deepSeekRelay} from './deepseek.js';
 import {handleGeminiImageRelay} from './gemini-image-relay.js';
 import crypto from 'node:crypto';
@@ -624,10 +625,33 @@ const server = http.createServer(async (req, res) => {
   let url;
   try { url = new URL(req.url, base); } catch { return send(res, 400, 'Bad Request'); }
 
-  if(req.method==='GET' && (url.pathname==='/admin/deepseek'||url.pathname==='/api/admin/deepseek')){
-    if(!isUsageAdmin(readSession(req)))return send(res,403,'Доступ только для владельца NEXORA.',{'Content-Type':'text/plain; charset=utf-8'});
+  const adminHeaders={'Content-Type':'text/html; charset=utf-8','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",'Referrer-Policy':'no-referrer'};
+  const adminLoggedIn=()=>passwordConfigured()?validAdminSession(parseCookies(req).nexora_admin):isUsageAdmin(readSession(req));
+  if(req.method==='GET' && url.pathname==='/admin/login'){
+    if(adminLoggedIn())return redirect(res,'/admin/deepseek');
+    return send(res,200,adminLoginPage(passwordConfigured()?'':'unavailable'),adminHeaders);
+  }
+  if(req.method==='POST' && (url.pathname==='/admin/login'||url.pathname==='/admin/logout')){
+    const origin=String(req.headers.origin||'');
+    const expected=new URL(base).origin;
+    if(origin!==expected||!String(req.headers['content-type']||'').startsWith('application/x-www-form-urlencoded'))return send(res,403,'Доступ запрещён.');
+    if(url.pathname==='/admin/logout')return send(res,303,'',{Location:'/admin/login','Set-Cookie':cookie('nexora_admin','',0)});
+    if(!passwordConfigured())return send(res,503,adminLoginPage('unavailable'),adminHeaders);
+    const ip=String(req.headers['x-forwarded-for']||req.socket.remoteAddress||'').split(',').at(-1).trim();
+    if(!allowAdminAttempt(ip))return send(res,429,adminLoginPage('limited'),adminHeaders);
+    let form;
+    try{
+      let length=0;const parts=[];
+      for await(const chunk of req){length+=chunk.length;if(length>2048)throw Error('too_large');parts.push(chunk);}
+      form=new URLSearchParams(Buffer.concat(parts).toString('utf8'));
+    }catch{return send(res,400,'Неверный запрос.');}
+    if(!checkAdminPassword(form.get('password')))return send(res,401,adminLoginPage('invalid'),adminHeaders);
+    return send(res,303,'',{Location:'/admin/deepseek','Set-Cookie':cookie('nexora_admin',createAdminSession(),adminSessionSeconds)});
+  }
+  if(req.method==='GET' && (url.pathname==='/admin'||url.pathname==='/admin/deepseek'||url.pathname==='/api/admin/deepseek')){
+    if(!adminLoggedIn())return url.pathname.startsWith('/api/')?send(res,403,JSON.stringify({error:'forbidden'}),{'Content-Type':'application/json; charset=utf-8'}):redirect(res,'/admin/login');
     if(url.pathname==='/api/admin/deepseek')return send(res,200,JSON.stringify(deepSeekUsage()),{'Content-Type':'application/json; charset=utf-8'});
-    return send(res,200,await readFile(join(publicDir,'deepseek-admin.html'),'utf8'),{'Content-Type':'text/html; charset=utf-8'});
+    return send(res,200,await readFile(join(publicDir,'deepseek-admin.html'),'utf8'),adminHeaders);
   }
   if (req.method === 'POST' && url.pathname === '/internal/deepseek/text') return deepSeekRelay(req,res);
   if (req.method === 'POST' && url.pathname === '/internal/gemini/image') return handleGeminiImageRelay(req,res);
