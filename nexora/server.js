@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {recordDeepSeek,verifyDeepSeek,deepSeekUsage,isUsageAdmin} from './deepseek-quality.js';
 import {deepSeekProvider,deepSeekText,deepSeekRelay} from './deepseek.js';
 import {handleGeminiImageRelay} from './gemini-image-relay.js';
 import crypto from 'node:crypto';
@@ -273,8 +274,10 @@ async function argoshaReply(req, res) {
         signal:AbortSignal.timeout(22000)
       });
       const data=await response.json().catch(()=>({}));
+      if(provider.name==='DeepSeek')recordDeepSeek('argosha',data,response.status);
       if(!response.ok)throw Error('HTTP '+response.status);
       const parsed=parseArgoshaAnswer(data);
+      if(provider.name==='DeepSeek')await verifyDeepSeek('argosha',lastUser,parsed.reply,{finish:data.choices?.[0]?.finish_reason});
       let action=safeArgoshaAction(parsed.action,ARGOSHA_TOOLS,context);
       // A model may omit action even when asking to open a known tool.
       if(!action){
@@ -467,6 +470,7 @@ async function mathBridgeSolve(req, res) {
         signal: AbortSignal.timeout(provider.name === 'OpenRouter' ? 32000 : 30000)
       });
       const payload = await response.json().catch(() => ({}));
+      if(provider.name==='DeepSeek')recordDeepSeek('math',payload,response.status);
       if (!response.ok) throw new Error(provider.name + ' HTTP ' + response.status);
       const content = payload.choices?.[0]?.message?.content;
       const raw = typeof content === 'string' ? content :
@@ -478,6 +482,7 @@ async function mathBridgeSolve(req, res) {
       }
       const parsed = parseMathResponse(raw, solvedKind, problem);
       const solution = normalizeMathSolution(parsed, solvedKind);
+      if(provider.name==='DeepSeek')await verifyDeepSeek('math',problem,JSON.stringify(solution),{finish:payload.choices?.[0]?.finish_reason});
       appendFractionWorking(solution);
       if (solution.kind === 'other' || (requestedKind !== 'auto' && solution.kind !== solvedKind)) solution.kind = solvedKind;
       if (solvedKind === 'probability_statistics' && !solution.needs_clarification &&
@@ -587,7 +592,7 @@ async function nexoraChatReply(req, res) {
           return send(res,200,JSON.stringify({ok:true,answer:answer.slice(0,9000),provider:'DeepSeek',model:input.model}),jsonHeaders);
         }catch(error){console.warn('[nexora-chat] DeepSeek failed:',error.status||error.name);}
       }
-      if(input.model==='deepseek')return send(res,503,JSON.stringify({error:'provider_unavailable',message:'DeepSeek временно недоступен. Выберите автоматический режим.'}),jsonHeaders);
+      if(input.model==='deepseek')input={...input,model:'auto'};
     }
     const response=await fetch(PROJECT_GENERATOR_BASE+'/api/nexora-chat/internal',{
       method:'POST',
@@ -619,6 +624,11 @@ const server = http.createServer(async (req, res) => {
   let url;
   try { url = new URL(req.url, base); } catch { return send(res, 400, 'Bad Request'); }
 
+  if(req.method==='GET' && (url.pathname==='/admin/deepseek'||url.pathname==='/api/admin/deepseek')){
+    if(!isUsageAdmin(readSession(req)))return send(res,403,'Доступ только для владельца NEXORA.',{'Content-Type':'text/plain; charset=utf-8'});
+    if(url.pathname==='/api/admin/deepseek')return send(res,200,JSON.stringify(deepSeekUsage()),{'Content-Type':'application/json; charset=utf-8'});
+    return send(res,200,await readFile(join(publicDir,'deepseek-admin.html'),'utf8'),{'Content-Type':'text/html; charset=utf-8'});
+  }
   if (req.method === 'POST' && url.pathname === '/internal/deepseek/text') return deepSeekRelay(req,res);
   if (req.method === 'POST' && url.pathname === '/internal/gemini/image') return handleGeminiImageRelay(req,res);
   if (url.pathname === '/health') {

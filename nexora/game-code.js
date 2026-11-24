@@ -1,3 +1,4 @@
+import {recordDeepSeek,verifyDeepSeek} from './deepseek-quality.js';
 import crypto from 'node:crypto';
 import {Script} from 'node:vm';
 import {arcadeGameHTML} from './game-arcade.js';
@@ -291,8 +292,9 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimen
   }),
   signal:AbortSignal.timeout(timeout)
  });
- if(!response.ok)throw Error('AI HTTP '+response.status);
  const data=await response.json().catch(()=>null);
+ if(provider.kind==='deepseek')recordDeepSeek('games',data,response.status);
+ if(!response.ok)throw Error('AI HTTP '+response.status);
  const choice=data?.choices?.[0];
  const content=choice?.message?.content;
  const candidate=data?.candidates?.[0];
@@ -305,6 +307,7 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimen
   throw Error('invalid_game_html');
  }
  if(dimension==='3d'&&!isWebGLGame(html))throw Error('not_webgl_3d');
+ if(provider.kind==='deepseek')await verifyDeepSeek('games',prompt,html,{fetchImpl,finish:choice?.finish_reason});
  return {html,provider:provider.name};
 }
 async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={}){

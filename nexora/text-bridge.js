@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import {recordDeepSeek,verifyDeepSeek} from './deepseek-quality.js';
 import {deepSeekProvider} from './deepseek.js';
 import {normalizeTextRequest,buildTextPrompt,buildTextUserMessage,readTextResponse,summarizeTextStats} from './text-engine.js';
 
@@ -146,12 +147,14 @@ export async function textBridge(req,res){
           signal:AbortSignal.timeout(36000)
         });
         const answer=await reply.json().catch(()=>({}));
+        if(p.name==='DeepSeek')recordDeepSeek('text',answer,reply.status);
         if(!reply.ok){
           lastFailure='HTTP '+reply.status;
           console.warn('Text provider returned status:',p.name,reply.status);
           continue;
         }
         const text=readTextResponse(answer);
+        if(p.name==='DeepSeek')await verifyDeepSeek('text',buildTextUserMessage(params),text,{finish:answer.choices?.[0]?.finish_reason});
         return respond(res,200,{ok:true,text,provider:p.name,stats:summarizeTextStats(text)});
       }catch(error){
         lastFailure=error.message;

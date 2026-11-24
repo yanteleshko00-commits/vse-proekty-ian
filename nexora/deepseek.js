@@ -1,16 +1,18 @@
 import crypto from 'node:crypto';
+import {recordDeepSeek,verifyDeepSeek} from './deepseek-quality.js';
 export function deepSeekProvider(env=process.env,modelOverride=''){
  const key=String(env.DEEPSEEK_API_KEY||'').trim();
  if(!key)return null;
  return {name:'DeepSeek',url:'https://api.deepseek.com/chat/completions',key,model:String(modelOverride||env.DEEPSEEK_MODEL||'deepseek-flash').trim()};
 }
-export async function deepSeekText({provider,messages,maxTokens=3000,jsonMode=false,timeout=45000,fetchImpl=fetch}){
+export async function deepSeekText({provider,messages,maxTokens=3000,jsonMode=false,timeout=45000,fetchImpl=fetch,service='chat',env=process.env}){
  const response=await fetchImpl(provider.url,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+provider.key},
  body:JSON.stringify({model:provider.model,messages,max_tokens:maxTokens,thinking:{type:'disabled'},...(jsonMode?{response_format:{type:'json_object'}}:{})}),signal:AbortSignal.timeout(timeout)});
  const data=await response.json().catch(()=>({}));
+ recordDeepSeek(service,data,response.status);
  if(!response.ok)throw Object.assign(new Error('DeepSeek HTTP '+response.status),{status:response.status});
  const answer=data.choices?.[0]?.message?.content;
- if(typeof answer!=='string'||!answer.trim())throw new Error('DeepSeek returned empty text');
+ await verifyDeepSeek(service,JSON.stringify(messages),answer,{env,fetchImpl,finish:data.choices?.[0]?.finish_reason});
  return answer;
 }
 let active=0,windowTimes=[];
@@ -28,7 +30,7 @@ export async function deepSeekRelay(req,res,{env=process.env,fetchImpl=fetch}={}
  if(active>=3||windowTimes.length>=20)return send(429,{error:'rate_limited'});
  windowTimes.push(now);active++;
  try{
-  const output=await deepSeekText({provider,messages:[{role:'system',content:input.instructions+(input.jsonMode?'\nReturn a JSON object.':'')},{role:'user',content:input.input}],maxTokens:10000,jsonMode:input.jsonMode===true,timeout:45000,fetchImpl});
+  const output=await deepSeekText({provider,messages:[{role:'system',content:input.instructions+(input.jsonMode?'\nReturn a JSON object.':'')},{role:'user',content:input.input}],maxTokens:10000,jsonMode:input.jsonMode===true,timeout:45000,fetchImpl,service:'projects',env});
   console.info('[deepseek-relay] Generated text');return send(200,{output,provider:'DeepSeek'});
  }catch(error){console.warn('[deepseek-relay] failed:',error.status||error.name);return send(error.status>=400&&error.status<=599?error.status:502,{error:'deepseek_unavailable'});}
  finally{active--;}
