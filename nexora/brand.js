@@ -1,0 +1,35 @@
+import {deflateSync} from 'node:zlib';
+// NEXORA: single ribbon mark, flat indigo and lavender, no external assets.
+export const brandSVG='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="NEXORA"><rect width="128" height="128" rx="28" fill="#17132d"/><path d="M39 88V40M89 40V88" fill="none" stroke="#7656cf" stroke-width="17" stroke-linecap="round"/><path d="M39 40L89 88" fill="none" stroke="#c4a7ff" stroke-width="17" stroke-linecap="round"/></svg>';
+const cache=new Map();
+function crc(buf){let c=0xffffffff;for(const v of buf){c^=v;for(let i=0;i<8;i++)c=(c>>>1)^((c&1)?0xedb88320:0);}return(c^0xffffffff)>>>0;}
+function chunk(name,data){const type=Buffer.from(name),header=Buffer.alloc(4),tail=Buffer.alloc(4);header.writeUInt32BE(data.length);tail.writeUInt32BE(crc(Buffer.concat([type,data])));return Buffer.concat([header,type,data,tail]);}
+function distance(x,y,x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1,t=Math.max(0,Math.min(1,((x-x1)*dx+(y-y1)*dy)/(dx*dx+dy*dy)));return Math.hypot(x-x1-t*dx,y-y1-t*dy);}
+export function brandPNG(size){
+ if(cache.has(size))return cache.get(size);
+ const data=Buffer.alloc((size*3+1)*size),ihdr=Buffer.alloc(13);
+ ihdr.writeUInt32BE(size,0);ihdr.writeUInt32BE(size,4);ihdr[8]=8;ihdr[9]=2;
+ // Opaque, full bleed iOS tile. Same mark geometry as the SVG.
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+  const a=(x+.5)*128/size,b=(y+.5)*128/size,w=128/size;
+  const p=Math.max(0,Math.min(1,(8.5+w/2-Math.min(distance(a,b,39,88,39,40),distance(a,b,89,40,89,88)))/w));
+  const q=Math.max(0,Math.min(1,(8.5+w/2-distance(a,b,39,40,89,88))/w));
+  const off=y*(size*3+1)+1+x*3;
+  const bg=[23,19,45],base=[118,86,207],top=[196,167,255];
+  for(let k=0;k<3;k++)data[off+k]=Math.round((bg[k]*(1-p)+base[k]*p)*(1-q)+top[k]*q);
+ }
+ const png=Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',ihdr),chunk('IDAT',deflateSync(data)),chunk('IEND',Buffer.alloc(0))]);
+ cache.set(size,png);return png;
+}
+export function serveBrand(req,res,pathname,name='NEXORA'){
+ if(!['GET','HEAD'].includes(req.method))return false;
+ let body,type;
+ if(pathname==='/nexora-mark.svg'||pathname==='/favicon.ico'){body=brandSVG;type='image/svg+xml';}
+ else if(['/apple-touch-icon.png','/icon-192.png','/icon-512.png'].includes(pathname)){body=brandPNG(pathname.includes('192')?192:pathname.includes('512')?512:180);type='image/png';}
+ else if(pathname==='/nexora.webmanifest'||pathname==='/manifest.json'||pathname==='/nexora-admin.webmanifest'){
+  const admin=pathname==='/nexora-admin.webmanifest';
+  body=JSON.stringify({id:admin?'/developer':'/',name:admin?'NEXORA Developer Console':name,short_name:admin?'NEXORA Admin':name.split(' ').slice(0,2).join(' '),start_url:admin?'/developer':'/',scope:'/',display:'standalone',background_color:'#17132d',theme_color:'#17132d',icons:[{src:'/icon-192.png?v=2',sizes:'192x192',type:'image/png',purpose:'any'},{src:'/icon-512.png?v=2',sizes:'512x512',type:'image/png',purpose:'any'}]});type='application/manifest+json';
+ }else return false;
+ res.writeHead(200,{'Content-Type':type,'Cache-Control':'public, max-age=3600','X-Content-Type-Options':'nosniff'});
+ res.end(req.method==='HEAD'?undefined:body);return true;
+}
