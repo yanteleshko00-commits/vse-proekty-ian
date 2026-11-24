@@ -185,12 +185,16 @@ test('HTTP game build and live sandbox preview work for guests with no credentia
   assert.equal(client.status,200);
   const request=(path,data)=>fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
   const generated=await request('/api/game/code',{idea:'Змейка космос'});
-  assert.equal(generated.status,200);
+  assert.equal(generated.status,401);
   const body=await generated.json();
   assert.equal(body.ok,true);
-  assert.equal(body.source,'template');
-  assert.match(body.html,/const cfg=/);
-  const preview=await request('/api/game/preview',{html:body.html});
+  assert.equal(body.ok,false);
+  assert.equal(body.error,'login_required');
+  assert.equal(body.loginUrl,'/auth/start');
+  assert.equal(body.html,undefined);
+  const {fallbackGameHTML}=await import('../game-code.js');
+  const separateClassic=await fallbackGameHTML('Змейка космос');
+  const preview=await request('/api/game/preview',{html:separateClassic});
   assert.equal(preview.status,200);
   const p=await preview.json();
   assert.ok(p.url.startsWith('/game/preview/'));
@@ -222,8 +226,11 @@ test('signed-in game maker requests original HTML from protected AI gateway',asy
   assert.equal(req.headers['x-nexora-chat-token'],secret);
   const parts=[];for await(const chunk of req)parts.push(chunk);
   const input=JSON.parse(Buffer.concat(parts).toString('utf8'));
-  assert.equal(input.model,'alice');
-  assert.match(input.messages[0].content,/ОПИСАНИЕ ИГРЫ: Платформер с монетами/);
+  assert.equal(input.model,'auto');
+  assert.match(input.messages[0].content,/ЗАПРОС ПОЛЬЗОВАТЕЛЯ: Платформер с монетами/);
+  assert.match(input.messages[0].content,/любое название игры|ЛЮБОЕ название игры/i);
+  assert.match(input.messages[0].content,/собственн.*идеи/);
+  assert.match(input.messages[0].content,/не подменяй|не подмен|подменяй|не привязывайся/i);
   res.writeHead(200,{'Content-Type':'application/json'});
   res.end(JSON.stringify({ok:true,answer:resultHtml,provider:'Alice AI LLM'}));
  });
@@ -255,4 +262,36 @@ test('signed-in game maker requests original HTML from protected AI gateway',asy
   assert.equal(game.html,resultHtml);
   assert.equal(calls,1);
  }finally{child.kill();await new Promise(resolve=>mock.close(resolve));}
+});
+
+
+test('Game Studio requests AI for arbitrary names and custom mechanics, never secretly returning catch or Minecraft',async()=>{
+ const {gameCodePrompt}=await import('../game-code.js');
+ for(const idea of [
+  'Космическая ферма, где выращивают инопланетные растения и торгуют ресурсами',
+  'Ритм-игра, где надо попадать по разноцветным нотам под такт',
+  'Шахматы с необычными правилами и победой через захват кристаллов',
+  'Пазл с переворачиванием гравитации и лабиринтом',
+  'Майнкрафт',
+  'Выдуманная игра «Фруктовый лифт» — управляй лифтом и спасай пассажиров'
+ ]){
+  const prompt=gameCodePrompt(idea);
+  assert.ok(prompt.includes(idea),'The actual prompt must include the entire arbitrary idea');
+  assert.match(prompt,/не привязывайся к готовым категориям NEXORA/i);
+  assert.match(prompt,/HTML|JavaScript/);
+  assert.doesNotMatch(prompt,/Тип: (?:snake|catch|target)/i);
+ }
+ const page=await readFile(join(root,'public/game.html'),'utf8');
+ const frontend=await readFile(join(root,'public/game-builder.js'),'utf8');
+ const backend=await readFile(join(root,'game-code.js'),'utf8');
+ assert.match(page,/любое название, жанр или свою механику игры/i);
+ assert.match(page,/id="ai-login-required"/);
+ assert.match(page,/href="\/auth\/start"/);
+ assert.match(frontend,/data\.source!=="ai"/);
+ assert.match(frontend,/nexora-game-idea-draft-v1/);
+ assert.match(frontend,/response\.status===401/);
+ assert.match(backend,/if\(!authenticated\)return send\(res,401/);
+ assert.match(backend,/for\(const model of \['auto','alice'\]\)/);
+ const route=backend.split('export async function makeCodeGame(')[1].split('export async function prepareGamePreview(')[0];
+ assert.doesNotMatch(route,/fallbackGameHTML|arcadeGameHTML|miniGameHTML|blockSandboxHTML/);
 });
