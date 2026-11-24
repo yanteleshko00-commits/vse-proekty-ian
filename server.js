@@ -47,13 +47,12 @@ function readRequestCookie(req, name) {
 function projectSessionSignature(payload) {
   return crypto.createHmac('sha256', PROJECT_SESSION_SECRET).update(payload).digest('base64url');
 }
-function createProjectSession(user, usage, packages) {
+function createProjectSession(user, sessionId) {
   const payload = Buffer.from(JSON.stringify({
     id: user.id,
     name: user.name,
     email: user.email,
-    usage: usage || null,
-    packages: packages || null,
+    sessionId,
     expiresAt: Date.now() + PROJECT_SESSION_TTL * 1000
   })).toString('base64url');
   return payload + '.' + projectSessionSignature(payload);
@@ -69,7 +68,7 @@ function readProjectSession(req) {
   if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) return null;
   try {
     const user = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
-    if (!user.id || !user.name || !user.email || !Number.isFinite(user.expiresAt) || Date.now() > user.expiresAt) return null;
+    if (!user.id || !user.sessionId || !Number.isFinite(user.expiresAt) || Date.now() > user.expiresAt) return null;
     return user;
   } catch {
     return null;
@@ -101,8 +100,79 @@ function isOpenAIQuotaError(error) {
 }
 
 app.disable('x-powered-by');
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+if (process.env.RENDER === 'true' || process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1);
+app.use((_req,res,next)=>{
+  res.set({'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'strict-origin-when-cross-origin',
+    'Permissions-Policy':'camera=(), microphone=(), geolocation=()',
+    'Content-Security-Policy':"base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https:",
+    'Content-Security-Policy-Report-Only':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data:"});
+  if(process.env.NODE_ENV==='production')res.set('Strict-Transport-Security','max-age=15552000');
+  next();
+});
+const paidPaths = new Set(['/api/generate-project','/api/generate-project/start','/api/chat','/api/generate-image','/api/edit-project','/api/suggest-topics','/api/nexora-chat/internal']);
+const requestRates = new Map();
+function takeRate(key, limit, period=60000) {
+  const now=Date.now();
+  for(const [k,v] of requestRates) if(v.until<=now)requestRates.delete(k);
+  let entry=requestRates.get(key);
+  if(!entry){if(requestRates.size>=5000)return false;entry={count:0,until:now+period};requestRates.set(key,entry);}
+  return ++entry.count<=limit;
+}
+app.use((req,res,next)=>{
+  if(paidPaths.has(req.path)&&!takeRate('ip:'+req.ip,20))return res.status(429).json({error:'Слишком много запросов.'});
+  next();
+});
+app.use(express.json({ limit: '4mb' }));
+app.use(express.urlencoded({ extended: false, limit: '256kb' }));
+
+const projectServiceKey = process.env.PROJECTS_SERVICE_API_KEY || process.env.AUTH_SERVICE_API_KEY || '';
+async function projectAuthCall(endpoint, body) {
+  if(projectServiceKey.length<32)throw Object.assign(Error('Сервис учёта NEXORA ID не настроен.'),{status:503});
+  const response=await fetch(AUTH_PUBLIC_URL+endpoint,{
+    method:'POST',headers:{'Content-Type':'application/json','x-service-id':OAUTH_CLIENT_ID,'x-service-api-key':projectServiceKey},
+    body:JSON.stringify(body),signal:AbortSignal.timeout(12000)
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw Object.assign(Error(data.error==='no_credits'?'Бесплатные генерации закончились. Выберите пакет.':'Не удалось подтвердить сессию или учесть генерацию.'),{status:response.status===401?401:response.status===402?402:response.status===404?401:503});
+  return data;
+}
+async function liveProjectAccount(req) {
+  const bridge=validInternalToken(req.get('x-nexora-chat-token'),process.env.NEXORA_CHAT_INTERNAL_TOKEN||'');
+  const local=bridge?{id:req.get('x-nexora-user-id'),sessionId:req.get('x-nexora-session-id')}:readProjectSession(req);
+  if(!local?.id||!local?.sessionId)throw Object.assign(Error('Войдите в NEXORA ID.'),{status:401});
+  const live=await projectAuthCall('/v1/internal/session/validate',{userId:local.id,sessionId:local.sessionId});
+  return {...live,sessionId:local.sessionId};
+}
+let activeProjectWork=0;
+const activeProjectUsers=new Set();
+async function beginProjectWork(req){
+  const live=await liveProjectAccount(req);
+  const id=live.user.id;
+  if(!takeRate('user:'+id,8))throw Object.assign(Error('Слишком много запросов.'),{status:429});
+  if(activeProjectWork>=1||activeProjectUsers.has(id))throw Object.assign(Error('Генератор занят. Повторите запрос позже.'),{status:429});
+  activeProjectWork++;activeProjectUsers.add(id);
+  try{
+    const reserved=await projectAuthCall('/v1/internal/usage/reserve',{userId:id,idempotencyKey:crypto.randomUUID()});
+    if(!reserved.reservationId)throw Error('Не получен резерв кредитов.');
+    return {id,reservationId:reserved.reservationId};
+  }catch(error){activeProjectWork--;activeProjectUsers.delete(id);throw error;}
+}
+async function endProjectWork(work,outcome){
+  try{
+    for(let attempt=0;attempt<3;attempt++){
+      try{await projectAuthCall('/v1/internal/usage/'+encodeURIComponent(work.reservationId)+'/finalize',{outcome});break;}
+      catch(error){if(attempt===2)console.error('[usage-finalize]',work.reservationId,outcome,error.message);}
+    }
+  }finally{activeProjectWork--;activeProjectUsers.delete(work.id);}
+}
+function metered(handler){
+  return asyncRoute(async(req,res)=>{
+    const work=await beginProjectWork(req);
+    let outcome='failure';
+    try{await handler(req,res);if(res.statusCode>=200&&res.statusCode<300)outcome='success';}
+    finally{await endProjectWork(work,outcome);}
+  });
+}
 
 const COLORS = {
   blue: { bg: 'F3F6FC', ink: '18243A', muted: '63718A', accent: '315EDB', accent2: 'AFC5FF' },
@@ -610,7 +680,7 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task 
   const attemptProvider = async provider => {
     const startedAt = Date.now();
     try {
-      const output = await callAIProvider(provider, instructions, input, true, perProviderTimeout);
+      const output = await callAIProvider(provider, instructions, input, true, Math.min(perProviderTimeout, Math.max(1000,timeout-(Date.now()-waveStartedAt))));
       if (!cleanText(output, 12000)) throw new Error('Пустой ответ.');
       const parsed = extractJson(output);
       if (containsCorruptedText(parsed)) throw new Error('Ответ содержит повреждённый текст/ошибку кодировки.');
@@ -635,11 +705,13 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task 
     }
   };
   const preferredAlice = providers.find(provider => provider.name==='DeepSeek') || providers.find(provider => provider.type.startsWith('alice'));
-  const attempts = preferredAlice ? [await attemptProvider(preferredAlice)] : [];
-  // On malformed or unsuccessful Alice output, preserve all existing fallbacks.
-  if (!preferredAlice || !attempts[0].ok || attempts[0].issues.length > 0) {
-    const alternatives = preferredAlice ? providers.filter(provider => provider !== preferredAlice) : providers;
-    attempts.push(...await Promise.all(alternatives.map(attemptProvider)));
+  const attempts = [];
+  const ordered = preferredAlice ? [preferredAlice,...providers.filter(provider=>provider!==preferredAlice)] : providers;
+  for(const provider of ordered){
+    if(attempts.length>=4 || Date.now()-waveStartedAt>=timeout)break;
+    const result=await attemptProvider(provider);
+    attempts.push(result);
+    if(result.ok && result.issues.length===0)break;
   }
 
   const successes = attempts.filter(attempt => attempt.ok);
@@ -2002,7 +2074,7 @@ function jobResultSnapshot(result, artifacts = []) {
 }
 function queuePersistGenerationJob(job) {
   const snapshot = {
-    id: job.id, status: job.status, stage: job.stage, progress: job.progress,
+    id: job.id, ownerId: job.ownerId, status: job.status, stage: job.stage, progress: job.progress,
     message: job.message, createdAt: job.createdAt, updatedAt: job.updatedAt,
     checkpoint: job.checkpoint || null, artifacts: job.artifacts || [],
     result: jobResultSnapshot(job.result, job.artifacts || []), error: job.error
@@ -2111,8 +2183,10 @@ async function pruneGenerationJobs() {
 }
 app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
   await pruneGenerationJobs();
+  for(const [key,job] of generationJobs)if(job.status!=='running'&&generationJobs.size>=12)generationJobs.delete(key);
+  const work=await beginProjectWork(req);
   const id=crypto.randomUUID();
-  const job={id,status:'running',stage:'starting',progress:3,message:'🔎 Проверяем тему и параметры проекта...',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null,checkpoint:null,artifacts:[]};
+  const job={id,ownerId:work.id,status:'running',stage:'starting',progress:3,message:'🔎 Проверяем тему и параметры проекта...',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null,checkpoint:null,artifacts:[]};
   generationJobs.set(id,job);
   void queuePersistGenerationJob(job);
   const saveCheckpoint = async checkpoint => {
@@ -2129,18 +2203,22 @@ app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
     .then(async result=>{
       job.status='completed';job.stage='completed';job.progress=100;job.message='✅ Все материалы готовы!';job.result=result;job.updatedAt=Date.now();
       await queuePersistGenerationJob(job);
+      await endProjectWork(work,'success');
     })
     .catch(async error=>{
       job.status='failed';job.stage='failed';job.error=cleanText(error?.message||'Не удалось создать проект.',1000);job.message='❌ Генерация завершилась с ошибкой';job.updatedAt=Date.now();
       await queuePersistGenerationJob(job);
       console.error('[background-generation]',id,error?.stack||error);
+      await endProjectWork(work,'failure');
     });
   res.status(202).json({jobId:id,status:'running',progress:3,stage:'starting',message:job.message});
 }));
 app.get('/api/generation-jobs/:id', asyncRoute(async (req,res)=>{
+  if(!takeRate('poll:'+req.ip,120))return res.status(429).json({error:'Слишком много запросов.'});
+  const account=await liveProjectAccount(req);
   const id=req.params.id;
   const job=generationJobs.get(id) || await loadPersistedGenerationJob(id);
-  if(!job)return res.status(404).json({error:'Задача не найдена или срок её хранения истёк.'});
+  if(!job||job.ownerId!==account.user.id)return res.status(404).json({error:'Задача не найдена или срок её хранения истёк.'});
   const partialFiles = job.status === 'completed' ? undefined : await readGenerationArtifacts(job);
   res.json({
     jobId:job.id,status:job.status,progress:job.progress,stage:job.stage,message:job.message,
@@ -2149,12 +2227,12 @@ app.get('/api/generation-jobs/:id', asyncRoute(async (req,res)=>{
   });
 }));
 
-app.post('/api/generate-project', asyncRoute(async (req, res) => {
-  const result = await withTimeout(generateProject(req.body || {}), REQUEST_TIMEOUT_MS, 'Создание проекта');
+app.post('/api/generate-project', metered(async (req, res) => {
+  const result = await generateProject(req.body || {});
   res.json(result);
 }));
 
-app.post('/api/edit-project', asyncRoute(async (req, res) => {
+app.post('/api/edit-project', metered(async (req, res) => {
   const body = req.body || {};
   const project = body.project;
   const instruction = cleanText(body.instruction, 1500);
@@ -2193,7 +2271,7 @@ app.post('/api/edit-project', asyncRoute(async (req, res) => {
   res.json({ project: publicProject(plan), files: built.files, fileErrors: built.fileErrors });
 }));
 
-app.post('/api/suggest-topics', asyncRoute(async (req, res) => {
+app.post('/api/suggest-topics', metered(async (req, res) => {
   const interests = cleanText(req.body?.interests, 300);
   const instructions = `Ты — научный руководитель школьных проектов. Придумай ОДНУ оригинальную, интересную и исследуемую тему проекта для школьника.
 Верни только JSON: {"topic":"Точная формулировка темы"}.
@@ -2258,7 +2336,7 @@ app.post('/api/nexora-chat/internal', asyncRoute(async (req, res) => {
   res.status(503).json({error:'provider_unavailable',message:safeChatFailure(data.model,errors)});
 }));
 
-app.post('/api/chat', asyncRoute(async (req, res) => {
+app.post('/api/chat', metered(async (req, res) => {
   const question = cleanText(req.body?.question, 2000);
   if (!question) return res.status(400).json({ error: 'Напиши вопрос.' });
   const result = await runAIWithFallback(
@@ -2268,7 +2346,7 @@ app.post('/api/chat', asyncRoute(async (req, res) => {
   res.json({ answer: result.output || 'Не удалось сформировать ответ.', provider: result.provider });
 }));
 
-app.post('/api/generate-image', asyncRoute(async (req, res) => {
+app.post('/api/generate-image', metered(async (req, res) => {
   const prompt = cleanText(req.body?.prompt, 800);
   if (!prompt) return res.status(400).json({ error: 'Укажи описание изображения.' });
   if (!openai) return res.status(503).json({ error: 'На сервере не задан OPENAI_API_KEY.' });
@@ -2343,27 +2421,28 @@ app.get('/auth/callback', asyncRoute(async (req, res) => {
   });
   const data = await response.json().catch(() => ({}));
   res.clearCookie(PROJECT_OAUTH_COOKIE, projectCookieOptions(0));
-  if (!response.ok || !data.user?.id || !data.user?.name || !data.user?.email) {
+  if (!response.ok || !data.user?.id || !data.user?.name || !data.user?.email || !data.sessionId) {
     console.error('[NEXORA ID] OAuth token exchange failed:', response.status, data.error || 'invalid_user');
     return res.redirect('/?login=failed');
   }
 
-  res.cookie(PROJECT_SESSION_COOKIE, createProjectSession(data.user, data.usage, data.packages), projectCookieOptions(PROJECT_SESSION_TTL));
+  res.cookie(PROJECT_SESSION_COOKIE, createProjectSession(data.user, data.sessionId), projectCookieOptions(PROJECT_SESSION_TTL));
   return res.redirect('/');
 }));
 
-app.get('/auth/logout', (req, res) => {
+app.get('/auth/logout', asyncRoute(async (req, res) => {
+  const session=readProjectSession(req);
+  if(session)await projectAuthCall('/v1/internal/session/revoke',{userId:session.id,sessionId:session.sessionId}).catch(error=>console.warn('Session revocation:',error.message));
   res.clearCookie(PROJECT_SESSION_COOKIE, projectCookieOptions(0));
   const target = AUTH_PUBLIC_URL + '/logout?client_id=' + encodeURIComponent(OAUTH_CLIENT_ID) +
     '&return_to=' + encodeURIComponent(PROJECT_SITE_URL);
   res.redirect(302, target);
-});
+}));
 
-app.get('/api/me', (req, res) => {
-  const user = readProjectSession(req);
-  if (!user) return res.status(401).json({ error: 'not_signed_in' });
-  return res.json({ user: { id: user.id, name: user.name, email: user.email }, usage: user.usage, packages: user.packages });
-});
+app.get('/api/me', asyncRoute(async (req, res) => {
+  const {user,usage,packages}=await liveProjectAccount(req);
+  return res.json({user,usage,packages});
+}));
 
 // Static site support for the existing Render deployment.
 const publicDir = path.resolve(process.cwd(), 'public');

@@ -57,13 +57,14 @@ function signature(value) {
   return crypto.createHmac('sha256', sessionSecret).update(value).digest('base64url');
 }
 
-function makeSessionCookie(user, usage = null, packages = null) {
+function makeSessionCookie(user, usage = null, packages = null, sessionId = null) {
   const payload = Buffer.from(JSON.stringify({
     id: user.id,
     name: user.name,
     email: user.email,
     usage: usage || user.usage || null,
     packages: packages || user.packages || null,
+    sessionId,
     issuedAt: Date.now()
   })).toString('base64url');
   return payload + '.' + signature(payload);
@@ -164,7 +165,7 @@ async function finishLogin(req, res, url) {
     }
     const headers = {
       'Set-Cookie': [
-        cookie('nexora_session', makeSessionCookie(data.user, data.usage, data.packages), 604800),
+        cookie('nexora_session', makeSessionCookie(data.user, data.usage, data.packages, data.sessionId), 604800),
         cookie('nexora_oauth', '', 0)
       ]
     };
@@ -213,7 +214,7 @@ async function finalizeArgoshaUsage(reservationId, outcome) {
 }
 const argoshaRate = new Map();
 function allowArgosha(req) {
-  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+  const ip = String((process.env.RENDER === 'true' || process.env.TRUST_PROXY === 'true') ? (String(req.headers['x-forwarded-for'] || '').split(',').at(-1).trim() || req.socket.remoteAddress || 'unknown') : (req.socket.remoteAddress || 'unknown'));
   const now = Date.now();
   const recent = (argoshaRate.get(ip) || []).filter(time => now - time < 60000);
   if (recent.length >= 12) return false;
@@ -300,7 +301,7 @@ async function argoshaReply(req, res) {
 const mathBridgeToken = (process.env.MATH_BRIDGE_TOKEN || '').trim();
 const mathBridgeRate = new Map();
 function allowedMathBridge(req) {
-  const key = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+  const key = String((process.env.RENDER === 'true' || process.env.TRUST_PROXY === 'true') ? (String(req.headers['x-forwarded-for'] || '').split(',').at(-1).trim() || req.socket.remoteAddress || 'unknown') : (req.socket.remoteAddress || 'unknown'));
   const now = Date.now();
   const fresh = (mathBridgeRate.get(key) || []).filter(t => now - t < 60000);
   if (fresh.length >= 18) return false;
@@ -763,7 +764,7 @@ const server = http.createServer(async (req, res) => {
         if (!meResponse.ok || !me.user) return send(res, 502, JSON.stringify({ error: 'session_verification_failed', message: 'Не удалось проверить созданную сессию.' }), { 'Content-Type': 'application/json; charset=utf-8' });
         return send(res, 200, JSON.stringify({ ok: true, user: me.user }), {
           'Content-Type': 'application/json; charset=utf-8',
-          'Set-Cookie': cookie('nexora_session', makeSessionCookie(me.user, me.usage, me.packages), 604800)
+          'Set-Cookie': cookie('nexora_session', makeSessionCookie(me.user, me.usage, me.packages, me.sessionId), 604800)
         });
       }
       const headers = { 'Content-Type': 'application/json; charset=utf-8' };
@@ -796,35 +797,30 @@ const server = http.createServer(async (req, res) => {
     }
     const topic = typeof body.topic === 'string' ? body.topic.trim().slice(0, 180) : '';
     if (topic.length < 3) return send(res, 400, JSON.stringify({ error: 'Укажи тему проекта.' }), { 'Content-Type': 'application/json; charset=utf-8' });
-    let reservationId = null;
     try {
-      reservationId = await reserveArgoshaUsage(account.id, crypto.randomUUID());
+      if(!account.sessionId)return send(res,401,JSON.stringify({error:'Войдите в NEXORA ID повторно.'}),{'Content-Type':'application/json; charset=utf-8'});
+      const secret=process.env.NEXORA_CHAT_INTERNAL_TOKEN||'';
+      if(secret.length<32)return send(res,503,JSON.stringify({error:'Внутренняя связь с генератором не настроена.'}),{'Content-Type':'application/json; charset=utf-8'});
       const upstream = await fetch(PROJECT_GENERATOR_BASE + '/api/generate-project/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json','x-nexora-chat-token':secret,'x-nexora-user-id':account.id,'x-nexora-session-id':account.sessionId },
         body: JSON.stringify({ topic, slidesCount: Math.min(30, Math.max(7, Number(body.slidesCount) || 12)) }),
-        signal: AbortSignal.timeout(20000)
+        signal: AbortSignal.timeout(30000)
       });
       const data = await upstream.json().catch(() => ({}));
-      if (!upstream.ok || !data.jobId) {
-        await finalizeArgoshaUsage(reservationId, 'failure');
-        return send(res, upstream.status || 502, JSON.stringify({ error: data.error || 'Генератор не смог принять задачу. Попробуй позже.' }), { 'Content-Type': 'application/json; charset=utf-8' });
-      }
-      await finalizeArgoshaUsage(reservationId, 'success').catch(error => console.error('Argosha usage finalization failed:', error.message));
-      return send(res, 202, JSON.stringify({ jobId: data.jobId, status: data.status || 'running', progress: data.progress || 3, message: data.message || 'Генерация запущена.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+      return send(res,upstream.status,JSON.stringify(data),{'Content-Type':'application/json; charset=utf-8'});
     } catch (error) {
-      if (reservationId) await finalizeArgoshaUsage(reservationId, 'failure').catch(finalizeError => console.error('Argosha usage refund failed:', finalizeError.message));
-      console.error('Argosha generation start failed:', error.message);
-      const status = Number(error.status) >= 400 && Number(error.status) < 600 ? Number(error.status) : 502;
-      return send(res, status, JSON.stringify({ error: error.message || 'Не удалось связаться с генератором проектов.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+      console.error('Argosha generation start failed:',error.name);
+      return send(res,502,JSON.stringify({error:'Не удалось связаться с генератором проектов.'}),{'Content-Type':'application/json; charset=utf-8'});
     }
   }
   if (url.pathname.startsWith('/api/argosha/generation/') && req.method === 'GET') {
-    if (!readSession(req)) return send(res, 401, JSON.stringify({ error: 'Войдите в NEXORA ID, чтобы смотреть ход генерации.' }), { 'Content-Type': 'application/json; charset=utf-8' });
+    const account=readSession(req);
+    if (!account?.sessionId) return send(res, 401, JSON.stringify({ error: 'Войдите в NEXORA ID, чтобы смотреть ход генерации.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     const jobId = url.pathname.slice('/api/argosha/generation/'.length);
     if (!/^[0-9a-f-]{36}$/i.test(jobId)) return send(res, 400, JSON.stringify({ error: 'Некорректный номер задачи.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     try {
-      const upstream = await fetch(PROJECT_GENERATOR_BASE + '/api/generation-jobs/' + jobId, { signal: AbortSignal.timeout(15000) });
+      const upstream = await fetch(PROJECT_GENERATOR_BASE + '/api/generation-jobs/' + jobId, { headers:{'x-nexora-chat-token':process.env.NEXORA_CHAT_INTERNAL_TOKEN||'','x-nexora-user-id':account.id,'x-nexora-session-id':account.sessionId},signal: AbortSignal.timeout(15000) });
       const data = await upstream.json().catch(() => ({}));
       return send(res, upstream.status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8' });
     } catch (error) {

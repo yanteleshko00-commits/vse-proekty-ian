@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     rootDir: nexora
-    buildCommand: npm install && python3 -m venv .venv && .venv/bin/pip install reportlab && .venv/bin/python generate_pdfs.py
+    buildCommand: npm install && npm run check && python3 -m venv .venv && .venv/bin/pip install reportlab && .venv/bin/python generate_pdfs.py
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
@@ -34,7 +34,7 @@ services:
     runtime: node
     plan: free
     rootDir: nexora-image-studio
-    buildCommand: npm install
+    buildCommand: npm install && npm run check
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true

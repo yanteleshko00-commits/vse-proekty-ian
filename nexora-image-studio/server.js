@@ -41,7 +41,7 @@ async function readJson(req, limit = 14 * 1024 * 1024) {
 
 const imageRate = new Map();
 function allowArgosha(req) {
-  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+  const ip = String((process.env.RENDER === 'true' || process.env.TRUST_PROXY === 'true') ? (String(req.headers['x-forwarded-for'] || '').split(',').at(-1).trim() || req.socket.remoteAddress || 'unknown') : (req.socket.remoteAddress || 'unknown'));
   const now = Date.now();
   const recent = (imageRate.get(ip) || []).filter(time => now - time < 60000);
   if (recent.length >= 12) return false;

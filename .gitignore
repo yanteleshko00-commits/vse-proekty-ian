@@ -3,3 +3,11 @@ node_modules/
 *.log
 .venv/
 nexora/public/docs/
+.env.*
+!.env.example
+node_modules/
+coverage/
+*.log
+.venv/
+.DS_Store
+*.zip

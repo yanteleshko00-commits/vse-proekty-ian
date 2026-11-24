@@ -19,7 +19,7 @@ function respond(res, code, data, headers = {}) {
   res.end(JSON.stringify(data));
 }
 function allowRequest(req) {
-  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim().slice(0, 80);
+  const ip = String((process.env.RENDER === 'true' || process.env.TRUST_PROXY === 'true') ? (String(req.headers['x-forwarded-for'] || '').split(',').at(-1).trim() || req.socket.remoteAddress || 'unknown') : (req.socket.remoteAddress || 'unknown')).slice(0, 80);
   const now = Date.now();
   const record = rates.get(ip) || [];
   const recent = record.filter(t => now - t < 3600000);

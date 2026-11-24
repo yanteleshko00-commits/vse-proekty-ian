@@ -22,13 +22,13 @@ export function validAdminSession(token,hash=header(),now=Date.now()){
  const a=Buffer.from(parts[2]),b=Buffer.from(sign(parts[0]+'.'+parts[1],hash));
  return a.length===b.length&&crypto.timingSafeEqual(a,b);
 }
-const attempts=new Map();let all=[];
+const attempts=new Map();
 export function allowAdminAttempt(ip,now=Date.now()){
  const start=now-15*60*1000;
- all=all.filter(t=>t>start);
  const key=String(ip||'unknown').slice(0,100),list=(attempts.get(key)||[]).filter(t=>t>start);
- if(list.length>=5||all.length>=40)return false;
- list.push(now);all.push(now);attempts.set(key,list);
+ if(list.length>=5)return false;
+ if(!attempts.has(key)&&attempts.size>=10000){for(const [id,t] of attempts)if(t.every(x=>x<=start))attempts.delete(id);if(attempts.size>=10000)return false;}
+ list.push(now);attempts.set(key,list);
  if(attempts.size>1000)for(const [id,t] of attempts)if(t.every(x=>x<=start))attempts.delete(id);
  return true;
 }
