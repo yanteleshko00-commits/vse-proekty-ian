@@ -27,7 +27,7 @@ assert 'id="ai-login-required"' not in page
 assert 'id="ai-loading"' in page
 assert 'data-game-dimension="3d"' in page
 assert 'data-game-dimension="auto"' in page
-assert 'Регистрация и вход не нужны' in page
+assert 'Без входа в аккаунт' in page
 assert "любое название" in page
 print("GAME STUDIO UI",code,"code editor=OK, sandbox=OK, arrows=OK")
 
