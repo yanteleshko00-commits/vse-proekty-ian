@@ -155,6 +155,7 @@ export function gameCodePrompt(idea,{dimension='auto'}={}){
   'Пиши компактно, но законченную игру в одном HTML-файле, по возможности до 14000 символов (3D WebGL может потребовать больше). Нужны настоящие игровые действия, игровое состояние, визуальный процесс, цель и прогресс, кнопка «Заново». Не делай макет или неподвижную демонстрацию.',
   'Для анимации используй requestAnimationFrame. Для 2D — canvas 2D или DOM; для настоящего 3D — WebGL/WebGL2 со встроенными шейдерами GLSL и матрицей перспективы/камерой (без библиотек). Для canvas ширина 720 высота 420, CSS width:100%; поддерживай экраны телефонов и viewport. Без внешнего доступа в сеть.',
   'На ВСЕХ играх сделай мобильное управление. Слушай document.addEventListener("keydown"/"keyup") со стрелками и WASD; для действия используй пробел и/или pointerdown на canvas. NEXORA переводит свайпы и экранные кнопки в стрелки и пробел. Для 3D-поворота камеры дополнительно слушай document.addEventListener("nexora-game-look",e=>{const {dx,dy}=e.detail; ...}) и меняй yaw/pitch, ограничивая угол pitch. Для игр с тапами сделай касания целей. Не зависни без управления на телефоне.',
+  'При первом запуске, если возможно, сделай короткое (до 1.2 секунды) появление реальных объектов своей игровой сцены по очереди: например, дорога, кузов автомобиля, колёса. Используй собственный рендер игры, а не отдельный ролик. Не блокируй управление и отключай эффект при prefers-reduced-motion.',
   'Показывай короткую инструкцию, понятные элементы интерфейса, хорошие контрастные цвета. Язык игры — русский. Если запрос можно выполнить только в ограниченной 2D-версии, реализуй наиболее важную механику, не выдавай её за полноценную коммерческую игру.',
   'Требование к ответу: сразу начни с <!doctype html><html, закончи </html>. Не используй markdown, комментарии перед кодом, разъяснения, вопросы или отступления. Код обязан выполняться как единый обычный script без импортов.',
   'ЗАПРОС ПОЛЬЗОВАТЕЛЯ: '+idea
@@ -269,10 +270,39 @@ function gameTextProviders(){
  }
  return providers;
 }
-async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimension='auto'){
- const gemini=provider.kind==='gemini';
+// Read actual provider output, not hidden reasoning. Never execute partial HTML.
+export async function readGameStream(response,gemini,onCode=()=>{}){
+ const reader=response.body.getReader(),decoder=new TextDecoder();
+ let buffer='',answer='',finish='',usage=null,events=0;
+ function packet(line){
+  if(!line.startsWith('data:'))return;
+  const raw=line.slice(5).trim();if(!raw||raw==='[DONE]')return;
+  let data;try{data=JSON.parse(raw);}catch{return;}
+  if(data.error)throw Object.assign(Error('AI stream error'),{httpStatus:Number(data.error.code)||502});
+  const choice=data.choices?.[0],candidate=data.candidates?.[0];
+  const content=choice?.delta?.content;
+  const piece=gemini?(candidate?.content?.parts||[]).filter(p=>!p.thought&&typeof p.text==='string').map(p=>p.text).join(''):typeof content==='string'?content:'';
+  finish=candidate?.finishReason||choice?.finish_reason||finish;
+  usage=data.usage||usage;events++;
+  if(piece){answer+=piece;if(answer.length>100000)throw Error('game_stream_too_large');
+   const start=answer.search(/<!doctype\s+html\s*>|<html[\s>]|<head[\s>]|<body[\s>]|<canvas[\s>]|<style[\s>]/i);
+   if(start>=0)onCode(answer.slice(start));
+  }
+ }
+ try{
+  while(true){const {value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});
+   if(buffer.length>200000)throw Error('game_stream_too_large');
+   let end;while((end=buffer.indexOf('\n'))>=0){packet(buffer.slice(0,end).replace(/\r$/,''));buffer=buffer.slice(end+1);}
+  }
+  buffer+=decoder.decode();if(buffer)packet(buffer);
+ }finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
+ if(!events)throw Error('empty_game_stream');
+ return {answer,finish,usage};
+}
+async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimension='auto',onCode=null){
+ const gemini=provider.kind==='gemini',stream=Boolean(onCode)&&fetchImpl===fetch;
  const system='Ты профессиональный разработчик самостоятельных HTML5-игр. Отвечай только полноценным HTML-файлом с рабочим игровым кодом.';
- const response=gemini?await fetchImpl(provider.url+encodeURIComponent(provider.model)+':generateContent',{
+ const response=gemini?await fetchImpl(provider.url+encodeURIComponent(provider.model)+(stream?':streamGenerateContent?alt=sse':':generateContent'),{
   method:'POST',
   headers:{'Content-Type':'application/json','x-goog-api-key':provider.key},
   body:JSON.stringify({
@@ -287,6 +317,7 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimen
   headers:{'Content-Type':'application/json','Authorization':'Bearer '+provider.key,'X-Title':'NEXORA Game Studio'},
   body:JSON.stringify({
    model:provider.model,temperature:0.2,max_tokens:12288,
+   ...(stream?{stream:true,...(provider.kind==='deepseek'?{stream_options:{include_usage:true}}:{})}:{}),
    ...(provider.url.includes('openrouter.ai')?{reasoning:{exclude:true}}:{}),
    ...(provider.kind==='deepseek'?{thinking:{type:'disabled'}}:{}),
    messages:[
@@ -296,38 +327,47 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimen
   }),
   signal:AbortSignal.timeout(timeout)
  });
- const data=await response.json().catch(()=>null);
- if(provider.kind==='deepseek')recordDeepSeek('games',data,response.status);
- if(!response.ok)throw Object.assign(Error('AI HTTP '+response.status),{httpStatus:response.status});
- const choice=data?.choices?.[0];
- const content=choice?.message?.content;
- const candidate=data?.candidates?.[0];
- const answer=gemini?(candidate?.content?.parts||[]).filter(p=>!p.thought&&typeof p.text==='string').map(p=>p.text).join('')
-  :typeof content==='string'?content:Array.isArray(content)?content.map(x=>typeof x==='string'?x:x.text||'').join(''):'';
+ if(!response.ok){if(provider.kind==='deepseek')recordDeepSeek('games',null,response.status);await response.body?.cancel().catch(()=>{});throw Object.assign(Error('AI HTTP '+response.status),{httpStatus:response.status});}
+ let answer='',finish='';
+ if(stream&&response.headers.get('content-type')?.includes('text/event-stream')){
+  const result=await readGameStream(response,gemini,onCode);
+  answer=result.answer;finish=result.finish;
+  if(provider.kind==='deepseek')recordDeepSeek('games',{usage:result.usage},response.status);
+ }else{
+  const data=await response.json().catch(()=>null);
+  if(provider.kind==='deepseek')recordDeepSeek('games',data,response.status);
+  const choice=data?.choices?.[0],candidate=data?.candidates?.[0],content=choice?.message?.content;
+  answer=gemini?(candidate?.content?.parts||[]).filter(p=>!p.thought&&typeof p.text==='string').map(p=>p.text).join(''):typeof content==='string'?content:Array.isArray(content)?content.map(x=>typeof x==='string'?x:x.text||'').join(''):'';
+  finish=candidate?.finishReason||choice?.finish_reason||'';
+  if(onCode&&answer){const start=answer.search(/<!doctype\s+html\s*>|<html[\s>]|<head[\s>]|<body[\s>]|<canvas[\s>]|<style[\s>]/i);if(start>=0)onCode(answer.slice(start));}
+ }
  const html=playableGameHTML(answer);
  if(!html){
-  const finish=String(candidate?.finishReason||choice?.finish_reason||'unknown').replace(/[^a-z_]/gi,'').slice(0,32);
-  console.warn('[game-code] Rejected provider output:',provider.name,'finish='+finish,'chars='+answer.length);
+  const safeFinish=String(finish||'unknown').replace(/[^a-z_]/gi,'').slice(0,32);
+  console.warn('[game-code] Rejected provider output:',provider.name,'finish='+safeFinish,'chars='+answer.length);
   throw Error('invalid_game_html');
  }
  if(dimension==='3d'&&!isWebGLGame(html))throw Error('not_webgl_3d');
- if(provider.kind==='deepseek')await verifyDeepSeek('games',prompt,html,{fetchImpl,finish:choice?.finish_reason});
+ if(provider.kind==='deepseek')await verifyDeepSeek('games',prompt,html,{fetchImpl,finish});
  return {html,provider:provider.name};
 }
-async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={}){
+async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto',onProgress=null}={}){
  const prompt=gameCodePrompt(idea,{dimension});
  const deadline=Date.now()+170000;
  const direct=gameTextProviders();
- const failures=new Set();
+ const failures=new Set();let attemptNumber=0;
+ const publish=(provider,phase,source='',attempt=0)=>onProgress?.({provider,phase,source:source.slice(0,52000),attempt});
  async function attempt(provider,first=false){
   const id=providerId(provider),live=fetchImpl===fetch;
   if(live&&(providerCooldown.get(id)||0)>Date.now()){failures.add('auth');throw Error('provider_cooldown');}
   for(let n=0;n<2;n++){
    const remaining=deadline-Date.now();
    if(remaining<5000)throw Error('deadline');
+   const attempt=++attemptNumber;
+   publish(provider.name,'requesting','',attempt);
    try{
     return await requestDirectGameProvider(provider,prompt,
-     Math.min(first||dimension==='3d'?95000:70000,remaining-750),fetchImpl,dimension);
+     Math.min(first||dimension==='3d'?95000:70000,remaining-750),fetchImpl,dimension,onProgress?(source=>publish(provider.name,'writing',source,attempt)):null);
    }catch(error){
     const status=error.httpStatus;
     const detail=/^AI HTTP [0-9]{3}$/.test(error.message||'')?error.message
@@ -399,7 +439,7 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
  if(typeof input.jobId==='string'){
   const job=gameJobs.get(input.jobId);
   if(!job||Date.now()-job.createdAt>JOB_TTL)return send(res,404,{ok:false,error:'job_missing',message:'Сервер не нашёл задание. Можно восстановить генерацию по исходному описанию.'});
-  return job.result?send(res,job.result.status,job.result.data):send(res,202,{ok:true,pending:true,jobId:input.jobId});
+  return job.result?send(res,job.result.status,job.result.data):send(res,202,{ok:true,pending:true,jobId:input.jobId,progress:job.progress||null});
  }
  const idea=typeof input.idea==='string'?input.idea.trim():'';
  const dimension=inferGameDimension(idea,['auto','2d','3d'].includes(input.dimension)?input.dimension:'auto');
@@ -417,9 +457,9 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
  const asyncMode=req.headers['x-nexora-async']==='1';
  if(asyncMode&&gameJobs.size>=100)return send(res,503,{ok:false,message:'Очередь игр заполнена. Попробуйте позже.'});
  activeGameGenerations++;
- const generate=async()=>{
+ const generate=async(onProgress=null)=>{
   try{
-   const result=await generateWithAI(idea,(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'').trim(),{fetchImpl,dimension});
+   const result=await generateWithAI(idea,(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'').trim(),{fetchImpl,dimension,onProgress});
    if(dimension==='3d'&&!isWebGLGame(result.html))throw Object.assign(new Error('Модель вернула не 3D-код. Попробуйте создать 3D-игру ещё раз.'),{status:503});
    console.info('[game-code] Generated game:',result.provider,dimension,'chars='+result.html.length);
    return {status:200,data:{ok:true,html:result.html,title:idea.slice(0,75),source:'ai',provider:result.provider,dimension}};
@@ -431,9 +471,9 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
  };
  if(asyncMode){
   const id=crypto.randomUUID();
-  const job={createdAt:Date.now(),result:null};
+  const job={createdAt:Date.now(),result:null,progress:null};
   gameJobs.set(id,job);
-  void generate().then(result=>{job.result=result;});
+  void generate(progress=>{if(progress.phase==='writing'||!job.progress||job.progress.phase!=='writing')job.progress=progress;}).then(result=>{job.result=result;job.progress=null;});
   return send(res,202,{ok:true,pending:true,jobId:id});
  }
  const result=await generate();
