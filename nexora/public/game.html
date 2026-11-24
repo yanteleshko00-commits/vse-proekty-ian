@@ -59,6 +59,10 @@ textarea,select{width:100%;min-width:0;border:1px solid #e6dfef;border-radius:13
 
 
 /* NEXORA Game Code Studio: real code, safe preview and mobile controls. */
+.ai-enter{animation:ai-game-reveal .46s cubic-bezier(.2,.84,.25,1) both}
+@keyframes ai-game-reveal{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.ai-enter{animation:none!important}}
+
 
 /* Animated code-to-game transformation. No fictitious progress percentage. */
 .ai-dimension{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:14px 0 7px}
