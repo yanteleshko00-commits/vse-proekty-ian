@@ -187,7 +187,6 @@ test('HTTP game build and live sandbox preview work for guests with no credentia
   const generated=await request('/api/game/code',{idea:'Змейка космос'});
   assert.equal(generated.status,401);
   const body=await generated.json();
-  assert.equal(body.ok,true);
   assert.equal(body.ok,false);
   assert.equal(body.error,'login_required');
   assert.equal(body.loginUrl,'/auth/start');
