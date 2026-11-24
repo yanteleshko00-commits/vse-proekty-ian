@@ -8,6 +8,8 @@ import {blockSandboxHTML} from './game-block-world.js';
 // scripts enabled, but no same-origin, network, forms, or parent navigation.
 const recent=new Map();
 const previews=new Map();
+const gameJobs=new Map();
+const JOB_TTL=15*60*1000;
 // Anonymous game creation is public, so bound server-side model spending.
 const MAX_CONCURRENT_GAMES=3;
 let activeGameGenerations=0;
@@ -229,6 +231,10 @@ function gameTextProviders(){
   model:process.env.GAME_GEMINI_MODEL?.trim()||'gemini-3.8-flash',
   url:'https://generativelanguage.googleapis.com/v1beta/models/'
  });
+ if(process.env.GEMINI_API_KEY?.trim()){
+  const model=process.env.GAME_GEMINI_FALLBACK_MODEL?.trim()||'gemini-3.5-flash-lite';
+  if(model!==providers[0]?.model)providers.push({name:'Gemini Flash-Lite',kind:'gemini',key:process.env.GEMINI_API_KEY.trim(),model,url:'https://generativelanguage.googleapis.com/v1beta/models/'});
+ }
  if(process.env.GROQ_API_KEY?.trim())providers.push({
   name:'Groq',key:process.env.GROQ_API_KEY.trim(),
   url:'https://api.groq.com/openai/v1/chat/completions',
@@ -261,7 +267,7 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimen
    systemInstruction:{parts:[{text:system}]},
    contents:[{role:'user',parts:[{text:prompt}]}],
    generationConfig:{maxOutputTokens:12288,temperature:0.2,
-    ...(/^gemini-3\./.test(provider.model)?{thinkingConfig:{thinkingLevel:'LOW'}}:{})}
+    ...(/^gemini-3\./.test(provider.model)?{thinkingConfig:{thinkingLevel:'MINIMAL'}}:{})}
   }),
   signal:AbortSignal.timeout(timeout)
  }):await fetchImpl(provider.url,{
@@ -295,7 +301,7 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimen
 }
 async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={}){
  const prompt=gameCodePrompt(idea,{dimension});
- const deadline=Date.now()+65000;
+ const deadline=Date.now()+170000;
  const direct=gameTextProviders();
  const compact=compactGatewayGamePrompt(idea,dimension).replace('ОПИСАНИЕ ИГРЫ: ','ЗАПРОС ПОЛЬЗОВАТЕЛЯ: ');
  async function attempt(provider,first=false){
@@ -303,7 +309,7 @@ async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={})
   if(remaining<1500)throw Error('deadline');
   try{
    return await requestDirectGameProvider(provider,first?prompt:compact,
-    Math.min(first&&((direct.length>1)||secret.length>=32)?(provider.kind==='gemini'?40000:27000):62000,remaining-500),fetchImpl,dimension);
+    Math.min(first?(provider.kind==='gemini'?95000:35000):70000,remaining-500),fetchImpl,dimension);
   }catch(error){
    const detail=/^AI HTTP [0-9]{3}$/.test(error.message||'')?error.message
     :['invalid_game_html','not_webgl_3d'].includes(error.message)?error.message:error.name||'error';
@@ -359,6 +365,13 @@ async function parseBody(req){
 export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
  let input;
  try{input=await parseBody(req);}catch(error){return send(res,400,{ok:false,message:error.message||'Неверный запрос.'});}
+ // A random unguessable job token lets the browser poll without holding an HTTP
+ // connection open while a large WebGL game is being generated.
+ if(typeof input.jobId==='string'){
+  const job=gameJobs.get(input.jobId);
+  if(!job||Date.now()-job.createdAt>JOB_TTL)return send(res,404,{ok:false,message:'Срок хранения запроса истёк. Создайте игру повторно.'});
+  return job.result?send(res,job.result.status,job.result.data):send(res,202,{ok:true,pending:true,jobId:input.jobId});
+ }
  const idea=typeof input.idea==='string'?input.idea.trim():'';
  const dimension=inferGameDimension(idea,['auto','2d','3d'].includes(input.dimension)?input.dimension:'auto');
  if(idea.length<2||idea.length>500)return send(res,400,{ok:false,message:'Введите название или описание игры: от 2 до 500 символов.'});
@@ -371,18 +384,31 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
   return send(res,503,{ok:false,error:'server_busy',message:'Сейчас создаётся много игр. Попробуйте немного позже.'});
  used.push(now);recent.set(ip,used);
  if(recent.size>2000)for(const [key,times] of recent)if(times.every(t=>now-t>3600000))recent.delete(key);
+ for(const [id,job] of gameJobs)if(Date.now()-job.createdAt>JOB_TTL)gameJobs.delete(id);
+ const asyncMode=req.headers['x-nexora-async']==='1';
+ if(asyncMode&&gameJobs.size>=100)return send(res,503,{ok:false,message:'Очередь игр заполнена. Попробуйте позже.'});
  activeGameGenerations++;
- try{
-  const result=await generateWithAI(idea,(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'').trim(),{fetchImpl,dimension});
-  if(dimension==='3d'&&!isWebGLGame(result.html))throw Object.assign(new Error('Модель вернула не 3D-код. Попробуйте создать 3D-игру ещё раз.'),{status:503});
-  return send(res,200,{ok:true,html:result.html,title:idea.slice(0,75),source:'ai',provider:result.provider,dimension});
- }catch(error){
-  const status=error.status===503?503:502;
-  console.warn('[game-code] No AI game delivered:',error.name||'error');
-  return send(res,status,{ok:false,error:'generation_unavailable',message:error.status===503?error.message:'ИИ не удалось завершить создание игры. Попробуйте ещё раз.'});
- }finally{
-  activeGameGenerations--;
+ const generate=async()=>{
+  try{
+   const result=await generateWithAI(idea,(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'').trim(),{fetchImpl,dimension});
+   if(dimension==='3d'&&!isWebGLGame(result.html))throw Object.assign(new Error('Модель вернула не 3D-код. Попробуйте создать 3D-игру ещё раз.'),{status:503});
+   console.info('[game-code] Generated game:',result.provider,dimension,'chars='+result.html.length);
+   return {status:200,data:{ok:true,html:result.html,title:idea.slice(0,75),source:'ai',provider:result.provider,dimension}};
+  }catch(error){
+   const status=error.status===503?503:502;
+   console.warn('[game-code] No AI game delivered:',error.name||'error');
+   return {status,data:{ok:false,error:'generation_unavailable',message:error.status===503?error.message:'ИИ не удалось завершить создание игры. Попробуйте ещё раз.'}};
+  }finally{activeGameGenerations--;}
+ };
+ if(asyncMode){
+  const id=crypto.randomUUID();
+  const job={createdAt:Date.now(),result:null};
+  gameJobs.set(id,job);
+  void generate().then(result=>{job.result=result;});
+  return send(res,202,{ok:true,pending:true,jobId:id});
  }
+ const result=await generate();
+ return send(res,result.status,result.data);
 }
 
 export async function prepareGamePreview(req,res){
