@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 30617)
+Total output lines: 1121
+
 <!doctype html>
 <html lang="ru">
 <head>
@@ -571,36 +574,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 @media(max-width:600px){.tile[data-tool="game"] .tile-top:before{font-size:69px}}
 
 /* Argosha 2.0: compact clear-history control alongside the Siri orb. */
-.argosha-clear{border:1px solid rgba(184,168,248,.18);border-radius:9px;background:rgba(154,145,236,.1);color:#dcd8ff;font-size:10px;font-weight:780;padding:7px 8px;cursor:pointer;white-space:nowrap}
-.argosha-clear:hover{background:rgba(164,149,255,.19)}
-@media(max-width:520px){.argosha-clear{font-size:9px;padding:6px 7px}}
-.brand-mark{background:transparent!important;border:0!important;box-shadow:none!important;overflow:hidden}
-.brand-mark img{width:100%;height:100%;display:block;object-fit:contain;border-radius:inherit}
-:root[data-theme=dark] .brand-mark{background:transparent!important}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .brand-mark{background:transparent!important}}
-</style>
-<style id="nexora-registration-pricing-style">
-.actions{flex-wrap:nowrap}
-.register-button{height:42px;border:1px solid rgba(167,143,235,.5);border-radius:14px;padding:0 12px;background:rgba(151,125,234,.13);color:var(--ink);font:800 12px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer;white-space:nowrap}
-.register-button:hover,.register-button:focus-visible{background:rgba(151,125,234,.24)}
-.hero-content .hero-meta{margin-top:23px}
-.plan-caption{max-width:690px}
-@media(max-width:520px){.register-button{height:37px;padding:0 8px;font-size:10px;border-radius:11px}.actions{gap:5px}.login-button{max-width:none!important;padding:0 9px!important}}
-@media(max-width:365px){.register-button{font-size:9px;padding:0 6px}.login-button{padding:0 7px!important}.brand-copy strong{font-size:11px}}
-</style>
-
-</head>
-<body>
-<header class="topbar">
-  <div class="shell topbar-inner">
-    <a class="brand" href="/" aria-label="NEXORA — главная">
-      <span class="brand-mark" aria-hidden="true"><img src="/nexora-mark.svg" alt="" width="40" height="40" decoding="async"></span><span class="brand-copy"><strong>NEXORA</strong><small>YOUR CREATIVE SPACE</small></span>
-    </a>
-    <div class="actions">
-      <div class="profile" id="profile"><span class="avatar" id="avatar">N</span><span id="profile-name">Профиль</span></div>
-      <span class="icon-button" id="theme-toggle" aria-label="Тема устройства" title="Тема автоматически зависит от настроек устройства">☾</span>
-      <div class="notification-wrap" id="notification-wrap">
-        <button class="icon-button notification-button" id="notification-toggle" type="button" aria-label="Уведомления" aria-expanded="false" aria-controls="notification-panel"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-dot" id="notification-count">3</span></button>
+.argosha-clear{border:1px solid rgba(184,168,248,.18);border-radius:9px;background:rgba(154,145,236,.1);color:#dcd8ff;font-size:10px;font-weight:780;padd…617 tokens truncated…ke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg><span class="notification-dot" id="notification-count">3</span></button>
         <section class="notification-panel" id="notification-panel" aria-label="Уведомления">
           <div class="notification-head"><strong>Уведомления</strong><button class="notification-read-all" id="notification-read-all" type="button">Прочитать все</button></div>
           <div id="notification-list"></div>
@@ -1057,7 +1031,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
  async function request(path,payload){const r=await fetch('/api/auth/'+path,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(payload)});const d=await r.json().catch(()=>({}));if(!r.ok){const error=new Error(d.message||({invalid_credentials:'Неверная почта или пароль.',email_not_verified:'Сначала подтвердите электронную почту.',account_already_exists:'Аккаунт с этой почтой уже зарегистрирован. Если почта ещё не подтверждена, отправим новый код.',invalid_registration_data:'Проверьте имя, почту и пароль. Пароль должен содержать минимум 8 символов.',invalid_verification_data:'Введите шестизначный код.',invalid_or_expired_code:'Код неверный или срок его действия истёк.',email_delivery_unavailable:'Не удалось отправить письмо. Проверьте настройки почтового сервиса.',invalid_email:'Проверьте адрес электронной почты.',auth_service_unavailable:'Сервис NEXORA ID временно недоступен. Попробуйте через минуту.',device_account_limit:'На этом устройстве достигнут лимит аккаунтов NEXORA ID.',BREVO_HTTP_401:'Brevo отклонил API-ключ. Проверьте BREVO_API_KEY в Render.',BREVO_HTTP_403:'Brevo не разрешил отправку. Проверьте разрешения API-ключа и статус отправителя.',BREVO_HTTP_400:'Brevo отклонил данные письма. Проверьте адрес отправителя.'}[d.error]||(r.status>=500?'Ошибка сервера NEXORA ID ('+r.status+'). Проверьте подключение Brevo.':'Не удалось выполнить запрос (HTTP '+r.status+', код '+(d.error||'unknown')+').')));error.code=d.error||'';error.status=r.status;throw error}return d}
  getCode.addEventListener('click',async()=>{const email=$('auth-email').value.trim(),name=$('auth-name').value.trim(),password=$('auth-password').value;if(!name){msg('Сначала укажите имя.');$('auth-name').focus();return}if(!email||!$('auth-email').checkValidity()){msg('Введите корректный адрес электронной почты.');$('auth-email').focus();return}if(password.length<8){msg('Сначала задайте пароль не короче 8 символов.');$('auth-password').focus();return}getCode.disabled=true;getCode.textContent='Отправляем…';msg('');try{let d;try{d=await request('register',{name,email,password})}catch(regError){if(regError.code!=='account_already_exists')throw regError;d=await request('resend-verification',{email})}registrationStarted=true;submit.classList.add('auth-hidden');$('auth-verify-code').classList.remove('auth-hidden');$('auth-name').disabled=true;$('auth-email').disabled=true;$('auth-password').disabled=true;$('auth-code-wrap').classList.remove('auth-hidden');$('auth-code').focus();msg(d.message||'Если адрес ещё не подтверждён, новый код отправлен. Проверьте Входящие и Спам. Если почта уже подтверждена, переключитесь на вкладку «Вход».',true);let left=60;getCode.textContent=left+' сек.';codeTimer=setInterval(()=>{left--;if(left<=0){clearInterval(codeTimer);getCode.disabled=false;getCode.textContent='Отправить ещё раз'}else getCode.textContent=left+' сек.'},1000)}catch(e){getCode.disabled=false;getCode.textContent='Получить код';if(e.code==='email_delivery_unavailable'){registrationStarted=false;getCode.textContent='Повторить отправку кода';msg('Аккаунт создан, но письмо пока не отправлено. Нажмите «Повторить отправку кода» позже. Повторно создавать аккаунт не нужно.')}else msg(e.message)}});
  $('auth-verify-code').addEventListener('click',()=>form.requestSubmit());
- form.addEventListener('submit',async e=>{e.preventDefault();if(submit.disabled)return;const verifyButton=$('auth-verify-code');submit.disabled=true;verifyButton.disabled=true;const email=$('auth-email').value.trim(),password=$('auth-password').value;msg('');try{if(mode==='login'){await request('login',{email,password});location.reload();return}if(!registrationStarted){throw new Error('Сначала нажмите «Получить код» рядом с электронной почтой.')}const code=$('auth-code').value.trim();if(!/^\d{6}$/.test(code))throw new Error('Введите шестизначный код из письма.');await request('verify-email',{email,code});await request('login',{email,password});location.reload()}catch(e){msg(e.message)}finally{submit.disabled=false;verifyButton.disabled=false}});
+ form.addEventListener('submit',async e=>{e.preventDefault();if(submit.disabled)return;const verifyButton=$('auth-verify-code');submit.disabled=true;verifyButton.disabled=true;const email=$('auth-email').value.trim(),password=$('auth-password').value;msg('');try{if(mode==='login'){await request('login',{email,password});if(email.trim().toLowerCase()==='yan.teleshko.00@mail.ru'){const ticketResponse=await fetch('/api/admin-ticket',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:'{}'});const ticketData=await ticketResponse.json().catch(()=>({}));if(!ticketResponse.ok||!ticketData.ticket)throw new Error('Вход выполнен, но не удалось открыть панель администратора.');location.href='https://nexora-developer-console.sprygeode8.chatgpt.site/#ticket='+encodeURIComponent(ticketData.ticket);return}location.reload();return}if(!registrationStarted){throw new Error('Сначала нажмите «Получить код» рядом с электронной почтой.')}const code=$('auth-code').value.trim();if(!/^\d{6}$/.test(code))throw new Error('Введите шестизначный код из письма.');await request('verify-email',{email,code});await request('login',{email,password});location.reload()}catch(e){msg(e.message)}finally{submit.disabled=false;verifyButton.disabled=false}});
  // Use the central NEXORA ID sign-in page so the auth-domain SSO session is shared across sites.
  $('auth-close').addEventListener('click',close);backdrop.addEventListener('click',e=>{if(e.target===backdrop)close()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&backdrop.classList.contains('open'))close()});document.querySelectorAll('[data-auth-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.authMode)));
  const loginTrigger=$('login-link'),registerTrigger=$('register-link');
