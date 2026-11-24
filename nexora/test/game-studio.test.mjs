@@ -540,6 +540,7 @@ test('Gemini is the primary provider and reads native content parts without expo
   calls++;
   assert.equal(url,'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent');
   assert.equal(options.headers['x-goog-api-key'],'test-gemini-key');
+  assert.equal(JSON.parse(options.body).generationConfig.thinkingConfig.thinkingLevel,'LOW');
   assert.match(JSON.parse(options.body).contents[0].parts[0].text,/3D гонки/);
   return new Response(JSON.stringify({candidates:[{content:{parts:[{thought:true,text:'internal'},{text:html}]},finishReason:'STOP'}]}),{status:200});
  };
@@ -586,6 +587,9 @@ test('long game generation returns a job immediately and polling retrieves real 
   assert.equal(job.pending,true);
   assert.match(job.jobId,/^[a-f0-9-]{36}$/);
   assert.equal((await post({jobId:job.jobId})).status,202);
+  const missing=await post({jobId:'00000000-0000-4000-8000-000000000000'});
+  assert.equal(missing.status,404);
+  assert.equal((await missing.json()).error,'job_missing');
   finish();
   let result;
   for(let i=0;i<20;i++){

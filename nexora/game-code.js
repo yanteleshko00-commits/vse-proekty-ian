@@ -145,6 +145,7 @@ export function gameCodePrompt(idea,{dimension='auto'}={}){
   'Сначала определяй из запроса жанр, главную механику, цель, действия игрока, препятствия, правила победы или поражения, управление, оформление. Это внутренняя работа: не выводи анализ вместо кода.',
   'Если указано только известное название, создай самостоятельную небольшую оригинальную браузерную игру с узнаваемой базовой механикой; не копируй чужие изображения, тексты или логотипы. Если указана необычная механика — реализуй её, а не подменяй одной из стандартных игр.',
   'Не привязывайся к готовым категориям NEXORA. Допустимы любые подходящие для браузера жанры: головоломки, платформеры, исследования, гонки, ритм, карточные игры, защита башен, симуляторы, приключения, логические и собственные идеи.',
+  'Напиши оригинальный исходный код с нуля. Не воспроизводи существующие игры, чужие исходники или длинные заимствованные фрагменты.',
   'Верни ТОЛЬКО ПОЛНЫЙ HTML-документ от <!doctype html> до </html>, БЕЗ markdown, без пояснений и без фрагментов. Весь код HTML/CSS/JavaScript находится в одном файле; НЕ используй внешние библиотеки, CDN, URL, картинки, API, fetch, iframe, модули и внешние файлы.',
   'Пиши компактно, но законченную игру в одном HTML-файле, по возможности до 14000 символов (3D WebGL может потребовать больше). Нужны настоящие игровые действия, игровое состояние, визуальный процесс, цель и прогресс, кнопка «Заново». Не делай макет или неподвижную демонстрацию.',
   'Для анимации используй requestAnimationFrame. Для 2D — canvas 2D или DOM; для настоящего 3D — WebGL/WebGL2 со встроенными шейдерами GLSL и матрицей перспективы/камерой (без библиотек). Для canvas ширина 720 высота 420, CSS width:100%; поддерживай экраны телефонов и viewport. Без внешнего доступа в сеть.',
@@ -232,8 +233,8 @@ function gameTextProviders(){
   url:'https://generativelanguage.googleapis.com/v1beta/models/'
  });
  if(process.env.GEMINI_API_KEY?.trim()){
-  const model=process.env.GAME_GEMINI_FALLBACK_MODEL?.trim()||'gemini-3.5-flash-lite';
-  if(model!==providers[0]?.model)providers.push({name:'Gemini Flash-Lite',kind:'gemini',key:process.env.GEMINI_API_KEY.trim(),model,url:'https://generativelanguage.googleapis.com/v1beta/models/'});
+  const model=process.env.GAME_GEMINI_FALLBACK_MODEL?.trim()||'gemini-3.6-flash';
+  if(model!==providers[0]?.model)providers.push({name:'Gemini резервный',kind:'gemini',key:process.env.GEMINI_API_KEY.trim(),model,url:'https://generativelanguage.googleapis.com/v1beta/models/'});
  }
  if(process.env.GROQ_API_KEY?.trim())providers.push({
   name:'Groq',key:process.env.GROQ_API_KEY.trim(),
@@ -267,7 +268,7 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimen
    systemInstruction:{parts:[{text:system}]},
    contents:[{role:'user',parts:[{text:prompt}]}],
    generationConfig:{maxOutputTokens:12288,temperature:0.2,
-    ...(/^gemini-3\./.test(provider.model)?{thinkingConfig:{thinkingLevel:'MINIMAL'}}:{})}
+    ...(/^gemini-3\./.test(provider.model)?{thinkingConfig:{thinkingLevel:'LOW'}}:{})}
   }),
   signal:AbortSignal.timeout(timeout)
  }):await fetchImpl(provider.url,{
@@ -369,7 +370,7 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
  // connection open while a large WebGL game is being generated.
  if(typeof input.jobId==='string'){
   const job=gameJobs.get(input.jobId);
-  if(!job||Date.now()-job.createdAt>JOB_TTL)return send(res,404,{ok:false,message:'Срок хранения запроса истёк. Создайте игру повторно.'});
+  if(!job||Date.now()-job.createdAt>JOB_TTL)return send(res,404,{ok:false,error:'job_missing',message:'Сервер не нашёл задание. Можно восстановить генерацию по исходному описанию.'});
   return job.result?send(res,job.result.status,job.result.data):send(res,202,{ok:true,pending:true,jobId:input.jobId});
  }
  const idea=typeof input.idea==='string'?input.idea.trim():'';

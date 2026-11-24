@@ -77,13 +77,13 @@
   $("ai-placeholder-title").textContent="Создаю вашу игру…";
   $("ai-placeholder-description").textContent="ИИ определяет механику, создаёт HTML, JavaScript и "+(dimension==="3d"?"3D-сцену на WebGL.":"игровые объекты.");
   try{
-   let response=await fetch("/api/game/code",{
+   const startJob=()=>fetch("/api/game/code",{
     method:"POST",headers:{"Content-Type":"application/json","X-NEXORA-Async":"1"},
     body:JSON.stringify({idea:description,dimension}),signal:AbortSignal.timeout(20000)
    });
+   let response=await startJob();
    let data=await response.json().catch(()=>({}));
-   const jobId=data.jobId;
-   const deadline=Date.now()+185000;
+   let jobId=data.jobId,deadline=Date.now()+185000,missing=0,restarted=false;
    while(response.status===202&&data.pending&&jobId){
     if(Date.now()>deadline)throw Error("ИИ не завершил генерацию за отведённое время.");
     await new Promise(resolve=>setTimeout(resolve,2500));
@@ -99,8 +99,19 @@
      }
      data=await response.json().catch(()=>({}));
     }catch(error){
-     response={status:202,ok:true};data={pending:true};
+     response={status:202,ok:true};data={pending:true};continue;
     }
+    if(response.status===404&&(data.error==="job_missing"||!data.error)){
+     if(restarted&&missing>=2)throw Error("Сервер снова потерял задание. Ваше описание сохранено.");
+     if(++missing<3){response={status:202,ok:true};data={pending:true};continue;}
+     restarted=true;missing=0;
+     setStatus("Сервер обновился. Восстанавливаю создание игры по вашему описанию…");
+     response=await startJob();
+     data=await response.json().catch(()=>({}));
+     jobId=data.jobId;deadline=Date.now()+185000;
+     continue;
+    }
+    missing=0;
    }
    if(!response.ok||!data.ok||typeof data.html!=="string")
     throw Error(data.message||"ИИ не смог написать игру. Попробуйте уточнить описание.");
