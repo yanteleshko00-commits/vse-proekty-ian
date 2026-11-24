@@ -77,11 +77,31 @@
   $("ai-placeholder-title").textContent="Создаю вашу игру…";
   $("ai-placeholder-description").textContent="ИИ определяет механику, создаёт HTML, JavaScript и "+(dimension==="3d"?"3D-сцену на WebGL.":"игровые объекты.");
   try{
-   const response=await fetch("/api/game/code",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({idea:description,dimension}),signal:AbortSignal.timeout(75000)
+   let response=await fetch("/api/game/code",{
+    method:"POST",headers:{"Content-Type":"application/json","X-NEXORA-Async":"1"},
+    body:JSON.stringify({idea:description,dimension}),signal:AbortSignal.timeout(20000)
    });
-   const data=await response.json().catch(()=>({}));
+   let data=await response.json().catch(()=>({}));
+   const jobId=data.jobId;
+   const deadline=Date.now()+185000;
+   while(response.status===202&&data.pending&&jobId){
+    if(Date.now()>deadline)throw Error("ИИ не завершил генерацию за отведённое время.");
+    await new Promise(resolve=>setTimeout(resolve,2500));
+    try{
+     response=await fetch("/api/game/code",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({jobId}),signal:AbortSignal.timeout(15000)
+     });
+     if([502,503,504].includes(response.status)){
+      const error=await response.json().catch(()=>null);
+      if(error?.error==="generation_unavailable"){data=error;break;}
+      response={status:202,ok:true};data={pending:true};continue;
+     }
+     data=await response.json().catch(()=>({}));
+    }catch(error){
+     response={status:202,ok:true};data={pending:true};
+    }
+   }
    if(!response.ok||!data.ok||typeof data.html!=="string")
     throw Error(data.message||"ИИ не смог написать игру. Попробуйте уточнить описание.");
    if(data.source!=="ai")throw Error("ИИ не создал код. Подмена вашего запроса готовым шаблоном отключена.");
