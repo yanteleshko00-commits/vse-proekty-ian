@@ -568,6 +568,11 @@ async function mathBridgeSolve(req, res) {
 }
 async function authApi(path, payload, req) {
   const headers = { 'Content-Type': 'application/json' };
+  if(authServiceApiKey.length>=32){
+    headers['x-service-id']=authServiceClientId;
+    headers['x-service-api-key']=authServiceApiKey;
+    headers['x-nexora-client-ip']=String((process.env.RENDER==='true'||process.env.TRUST_PROXY==='true')?(String(req.headers['x-forwarded-for']||'').split(',').at(-1).trim()||req.socket.remoteAddress||''):(req.socket.remoteAddress||''));
+  }
   const deviceToken = parseCookies(req).ecosystem_device;
   if (deviceToken) headers.Cookie = 'ecosystem_device=' + encodeURIComponent(deviceToken);
   const response = await fetch(authBase + '/v1/auth/' + path, {

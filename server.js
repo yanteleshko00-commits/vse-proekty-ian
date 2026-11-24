@@ -125,7 +125,7 @@ app.use((req,res,next)=>{
 app.use(express.json({ limit: '4mb' }));
 app.use(express.urlencoded({ extended: false, limit: '256kb' }));
 
-const projectServiceKey = process.env.PROJECTS_SERVICE_API_KEY || process.env.AUTH_SERVICE_API_KEY || '';
+const projectServiceKey = process.env.PROJECTS_SECURITY_SERVICE_KEY || process.env.PROJECTS_SERVICE_API_KEY || process.env.AUTH_SERVICE_API_KEY || '';
 async function projectAuthCall(endpoint, body) {
   if(projectServiceKey.length<32)throw Object.assign(Error('Сервис учёта NEXORA ID не настроен.'),{status:503});
   const response=await fetch(AUTH_PUBLIC_URL+endpoint,{
