@@ -284,7 +284,7 @@ test('Game Studio requests AI for arbitrary names and custom mechanics, never se
  assert.match(page,/любое название, жанр или свою механику игры/i);
  assert.doesNotMatch(page,/id="ai-login-required"/);
  assert.doesNotMatch(page,/href="\/auth\/start"/);
- assert.match(page,/Регистрация и вход не нужны/);
+ assert.match(page,/Без входа в аккаунт/);
  assert.match(frontend,/data\.source!=="ai"/);
  assert.match(frontend,/nexora-game-idea-draft-v1/);
  assert.doesNotMatch(frontend,/login_required|response\.status===401/);
