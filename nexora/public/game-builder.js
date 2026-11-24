@@ -99,7 +99,8 @@
   $("ai-placeholder").hidden=false;
   $("ai-result").hidden=true;$("ai-toolbar").hidden=true;
   $("ai-placeholder-title").textContent="Создаю вашу игру…";
-  $("ai-placeholder-description").textContent="ИИ определяет механику, создаёт HTML, JavaScript и "+(dimension==="3d"?"3D-сцену на WebGL.":"игровые объекты.");
+  $("ai-placeholder-description").textContent="Показываем полученные от модели строки. Игра запустится только после проверки полного кода.";
+  if(window.matchMedia("(max-width:900px)").matches)$("ai-result-card").scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth",block:"start"});
   try{
    const startJob=()=>fetch("/api/game/code",{
     method:"POST",headers:{"Content-Type":"application/json","X-NEXORA-Async":"1"},
@@ -157,7 +158,7 @@
     ?"В 3D: свайпайте по сцене для поворота камеры, экранные стрелки — движение, «Действие» — взаимодействие. На компьютере — WASD и мышь."
     :"На телефоне проводите пальцем по игровому полю или держите стрелки. Нажмите «Действие» для прыжка/выстрела.";
    setStatus("Код игры готов. Можно играть, редактировать и скачать HTML.");
-   await compileGame(raw);showReady();revealGame();
+   await compileGame(raw);showReady();
   }catch(e){
    $("ai-placeholder-title").textContent="Игра пока не создана";
    $("ai-placeholder-description").textContent="Ваш запрос сохранён. ИИ не создал игру — готовый шаблон вместо неё не подставляется.";
