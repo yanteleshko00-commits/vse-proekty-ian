@@ -224,6 +224,11 @@ export function playableGameHTML(response){
 function gameTextProviders(){
  // Reuse NEXORA's existing server-only providers; never send their keys to the browser.
  const providers=[];
+ if(process.env.GEMINI_API_KEY?.trim())providers.push({
+  name:'Gemini',kind:'gemini',key:process.env.GEMINI_API_KEY.trim(),
+  model:process.env.GAME_GEMINI_MODEL?.trim()||'gemini-3.8-flash',
+  url:'https://generativelanguage.googleapis.com/v1beta/models/'
+ });
  if(process.env.GROQ_API_KEY?.trim())providers.push({
   name:'Groq',key:process.env.GROQ_API_KEY.trim(),
   url:'https://api.groq.com/openai/v1/chat/completions',
@@ -247,7 +252,19 @@ function gameTextProviders(){
  return providers;
 }
 async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimension='auto'){
- const response=await fetchImpl(provider.url,{
+ const gemini=provider.kind==='gemini';
+ const system='Ты профессиональный разработчик самостоятельных HTML5-игр. Отвечай только полноценным HTML-файлом с рабочим игровым кодом.';
+ const response=gemini?await fetchImpl(provider.url+encodeURIComponent(provider.model)+':generateContent',{
+  method:'POST',
+  headers:{'Content-Type':'application/json','x-goog-api-key':provider.key},
+  body:JSON.stringify({
+   systemInstruction:{parts:[{text:system}]},
+   contents:[{role:'user',parts:[{text:prompt}]}],
+   generationConfig:{maxOutputTokens:12288,temperature:0.2,
+    ...(/^gemini-3\./.test(provider.model)?{thinkingConfig:{thinkingLevel:'LOW'}}:{})}
+  }),
+  signal:AbortSignal.timeout(timeout)
+ }):await fetchImpl(provider.url,{
   method:'POST',
   headers:{'Content-Type':'application/json','Authorization':'Bearer '+provider.key,'X-Title':'NEXORA Game Studio'},
   body:JSON.stringify({
@@ -264,10 +281,12 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimen
  const data=await response.json().catch(()=>null);
  const choice=data?.choices?.[0];
  const content=choice?.message?.content;
- const answer=typeof content==='string'?content:Array.isArray(content)?content.map(x=>typeof x==='string'?x:x.text||'').join(''):'';
+ const candidate=data?.candidates?.[0];
+ const answer=gemini?(candidate?.content?.parts||[]).filter(p=>!p.thought&&typeof p.text==='string').map(p=>p.text).join('')
+  :typeof content==='string'?content:Array.isArray(content)?content.map(x=>typeof x==='string'?x:x.text||'').join(''):'';
  const html=playableGameHTML(answer);
  if(!html){
-  const finish=String(choice?.finish_reason||'unknown').replace(/[^a-z_]/gi,'').slice(0,32);
+  const finish=String(candidate?.finishReason||choice?.finish_reason||'unknown').replace(/[^a-z_]/gi,'').slice(0,32);
   console.warn('[game-code] Rejected provider output:',provider.name,'finish='+finish,'chars='+answer.length);
   throw Error('invalid_game_html');
  }
@@ -284,7 +303,7 @@ async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={})
   if(remaining<1500)throw Error('deadline');
   try{
    return await requestDirectGameProvider(provider,first?prompt:compact,
-    Math.min(first&&((direct.length>1)||secret.length>=32)?27000:62000,remaining-500),fetchImpl,dimension);
+    Math.min(first&&((direct.length>1)||secret.length>=32)?(provider.kind==='gemini'?40000:27000):62000,remaining-500),fetchImpl,dimension);
   }catch(error){
    const detail=/^AI HTTP [0-9]{3}$/.test(error.message||'')?error.message
     :['invalid_game_html','not_webgl_3d'].includes(error.message)?error.message:error.name||'error';
