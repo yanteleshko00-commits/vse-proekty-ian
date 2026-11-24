@@ -6,10 +6,17 @@
  const idea=$("ai-idea"),build=$("ai-build"),code=$("ai-source"),frame=$("ai-frame");
  const status=$("ai-status"),error=$("ai-error");
  const playTab=$("ai-play-tab"),codeTab=$("ai-code-tab");
+ const DRAFT_KEY="nexora-game-idea-draft-v1";
  let raw="",compiled="",busy=false,ready=false,sourceKind="";
  function setStatus(message){status.textContent=message;}
  function fail(message){error.hidden=false;error.textContent=String(message||"Ошибка генерации.").slice(0,400);}
  function clearError(){error.hidden=true;error.textContent="";}
+ function showLoginNotice(visible){
+  $("ai-login-required").hidden=!visible;
+ }
+ function saveDraft(value){
+  try{localStorage.setItem(DRAFT_KEY,value.slice(0,500));}catch{}
+ }
  function setBusy(value){
   busy=value;build.disabled=value;$("ai-run-code").disabled=value;
   build.textContent=value?"✦ Создаю код и запускаю…":"✦ Создать и запустить игру";
@@ -42,37 +49,39 @@
  }
  async function createGame(){
   if(busy)return;
-  clearError();
+  clearError();showLoginNotice(false);
   const description=idea.value.trim();
+  saveDraft(description);
   if(description.length<2){fail("Напишите название или короткое описание игры.");idea.focus();return;}
   if(description.length>500){fail("Описание не должно превышать 500 символов.");return;}
-  setBusy(true);setStatus("Собираю игровую механику и исходный код…");
+  setBusy(true);setStatus("ИИ анализирует описание, продумывает игровую механику и пишет код…");
   $("ai-placeholder").hidden=false;
   $("ai-result").hidden=true;$("ai-toolbar").hidden=true;
   $("ai-placeholder-title").textContent="Создаю вашу игру…";
-  $("ai-placeholder-description").textContent="Готовлю игровой процесс, управление и оформление.";
+  $("ai-placeholder-description").textContent="ИИ определяет правила, цель, управление, затем создаёт HTML, CSS и JavaScript именно для вашей идеи.";
   try{
    const response=await fetch("/api/game/code",{
     method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({idea:description}),signal:AbortSignal.timeout(75000)
    });
    const data=await response.json().catch(()=>({}));
-   if(!response.ok||!data.ok||typeof data.html!=="string")throw Error(data.message||"Не удалось создать игру.");
+   if(response.status===401||data.error==="login_required"){
+    showLoginNotice(true);
+    throw Error(data.message||"Войдите в NEXORA ID, чтобы ИИ написал код вашей игры.");
+   }
+   if(!response.ok||!data.ok||typeof data.html!=="string")
+    throw Error(data.message||"ИИ не смог написать игру. Попробуйте уточнить описание.");
+   if(data.source!=="ai")throw Error("ИИ не создал код. Подмена вашего запроса готовым шаблоном отключена.");
    raw=data.html;code.value=raw;sourceKind=data.source;
    $("ai-game-title").textContent=data.title||description;
-   $("ai-source-label").textContent=data.source==="ai"?"Код создан ИИ":"Готовый игровой шаблон";
-   $("ai-source-label").classList.toggle("generated",data.source==="ai");
-   $("ai-description").textContent=data.source==="ai"
-    ?"Новая игра создана по описанию. Свайпайте по игровому полю или используйте стрелки."
-    :data.family==="blocks"
-     ?"Готовый 2D-мир с блоками: двигайтесь стрелками и свайпами, добывайте блоки касанием и стройте."
-     :"Запущена отдельная мини-игра по выбранному типу. Для генерации новой механики ИИ войдите в NEXORA ID.";
-   if(data.message)setStatus(data.message);
-   else setStatus("Код создан. Игра готова к запуску.");
+   $("ai-source-label").textContent="Код создан ИИ";
+   $("ai-source-label").classList.add("generated");
+   $("ai-description").textContent="ИИ создал игру по вашему описанию. Играть можно здесь, а исходный код доступен во вкладке «Код».";
+   setStatus("Код игры готов. Можно играть, редактировать и скачать HTML.");
    await compileGame(raw);showReady();
   }catch(e){
    $("ai-placeholder-title").textContent="Игра пока не создана";
-   $("ai-placeholder-description").textContent="Проверьте описание и повторите запрос.";
+   $("ai-placeholder-description").textContent="Ваш запрос сохранён. ИИ не создал игру — готовый шаблон вместо неё не подставляется.";
    setStatus("Не удалось подготовить игру.");
    fail(e.message||"Произошла ошибка при создании игры.");
   }finally{setBusy(false);}
@@ -117,8 +126,12 @@
   b.addEventListener("click",e=>{if(e.detail===0)control(dir,"tap")});
  });
  document.querySelectorAll("[data-ai-example]").forEach(b=>b.addEventListener("click",()=>{
-  idea.value=b.dataset.aiExample||"";void createGame();
+  idea.value=b.dataset.aiExample||"";
+  saveDraft(idea.value);
+  void createGame();
  }));
+ idea.addEventListener("input",()=>saveDraft(idea.value));
+ try{const draft=localStorage.getItem(DRAFT_KEY);if(draft)idea.value=draft.slice(0,500);}catch{}
  build.addEventListener("click",createGame);
  playTab.addEventListener("click",()=>showTab("play"));
  codeTab.addEventListener("click",()=>showTab("code"));
