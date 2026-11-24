@@ -164,7 +164,8 @@ test('Game Studio supports genuine editable HTML code and swipe-to-arrow control
    assert.doesNotMatch(game,/id="ai-workspace"|id="classic-workspace"|NEXORA GAME STUDIO|id="nxquiz"/,
      'An actual game must never embed the Game Studio inside its own preview');
  }
- assert.match(gameEngine,/authenticated/);
+ assert.match(gameEngine,/activeGameGenerations/);
+ assert.doesNotMatch(gameEngine,/if\(!authenticated\)return send\(res,401/);
 });
 test('Public game maker returns a clear provider error without silently substituting a template',async()=>{
  const port=24000+process.pid%15000;
