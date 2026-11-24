@@ -44,37 +44,68 @@ export function normalizeGameHTML(text){
  if(/https?:\/\//i.test(html))return null;
  return html;
 }
-const ADAPTER=[
-'<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data:; font-src \'none\'; connect-src \'none\'; frame-src \'none\'; object-src \'none\'; form-action \'none\'; base-uri \'none\'">',
-'<style>html,body{overscroll-behavior:none}canvas{touch-action:none;-webkit-user-select:none;user-select:none}</style>',
-'<script>',
-'(function(){',
-'const dirs={left:"ArrowLeft",right:"ArrowRight",up:"ArrowUp",down:"ArrowDown",space:" "};',
-'const keycodes={left:37,right:39,up:38,down:40,space:32};',
-'function press(dir,kind){',
-' if(!Object.prototype.hasOwnProperty.call(dirs,dir))return;',
-' const e=new KeyboardEvent(kind,{key:dirs[dir],code:dir==="space"?"Space":dirs[dir],bubbles:true,cancelable:true});',
-' try{Object.defineProperty(e,"keyCode",{get:()=>keycodes[dir]})}catch{}',
-' document.dispatchEvent(e);',
-'}',
-'let start=null;',
-'document.addEventListener("touchstart",e=>{if(e.touches.length===1)start={x:e.touches[0].clientX,y:e.touches[0].clientY}},{capture:true,passive:true});',
-'document.addEventListener("touchend",e=>{',
-' if(!start||!e.changedTouches.length)return;',
-' const dx=e.changedTouches[0].clientX-start.x,dy=e.changedTouches[0].clientY-start.y;start=null;',
-' if(Math.max(Math.abs(dx),Math.abs(dy))<27)return;',
-' const dir=Math.abs(dx)>Math.abs(dy)?(dx>0?"right":"left"):(dy>0?"down":"up");',
-' press(dir,"keydown");setTimeout(()=>press(dir,"keyup"),140);e.preventDefault();',
-'},{capture:true,passive:false});',
-'addEventListener("message",e=>{',
-' const p=e.data;if(!p||p.type!=="nexora-game-control"||!Object.prototype.hasOwnProperty.call(dirs,p.direction))return;',
-' if(p.action==="up")press(p.direction,"keyup");',
-' else if(p.action==="down")press(p.direction,"keydown");',
-' else if(p.action==="tap"){press(p.direction,"keydown");setTimeout(()=>press(p.direction,"keyup"),140)}',
-'});',
-'})();',
-'</script>'
-].join('\n');
+// Keyboard bridge for every game (including 3D WebGL games), plus a native
+// camera-look gesture for generated 3D games. Touch input stays in the sandbox.
+const ADAPTER=String.raw`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'">
+<style>html,body{overscroll-behavior:none}canvas{touch-action:none;-webkit-user-select:none;user-select:none}</style>
+<script>
+(function(){
+ 'use strict';
+ const dirs={left:'ArrowLeft',right:'ArrowRight',up:'ArrowUp',down:'ArrowDown',space:' '};
+ const keycodes={left:37,right:39,up:38,down:40,space:32};
+ const held=new Set();
+ function key(dir,kind){
+  if(!Object.prototype.hasOwnProperty.call(dirs,dir))return;
+  const e=new KeyboardEvent(kind,{key:dirs[dir],code:dir==='space'?'Space':dirs[dir],bubbles:true,cancelable:true});
+  try{Object.defineProperty(e,'keyCode',{get:()=>keycodes[dir]});}catch{}
+  document.dispatchEvent(e);
+ }
+ function down(dir){if(!held.has(dir)){held.add(dir);key(dir,'keydown');}}
+ function up(dir){if(held.delete(dir))key(dir,'keyup');}
+ function tap(dir){down(dir);setTimeout(()=>up(dir),130);}
+ const direction=(x,y)=>Math.abs(x)>Math.abs(y)?(x>0?'right':'left'):(y>0?'down':'up');
+ let touch=null;
+ document.addEventListener('touchstart',e=>{
+  if(e.touches.length!==1)return;
+  if(e.target.closest&&e.target.closest('button,input,textarea,select,a,[role=button]'))return;
+  const t=e.touches[0];
+  touch={id:t.identifier,x:t.clientX,y:t.clientY,px:t.clientX,py:t.clientY,dir:null};
+ },{passive:true,capture:true});
+ document.addEventListener('touchmove',e=>{
+  if(!touch)return;
+  const t=Array.from(e.touches).find(t=>t.identifier===touch.id);
+  if(!t)return;
+  const dx=t.clientX-touch.x,dy=t.clientY-touch.y;
+  const stepX=t.clientX-touch.px,stepY=t.clientY-touch.py;
+  touch.px=t.clientX;touch.py=t.clientY;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<24&&!touch.dir)return;
+  // First-person WebGL games can listen to the camera-drag deltas.
+  document.dispatchEvent(new CustomEvent('nexora-game-look',{detail:{dx:stepX,dy:stepY}}));
+  const dir=direction(dx,dy);
+  if(touch.dir!==dir){if(touch.dir)up(touch.dir);down(dir);touch.dir=dir;}
+  e.preventDefault();
+ },{passive:false,capture:true});
+ function finishTouch(e){
+  if(!touch)return;
+  const ended=Array.from(e.changedTouches).some(t=>t.identifier===touch.id);
+  if(!ended)return;
+  const dir=touch.dir;touch=null;
+  if(dir)setTimeout(()=>up(dir),100);
+ }
+ document.addEventListener('touchend',finishTouch,{passive:true,capture:true});
+ document.addEventListener('touchcancel',finishTouch,{passive:true,capture:true});
+ function release(){for(const dir of Array.from(held))up(dir);touch=null;}
+ window.addEventListener('blur',release);
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)release();});
+ window.addEventListener('message',e=>{
+  const p=e.data;
+  if(!p||p.type!=='nexora-game-control'||!Object.prototype.hasOwnProperty.call(dirs,p.direction))return;
+  if(p.action==='up')up(p.direction);
+  else if(p.action==='down')down(p.direction);
+  else if(p.action==='tap')tap(p.direction);
+ });
+})();
+</script>`;
 export function sandboxGameHTML(source){
  const html=normalizeGameHTML(source);
  if(!html)throw Error('HTML игры повреждён. Проверьте код.');
@@ -219,7 +250,7 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
  try{
   const result=await generateWithAI(idea,(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'').trim(),{fetchImpl,dimension});
   if(dimension==='3d'&&!/<canvas[\s>]/i.test(result.html))throw Object.assign(new Error('3D-игра не содержит WebGL-поле.'),{status:503});
-  if(dimension==='3d'&&!/getContext\s*\(\s*['"]webgl2?['"]\s*\)/i.test(result.html))throw Object.assign(new Error('Модель вернула не 3D-код. Попробуйте создать 3D-игру ещё раз.'),{status:503});
+  if(dimension==='3d'&&!/getContext\s*\(\s*['"](?:webgl2?|experimental-webgl)['"]/i.test(result.html))throw Object.assign(new Error('Модель вернула не 3D-код. Попробуйте создать 3D-игру ещё раз.'),{status:503});
   return send(res,200,{ok:true,html:result.html,title:idea.slice(0,75),source:'ai',provider:result.provider,dimension});
  }catch(error){
   const status=error.status===503?503:502;
