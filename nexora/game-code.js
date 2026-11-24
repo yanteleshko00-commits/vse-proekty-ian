@@ -236,6 +236,11 @@ function gameTextProviders(){
   const model=process.env.GAME_GEMINI_FALLBACK_MODEL?.trim()||'gemini-3.6-flash';
   if(model!==providers[0]?.model)providers.push({name:'Gemini резервный',kind:'gemini',key:process.env.GEMINI_API_KEY.trim(),model,url:'https://generativelanguage.googleapis.com/v1beta/models/'});
  }
+ if(process.env.DEEPSEEK_API_KEY?.trim())providers.push({
+  name:'DeepSeek',kind:'deepseek',key:process.env.DEEPSEEK_API_KEY.trim(),
+  url:'https://api.deepseek.com/chat/completions',
+  model:process.env.GAME_DEEPSEEK_MODEL?.trim()||'deepseek-flash'
+ });
  if(process.env.GROQ_API_KEY?.trim())providers.push({
   name:'Groq',key:process.env.GROQ_API_KEY.trim(),
   url:'https://api.groq.com/openai/v1/chat/completions',
@@ -277,6 +282,7 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimen
   body:JSON.stringify({
    model:provider.model,temperature:0.2,max_tokens:12288,
    ...(provider.url.includes('openrouter.ai')?{reasoning:{exclude:true}}:{}),
+   ...(provider.kind==='deepseek'?{thinking:{type:'disabled'}}:{}),
    messages:[
     {role:'system',content:'Ты профессиональный разработчик самостоятельных HTML5-игр. Отвечай только полноценным HTML-файлом с рабочим игровым кодом.'},
     {role:'user',content:prompt}
@@ -310,7 +316,7 @@ async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={})
   if(remaining<1500)throw Error('deadline');
   try{
    return await requestDirectGameProvider(provider,first?prompt:compact,
-    Math.min(first?(provider.kind==='gemini'?95000:35000):70000,remaining-500),fetchImpl,dimension);
+    Math.min(first?(provider.kind==='gemini'?95000:provider.kind==='deepseek'?95000:35000):70000,remaining-500),fetchImpl,dimension);
   }catch(error){
    const detail=/^AI HTTP [0-9]{3}$/.test(error.message||'')?error.message
     :['invalid_game_html','not_webgl_3d'].includes(error.message)?error.message:error.name||'error';
