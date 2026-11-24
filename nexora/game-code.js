@@ -355,8 +355,14 @@ async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto',onPr
  const prompt=gameCodePrompt(idea,{dimension});
  const deadline=Date.now()+170000;
  const direct=gameTextProviders();
- const failures=new Set();let attemptNumber=0;
- const publish=(provider,phase,source='',attempt=0)=>onProgress?.({provider,phase,source:source.slice(0,52000),attempt});
+ const failures=new Set();let attemptNumber=0,visibleAttempt=0;
+ const publish=(provider,phase,source='',attempt=0)=>{
+  if(!onProgress)return;
+  if(phase==='failed'){if(visibleAttempt===attempt){visibleAttempt=0;onProgress({provider,phase:'requesting',source:'',attempt});}return;}
+  if(phase==='writing'){if(!visibleAttempt)visibleAttempt=attempt;if(visibleAttempt!==attempt)return;}
+  else if(visibleAttempt)return;
+  onProgress({provider,phase,source:source.slice(0,52000),attempt});
+ };
  async function attempt(provider,first=false){
   const id=providerId(provider),live=fetchImpl===fetch;
   if(live&&(providerCooldown.get(id)||0)>Date.now()){failures.add('auth');throw Error('provider_cooldown');}
@@ -366,9 +372,16 @@ async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto',onPr
    const attempt=++attemptNumber;
    publish(provider.name,'requesting','',attempt);
    try{
-    return await requestDirectGameProvider(provider,prompt,
-     Math.min(first||dimension==='3d'?95000:70000,remaining-750),fetchImpl,dimension,onProgress?(source=>publish(provider.name,'writing',source,attempt)):null);
+    const timeout=Math.min(first||dimension==='3d'?95000:70000,remaining-750);
+    try{return await requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimension,onProgress?(source=>publish(provider.name,'writing',source,attempt)):null);}
+    catch(error){
+     // If a provider rejects streaming, preserve the existing JSON path.
+     if(!onProgress||![400,404,405,415,422,501].includes(error.httpStatus))throw error;
+     const left=deadline-Date.now();if(left<5000)throw error;
+     return await requestDirectGameProvider(provider,prompt,Math.min(timeout,left-750),fetchImpl,dimension,null);
+    }
    }catch(error){
+    publish(provider.name,'failed','',attempt);
     const status=error.httpStatus;
     const detail=/^AI HTTP [0-9]{3}$/.test(error.message||'')?error.message
      :['invalid_game_html','not_webgl_3d'].includes(error.message)?error.message:error.name||'error';
@@ -473,7 +486,7 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
   const id=crypto.randomUUID();
   const job={createdAt:Date.now(),result:null,progress:null};
   gameJobs.set(id,job);
-  void generate(progress=>{if(progress.phase==='writing'||!job.progress||job.progress.phase!=='writing')job.progress=progress;}).then(result=>{job.result=result;job.progress=null;});
+  void generate(progress=>{if(!job.result)job.progress=progress;}).then(result=>{job.result=result;job.progress=null;});
   return send(res,202,{ok:true,pending:true,jobId:id});
  }
  const result=await generate();
