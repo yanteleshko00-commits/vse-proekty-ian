@@ -59,6 +59,10 @@ textarea,select{width:100%;min-width:0;border:1px solid #e6dfef;border-radius:13
 
 
 /* NEXORA Game Code Studio: real code, safe preview and mobile controls. */
+#ai-login-required[hidden]{display:none!important}
+.ai-login-required{margin-top:12px;padding:14px;border:1px solid #b5a3ec;border-radius:14px;background:#f3eeff;color:#503b87;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:12px;line-height:1.5}
+.ai-login-link{background:#6952c7;color:#fff!important;border-radius:10px;padding:10px 14px;font-weight:800;white-space:nowrap}
+
 .ai-workspace{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:19px;align-items:start}
 .ai-help{color:var(--sub);line-height:1.75;font-size:12px;margin:0 0 12px}
 .ai-create-card #ai-idea{font-size:16px;font-weight:540;min-height:145px;line-height:1.7}
@@ -105,7 +109,7 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
  <section class="ai-workspace" id="ai-workspace" aria-label="ИИ-конструктор HTML-игр">
   <div class="card ai-create-card">
    <div class="card-top"><h2>Какую игру создадим?</h2><span class="card-note">01 / IDEA</span></div>
-   <p class="ai-help">Напишите название или опишите сюжет и правила. ИИ создаст исходный HTML, CSS и JavaScript — вы сможете сразу играть и менять код.</p>
+   <p class="ai-help">Напишите <strong>любое название, жанр или свою механику игры</strong>. ИИ проанализирует запрос и напишет HTML, CSS и JavaScript именно для этой идеи. Это не выбор из готовых игр.</p>
    <label class="label" for="ai-idea">Название или описание игры</label>
    <textarea id="ai-idea" maxlength="500" rows="5" placeholder="Например: платформер с прыжками, монетками и врагами. Игрок управляется стрелками, цель — дойти до финиша."></textarea>
    <div class="ai-suggestions" aria-label="Примеры игр">
@@ -118,16 +122,20 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
     <button type="button" data-ai-example="Арканоид: ракетка отбивает мяч и разбивает ряды кирпичей, уровни и очки.">🧱 Арканоид</button>
    </div>
    <button id="ai-build" type="button" class="create">✦ Создать и запустить игру</button>
-   <p class="hint">После создания откроется рабочая игра и её исходный код. На телефоне свайпы заменяют стрелки. Для нового кода от ИИ нужен вход в NEXORA ID; без входа доступен готовый игровой шаблон.</p>
+   <p class="hint">Для генерации кода нужен NEXORA ID. Если ИИ не справится, покажем ошибку, а не подменим вашу идею стандартной игрой. Для игр с управлением стрелками доступны свайпы.</p>
    <button type="button" id="ai-classic-toggle" class="ai-classic-link">Открыть классические мини-игры →</button>
    <div id="ai-error" class="error" role="alert" hidden></div>
+   <div id="ai-login-required" class="ai-login-required" role="status" hidden>
+    <span>Для генерации собственной игры ИИ войдите в NEXORA ID. Ваше описание сохранится.</span>
+    <a href="/auth/start" class="ai-login-link">Войти в NEXORA ID</a>
+   </div>
   </div>
   <section class="card ai-preview-card" id="ai-result-card" aria-labelledby="ai-result-heading">
    <div class="card-top"><h2 id="ai-result-heading">Ваша игра</h2><span class="card-note" id="ai-source-label">02 / PREVIEW</span></div>
    <div id="ai-placeholder" class="stage">
     <span class="stage-icon">🎮</span>
     <strong id="ai-placeholder-title">Игра появится здесь</strong>
-    <p id="ai-placeholder-description">Введите название или описание, нажмите «Создать и запустить игру» — и увидите настоящую работающую игру.</p>
+    <p id="ai-placeholder-description">Опишите любую игру, её цель и управление — ИИ создаст исходный код и запустит результат здесь.</p>
    </div>
    <div id="ai-toolbar" class="ai-toolbar" role="tablist" aria-label="Игра или исходный код" hidden>
     <button id="ai-play-tab" type="button" class="ai-tab active" role="tab" aria-selected="true" aria-controls="ai-game-view">▶ Играть</button>
