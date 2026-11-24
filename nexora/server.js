@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {handleGeminiImageRelay} from './gemini-image-relay.js';
 import crypto from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -600,6 +601,7 @@ const server = http.createServer(async (req, res) => {
   let url;
   try { url = new URL(req.url, base); } catch { return send(res, 400, 'Bad Request'); }
 
+  if (req.method === 'POST' && url.pathname === '/internal/gemini/image') return handleGeminiImageRelay(req,res);
   if (url.pathname === '/health') {
     const ready = Boolean(clientSecret.length >= 32 && sessionSecret.length >= 32 && (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || req.headers.host));
     return send(res, 200, JSON.stringify({

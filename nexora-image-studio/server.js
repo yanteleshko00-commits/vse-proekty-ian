@@ -1,5 +1,5 @@
 import http from 'node:http';
-import {requestGeminiImage, firstImageProvider, DEFAULT_IMAGE_MODEL} from './gemini-image.js';
+import {requestGeminiImage, requestGeminiImageRelay, firstImageProvider, DEFAULT_IMAGE_MODEL} from './gemini-image.js';
 import crypto from 'node:crypto';
 import { internalAliceTokenValid, imageStudioAliceReady, forwardAliceText } from './alice-text.js';
 import { readFile } from 'node:fs/promises';
@@ -429,9 +429,15 @@ async function generateNexoraImage(req, res) {
   const openAIKey = String(process.env.OPENAI_API_KEY || '').trim();
   const hasGigaChat = gigaChatKeys().length > 0;
   const geminiKey=String(process.env.GEMINI_API_KEY||'').trim();
+  const relayToken=String(process.env.NEXORA_IMAGE_RELAY_TOKEN||'').trim();
+  const relayReady=relayToken.length>=32;
   const geminiModel=String(process.env.GEMINI_IMAGE_MODEL||DEFAULT_IMAGE_MODEL).trim()||DEFAULT_IMAGE_MODEL;
   const providers = [];
-  if(geminiKey)providers.push({name:'Gemini',run:signal=>requestGeminiImage({
+  if(relayReady)providers.push({name:'Gemini',run:signal=>requestGeminiImageRelay({
+    token:relayToken,modelPrompt:prompt+'. Visual style: '+imageStyles[style]+(detailed?'. Fine details, carefully rendered textures, balanced composition.':''),
+    ratio,imageFile,signal,imageMime
+  })});
+  else if(geminiKey)providers.push({name:'Gemini',run:signal=>requestGeminiImage({
     apiKey:geminiKey,model:geminiModel,modelPrompt:prompt+'. Visual style: '+imageStyles[style]+(detailed?'. Fine details, carefully rendered textures, balanced composition.':''),
     ratio,imageFile,signal,imageMime
   })});
@@ -461,7 +467,7 @@ async function generateNexoraImage(req, res) {
 
 
   if (!providers.length) {
-    const editOnly = Boolean(imageFile && !openAIKey && !geminiKey);
+    const editOnly = Boolean(imageFile && !openAIKey && !geminiKey && !relayReady);
     return send(res, 503, JSON.stringify({
       error: 'image_not_configured',
       message: editOnly
@@ -560,7 +566,7 @@ const server = http.createServer(async (req, res) => {
     const keys = gigaChatKeys();
     const hasGigaChat = keys.length > 0;
     const providers = [
-      ...(process.env.GEMINI_API_KEY?.trim() ? ['Gemini'] : []),
+      ...((process.env.NEXORA_IMAGE_RELAY_TOKEN?.trim().length>=32||process.env.GEMINI_API_KEY?.trim()) ? ['Gemini'] : []),
       ...(yandexMissing.length === 0 ? ['Alice AI ART'] : []),
       ...(process.env.OPENAI_API_KEY?.trim() ? ['OpenAI'] : []),
       ...(hasGigaChat ? ['GigaChat'] : [])
@@ -579,7 +585,7 @@ const server = http.createServer(async (req, res) => {
         ],
         model: 'aliceai-llm'
       },
-      geminiImage: {configured:Boolean(process.env.GEMINI_API_KEY?.trim()),model:process.env.GEMINI_IMAGE_MODEL||DEFAULT_IMAGE_MODEL},
+      geminiImage: {configured:Boolean(process.env.NEXORA_IMAGE_RELAY_TOKEN?.trim().length>=32||process.env.GEMINI_API_KEY?.trim()),viaLobby:process.env.NEXORA_IMAGE_RELAY_TOKEN?.trim().length>=32,model:process.env.GEMINI_IMAGE_MODEL||DEFAULT_IMAGE_MODEL},
       imageProvider: 'Sequential failover',
       imageModel: 'Gemini first, Alice backup',
       gigaChatAuth: {

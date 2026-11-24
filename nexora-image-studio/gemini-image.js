@@ -51,3 +51,23 @@ export async function firstImageProvider(providers){
  }
  throw new AggregateError(errors,'No image provider completed the request');
 }
+
+export async function requestGeminiImageRelay({token,modelPrompt,ratio,imageFile,signal,fetchImpl=fetch,imageMime}){
+ let response,payload;
+ try{
+  response=await fetchImpl('https://nexora-lobby.onrender.com/internal/gemini/image',{
+   method:'POST',headers:{'Content-Type':'application/json','x-nexora-image-token':token},
+   body:JSON.stringify({modelPrompt,ratio,...(imageFile?{image:{mime:imageFile.mime,data:imageFile.bytes.toString('base64')}}:{})}),
+   signal:AbortSignal.any([signal,AbortSignal.timeout(80000)])
+  });
+  payload=await response.json();
+ }catch(error){throw failure(0,error.name==='TimeoutError'?'timeout':'relay_unavailable','Сервер Gemini временно недоступен.');}
+ if(!response.ok){
+  const error=failure(response.status,String(payload?.error||'relay_error').replace(/[^a-z0-9_-]/gi,'').slice(0,60),'Gemini не смог создать изображение (HTTP '+response.status+').');
+  if(payload?.noFallback===true)error.noFallback=true;
+  throw error;
+ }
+ const match=typeof payload?.image==='string'&&payload.image.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
+ if(!match||match[2].length>24000000||imageMime(Buffer.from(match[2],'base64'))!==match[1])throw failure(502,'invalid_image','Gemini вернул некорректное изображение.');
+ return {image:payload.image,provider:'Gemini',model:String(payload.model||DEFAULT_IMAGE_MODEL).slice(0,100)};
+}
