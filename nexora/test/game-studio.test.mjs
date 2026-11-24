@@ -226,10 +226,10 @@ test('Unauthenticated players can create an original game through the protected 
   const parts=[];for await(const chunk of req)parts.push(chunk);
   const input=JSON.parse(Buffer.concat(parts).toString('utf8'));
   assert.equal(input.model,'auto');
-  assert.match(input.messages[0].content,/ЗАПРОС ПОЛЬЗОВАТЕЛЯ: Платформер с монетами/);
-  assert.match(input.messages[0].content,/любое название игры|ЛЮБОЕ название игры/i);
-  assert.match(input.messages[0].content,/собственн.*идеи/);
-  assert.match(input.messages[0].content,/не подменяй|не подмен|подменяй|не привязывайся/i);
+  assert.match(input.messages[0].content,/ОПИСАНИЕ ИГРЫ: Платформер с монетами/);
+  assert.match(input.messages[0].content,/любому названию или описанию/i);
+  assert.match(input.messages[0].content,/именно запрошенную механику/);
+  assert.match(input.messages[0].content,/не готовый шаблон/i);
   res.writeHead(200,{'Content-Type':'application/json'});
   res.end(JSON.stringify({ok:true,answer:resultHtml,provider:'Alice AI LLM'}));
  });
@@ -455,5 +455,19 @@ test('public Game Studio prioritizes the dedicated free coding model over random
   if(priorRouter===undefined)delete process.env.OPENROUTER_API_KEY;else process.env.OPENROUTER_API_KEY=priorRouter;
   if(priorGroq===undefined)delete process.env.GROQ_API_KEY;else process.env.GROQ_API_KEY=priorGroq;
   if(priorGameModel===undefined)delete process.env.GAME_OPENROUTER_MODEL;else process.env.GAME_OPENROUTER_MODEL=priorGameModel;
+ }
+});
+
+
+test('compact central chat fallback stays within message limit for arbitrary 2D and 3D games',async()=>{
+ const {compactGatewayGamePrompt}=await import('../game-code.js');
+ const idea='3D мир с кубами, прыжками, строительством и свайпами. '.repeat(11).slice(0,500);
+ for(const dim of ['auto','2d','3d']){
+  const prompt=compactGatewayGamePrompt(idea,dim);
+  assert.ok(prompt.length>200&&prompt.length<=2400,'Chat gateway would reject prompt for '+dim+': '+prompt.length);
+  assert.ok(prompt.includes(idea),'The full user description must survive the compact gateway fallback');
+  assert.match(prompt,/keydown/);
+  assert.match(prompt,/nexora-game-look/);
+  if(dim==='3d')assert.match(prompt,/настоящий 3D WebGL/);
  }
 });

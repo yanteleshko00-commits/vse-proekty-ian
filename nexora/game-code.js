@@ -152,6 +152,26 @@ export function gameCodePrompt(idea,{dimension='auto'}={}){
   'ЗАПРОС ПОЛЬЗОВАТЕЛЯ: '+idea
  ].join('\n');
 }
+// NEXORA Chat's internal gateway accepts at most 2400 characters per message.
+// Direct code-capable providers receive the full prompt; this shorter fallback
+// keeps the entire user's idea without changing chat limits for everyone else.
+export function compactGatewayGamePrompt(idea,dimension='auto'){
+ const view=dimension==='3d'
+  ?'Обязательно настоящий 3D WebGL: getContext("webgl"), GLSL шейдеры, перспектива, камера, объёмная геометрия и движение.'
+  :dimension==='2d'
+   ?'Создай 2D-игру на canvas/DOM.'
+   :'Если описание требует 3D/первое лицо, используй настоящий WebGL; иначе подходящий 2D canvas.';
+ return [
+  'Ты создаёшь готовые браузерные игры по любому названию или описанию. Реализуй именно запрошенную механику, а не готовый шаблон.',
+  view,
+  'Ответ — ТОЛЬКО полный HTML от <!doctype html> до </html>, без markdown и пояснений. Все CSS и JavaScript в одном файле. Никаких библиотек, CDN, iframe, fetch, модулей и внешних ресурсов.',
+  'Нужна работающая игра с целью, действиями игрока, взаимодействием и состоянием, очками или прогрессом, кнопкой перезапуска.',
+  'Используй requestAnimationFrame. Для canvas ширина 720 высота 420 и CSS width:100%; интерфейс адаптивен на телефоне.',
+  'Управление стрелками, WASD и пробелом через document.addEventListener("keydown"/"keyup"). Свайпы NEXORA преобразует в стрелки; для 3D-камеры слушай CustomEvent "nexora-game-look" с detail.dx и detail.dy. Тапы по игровому полю — для действий.',
+  'Визуализация должна реально двигаться. Интерфейс на русском. Генерируй компактный рабочий код, не статичный макет.',
+  'ОПИСАНИЕ ИГРЫ: '+String(idea||'').slice(0,500)
+ ].join('\n').slice(0,2350);
+}
 export function isWebGLGame(html){
  return /<canvas[\s>]/i.test(html)&&/getContext\s*\(\s*['"](?:webgl2?|experimental-webgl)['"]/i.test(html);
 }
@@ -240,7 +260,7 @@ async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={})
     const response=await fetchImpl(API_URL+'/api/nexora-chat/internal',{
      method:'POST',
      headers:{'Content-Type':'application/json','X-NEXORA-Chat-Token':secret},
-     body:JSON.stringify({model,messages:[{role:'user',content:prompt}]}),
+     body:JSON.stringify({model,messages:[{role:'user',content:compactGatewayGamePrompt(idea,dimension)}]}),
      signal:AbortSignal.timeout(Math.min(60000,remaining-750))
     });
     if(!response.ok){console.warn('[game-code] Game provider gateway unavailable:',response.status);continue;}
