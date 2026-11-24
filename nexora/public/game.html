@@ -59,6 +59,56 @@ textarea,select{width:100%;min-width:0;border:1px solid #e6dfef;border-radius:13
 
 
 /* NEXORA Game Code Studio: real code, safe preview and mobile controls. */
+.ai-enter{animation:ai-game-reveal .46s cubic-bezier(.2,.84,.25,1) both}
+@keyframes ai-game-reveal{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.ai-enter{animation:none!important}}
+
+
+/* Animated code-to-game transformation. No fictitious progress percentage. */
+.ai-dimension{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:14px 0 7px}
+.ai-dimension>span{font-size:11px;font-weight:850;color:#75658f;margin-right:7px}
+.ai-dimension button{font-size:12px;background:#f5f1ff;padding:9px 13px;border:1px solid #ded2f4;border-radius:11px;color:#725d95;transition:transform .2s,background .2s,border-color .2s}
+.ai-dimension button:hover{transform:translateY(-2px);border-color:#9a80de}
+.ai-dimension button.selected{background:linear-gradient(120deg,#745bdd,#6853b9);border-color:transparent;color:#fff;box-shadow:0 6px 18px #6e53c139}
+.ai-build-scene{position:relative;width:100%;max-width:480px;height:245px;display:flex;align-items:center;justify-content:center;isolation:isolate;overflow:visible}
+.ai-build-scene[hidden]{display:none!important}
+.stage.is-building{background:radial-gradient(circle at 76% 20%,#d9ddff,transparent 51%),linear-gradient(130deg,#f2e9ff,#e8eafd 60%,#f7ebff);border-color:#c6b5ee}
+.stage.is-building>.stage-icon{display:none}
+.stage.is-building>strong{color:#543e90}
+.ai-build-backdrop{position:absolute;inset:20px;background:radial-gradient(circle at 18% 68%,#b8a0f18c,transparent 42%),radial-gradient(circle at 85% 32%,#91c7f38c,transparent 45%);filter:blur(17px);z-index:-1}
+.ai-build-composition{display:flex;gap:12px;align-items:center;justify-content:center;height:200px;width:100%;perspective:750px}
+.ai-code-editor{width:47%;max-width:215px;min-width:0;aspect-ratio:1.15;overflow:hidden;border-radius:15px;background:linear-gradient(140deg,#202446,#2b2756);border:1px solid #7370b1;box-shadow:0 20px 33px #3930614f,inset 0 1px #ffffff44;animation:ai-code-float 3.1s ease-in-out infinite alternate}
+.ai-code-editor-top{height:28px;display:flex;align-items:center;gap:5px;background:#10132955;border-bottom:1px solid #5b548c;padding:0 10px}
+.ai-code-editor-top i{height:6px;width:6px;border-radius:50%;background:#eb86a3}.ai-code-editor-top i:nth-child(2){background:#e9bf79}.ai-code-editor-top i:nth-child(3){background:#83d9ad}
+.ai-code-editor-top small{margin-left:auto;color:#c5c0ee;font:600 10px ui-monospace,monospace}
+.ai-code-editor-lines{padding:15px 9px;display:flex;flex-direction:column;gap:12px}
+.ai-code-text{display:block;white-space:nowrap;overflow:hidden;width:0;max-width:100%;border-right:1px solid #b8d6ff;color:#b5cbfb;font:600 clamp(6px,1vw,9px) ui-monospace,monospace;animation:ai-type 3.6s steps(26,end) infinite}
+.ai-code-text:nth-child(2){animation-delay:-2.7s;color:#e0b9fa}.ai-code-text:nth-child(3){animation-delay:-1.8s;color:#a0f0d1}.ai-code-text:nth-child(4){animation-delay:-.9s;color:#f6d49a}
+.ai-build-transfer{flex:0 0 24px;display:flex;flex-direction:column;align-items:center;gap:12px;color:#8163d9;font-size:18px;animation:ai-transfer 1.4s ease-in-out infinite}
+.ai-build-transfer i{height:25px;width:2px;background:linear-gradient(transparent,#a28ce7,transparent)}
+.ai-world-render{position:relative;width:32%;max-width:150px;aspect-ratio:1;display:grid;place-items:center;perspective:500px}
+.ai-voxel{position:relative;width:78px;height:78px;transform-style:preserve-3d;animation:ai-spin 7s ease-in-out infinite}
+.ai-voxel i{position:absolute;inset:0;border:1px solid #ffffff99;box-shadow:inset 0 0 24px #ffffff28}
+.ai-cube-front{background:linear-gradient(130deg,#79adfa,#5166ce);transform:translateZ(39px)}
+.ai-cube-back{background:linear-gradient(130deg,#5b64c7,#493c93);transform:rotateY(180deg) translateZ(39px)}
+.ai-cube-right{background:linear-gradient(130deg,#9d80f0,#6457bb);transform:rotateY(90deg) translateZ(39px)}
+.ai-cube-left{background:linear-gradient(130deg,#5e9eea,#8074e7);transform:rotateY(-90deg) translateZ(39px)}
+.ai-cube-top{background:linear-gradient(130deg,#b7e3ff,#b3a0ff);transform:rotateX(90deg) translateZ(39px)}
+.ai-cube-bottom{background:#5949aa;transform:rotateX(-90deg) translateZ(39px)}
+.ai-render-spark{position:absolute;color:#8763d8;font-size:20px;animation:ai-spark 2s ease-in-out infinite}
+.ai-spark-one{top:0;right:6px}.ai-spark-two{bottom:9px;left:8px;animation-delay:-1s}
+.ai-build-indicator{position:absolute;bottom:0;display:flex;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:800;color:#6c598d}
+.ai-build-indicator i{width:6px;height:6px;border-radius:50%;background:#7856d2;animation:ai-bounce .95s ease-in-out infinite}
+.ai-build-indicator i:nth-child(2){animation-delay:.17s}.ai-build-indicator i:nth-child(3){animation-delay:.34s;margin-right:6px}
+@keyframes ai-code-float{from{transform:translateY(5px) rotateY(13deg) rotateX(3deg)}to{transform:translateY(-7px) rotateY(3deg) rotateX(0)}}
+@keyframes ai-type{0%,12%{width:0}43%,78%{width:100%}92%,100%{width:0}}
+@keyframes ai-spin{0%{transform:rotateX(-18deg) rotateY(-30deg)}50%{transform:rotateX(-27deg) rotateY(155deg)}100%{transform:rotateX(-18deg) rotateY(330deg)}}
+@keyframes ai-transfer{0%,100%{transform:translateX(-4px);opacity:.5}50%{transform:translateX(4px);opacity:1}}
+@keyframes ai-spark{0%,100%{transform:scale(.65) translateY(4px);opacity:.45}50%{transform:scale(1.15) translateY(-4px);opacity:1}}
+@keyframes ai-bounce{0%,100%{transform:translateY(2px);opacity:.55}50%{transform:translateY(-4px);opacity:1}}
+@media(max-width:570px){.ai-build-scene{height:205px}.ai-build-composition{height:165px}.ai-code-editor{max-width:175px}.ai-voxel{width:60px;height:60px}.ai-cube-front{transform:translateZ(30px)}.ai-cube-back{transform:rotateY(180deg) translateZ(30px)}.ai-cube-right{transform:rotateY(90deg) translateZ(30px)}.ai-cube-left{transform:rotateY(-90deg) translateZ(30px)}.ai-cube-top{transform:rotateX(90deg) translateZ(30px)}.ai-cube-bottom{transform:rotateX(-90deg) translateZ(30px)}}
+@media(prefers-reduced-motion:reduce){.ai-build-scene *,.ai-dimension button{animation:none!important;transition:none!important}}
+
 
 .ai-workspace{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:19px;align-items:start}
 .ai-help{color:var(--sub);line-height:1.75;font-size:12px;margin:0 0 12px}
@@ -109,17 +159,24 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
    <p class="ai-help">Напишите <strong>любое название, жанр или свою механику игры</strong>. ИИ проанализирует запрос и напишет HTML, CSS и JavaScript именно для этой идеи. Это не выбор из готовых игр.</p>
    <label class="label" for="ai-idea">Название или описание игры</label>
    <textarea id="ai-idea" maxlength="500" rows="5" placeholder="Например: платформер с прыжками, монетками и врагами. Игрок управляется стрелками, цель — дойти до финиша."></textarea>
-   <div class="ai-suggestions" aria-label="Примеры игр">
+   <div class="ai-dimension" role="group" aria-label="Графика игры">
+     <span>Формат графики</span>
+     <button type="button" data-game-dimension="auto" aria-pressed="true" class="selected">✦ Авто</button>
+     <button type="button" data-game-dimension="2d" aria-pressed="false">▣ 2D</button>
+     <button type="button" data-game-dimension="3d" aria-pressed="false">⬡ 3D</button>
+    </div>
+    <div class="ai-suggestions" aria-label="Примеры игр">
     <button type="button" data-ai-example="Платформер: герой прыгает по платформам, собирает монеты и избегает врагов. Счёт и финиш.">🎮 Платформер</button>
     <button type="button" data-ai-example="Гонки сверху: игрок ведёт машину по дороге, уворачивается от других машин, зарабатывает очки.">🏎️ Гонки</button>
     <button type="button" data-ai-example="Космический шутер: мой корабль стреляет во врагов, можно двигаться во все стороны.">🚀 Шутер</button>
-    <button type="button" data-ai-example="Майнкрафт: двухмерный блочный мир, где можно ходить, прыгать, добывать камень и строить из блоков.">⛏ Блочный мир</button>
+    <button type="button" data-ai-example="Трёхмерный блочный мир: ходить по объёмной карте, добывать камень, строить из кубов, поворачивать камеру." data-ai-dimension="3d">⛏ 3D мир</button>
+     <button type="button" data-ai-example="3D лабиринт от первого лица на WebGL: пройти к выходу, уклоняться от ловушек, управление движением и камерой." data-ai-dimension="3d">🧭 3D лабиринт</button>
     <button type="button" data-ai-example="Змейка с очками: управлять стрелками или свайпами, собирать яблоки, не врезаться.">🐍 Змейка</button>
     <button type="button" data-ai-example="Flappy Bird: маленькая птица летает через трубы по нажатию и набирает очки.">🐦 Flappy</button>
     <button type="button" data-ai-example="Арканоид: ракетка отбивает мяч и разбивает ряды кирпичей, уровни и очки.">🧱 Арканоид</button>
    </div>
    <button id="ai-build" type="button" class="create">✦ Создать и запустить игру</button>
-   <p class="hint">Регистрация и вход не нужны. Напишите название или правила игры — ИИ создаст код. Если генерация не получится, покажем причину вместо случайного шаблона. На телефоне есть свайпы и экранные кнопки.</p>
+   <p class="hint">Без входа в аккаунт. ИИ анализирует любую идею и создаёт 2D или настоящую 3D-игру на WebGL. На телефоне есть свайпы и экранные кнопки. Если ИИ не справится, покажем ошибку, а не другую игру.</p>
    <button type="button" id="ai-classic-toggle" class="ai-classic-link">Открыть классические мини-игры →</button>
    <div id="ai-error" class="error" role="alert" hidden></div>
 
@@ -128,6 +185,26 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
    <div class="card-top"><h2 id="ai-result-heading">Ваша игра</h2><span class="card-note" id="ai-source-label">02 / PREVIEW</span></div>
    <div id="ai-placeholder" class="stage">
     <span class="stage-icon">🎮</span>
+    <div id="ai-loading" class="ai-build-scene" hidden aria-hidden="true">
+     <div class="ai-build-backdrop"></div>
+     <div class="ai-build-composition">
+      <div class="ai-code-editor">
+       <div class="ai-code-editor-top"><i></i><i></i><i></i><small>game.js</small></div>
+       <div class="ai-code-editor-lines">
+        <span class="ai-code-text">const world = new Game();</span>
+        <span class="ai-code-text">world.createPlayer();</span>
+        <span class="ai-code-text">world.addPhysics();</span>
+        <span class="ai-code-text">render(world);</span>
+       </div>
+      </div>
+      <div class="ai-build-transfer" aria-hidden="true"><span>✧</span><i></i><span>➜</span></div>
+      <div class="ai-world-render">
+       <div class="ai-voxel"><i class="ai-cube-front"></i><i class="ai-cube-back"></i><i class="ai-cube-right"></i><i class="ai-cube-left"></i><i class="ai-cube-top"></i><i class="ai-cube-bottom"></i></div>
+       <span class="ai-render-spark ai-spark-one">✦</span><span class="ai-render-spark ai-spark-two">✧</span>
+      </div>
+     </div>
+     <div class="ai-build-indicator"><i></i><i></i><i></i><span>Генерация игрового кода</span></div>
+    </div>
     <strong id="ai-placeholder-title">Игра появится здесь</strong>
     <p id="ai-placeholder-description">Опишите любую игру, её цель и управление — ИИ создаст исходный код и запустит результат здесь.</p>
    </div>
@@ -144,7 +221,7 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
      <div class="ai-game-frame">
       <iframe id="ai-frame" title="Игра NEXORA — изолированный предпросмотр" sandbox="allow-scripts" referrerpolicy="no-referrer" allow="fullscreen"></iframe>
      </div>
-     <div class="ai-control-hint">Свайпайте по игровому полю или используйте кнопки. На компьютере — стрелки, WASD и пробел.</div>
+     <div class="ai-control-hint" id="ai-control-hint">Свайпайте по игровому полю или используйте кнопки. На компьютере — стрелки, WASD и пробел.</div>
      <div class="ai-dpad" aria-label="Управление игрой на телефоне">
       <div class="ai-dpad-arrows">
        <button type="button" data-game-arrow="up" aria-label="Вверх">↑</button>
