@@ -626,6 +626,16 @@ const server = http.createServer(async (req, res) => {
   try { url = new URL(req.url, base); } catch { return send(res, 400, 'Bad Request'); }
 
   const adminHeaders={'Content-Type':'text/html; charset=utf-8','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",'Referrer-Policy':'no-referrer'};
+  if(req.method==='POST' && url.pathname==='/api/admin-ticket'){
+    const origin=String(req.headers.origin||'');
+    if(origin!==new URL(base).origin||!String(req.headers['content-type']||'').startsWith('application/json'))return send(res,403,JSON.stringify({error:'forbidden'}),{'Content-Type':'application/json; charset=utf-8'});
+    const user=readSession(req),owner=String(process.env.NEXORA_ADMIN_EMAIL||'').trim().toLowerCase(),secret=String(process.env.NEXORA_CONSOLE_SECRET||'');
+    if(!user||!owner||String(user.email||'').trim().toLowerCase()!==owner)return send(res,403,JSON.stringify({error:'forbidden'}),{'Content-Type':'application/json; charset=utf-8'});
+    if(secret.length<32)return send(res,503,JSON.stringify({error:'admin_link_unavailable'}),{'Content-Type':'application/json; charset=utf-8'});
+    const payload=[owner,Date.now()+30000,secureRandom(16)].join('|');
+    const signature=crypto.createHmac('sha256',secret).update(payload).digest('base64url');
+    return send(res,200,JSON.stringify({ticket:Buffer.from(payload).toString('base64url')+'.'+signature}),{'Content-Type':'application/json; charset=utf-8'});
+  }
   const adminLoggedIn=()=>passwordConfigured()?validAdminSession(parseCookies(req).nexora_admin):isUsageAdmin(readSession(req));
   if(req.method==='GET' && url.pathname==='/admin/login'){
     if(adminLoggedIn())return redirect(res,'/admin/deepseek');
