@@ -86,14 +86,15 @@
     throw Error(data.message||"ИИ не смог написать игру. Попробуйте уточнить описание.");
    if(data.source!=="ai")throw Error("ИИ не создал код. Подмена вашего запроса готовым шаблоном отключена.");
    raw=data.html;code.value=raw;sourceKind=data.source;
+   const renderedDimension=data.dimension==="3d"?"3d":dimension;
    $("ai-placeholder-title").textContent="Код создан — собираю игру…";
    $("ai-placeholder-description").textContent="Проверяю HTML и подготавливаю безопасное игровое окно.";
    setStatus("Код готов. Подготавливаю "+(dimension==="3d"?"3D WebGL":"игру")+" для запуска…");
    $("ai-game-title").textContent=data.title||description;
    $("ai-source-label").textContent="Код создан ИИ";
    $("ai-source-label").classList.add("generated");
-   $("ai-description").textContent="ИИ создал "+(dimension==="3d"?"3D WebGL-игру":"игру")+" по вашему описанию. Исходный код доступен во вкладке «Код».";
-   $("ai-control-hint").textContent=dimension==="3d"
+   $("ai-description").textContent="ИИ создал "+(renderedDimension==="3d"?"3D WebGL-игру":"игру")+" по вашему описанию. Исходный код доступен во вкладке «Код».";
+   $("ai-control-hint").textContent=renderedDimension==="3d"
     ?"В 3D: свайпайте по сцене для поворота камеры, экранные стрелки — движение, «Действие» — взаимодействие. На компьютере — WASD и мышь."
     :"На телефоне проводите пальцем по игровому полю или держите стрелки. Нажмите «Действие» для прыжка/выстрела.";
    setStatus("Код игры готов. Можно играть, редактировать и скачать HTML.");
@@ -133,6 +134,12 @@
   if(!["left","right","up","down","space"].includes(direction))return;
   frame.contentWindow.postMessage({type:"nexora-game-control",direction,action},"*");
  }
+ window.addEventListener("message",event=>{
+  if(event.source!==frame.contentWindow||!event.data||event.data.type!=="nexora-game-error")return;
+  const message=String(event.data.message||"Ошибка игрового кода").slice(0,170);
+  setStatus("Ошибка выполнения игры: "+message);
+  fail("Созданная игра запустилась с ошибкой. Откройте вкладку «Код» или создайте заново: "+message);
+ });
  document.querySelectorAll("[data-game-arrow]").forEach(b=>{
   const dir=b.dataset.gameArrow;
   b.addEventListener("pointerdown",e=>{
