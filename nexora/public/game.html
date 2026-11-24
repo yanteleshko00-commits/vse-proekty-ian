@@ -171,7 +171,9 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
 @media(prefers-reduced-motion:reduce){.nx-gallery[open]{animation:none}}
 @media print{.nx-view-open,.nx-view-close,.nx-gallery{display:none!important}}
 </style>
-<style>.ai-build-scene:after{content:"";position:absolute;inset:10% 4%;pointer-events:none;border:1px solid #a18aea40;border-radius:22px;background:linear-gradient(90deg,transparent,#b49dff14,transparent);animation:nx-game-scan 2.5s ease-in-out infinite;z-index:-1}@keyframes nx-game-scan{0%,100%{opacity:.2;transform:scale(.97)}50%{opacity:1;transform:scale(1)}}@media(prefers-reduced-motion:reduce){.ai-build-scene:after{animation:none}}</style></head>
+<style>.ai-build-scene:after{content:"";position:absolute;inset:10% 4%;pointer-events:none;border:1px solid #a18aea40;border-radius:22px;background:linear-gradient(90deg,transparent,#b49dff14,transparent);animation:nx-game-scan 2.5s ease-in-out infinite;z-index:-1}@keyframes nx-game-scan{0%,100%{opacity:.2;transform:scale(.97)}50%{opacity:1;transform:scale(1)}}@media(prefers-reduced-motion:reduce){.ai-build-scene:after{animation:none}}</style><style id="nx-live-build-style">
+.ai-build-scene.nx-live-build{width:100%;max-width:100%;height:auto;min-width:0;display:block;overflow:hidden;text-align:left;border:1px solid #7967ab55;border-radius:18px;background:#171a2e;color:#e6e4ff;box-shadow:0 16px 35px #30205a26;padding:0;margin:0 auto 16px;isolation:isolate}.nx-live-build:after{display:none!important}.nx-live-top{display:flex;align-items:center;gap:8px;padding:14px 12px;border-bottom:1px solid #ffffff19;font-size:11px}.nx-live-top strong{flex:1;min-width:0;overflow-wrap:anywhere;color:#ded7ff}.nx-live-top #nx-live-count{white-space:nowrap;color:#a8b2d2;font:10px ui-monospace,monospace}.nx-live-dot{width:7px;height:7px;flex:none;background:#8ee8b5;border-radius:50%;box-shadow:0 0 12px #8ee8b5}.nx-live-file{display:flex;align-items:center;gap:7px;padding:9px 12px;background:#ffffff08;color:#b6a6f1;font:11px ui-monospace,monospace}.nx-live-tag{margin-left:auto;font-size:9px;letter-spacing:1px;color:#a3b8d7}#nx-live-source{font:11px/1.65 ui-monospace,monospace;color:#aee5d4;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;height:168px;margin:0;padding:12px;text-align:left;tab-size:2}.nx-live-bottom{padding:11px 12px;border-top:1px solid #ffffff19;font-size:11px;color:#bcb6db}.ai-game-frame.nx-real-reveal{animation:nx-real-reveal .85s cubic-bezier(.2,.7,.3,1) both}@keyframes nx-real-reveal{from{clip-path:inset(0 100% 0 0);opacity:.65}to{clip-path:inset(0 0 0 0);opacity:1}}@media(prefers-reduced-motion:reduce){.ai-game-frame.nx-real-reveal{animation:none}}@media(max-width:570px){#nx-live-source{height:150px;font-size:10px}.nx-live-top{padding:11px 9px}}
+</style></head>
 <body>
 <header class="top"><div class="top-inner">
  <a class="brand" href="/"><span class="logo">N</span><span><strong>NEXORA</strong><small>GAME STUDIO</small></span></a>
@@ -212,25 +214,11 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
    <div class="card-top"><h2 id="ai-result-heading">Ваша игра</h2><span class="card-note" id="ai-source-label">02 / PREVIEW</span></div>
    <div id="ai-placeholder" class="stage">
     <span class="stage-icon">🎮</span>
-    <div id="ai-loading" class="ai-build-scene" hidden aria-hidden="true">
-     <div class="ai-build-backdrop"></div>
-     <div class="ai-build-composition">
-      <div class="ai-code-editor">
-       <div class="ai-code-editor-top"><i></i><i></i><i></i><small>game.js</small></div>
-       <div class="ai-code-editor-lines">
-        <span class="ai-code-text">const world = new Game();</span>
-        <span class="ai-code-text">world.createPlayer();</span>
-        <span class="ai-code-text">world.addPhysics();</span>
-        <span class="ai-code-text">render(world);</span>
-       </div>
-      </div>
-      <div class="ai-build-transfer" aria-hidden="true"><span>✧</span><i></i><span>➜</span></div>
-      <div class="ai-world-render">
-       <div class="ai-voxel"><i class="ai-cube-front"></i><i class="ai-cube-back"></i><i class="ai-cube-right"></i><i class="ai-cube-left"></i><i class="ai-cube-top"></i><i class="ai-cube-bottom"></i></div>
-       <span class="ai-render-spark ai-spark-one">✦</span><span class="ai-render-spark ai-spark-two">✧</span>
-      </div>
-     </div>
-     <div class="ai-build-indicator"><i></i><i></i><i></i><span>Генерация игрового кода</span></div>
+    <div id="ai-loading" class="ai-build-scene nx-live-build" hidden>
+     <div class="nx-live-top"><span class="nx-live-dot"></span><strong id="nx-live-provider">Подключение к ИИ</strong><span id="nx-live-count">0 символов</span></div>
+     <div class="nx-live-file"><span>⌘</span> game.html <span class="nx-live-tag">LIVE SOURCE</span></div>
+     <pre id="nx-live-source" aria-label="Поступающий исходный код игры">Ожидаю первые строки кода…</pre>
+     <div class="nx-live-bottom" id="nx-live-phase" role="status">Ожидание ответа модели</div>
     </div>
     <strong id="ai-placeholder-title">Игра появится здесь</strong>
     <p id="ai-placeholder-description">Опишите любую игру, её цель и управление — ИИ создаст исходный код и запустит результат здесь.</p>

@@ -28,6 +28,30 @@
   $("ai-loading").hidden=!active;
   $("ai-placeholder").classList.toggle("is-building",active);
  }
+ let lastSource='',lastAttempt=null;
+ function resetLive(){
+  lastSource='';lastAttempt=null;
+  $("nx-live-provider").textContent="Подключение к ИИ";
+  $("nx-live-count").textContent="0 символов";
+  $("nx-live-source").textContent="Ожидаю первые строки кода…";
+  $("nx-live-phase").textContent="Ожидание ответа модели";
+ }
+ function showLive(progress){
+  if(!progress||typeof progress!=="object")return;
+  const source=typeof progress.source==="string"?progress.source:"";
+  const pre=$("nx-live-source");
+  if(progress.attempt!==lastAttempt){lastAttempt=progress.attempt;lastSource="";}
+  $("nx-live-provider").textContent=String(progress.provider||"NEXORA AI").slice(0,80);
+  $("nx-live-count").textContent=source.length.toLocaleString("ru-RU")+" символов";
+  $("nx-live-phase").textContent=progress.phase==="writing"?"Получаю реальный HTML / CSS / JS":"Ожидаю ответ модели";
+  if(source!==lastSource||!source){pre.textContent=source||"Ожидаю первые строки кода…";pre.scrollTop=pre.scrollHeight;lastSource=source;}
+ }
+ function revealGame(){
+  const wrapper=frame.closest(".ai-game-frame");
+  if(!wrapper)return;
+  wrapper.classList.remove("nx-real-reveal");
+  void wrapper.offsetWidth;wrapper.classList.add("nx-real-reveal");
+ }
  function saveDraft(value){
   try{localStorage.setItem(DRAFT_KEY,value.slice(0,500));}catch{}
  }
@@ -61,7 +85,7 @@
   // Only the server-sanitized, expiring same-origin URL is loaded, and it is
   // rendered with a unique opaque origin thanks to iframe[sandbox=allow-scripts].
   if(!/^\/game\/preview\/[0-9a-f-]{36}$/.test(data.url))throw Error("Некорректный адрес предпросмотра.");
-  compiled=data.html||"";frame.src=data.url;
+  compiled=data.html||"";frame.addEventListener("load",revealGame,{once:true});frame.src=data.url;
  }
  async function createGame(){
   if(busy)return;
@@ -71,11 +95,12 @@
   if(description.length<2){fail("Напишите название или короткое описание игры.");idea.focus();return;}
   if(description.length>500){fail("Описание не должно превышать 500 символов.");return;}
   setBusy(true);setStatus("ИИ создаёт "+(dimension==="3d"?"трёхмерный":"игровой")+" мир, код и управление…");
-  ready=false;setLoader(true);
+  ready=false;resetLive();setLoader(true);
   $("ai-placeholder").hidden=false;
   $("ai-result").hidden=true;$("ai-toolbar").hidden=true;
   $("ai-placeholder-title").textContent="Создаю вашу игру…";
-  $("ai-placeholder-description").textContent="ИИ определяет механику, создаёт HTML, JavaScript и "+(dimension==="3d"?"3D-сцену на WebGL.":"игровые объекты.");
+  $("ai-placeholder-description").textContent="Показываем полученные от модели строки. Игра запустится только после проверки полного кода.";
+  if(window.matchMedia("(max-width:900px)").matches)$("ai-result-card").scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth",block:"start"});
   try{
    const startJob=()=>fetch("/api/game/code",{
     method:"POST",headers:{"Content-Type":"application/json","X-NEXORA-Async":"1"},
@@ -83,6 +108,7 @@
    });
    let response=await startJob();
    let data=await response.json().catch(()=>({}));
+   showLive(data.progress);
    let jobId=data.jobId,deadline=Date.now()+185000,missing=0,restarted=false;
    while(response.status===202&&data.pending&&jobId){
     if(Date.now()>deadline)throw Error("ИИ не завершил генерацию за отведённое время.");
@@ -112,11 +138,14 @@
      continue;
     }
     missing=0;
+    showLive(data.progress);
    }
    if(!response.ok||!data.ok||typeof data.html!=="string")
     throw Error(data.message||"ИИ не смог написать игру. Попробуйте уточнить описание.");
    if(data.source!=="ai")throw Error("ИИ не создал код. Подмена вашего запроса готовым шаблоном отключена.");
    raw=data.html;code.value=raw;sourceKind=data.source;
+   showLive({provider:data.provider,phase:"writing",source:raw,attempt:"final"});
+   $("nx-live-phase").textContent="Код получен · проверка и запуск";
    const renderedDimension=data.dimension==="3d"?"3d":dimension;
    $("ai-placeholder-title").textContent="Код создан — собираю игру…";
    $("ai-placeholder-description").textContent="Проверяю HTML и подготавливаю безопасное игровое окно.";

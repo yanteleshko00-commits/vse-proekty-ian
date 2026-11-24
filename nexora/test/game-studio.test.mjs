@@ -664,3 +664,27 @@ test('Gemini transient 503 is retried once with full 3D prompt',async()=>{
  assert.equal(res.status,200);assert.equal((await res.json()).provider,'Gemini');assert.equal(calls,2);
  }finally{await new Promise(resolve=>server.close(resolve));for(const k of keys){if(prior[k]===undefined)delete process.env[k];else process.env[k]=prior[k];}}
 });
+
+test('live game stream reports actual source and excludes model thoughts',async()=>{
+ const {readGameStream}=await import('../game-code.js');
+ const chunks=[
+ {candidates:[{content:{parts:[{thought:true,text:'private reasoning'}]}}]},
+ {candidates:[{content:{parts:[{text:'<!doctype html><html>'}]}}]},
+ {candidates:[{content:{parts:[{text:'<body>Car</body></html>'}]},finishReason:'STOP'}]}
+ ];
+ const wire=chunks.map(x=>'data: '+JSON.stringify(x)+'\n\n').join('');
+ const source=[];const encoder=new TextEncoder();
+ const stream=new ReadableStream({start(c){c.enqueue(encoder.encode(wire.slice(0,47)));c.enqueue(encoder.encode(wire.slice(47)));c.close();}});
+ const result=await readGameStream(new Response(stream),true,s=>source.push(s));
+ assert.equal(source.length,2);
+ assert.equal(source[0],'<!doctype html><html>');
+ assert.equal(result.answer,'<!doctype html><html><body>Car</body></html>');
+ assert.equal(result.finish,'STOP');
+ assert.ok(!result.answer.includes('private reasoning'));
+});
+test('OpenAI style stream uses content deltas, not reasoning deltas',async()=>{
+ const {readGameStream}=await import('../game-code.js');
+ const rows=[{choices:[{delta:{reasoning_content:'ignore'}}]},{choices:[{delta:{content:'<html>'}}]},{choices:[{delta:{content:'</html>'},finish_reason:'stop'}]},{usage:{total_tokens:4},choices:[]}];
+ const result=await readGameStream(new Response(rows.map(x=>'data: '+JSON.stringify(x)+'\n\n').join('')+'data: [DONE]\n\n'),false);
+ assert.equal(result.answer,'<html></html>');assert.equal(result.finish,'stop');assert.equal(result.usage.total_tokens,4);
+});
