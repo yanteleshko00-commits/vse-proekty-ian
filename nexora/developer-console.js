@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import {deepSeekUsage} from './deepseek-quality.js';
 import {readFile} from 'node:fs/promises';
 const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 export function decodeSecret(value){
@@ -71,6 +72,16 @@ export async function developerRoute(req,res,url,base,send){
  if(path==='/developer'&&method==='GET'){if(token){startMonitor();html(200,await readFile(new URL('./developer-console.html',import.meta.url),'utf8'));}else loginPage(200,key?'':'TOTP ещё не настроен на сервере.');return true;}
  if(!token){json(401,{error:'unauthorized'});return true;}
  if(path==='/developer/logout'&&method==='POST'){sessions.delete(token);send(res,303,'',{Location:'/developer','Set-Cookie':setCookie('')});return true;}
+ if(path==='/developer/api/owner'&&method==='GET'){
+ const usage=deepSeekUsage();
+ const providers=Object.fromEntries(Object.entries({DeepSeek:['DEEPSEEK_API_KEY'],OpenAI:['OPENAI_API_KEY'],Gemini:['GEMINI_API_KEY'],Groq:['GROQ_API_KEY'],OpenRouter:['OPENROUTER_API_KEY'],Yandex:['YANDEX_API_KEY','YANDEX_FOLDER_ID']}).map(([name,keys])=>[name,keys.every(k=>Boolean(process.env[k]))]));
+ json(200,{usage,providers,scope:'current_lobby_process',sessions:[...sessions.entries()].map(([id,created])=>({current:id===token,createdAt:new Date(created).toISOString()})),authApiConfigured:String(process.env.NEXORA_CONSOLE_SECRET||'').length>=32});return true;
+ }
+ if(path==='/developer/api/revoke-sessions'&&method==='POST'){
+ const count=sessions.size-1;for(const id of sessions.keys())if(id!==token)sessions.delete(id);
+ remember(audit,{name:'Безопасность',time:new Date().toISOString(),detail:'Отозвано других сессий: '+count});
+ json(200,{revoked:count});return true;
+ }
  if(path==='/developer/api/status'&&method==='GET'){startMonitor();json(200,{snapshot,errors,audit});return true;}
  if(path==='/developer/api/refresh'&&method==='POST'){if(!snapshot||Date.now()-Date.parse(snapshot.checkedAt)>30000)void monitor();json(202,{ok:true});return true;}
  if(path==='/developer/api/users'&&['GET','POST'].includes(method)){
