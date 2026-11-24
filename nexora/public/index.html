@@ -589,7 +589,9 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 @media(max-width:365px){.register-button{font-size:9px;padding:0 6px}.login-button{padding:0 7px!important}.brand-copy strong{font-size:11px}}
 </style>
 
-</head>
+<style id="nx-ecosystem-home">
+.hero{min-height:0;gap:26px;padding:40px 0 28px;align-items:center}.hero-content h1{font-size:clamp(36px,5.2vw,68px);line-height:1.05}.nx-ecosystem{position:relative;height:310px;min-width:0;isolation:isolate;display:grid;place-items:center;overflow:hidden;border:1px solid #8b77c529;border-radius:28px;background:radial-gradient(ellipse at center,#9478df20,transparent 72%)}.nx-ecosystem:before,.nx-ecosystem:after{content:"";position:absolute;inset:14% 12%;border:1px dashed #9581c94d;border-radius:50%;z-index:-1}.nx-ecosystem:after{inset:24% 24%;border-style:solid}.nx-eco-core{width:94px;height:94px;border-radius:28px;display:grid;place-items:center;font-size:46px;font-weight:800;background:linear-gradient(145deg,#9b87ef,#6950c5);color:white;box-shadow:0 14px 40px #7f5cd84f;position:relative}.nx-eco-core span{position:absolute;bottom:-22px;font:9px system-ui;letter-spacing:1px;white-space:nowrap;color:var(--muted)}.nx-eco-node{position:absolute;display:flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid #9d8cc84a;border-radius:13px;background:var(--surface,#f7f4ff);color:var(--text,#231d38);font-size:12px;font-weight:650;box-shadow:0 6px 20px #30204f12;animation:nx-float 5s ease-in-out infinite alternate}.nx-eco-node b{font-size:18px;color:#9b83ee}.n1{left:8%;top:12%}.n2{right:6%;top:12%;animation-delay:-1s}.n3{left:3%;top:45%;animation-delay:-2s}.n4{right:4%;top:45%;animation-delay:-3s}.n5{left:12%;bottom:12%;animation-delay:-4s}.n6{right:9%;bottom:12%;animation-delay:-.5s}@keyframes nx-float{to{transform:translateY(-6px)}}:root[data-theme=dark] .nx-eco-node{background:#262139;color:#eee8fc}@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .nx-eco-node{background:#262139;color:#eee8fc}}@media(max-width:760px){.hero{padding:28px 0 16px;gap:14px}.hero-content h1{font-size:clamp(34px,9vw,48px)}.hero-copy{font-size:14px}.nx-ecosystem{height:185px;border-radius:20px}.nx-eco-core{width:57px;height:57px;border-radius:18px;font-size:30px}.nx-eco-core span{font-size:7px;bottom:-15px}.nx-eco-node{padding:5px 7px;gap:4px;font-size:10px;border-radius:9px}.nx-eco-node b{font-size:14px}.n1,.n2{top:9%}.n5,.n6{bottom:8%}.n3{left:2%}.n4{right:2%}.hero-meta{margin-top:12px}}@media(prefers-reduced-motion:reduce){.nx-eco-node{animation:none}} 
+</style></head>
 <body>
 <header class="topbar">
   <div class="shell topbar-inner">
@@ -615,21 +617,16 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 <main class="shell">
   <section class="hero" aria-labelledby="greeting">
     <div class="hero-content">
-      <div class="eyebrow"><span class="pulse"></span> ПРОСТРАНСТВО ВАШИХ ИДЕЙ</div>
+      <div class="eyebrow"><span class="pulse"></span> ЕДИНАЯ AI-ЭКОСИСТЕМА</div>
       <h1 id="greeting">Здравствуйте!<br><span>Что создадим сегодня?</span></h1>
-      <p class="hero-copy">От первого замысла до готового результата. Исследуйте инструменты NEXORA и создавайте то, что раньше только представляли.</p>
+      <p class="hero-copy">Одна экосистема для общения с ИИ, учёбы, творчества и разработки. Выберите инструмент и начните.</p>
       
       <div class="hero-meta"><span class="hero-meta-dot"></span> Творчество, учёба и AI в одном месте</div>
     </div>
-    <div class="hero-gallery" aria-hidden="true">
-      <div class="hero-gallery-card hero-gallery-left"><em>EXPLORE</em></div>
-      <div class="hero-gallery-card hero-gallery-primary"><em>CREATE</em></div>
-      <div class="hero-gallery-card hero-gallery-right"><em>IMAGINE</em></div>
-      <div class="hero-gallery-label"><span>✦</span> MADE WITH NEXORA</div>
-    </div>
+    <div class="nx-ecosystem" aria-hidden="true"><div class="nx-eco-core">N<span>ONE SPACE · SIX TOOLS</span></div><div class="nx-eco-node n1"><b>✦</b><span>AI-чат</span></div><div class="nx-eco-node n2"><b>▧</b><span>Изображения</span></div><div class="nx-eco-node n3"><b>∑</b><span>Математика</span></div><div class="nx-eco-node n4"><b>¶</b><span>Текст</span></div><div class="nx-eco-node n5"><b>◇</b><span>Игры</span></div><div class="nx-eco-node n6"><b>▤</b><span>Проекты</span></div></div>
   </section>
 
-  <div class="discovery" role="search"><span class="discovery-icon" aria-hidden="true">⌕</span><input id="tool-search" type="search" autocomplete="off" placeholder="Найти инструмент…" aria-label="Поиск по инструментам"><span class="discovery-count" id="search-count">7 инструментов</span></div>
+  <div class="discovery" role="search"><span class="discovery-icon" aria-hidden="true">⌕</span><input id="tool-search" type="search" autocomplete="off" placeholder="Найти инструмент…" aria-label="Поиск по инструментам"><span class="discovery-count" id="search-count">6 инструментов</span></div>
   <div class="tools-heading"><div><span class="tools-eyebrow">DISCOVER / 01</span><h2>Выберите свой инструмент</h2></div><p>Все возможности для воплощения ваших идей.</p></div>
   <section class="grid" id="tools" aria-label="Основные инструменты">
     <a class="tile" data-tool="project" href="https://vse-proekty-ian-1.onrender.com/" target="_blank" rel="noopener">
@@ -660,13 +657,6 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
       <p>Создание, скачивание и редактирование изображений по вашему описанию.</p>
 
     </a>
-    <button class="tile" type="button" data-tool="lesson">
-      <span class="status">Скоро</span>
-      <span class="tile-top">⌘</span>
-      <h3>Подготовиться к уроку</h3>
-      <p>Конспект, определения, примеры и вопросы для повторения.</p>
-
-    </button>
     <a class="tile" data-tool="text" href="https://nexora-text-studio.onrender.com/">
       <span class="status ready">Доступно</span>
       <span class="tile-top">¶</span>
@@ -826,7 +816,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
     searchCount.textContent=query?visible+' из '+allTiles.length:allTiles.length+' инструментов';
   });
   var recentKey='nexora-recent-tools';
-  function readRecent(){try{return JSON.parse(localStorage.getItem(recentKey)||'[]').filter(function(x){return x&&typeof x.title==='string'&&typeof x.id==='string'}).slice(0,50)}catch(e){return[]}}
+  function readRecent(){try{return JSON.parse(localStorage.getItem(recentKey)||'[]').filter(function(x){return x&&typeof x.title==='string'&&['project','math','chat','image','text','game'].includes(x.id)}).slice(0,50)}catch(e){return[]}}
   function recentDate(item){if(!item.usedAt)return 'Недавно открывали';var d=new Date(item.usedAt);return isNaN(d.getTime())?'Недавно открывали':d.toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
   var recentImages={project:'https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=1400&q=90',math:'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=1400&q=90',chat:'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1400&q=90',image:'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1400&q=90',lesson:'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1400&q=90',text:'https://images.unsplash.com/photo-1731963094554-c5c981ccdefd?auto=format&fit=crop&fm=jpg&q=85&w=1600'};
   function makeRecentIcon(item){var icon=document.createElement('span');icon.className='recent-icon';var src=recentImages[item.id];if(src){var img=document.createElement('img');img.src=src;img.alt='';img.loading='lazy';img.decoding='async';img.onerror=function(){icon.textContent=item.icon||'✦'};icon.appendChild(img)}else icon.textContent=item.icon||'✦';return icon}

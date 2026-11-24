@@ -419,7 +419,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 @media(prefers-reduced-motion:reduce){.nx-gallery[open]{animation:none}}
 @media print{.nx-view-open,.nx-view-close,.nx-gallery{display:none!important}}
 </style>
-</head>
+<style>.stage .nx-math-motion{width:180px!important;height:115px!important;display:flex;flex-direction:column;gap:0;padding:7px;animation:none}.nx-math-motion svg{width:100%;height:83px;flex:none}.stage .nx-math-motion span{font:italic 16px Georgia,serif!important}.nx-curve{stroke-dasharray:240;stroke-dashoffset:240;animation:nx-plot 3s ease-in-out infinite}@keyframes nx-plot{0%{stroke-dashoffset:240}65%,100%{stroke-dashoffset:0}}@media(prefers-reduced-motion:reduce){.nx-curve{animation:none;stroke-dashoffset:0}.nx-math-motion:before,.nx-math-motion:after{animation:none!important}}</style></head>
 <body>
 <header class="topbar"><div class="wrap top-inner">
 <a class="brand" href="/" aria-label="NEXORA Math Studio"><span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M8 24V8l16 16V8" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="brand-copy"><b>NEXORA</b><small>MATH STUDIO</small></span></a>
@@ -496,7 +496,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 <div class="preview-head"><h3>Решение</h3><span id="result-status">Здесь появится разбор задачи</span></div>
 <div class="stage" id="stage">
 <div class="empty" id="empty"><div class="empty-icon" aria-hidden="true">∑</div><h3>Всё начинается с условия</h3><p>Введите задачу в поле выше и нажмите «Решить задачу». Здесь появятся шаги, формулы и ответ.</p></div>
-<div class="loader" id="loader" role="status" aria-live="polite"><div class="math-spinner" aria-hidden="true"><span>∑</span></div><h3 id="loader-title">Готовлю запрос…</h3><p id="loader-detail">Подготавливаю условие задачи.</p><div class="progress" aria-label="Идёт обработка, точный процент неизвестен"><i></i></div><p class="loader-elapsed" id="loader-elapsed" aria-live="off">Прошло 0 с</p><p class="loader-hint">Этапы отображаются приблизительно. Сложные задачи могут потребовать больше времени.</p><button class="loader-cancel" id="cancel-solve" type="button">Отменить решение</button></div>
+<div class="loader" id="loader" role="status" aria-live="polite"><div class="math-spinner nx-math-motion" aria-hidden="true"><svg viewBox="0 0 180 100" fill="none"><path d="M15 84H168M35 94V9" stroke="currentColor" opacity=".35"/><path class="nx-curve" d="M17 77Q48 8 79 59T166 22" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="79" cy="59" r="4" fill="currentColor"/></svg><span>y = f(x)</span></div><h3 id="loader-title">Готовлю запрос…</h3><p id="loader-detail">Подготавливаю условие задачи.</p><div class="progress" aria-label="Идёт обработка, точный процент неизвестен"><i></i></div><p class="loader-elapsed" id="loader-elapsed" aria-live="off">Прошло 0 с</p><p class="loader-hint">Этапы отображаются приблизительно. Сложные задачи могут потребовать больше времени.</p><button class="loader-cancel" id="cancel-solve" type="button">Отменить решение</button></div>
 <div class="solution" id="solution"><div class="result" id="result"></div></div>
 </div>
 <div class="result-actions" id="result-actions"><button class="action" id="copy" type="button">Копировать</button><button class="action" id="download" type="button">Скачать .txt</button><button class="action" id="print" type="button">Печать / PDF</button></div>

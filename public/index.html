@@ -656,7 +656,7 @@ html[data-theme="dark"] .lobby-card-copy small{color:#a8b7ce}html[data-theme="da
 @media(prefers-reduced-motion:reduce){.nx-gallery[open]{animation:none}}
 @media print{.nx-view-open,.nx-view-close,.nx-gallery{display:none!important}}
 </style>
-</head>
+<style>.nx-project-motion{position:relative;width:230px;max-width:90%;height:112px;margin:12px auto 18px;isolation:isolate}.nx-project-motion[hidden]{display:none!important}.nx-slide{position:absolute;width:104px;height:78px;left:calc(50% - 52px);top:15px;border:1px solid #9e85d980;border-radius:11px;background:#eee9ff;padding:10px;display:grid;gap:5px;box-shadow:0 8px 18px #644bb52b;animation:nx-slide-fan 3s ease-in-out infinite}.nx-slide i{height:5px;border-radius:6px;background:#9277d4}.nx-slide b{height:23px;border-radius:5px;background:linear-gradient(135deg,#bda6ed,#779cdd)}.nx-slide-a{--nx-x:-57px;--nx-r:-12deg;z-index:1}.nx-slide-b{--nx-x:0px;--nx-r:0deg;z-index:3;animation-delay:.15s}.nx-slide-c{--nx-x:57px;--nx-r:12deg;z-index:2;animation-delay:.3s}@keyframes nx-slide-fan{0%,100%{transform:translateX(0) rotate(0)}45%,75%{transform:translateX(var(--nx-x)) rotate(var(--nx-r))}}@media(prefers-reduced-motion:reduce){.nx-slide{animation:none;transform:translateX(var(--nx-x)) rotate(var(--nx-r))}}</style></head>
 <body>
 
 <header><div class="container hi">
@@ -705,7 +705,7 @@ html[data-theme="dark"] .lobby-card-copy small{color:#a8b7ce}html[data-theme="da
 
 <div class="progress-box" id="progressBox">
 <div class="progress-top"><span>Создание проекта</span><span class="reasoning-indicator" id="thinkingIndicator"><span class="reasoning-orb" aria-hidden="true"><i style="--dot:0"></i><i style="--dot:1"></i><i style="--dot:2"></i><i style="--dot:3"></i><i style="--dot:4"></i><i style="--dot:5"></i><i style="--dot:6"></i><i style="--dot:7"></i><i style="--dot:8"></i><i style="--dot:9"></i></span><span id="thinkingLabel">Размышление</span></span></div>
-<div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+<div class="nx-project-motion" id="nx-project-motion" aria-hidden="true"><div class="nx-slide nx-slide-a"><i></i><b></b><i></i></div><div class="nx-slide nx-slide-b"><i></i><i></i><i></i></div><div class="nx-slide nx-slide-c"><b></b><i></i><i></i></div></div><div class="progress"><div class="progress-bar" id="progressBar"></div></div>
 <div class="progress-status" id="status">🔎 Анализируем тему...</div>
 
 <div class="project-result" id="projectResult">
@@ -972,6 +972,7 @@ function showRestoredProject(){
 }
 
 function setThinkingState(label="Размышление",done=false){
+  const motion=document.getElementById("nx-project-motion");if(motion)motion.hidden=done;
   const indicator=document.getElementById("thinkingIndicator");
   const text=document.getElementById("thinkingLabel");
   if(text)text.textContent=label;
