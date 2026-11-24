@@ -170,7 +170,7 @@ test('Game Studio supports genuine editable HTML code and swipe-to-arrow control
 test('Public game maker returns a clear provider error without silently substituting a template',async()=>{
  const port=24000+process.pid%15000;
  const child=spawn(process.execPath,[join(root,'server.js')],{
-  env:{...process.env,PORT:String(port),NEXORA_CHAT_INTERNAL_TOKEN:'',SESSION_SECRET:'',NODE_ENV:'test'},stdio:'ignore'
+  env:{...process.env,PORT:String(port),NEXORA_CHAT_INTERNAL_TOKEN:'',SESSION_SECRET:'',OPENROUTER_API_KEY:'',GROQ_API_KEY:'',NODE_ENV:'test'},stdio:'ignore'
  });
  try{
   let ready=false;
@@ -237,7 +237,7 @@ test('Unauthenticated players can create an original game through the protected 
  const port=22500+process.pid%17000;
  const child=spawn(process.execPath,[join(root,'server.js')],{
   env:{...process.env,PORT:String(port),NODE_ENV:'test',SESSION_SECRET:'',
-   NEXORA_CHAT_INTERNAL_TOKEN:secret,
+   OPENROUTER_API_KEY:'',GROQ_API_KEY:'',NEXORA_CHAT_INTERNAL_TOKEN:secret,
    PROJECT_GENERATOR_URL:'http://127.0.0.1:'+mock.address().port},
   stdio:'ignore'
  });
