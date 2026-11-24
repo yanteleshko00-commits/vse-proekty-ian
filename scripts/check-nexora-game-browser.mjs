@@ -6,36 +6,47 @@ const chrome=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin
 assert.ok(chrome,'Chrome executable not found');
 const browser=await chromium.launch({executablePath:chrome,headless:true,args:['--no-sandbox']});
 try{
- const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+ const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,acceptDownloads:true});
  const errors=[];
  page.on('pageerror',error=>errors.push(error.message));
+ const description='Ритм-игра: ударяй по светящимся нотам в такт и собирай комбинации';
+ const generated='<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#142039;color:#fff;font-family:system-ui}canvas{width:100%;height:auto}</style></head><body><h2>Ритм-игра</h2><canvas id="play" width="720" height="420"></canvas><script>const c=document.querySelector("canvas"),x=c.getContext("2d");let t=0;document.addEventListener("keydown",e=>{if(e.key==="ArrowLeft")t++});function loop(){t++;x.fillStyle="#132e5b";x.fillRect(0,0,720,420);x.fillStyle="#ffcd72";x.fillRect(t%700,100,32,32);requestAnimationFrame(loop)}loop();</script></body></html>';
+ let observedRequest=null;
+ await page.route('**/api/game/code',async route=>{
+  observedRequest=JSON.parse(route.request().postData());
+  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,html:generated,title:description,source:'ai',provider:'QA simulated AI'})});
+ });
  await page.goto('https://nexora-lobby.onrender.com/game',{waitUntil:'domcontentloaded',timeout:90000});
- await page.locator('#ai-idea').fill('Ритм-игра: ударяй по светящимся нотам в такт и собирай комбинации');
+ assert.equal(await page.locator('#ai-login-required').count(),0,'Login requirement should be absent');
+ await page.locator('#ai-idea').fill(description);
  await page.locator('#ai-build').click();
- await page.locator('#ai-login-required').waitFor({state:'visible',timeout:30000});
- assert.equal(await page.locator('#ai-error').isVisible(),true);
- assert.match(await page.locator('#ai-error').textContent(),/NEXORA ID/);
- assert.match(await page.locator('#ai-login-required a').getAttribute('href'),/\/auth\/start/);
- assert.equal(await page.locator('#ai-result').isVisible(),false,'Guest should never receive a fake preset game');
- assert.equal(await page.locator('#ai-frame').getAttribute('src'),null);
- console.log('BROWSER FREE-FORM AI REQUEST','guest correctly prompted to sign in; no misleading preset');
-
+ await page.waitForFunction(()=>document.querySelector('#ai-frame')?.getAttribute('src')?.startsWith('/game/preview/'),{timeout:35000});
+ assert.equal(observedRequest.idea,description,'The full arbitrary mechanic must reach the generation API');
+ const game=await (await page.locator('#ai-frame').elementHandle()).contentFrame();
+ await game.locator('#play').waitFor({state:'visible',timeout:15000});
+ await page.waitForTimeout(350);
+ const alpha=await game.evaluate(()=>document.querySelector('canvas').getContext('2d').getImageData(180,200,1,1).data[3]);
+ assert.equal(alpha,255,'Game canvas did not render');
+ console.log('MOBILE GAME CREATION','anonymous AI flow=OK','dynamic code=OK','sandbox preview=OK');
+ await page.locator('#ai-frame').scrollIntoViewIfNeeded();
+ await game.evaluate(()=>{window.__keys=[];document.addEventListener('keydown',e=>window.__keys.push(e.key));});
+ await page.locator('[data-game-arrow="left"]').click();
+ await page.waitForTimeout(200);
+ assert.ok((await game.evaluate(()=>window.__keys)).includes('ArrowLeft'));
+ console.log('MOBILE GAME CONTROLS','left arrow=OK');
+ await page.locator('#ai-code-tab').click();
+ assert.equal(await page.locator('#ai-code-view').isVisible(),true);
+ assert.ok((await page.locator('#ai-source').inputValue()).includes('Ритм-игра'));
+ await page.locator('#ai-source').fill(generated.replace('Ритм-игра','Новая музыка'));
+ await page.locator('#ai-run-code').click();
+ await page.waitForFunction(()=>document.querySelector('#ai-game-view')?.hidden===false,{timeout:25000});
+ console.log('MOBILE GAME SOURCE EDITOR','edit and rerun=OK');
+ const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#ai-download').click()]);
+ assert.ok(download.suggestedFilename().endsWith('.html'));
+ console.log('MOBILE HTML DOWNLOAD','OK');
  await page.reload({waitUntil:'domcontentloaded',timeout:60000});
- assert.equal(await page.locator('#ai-idea').inputValue(),
-   'Ритм-игра: ударяй по светящимся нотам в такт и собирай комбинации',
-   'User description should survive sign-in navigation/reload');
- console.log('BROWSER IDEA DRAFT','custom gameplay description persisted');
-
- // Sample buttons provide descriptions, not prebuilt games.
- await page.getByRole('button',{name:/Платформер/}).first().click();
- await page.locator('#ai-login-required').waitFor({state:'visible',timeout:20000});
- assert.equal(await page.locator('#ai-result').isVisible(),false);
- console.log('BROWSER EXAMPLE','submitted to AI-only route rather than fixed template');
-
- await page.locator('#ai-classic-toggle').click();
- assert.equal(await page.locator('#classic-workspace').isVisible(),true);
- console.log('BROWSER CLASSIC GAMES','clearly separate from AI generator');
-
- assert.deepEqual(errors,[],'JavaScript page errors: '+JSON.stringify(errors));
- console.log('NEXORA GAME STUDIO AI-ONLY MOBILE E2E PASS');
+ assert.equal(await page.locator('#ai-idea').inputValue(),description);
+ console.log('MOBILE DESCRIPTION DRAFT','preserved=OK');
+ assert.deepEqual(errors,[],'JavaScript errors: '+JSON.stringify(errors));
+ console.log('NEXORA PUBLIC GAME CREATOR BROWSER E2E PASS');
 }finally{await browser.close();}
