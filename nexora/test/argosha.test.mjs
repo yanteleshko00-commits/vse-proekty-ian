@@ -37,10 +37,13 @@ test('NEXORA header and favicon use the same clean N-only SVG',async()=>{
  const logo=await readFile(join(here,'public/nexora-mark.svg'),'utf8');
  const html=await readFile(join(here,'public/index.html'),'utf8');
  assert.match(logo,/<svg/);
- assert.match(logo,/<path d="M34 94V34L94 94V34"/);
+ assert.match(logo,/<path d="M39 88V40M89 40V88"/);
+ assert.match(logo,/<path d="M39 40L89 88"/);
+ const {brandSVG}=await import('../brand.js');
+ assert.equal(logo.trim(),brandSVG);
  assert.doesNotMatch(logo,/<text|<image|🎮|🎨|📐/);
- assert.match(html,/<link rel="icon" type="image\/svg\+xml" href="\/nexora-mark.svg">/);
- assert.match(html,/<img src="\/nexora-mark.svg" alt="" width="40" height="40"/);
+ assert.match(html,/<link rel="icon" type="image\/svg\+xml" href="\/nexora-mark\.svg\?v=2">/);
+ assert.match(html,/<img class="nx-brand-img" src="\/nexora-mark\.svg\?v=2" alt=""/);
 });
 
 test('Argosha contexts are the six public NEXORA sites',()=>{
