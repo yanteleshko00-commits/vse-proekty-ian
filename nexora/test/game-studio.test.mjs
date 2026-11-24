@@ -7,6 +7,8 @@ import {spawn} from 'node:child_process';
 import vm from 'node:vm';
 import {GAME_TYPES,gameType,basicGamePlan} from '../game-studio.js';
 
+// The build must never use a real Gemini credential from Render.
+delete process.env.GEMINI_API_KEY;
 const root=fileURLToPath(new URL('..',import.meta.url));
 test('game routing and safe presets',()=>{
  assert.deepEqual(GAME_TYPES,['auto','catch','snake','target']);
@@ -510,13 +512,47 @@ test('a rejected primary AI answer uses the other code provider and preserves th
  const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  try{
-  const response=await fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idea:'гонки на Луне',dimension:'2d'})});
+  const response=await fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'192.0.2.41'},body:JSON.stringify({idea:'гонки на Луне',dimension:'2d'})});
   assert.equal(response.status,200);
   const game=await response.json();
   assert.equal(game.source,'ai');
   assert.equal(game.provider,'OpenRouter backup');
   assert.match(game.html,/<\/html>/);
   assert.deepEqual(calls,['test-primary','test-backup']);
+ }finally{
+  await new Promise(resolve=>server.close(resolve));
+  for(const name of names){if(before[name]===undefined)delete process.env[name];else process.env[name]=before[name];}
+ }
+});
+
+
+test('Gemini is the primary provider and reads native content parts without exposing reasoning',async()=>{
+ const {createServer}=await import('node:http');
+ const {makeCodeGame}=await import('../game-code.js');
+ const names=['GEMINI_API_KEY','GAME_GEMINI_MODEL','OPENROUTER_API_KEY'];
+ const before=Object.fromEntries(names.map(name=>[name,process.env[name]]));
+ process.env.GEMINI_API_KEY='test-gemini-key';
+ process.env.GAME_GEMINI_MODEL='gemini-3.8-flash';
+ process.env.OPENROUTER_API_KEY='test-reserve-key';
+ const html='<!doctype html><html><head><meta charset="utf-8"><title>3D</title></head><body><canvas width="720" height="420"></canvas><script>const c=document.querySelector("canvas"),gl=c.getContext("webgl");let n=0;document.addEventListener("keydown",e=>{n++});function frame(){gl.clearColor(n%2,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);requestAnimationFrame(frame)}frame();</script></body></html>';
+ let calls=0;
+ const mock=async(url,options)=>{
+  calls++;
+  assert.equal(url,'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent');
+  assert.equal(options.headers['x-goog-api-key'],'test-gemini-key');
+  assert.match(JSON.parse(options.body).contents[0].parts[0].text,/3D гонки/);
+  return new Response(JSON.stringify({candidates:[{content:{parts:[{thought:true,text:'internal'},{text:html}]},finishReason:'STOP'}]}),{status:200});
+ };
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{
+  const response=await fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'192.0.2.42'},body:JSON.stringify({idea:'3D гонки',dimension:'3d'})});
+  assert.equal(response.status,200);
+  const game=await response.json();
+  assert.equal(game.provider,'Gemini');
+  assert.equal(game.dimension,'3d');
+  assert.equal(game.html,html);
+  assert.equal(calls,1);
  }finally{
   await new Promise(resolve=>server.close(resolve));
   for(const name of names){if(before[name]===undefined)delete process.env[name];else process.env[name]=before[name];}
