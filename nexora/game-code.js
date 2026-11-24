@@ -148,6 +148,7 @@ export function gameCodePrompt(idea,{dimension='auto'}={}){
   'Для анимации используй requestAnimationFrame. Для 2D — canvas 2D или DOM; для настоящего 3D — WebGL/WebGL2 со встроенными шейдерами GLSL и матрицей перспективы/камерой (без библиотек). Для canvas ширина 720 высота 420, CSS width:100%; поддерживай экраны телефонов и viewport. Без внешнего доступа в сеть.',
   'На ВСЕХ играх сделай мобильное управление. Слушай document.addEventListener("keydown"/"keyup") со стрелками и WASD; для действия используй пробел и/или pointerdown на canvas. NEXORA переводит свайпы и экранные кнопки в стрелки и пробел. Для 3D-поворота камеры дополнительно слушай document.addEventListener("nexora-game-look",e=>{const {dx,dy}=e.detail; ...}) и меняй yaw/pitch, ограничивая угол pitch. Для игр с тапами сделай касания целей. Не зависни без управления на телефоне.',
   'Показывай короткую инструкцию, понятные элементы интерфейса, хорошие контрастные цвета. Язык игры — русский. Если запрос можно выполнить только в ограниченной 2D-версии, реализуй наиболее важную механику, не выдавай её за полноценную коммерческую игру.',
+  'Требование к ответу: сразу начни с <!doctype html><html, закончи </html>. Не используй markdown, комментарии перед кодом, разъяснения, вопросы или отступления. Код обязан выполняться как единый обычный script без импортов.',
   'ЗАПРОС ПОЛЬЗОВАТЕЛЯ: '+idea
  ].join('\n');
 }
@@ -176,12 +177,16 @@ function gameTextProviders(){
   model:process.env.GAME_GROQ_MODEL||process.env.ARGOSHA_GROQ_MODEL||'openai/gpt-oss-20b'
  });
  if(process.env.OPENROUTER_API_KEY?.trim())providers.push({
-  name:'OpenRouter',key:process.env.OPENROUTER_API_KEY.trim(),
+  name:'OpenRouter Code',key:process.env.OPENROUTER_API_KEY.trim(),
   url:'https://openrouter.ai/api/v1/chat/completions',
-  model:process.env.GAME_OPENROUTER_MODEL||process.env.ARGOSHA_OPENROUTER_MODEL||'openrouter/free'
+  // Prefer a code-specific free model, rather than selecting a random free
+  // conversational model that frequently truncates complete HTML games.
+  model:process.env.GAME_OPENROUTER_MODEL||'cohere/north-mini-code:free'
  });
  if(process.env.OPENROUTER_API_KEY?.trim()){
-  const backup=process.env.GAME_OPENROUTER_FALLBACK_MODEL||process.env.ARGOSHA_OPENROUTER_FALLBACK_MODEL||'google/gemma-4-26b-a4b-it:free';
+  // A second free route if the coding-specific pool is exhausted.
+  // Paid models are never selected implicitly: override via GAME_* env only.
+  const backup=process.env.GAME_OPENROUTER_FALLBACK_MODEL||'openrouter/free';
   if(!providers.some(p=>p.url==='https://openrouter.ai/api/v1/chat/completions'&&p.model===backup))
    providers.push({name:'OpenRouter backup',key:process.env.OPENROUTER_API_KEY.trim(),
     url:'https://openrouter.ai/api/v1/chat/completions',model:backup});

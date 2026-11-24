@@ -417,3 +417,43 @@ test('anonymous 3D game request forwards dimension and returns WebGL rather than
   if(priorRouter===undefined)delete process.env.OPENROUTER_API_KEY;else process.env.OPENROUTER_API_KEY=priorRouter;
  }
 });
+
+
+test('public Game Studio prioritizes the dedicated free coding model over random OpenRouter routing',async()=>{
+ const {createServer}=await import('node:http');
+ const {makeCodeGame}=await import('../game-code.js');
+ const priorRouter=process.env.OPENROUTER_API_KEY,priorGroq=process.env.GROQ_API_KEY;
+ const priorGameModel=process.env.GAME_OPENROUTER_MODEL;
+ process.env.OPENROUTER_API_KEY='testing-only-openrouter-key';delete process.env.GROQ_API_KEY;
+ delete process.env.GAME_OPENROUTER_MODEL;
+ let observed=null;
+ const html='<!doctype html><html><head><meta charset="utf-8"><title>Mini game</title></head><body><canvas width="720" height="420"></canvas><script>const canvas=document.querySelector("canvas"),ctx=canvas.getContext("2d");let x=20;document.addEventListener("keydown",e=>{if(e.key==="ArrowRight")x+=10});function frame(){ctx.fillStyle="#fff";ctx.fillRect(x,20,20,20);requestAnimationFrame(frame)}frame();</script></body></html>';
+ const mock=async(url,options)=>{
+  observed=JSON.parse(options.body);
+  assert.equal(url,'https://openrouter.ai/api/v1/chat/completions');
+  assert.equal(options.headers.Authorization,'Bearer testing-only-openrouter-key');
+  return new Response(JSON.stringify({choices:[{message:{content:html}}]}),{status:200,headers:{'Content-Type':'application/json'}});
+ };
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{
+  const response=await fetch('http://127.0.0.1:'+server.address().port,{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({idea:'Игра про мяч и лабиринт'})
+  });
+  assert.equal(response.status,200);
+  const data=await response.json();
+  assert.equal(data.ok,true);
+  assert.equal(data.source,'ai');
+  assert.equal(data.provider,'OpenRouter Code');
+  assert.equal(data.html,html);
+  assert.equal(observed.model,'cohere/north-mini-code:free');
+  assert.equal(observed.messages[0].role,'system');
+  assert.match(observed.messages[1].content,/ЗАПРОС ПОЛЬЗОВАТЕЛЯ: Игра про мяч и лабиринт/);
+ }finally{
+  await new Promise(resolve=>server.close(resolve));
+  if(priorRouter===undefined)delete process.env.OPENROUTER_API_KEY;else process.env.OPENROUTER_API_KEY=priorRouter;
+  if(priorGroq===undefined)delete process.env.GROQ_API_KEY;else process.env.GROQ_API_KEY=priorGroq;
+  if(priorGameModel===undefined)delete process.env.GAME_OPENROUTER_MODEL;else process.env.GAME_OPENROUTER_MODEL=priorGameModel;
+ }
+});
