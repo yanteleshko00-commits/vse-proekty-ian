@@ -175,13 +175,46 @@ export function compactGatewayGamePrompt(idea,dimension='auto'){
 export function isWebGLGame(html){
  return /<canvas[\s>]/i.test(html)&&/getContext\s*\(\s*['"](?:webgl2?|experimental-webgl)['"]/i.test(html);
 }
-function playableGameHTML(response){
- const html=normalizeGameHTML(response);
+// Models sometimes return JSON, a fenced HTML block, or a complete body
+// without the outer document. Recover only closed scripts; never invent JS.
+export function recoverGameDocument(response){
+ let raw=String(response||'').trim();
+ if(raw.startsWith('{')&&raw.endsWith('}')){
+  try{const value=JSON.parse(raw);if(typeof value.html==='string')raw=value.html;}catch{}
+ }
+ const fence=raw.match(/\x60{3}(?:html)?[ \t]*\r?\n([\s\S]*?)\x60{3}/i);
+ if(fence&&/<script[\s>]/i.test(fence[1]))raw=fence[1].trim();
+ raw=raw.replace(/<think>[\s\S]*?<\/think>/gi,'').trim();
+ const start=raw.search(/<!doctype\s+html\s*>|<html[\s>]|<head[\s>]|<body[\s>]|<canvas[\s>]|<style[\s>]/i);
+ if(start<0)return null;
+ raw=raw.slice(start);
+ const scripts=[...raw.matchAll(/<script\b[^>]*>/gi)];
+ const endings=[...raw.matchAll(/<\/script\s*>/gi)];
+ if(!scripts.length||scripts.length!==endings.length)return null;
+ if(!/<\/html>/i.test(raw)){
+  // Do not preserve trailing prose or incomplete script code.
+  const last=endings[endings.length-1];
+  raw=raw.slice(0,last.index+last[0].length)+(/<\/body>/i.test(raw.slice(last.index))?'</body>':'');
+  if(/<html[\s>]/i.test(raw)){
+   if(/<body[\s>]/i.test(raw)&&!/<\/body>/i.test(raw))raw+='</body>';
+   raw+='</html>';
+  }
+ }
+ if(!/<html[\s>]/i.test(raw)){
+  raw=raw.replace(/^<!doctype\s+html\s*>/i,'').replace(/<\/html>\s*$/i,'');
+  if(!/<head[\s>]|<body[\s>]/i.test(raw))raw='<body>'+raw+'</body>';
+  else if(/<body[\s>]/i.test(raw)&&!/<\/body>/i.test(raw))raw+='</body>';
+  raw='<!doctype html><html>'+raw+'</html>';
+ }
+ return normalizeGameHTML(raw);
+}
+export function playableGameHTML(response){
+ const html=normalizeGameHTML(response)||recoverGameDocument(response);
  if(!html||html.length>52000)return null;
  // Syntax-check AI scripts without running them. A broken script must not
  // be presented as a playable game.
  const scripts=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(match=>match[1]);
- if(!scripts.length||scripts.every(body=>body.trim().length<160))return null;
+ if(!scripts.length||scripts.every(body=>body.trim().length<40))return null;
  const code=scripts.join('\n');
  if(!/(requestAnimationFrame|setInterval|addEventListener|onkeydown|onpointerdown|onclick|ontouchstart)/i.test(code))return null;
  try{for(const body of scripts)new Script(body,{filename:'generated-game.js'});}
@@ -218,7 +251,8 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimen
   method:'POST',
   headers:{'Content-Type':'application/json','Authorization':'Bearer '+provider.key,'X-Title':'NEXORA Game Studio'},
   body:JSON.stringify({
-   model:provider.model,temperature:0.3,max_tokens:8192,
+   model:provider.model,temperature:0.2,max_tokens:12288,
+   ...(provider.url.includes('openrouter.ai')?{reasoning:{exclude:true}}:{}),
    messages:[
     {role:'system',content:'Ты профессиональный разработчик самостоятельных HTML5-игр. Отвечай только полноценным HTML-файлом с рабочим игровым кодом.'},
     {role:'user',content:prompt}
@@ -228,10 +262,15 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimen
  });
  if(!response.ok)throw Error('AI HTTP '+response.status);
  const data=await response.json().catch(()=>null);
- const content=data?.choices?.[0]?.message?.content;
- const answer=typeof content==='string'?content:Array.isArray(content)?content.map(x=>x.text||'').join(''):'';
+ const choice=data?.choices?.[0];
+ const content=choice?.message?.content;
+ const answer=typeof content==='string'?content:Array.isArray(content)?content.map(x=>typeof x==='string'?x:x.text||'').join(''):'';
  const html=playableGameHTML(answer);
- if(!html)throw Error('invalid_game_html');
+ if(!html){
+  const finish=String(choice?.finish_reason||'unknown').replace(/[^a-z_]/gi,'').slice(0,32);
+  console.warn('[game-code] Rejected provider output:',provider.name,'finish='+finish,'chars='+answer.length);
+  throw Error('invalid_game_html');
+ }
  if(dimension==='3d'&&!isWebGLGame(html))throw Error('not_webgl_3d');
  return {html,provider:provider.name};
 }
@@ -239,20 +278,22 @@ async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={})
  const prompt=gameCodePrompt(idea,{dimension});
  const deadline=Date.now()+65000;
  const direct=gameTextProviders();
- // Local providers can bypass a sleeping or unresponsive remote generator.
- // Leave time for the protected central model gateway as a fallback.
- for(const provider of direct){
+ const compact=compactGatewayGamePrompt(idea,dimension).replace('ОПИСАНИЕ ИГРЫ: ','ЗАПРОС ПОЛЬЗОВАТЕЛЯ: ');
+ async function attempt(provider,first=false){
   const remaining=deadline-Date.now();
-  if(remaining<9500)break;
-  const allowance=Math.min(direct.length>1?18500:29000,remaining-7000);
-  try{return await requestDirectGameProvider(provider,prompt,allowance,fetchImpl,dimension);}
-  catch(error){
+  if(remaining<1500)throw Error('deadline');
+  try{
+   return await requestDirectGameProvider(provider,first?prompt:compact,
+    Math.min(first&&((direct.length>1)||secret.length>=32)?27000:62000,remaining-500),fetchImpl,dimension);
+  }catch(error){
    const detail=/^AI HTTP [0-9]{3}$/.test(error.message||'')?error.message
-     :['invalid_game_html','not_webgl_3d'].includes(error.message)?error.message:error.name||'error';
+    :['invalid_game_html','not_webgl_3d'].includes(error.message)?error.message:error.name||'error';
    console.warn('[game-code] Direct text provider failed:',provider.name,detail);
+   throw error;
   }
  }
- if(secret.length>=32){
+ async function gateway(){
+  if(secret.length<32)throw Error('gateway_not_configured');
   for(const model of ['auto','alice']){
    const remaining=deadline-Date.now();
    if(remaining<5000)break;
@@ -270,10 +311,21 @@ async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={})
     console.warn('[game-code] Model response is not a complete playable HTML game');
    }catch(error){console.warn('[game-code] Generation gateway attempt failed:',error.name||'error');}
   }
+  throw Error('gateway_failed');
+ }
+ // Try the primary model once. If it fails, race independent backups instead
+ // of exhausting the deadline on sequential attempts. No preset substitution.
+ if(direct.length){
+  try{return await attempt(direct[0],true);}catch{}
+ }
+ const alternatives=direct.slice(1).map(provider=>attempt(provider));
+ if(secret.length>=32)alternatives.push(gateway());
+ if(alternatives.length){
+  try{return await Promise.any(alternatives);}catch{}
  }
  const err=new Error(
   direct.length||secret.length>=32
-   ?'ИИ-провайдеры сейчас не смогли написать игру. Попробуйте ещё раз или опишите механику проще.'
+   ?'Не удалось получить рабочий код игры от ИИ. Повторите генерацию — описание менять не нужно.'
    :'Ни один ИИ-провайдер не настроен на сервере Game Studio.'
  );
  err.status=503;throw err;
