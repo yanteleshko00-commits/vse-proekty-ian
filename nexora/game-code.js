@@ -199,14 +199,14 @@ function gameTextProviders(){
  if(process.env.OPENROUTER_API_KEY?.trim())providers.push({
   name:'OpenRouter Code',key:process.env.OPENROUTER_API_KEY.trim(),
   url:'https://openrouter.ai/api/v1/chat/completions',
-  // Prefer a code-specific free model, rather than selecting a random free
-  // conversational model that frequently truncates complete HTML games.
-  model:process.env.GAME_OPENROUTER_MODEL||'cohere/north-mini-code:free'
+  // Prefer a listed coding-focused free model (Flint) rather than a random
+  // conversational router. Explicit GAME_* overrides remain supported.
+  model:process.env.GAME_OPENROUTER_MODEL||'recursive/flint-v1.0:free'
  });
  if(process.env.OPENROUTER_API_KEY?.trim()){
-  // A second free route if the coding-specific pool is exhausted.
+  // A separately hosted free fast model if the coding-specific pool is exhausted.
   // Paid models are never selected implicitly: override via GAME_* env only.
-  const backup=process.env.GAME_OPENROUTER_FALLBACK_MODEL||'openrouter/free';
+  const backup=process.env.GAME_OPENROUTER_FALLBACK_MODEL||'nvidia/nemotron-3.5-lightning:free';
   if(!providers.some(p=>p.url==='https://openrouter.ai/api/v1/chat/completions'&&p.model===backup))
    providers.push({name:'OpenRouter backup',key:process.env.OPENROUTER_API_KEY.trim(),
     url:'https://openrouter.ai/api/v1/chat/completions',model:backup});

@@ -447,7 +447,7 @@ test('public Game Studio prioritizes the dedicated free coding model over random
   assert.equal(data.source,'ai');
   assert.equal(data.provider,'OpenRouter Code');
   assert.equal(data.html,html);
-  assert.equal(observed.model,'cohere/north-mini-code:free');
+  assert.equal(observed.model,'recursive/flint-v1.0:free');
   assert.equal(observed.messages[0].role,'system');
   assert.match(observed.messages[1].content,/ЗАПРОС ПОЛЬЗОВАТЕЛЯ: Игра про мяч и лабиринт/);
  }finally{
