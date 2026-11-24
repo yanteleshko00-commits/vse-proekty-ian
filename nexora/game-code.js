@@ -14,6 +14,10 @@ const JOB_TTL=15*60*1000;
 // Anonymous game creation is public, so bound server-side model spending.
 const MAX_CONCURRENT_GAMES=3;
 let activeGameGenerations=0;
+const providerCooldown=new Map();
+const providerId=p=>p.kind==='deepseek'?'deepseek':p.url+'|'+p.model;
+export function gameProviderRetryable(status){return [408,429,500,502,503,504].includes(status);}
+
 const API_URL=(process.env.PROJECT_GENERATOR_URL||'https://vse-proekty-ian.onrender.com').replace(/\/+$/,'');
 function send(res,status,data){
  res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
@@ -294,7 +298,7 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimen
  });
  const data=await response.json().catch(()=>null);
  if(provider.kind==='deepseek')recordDeepSeek('games',data,response.status);
- if(!response.ok)throw Error('AI HTTP '+response.status);
+ if(!response.ok)throw Object.assign(Error('AI HTTP '+response.status),{httpStatus:response.status});
  const choice=data?.choices?.[0];
  const content=choice?.message?.content;
  const candidate=data?.candidates?.[0];
@@ -314,18 +318,32 @@ async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={})
  const prompt=gameCodePrompt(idea,{dimension});
  const deadline=Date.now()+170000;
  const direct=gameTextProviders();
- const compact=compactGatewayGamePrompt(idea,dimension).replace('ОПИСАНИЕ ИГРЫ: ','ЗАПРОС ПОЛЬЗОВАТЕЛЯ: ');
+ const failures=new Set();
  async function attempt(provider,first=false){
-  const remaining=deadline-Date.now();
-  if(remaining<1500)throw Error('deadline');
-  try{
-   return await requestDirectGameProvider(provider,first?prompt:compact,
-    Math.min(first?(provider.kind==='gemini'?95000:provider.kind==='deepseek'?95000:35000):70000,remaining-500),fetchImpl,dimension);
-  }catch(error){
-   const detail=/^AI HTTP [0-9]{3}$/.test(error.message||'')?error.message
-    :['invalid_game_html','not_webgl_3d'].includes(error.message)?error.message:error.name||'error';
-   console.warn('[game-code] Direct text provider failed:',provider.name,detail);
-   throw error;
+  const id=providerId(provider),live=fetchImpl===fetch;
+  if(live&&(providerCooldown.get(id)||0)>Date.now()){failures.add('auth');throw Error('provider_cooldown');}
+  for(let n=0;n<2;n++){
+   const remaining=deadline-Date.now();
+   if(remaining<5000)throw Error('deadline');
+   try{
+    return await requestDirectGameProvider(provider,prompt,
+     Math.min(first||dimension==='3d'?95000:70000,remaining-750),fetchImpl,dimension);
+   }catch(error){
+    const status=error.httpStatus;
+    const detail=/^AI HTTP [0-9]{3}$/.test(error.message||'')?error.message
+     :['invalid_game_html','not_webgl_3d'].includes(error.message)?error.message:error.name||'error';
+    console.warn('[game-code] Direct text provider failed:',provider.name,detail);
+    if(status===401||status===403){failures.add('auth');if(live)providerCooldown.set(id,Date.now()+300000);}
+    else if(gameProviderRetryable(status))failures.add('temporary');
+    else failures.add('invalid');
+    // Gemini returned 503 intermittently in production; retry once within the
+    // existing deadline instead of abandoning the model after one overload.
+    if(n===0&&provider.kind==='gemini'&&gameProviderRetryable(status)&&Date.now()+8000<deadline){
+     if(live)await new Promise(resolve=>setTimeout(resolve,1500));
+     continue;
+    }
+    throw error;
+   }
   }
  }
  async function gateway(){
@@ -361,7 +379,7 @@ async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={})
  }
  const err=new Error(
   direct.length||secret.length>=32
-   ?'Не удалось получить рабочий код игры от ИИ. Повторите генерацию — описание менять не нужно.'
+   ?('Не удалось получить рабочий код игры от ИИ. '+(failures.has('temporary')?'Часть нейросетей временно недоступна. ':'')+(failures.has('auth')?'Есть ошибка авторизации API. ':'')+'Описание сохранено — можно повторить генерацию.')
    :'Ни один ИИ-провайдер не настроен на сервере Game Studio.'
  );
  err.status=503;throw err;
