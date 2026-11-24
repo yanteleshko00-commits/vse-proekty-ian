@@ -166,7 +166,7 @@ test('Game Studio supports genuine editable HTML code and swipe-to-arrow control
  }
  assert.match(gameEngine,/authenticated/);
 });
-test('HTTP game build and live sandbox preview work for guests with no credentials',async()=>{
+test('Public game maker returns a clear provider error without silently substituting a template',async()=>{
  const port=24000+process.pid%15000;
  const child=spawn(process.execPath,[join(root,'server.js')],{
   env:{...process.env,PORT:String(port),NEXORA_CHAT_INTERNAL_TOKEN:'',SESSION_SECRET:'',NODE_ENV:'test'},stdio:'ignore'
@@ -185,11 +185,11 @@ test('HTTP game build and live sandbox preview work for guests with no credentia
   assert.equal(client.status,200);
   const request=(path,data)=>fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
   const generated=await request('/api/game/code',{idea:'Змейка космос'});
-  assert.equal(generated.status,401);
+  assert.equal(generated.status,503);
   const body=await generated.json();
   assert.equal(body.ok,false);
-  assert.equal(body.error,'login_required');
-  assert.equal(body.loginUrl,'/auth/start');
+  assert.equal(body.error,'generation_unavailable');
+  assert.match(body.message,/ИИ|генераци/);
   assert.equal(body.html,undefined);
   const {fallbackGameHTML}=await import('../game-code.js');
   const separateClassic=await fallbackGameHTML('Змейка космос');
@@ -213,10 +213,9 @@ test('HTTP game build and live sandbox preview work for guests with no credentia
 });
 
 
-test('signed-in game maker requests original HTML from protected AI gateway',async()=>{
+test('Unauthenticated players can create an original game through the protected AI gateway',async()=>{
  const {createServer}=await import('node:http');
- const {createHmac}=await import('node:crypto');
- const secret='m'.repeat(48),sessionSecret='s'.repeat(48);
+ const secret='m'.repeat(48);
  const resultHtml='<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>AI Game</title><style>canvas{display:block;width:100%;background:black}body{margin:0}</style></head><body><canvas width="720" height="420"></canvas><script>const canvas=document.querySelector("canvas");const context=canvas.getContext("2d");let t=0;document.addEventListener("keydown",event=>{t+=event.key==="ArrowLeft"?1:2});function loop(){t++;context.fillRect(t%720,0,10,10);requestAnimationFrame(loop)}loop();</script></body></html>';
  let calls=0;
  const mock=createServer(async(req,res)=>{
@@ -236,7 +235,7 @@ test('signed-in game maker requests original HTML from protected AI gateway',asy
  await new Promise(resolve=>mock.listen(0,'127.0.0.1',resolve));
  const port=22500+process.pid%17000;
  const child=spawn(process.execPath,[join(root,'server.js')],{
-  env:{...process.env,PORT:String(port),NODE_ENV:'test',SESSION_SECRET:sessionSecret,
+  env:{...process.env,PORT:String(port),NODE_ENV:'test',SESSION_SECRET:'',
    NEXORA_CHAT_INTERNAL_TOKEN:secret,
    PROJECT_GENERATOR_URL:'http://127.0.0.1:'+mock.address().port},
   stdio:'ignore'
@@ -248,10 +247,8 @@ test('signed-in game maker requests original HTML from protected AI gateway',asy
    await new Promise(resolve=>setTimeout(resolve,130));
   }
   assert.ok(ready);
-  const encoded=Buffer.from(JSON.stringify({id:'game-maker',name:'Игрок',issuedAt:Date.now()})).toString('base64url');
-  const sig=createHmac('sha256',sessionSecret).update(encoded).digest('base64url');
   const response=await fetch('http://127.0.0.1:'+port+'/api/game/code',{
-   method:'POST',headers:{'Content-Type':'application/json',Cookie:'nexora_session='+encoded+'.'+sig},
+   method:'POST',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({idea:'Платформер с монетами'})
   });
   assert.equal(response.status,200);
@@ -284,12 +281,15 @@ test('Game Studio requests AI for arbitrary names and custom mechanics, never se
  const frontend=await readFile(join(root,'public/game-builder.js'),'utf8');
  const backend=await readFile(join(root,'game-code.js'),'utf8');
  assert.match(page,/любое название, жанр или свою механику игры/i);
- assert.match(page,/id="ai-login-required"/);
- assert.match(page,/href="\/auth\/start"/);
+ assert.doesNotMatch(page,/id="ai-login-required"/);
+ assert.doesNotMatch(page,/href="\/auth\/start"/);
+ assert.match(page,/Регистрация и вход не нужны/);
  assert.match(frontend,/data\.source!=="ai"/);
  assert.match(frontend,/nexora-game-idea-draft-v1/);
- assert.match(frontend,/response\.status===401/);
- assert.match(backend,/if\(!authenticated\)return send\(res,401/);
+ assert.doesNotMatch(frontend,/login_required|response\.status===401/);
+ assert.doesNotMatch(backend,/if\(!authenticated\)return send\(res,401/);
+ assert.match(backend,/activeGameGenerations/);
+ assert.match(backend,/used\.filter\(t=>now-t<60000\)\.length>=3/);
  assert.match(backend,/for\(const model of \['auto','alice'\]\)/);
  const route=backend.split('export async function makeCodeGame(')[1].split('export async function prepareGamePreview(')[0];
  assert.doesNotMatch(route,/fallbackGameHTML|arcadeGameHTML|miniGameHTML|blockSandboxHTML/);
