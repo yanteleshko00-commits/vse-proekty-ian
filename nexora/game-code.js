@@ -113,35 +113,79 @@ function playableGameHTML(response){
  if(!/(requestAnimationFrame|setInterval|addEventListener|onkeydown|onpointerdown|onclick|ontouchstart)/i.test(body))return null;
  return html;
 }
+function gameTextProviders(){
+ // Reuse NEXORA's existing server-only providers; never send their keys to the browser.
+ const providers=[];
+ if(process.env.GROQ_API_KEY?.trim())providers.push({
+  name:'Groq',key:process.env.GROQ_API_KEY.trim(),
+  url:'https://api.groq.com/openai/v1/chat/completions',
+  model:process.env.GAME_GROQ_MODEL||process.env.ARGOSHA_GROQ_MODEL||'openai/gpt-oss-20b'
+ });
+ if(process.env.OPENROUTER_API_KEY?.trim())providers.push({
+  name:'OpenRouter',key:process.env.OPENROUTER_API_KEY.trim(),
+  url:'https://openrouter.ai/api/v1/chat/completions',
+  model:process.env.GAME_OPENROUTER_MODEL||process.env.ARGOSHA_OPENROUTER_MODEL||'openrouter/free'
+ });
+ return providers;
+}
+async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl){
+ const response=await fetchImpl(provider.url,{
+  method:'POST',
+  headers:{'Content-Type':'application/json','Authorization':'Bearer '+provider.key,'X-Title':'NEXORA Game Studio'},
+  body:JSON.stringify({
+   model:provider.model,temperature:0.35,max_tokens:6900,
+   messages:[
+    {role:'system',content:'Ты профессиональный разработчик самостоятельных HTML5-игр. Отвечай только полноценным HTML-файлом с рабочим игровым кодом.'},
+    {role:'user',content:prompt}
+   ]
+  }),
+  signal:AbortSignal.timeout(timeout)
+ });
+ if(!response.ok)throw Error('AI HTTP '+response.status);
+ const data=await response.json().catch(()=>null);
+ const content=data?.choices?.[0]?.message?.content;
+ const answer=typeof content==='string'?content:Array.isArray(content)?content.map(x=>x.text||'').join(''):'';
+ const html=playableGameHTML(answer);
+ if(!html)throw Error('Model did not return a complete playable game');
+ return {html,provider:provider.name};
+}
 async function generateWithAI(idea,secret,{fetchImpl=fetch}={}){
- if(secret.length<32){
-  const err=new Error('Генерация ИИ пока не подключена на сервере.');
-  err.status=503;throw err;
- }
  const prompt=gameCodePrompt(idea);
  const deadline=Date.now()+65000;
- // Auto uses every configured NEXORA text provider (not only one named model).
- // Retry with the standard model if a response is invalid and time remains.
- for(const model of ['auto','alice']){
+ const direct=gameTextProviders();
+ // Local providers can bypass a sleeping or unresponsive remote generator.
+ // Leave time for the protected central model gateway as a fallback.
+ for(const provider of direct){
   const remaining=deadline-Date.now();
-  if(remaining<5500)break;
-  try{
-   const response=await fetchImpl(API_URL+'/api/nexora-chat/internal',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','X-NEXORA-Chat-Token':secret},
-    body:JSON.stringify({model,messages:[{role:'user',content:prompt}]}),
-    signal:AbortSignal.timeout(Math.min(61000,remaining))
-   });
-   if(!response.ok){console.warn('[game-code] Game provider gateway unavailable:',response.status);continue;}
-   const result=await response.json().catch(()=>null);
-   const html=playableGameHTML(result?.answer);
-   if(html)return {html,provider:String(result.provider||'NEXORA AI').slice(0,70)};
-   console.warn('[game-code] Model response is not a complete playable HTML game');
-  }catch(error){
-   console.warn('[game-code] Generation attempt failed:',error.name||'error');
+  if(remaining<9500)break;
+  const allowance=Math.min(direct.length>1?22000:29000,remaining-7000);
+  try{return await requestDirectGameProvider(provider,prompt,allowance,fetchImpl);}
+  catch(error){console.warn('[game-code] Direct text provider failed:',provider.name,error.name||'error');}
+ }
+ if(secret.length>=32){
+  for(const model of ['auto','alice']){
+   const remaining=deadline-Date.now();
+   if(remaining<5000)break;
+   try{
+    const response=await fetchImpl(API_URL+'/api/nexora-chat/internal',{
+     method:'POST',
+     headers:{'Content-Type':'application/json','X-NEXORA-Chat-Token':secret},
+     body:JSON.stringify({model,messages:[{role:'user',content:prompt}]}),
+     signal:AbortSignal.timeout(Math.min(60000,remaining-750))
+    });
+    if(!response.ok){console.warn('[game-code] Game provider gateway unavailable:',response.status);continue;}
+    const result=await response.json().catch(()=>null);
+    const html=playableGameHTML(result?.answer);
+    if(html)return {html,provider:String(result.provider||'NEXORA AI').slice(0,70)};
+    console.warn('[game-code] Model response is not a complete playable HTML game');
+   }catch(error){console.warn('[game-code] Generation gateway attempt failed:',error.name||'error');}
   }
  }
- const err=new Error('ИИ не смог подготовить полноценный код этой игры. Попробуйте уточнить механику и создать ещё раз. Готовый шаблон вместо вашей идеи не подставляется.');
+ const err=new Error(
+  direct.length||secret.length>=32
+   ?'ИИ-провайдеры сейчас не смогли написать игру. Попробуйте ещё раз или опишите механику проще.'
+   :'Ни один ИИ-провайдер не настроен на сервере Game Studio.'
+ );
  err.status=503;throw err;
 }
 
