@@ -39,6 +39,66 @@ async function readJson(req, limit = 14 * 1024 * 1024) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
 }
 
+const studioAuthSecret=()=>String(process.env.NEXORA_STUDIO_AUTH_TOKEN||process.env.NEXORA_IMAGE_RELAY_TOKEN||'').trim();
+const studioLobby=(process.env.NEXORA_LOBBY_URL||'https://nexora-lobby.onrender.com').replace(/\/$/,'');
+function studioCookie(name,value,maxAge){return name+'='+encodeURIComponent(value)+'; Path=/; HttpOnly; SameSite=Lax; Max-Age='+maxAge+(production?'; Secure':'');}
+function studioReadCookie(req,name){for(const item of String(req.headers.cookie||'').split(';')){const i=item.indexOf('=');if(i>0&&item.slice(0,i).trim()===name){try{return decodeURIComponent(item.slice(i+1).trim());}catch{return '';}}}return '';}
+function studioSign(value){return crypto.createHmac('sha256',studioAuthSecret()).update('image-studio-session-v1:'+value).digest('base64url');}
+function makeStudioSession(account){
+  const value=Buffer.from(JSON.stringify({...account,expiresAt:Date.now()+7*86400000})).toString('base64url');
+  return value+'.'+studioSign(value);
+}
+function readStudioSession(req){
+  if(studioAuthSecret().length<32)return null;
+  const parts=studioReadCookie(req,'nexora_image_session').split('.');
+  if(parts.length!==2||parts[0].length>512)return null;
+  const a=Buffer.from(parts[1]),b=Buffer.from(studioSign(parts[0]));
+  if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return null;
+  try{const p=JSON.parse(Buffer.from(parts[0],'base64url').toString('utf8'));return p.userId&&p.sessionId&&p.expiresAt>Date.now()?p:null;}catch{return null;}
+}
+async function studioCall(body){
+  if(studioAuthSecret().length<32)throw Object.assign(Error('Авторизация Image Studio ещё не настроена.'),{status:503});
+  const response=await fetch(studioLobby+'/internal/studio-auth',{method:'POST',headers:{'Content-Type':'application/json','x-nexora-studio-token':studioAuthSecret()},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw Object.assign(Error(data.message||'Не удалось проверить NEXORA ID.'),{status:response.status});
+  return data;
+}
+const studioJson={'Content-Type':'application/json; charset=utf-8','Referrer-Policy':'no-referrer'};
+function studioStart(res){
+  if(studioAuthSecret().length<32)return send(res,503,'Авторизация Image Studio ещё не настроена.');
+  const state=crypto.randomBytes(32).toString('base64url');
+  return send(res,302,'',{Location:studioLobby+'/auth/image?state='+encodeURIComponent(state),'Set-Cookie':studioCookie('nexora_image_state',state,600),'Referrer-Policy':'no-referrer'});
+}
+async function studioCallback(req,res,url){
+  const state=url.searchParams.get('state')||'',ticket=url.searchParams.get('ticket')||'';
+  const clear=studioCookie('nexora_image_state','',0);
+  if(!/^[A-Za-z0-9_-]{43}$/.test(state)||state!==studioReadCookie(req,'nexora_image_state')||!/^[A-Za-z0-9_-]{43}$/.test(ticket))return send(res,400,'Сессия входа истекла. Повторите вход.',{'Set-Cookie':clear});
+  try{
+    const data=await studioCall({action:'exchange',state,ticket});
+    if(!data.userId||!data.sessionId)throw Error('invalid_session');
+    return send(res,302,'',{Location:'/','Set-Cookie':[clear,studioCookie('nexora_image_session',makeStudioSession({userId:data.userId,sessionId:data.sessionId}),604800)],'Referrer-Policy':'no-referrer'});
+  }catch{return send(res,503,'Не удалось завершить вход. Повторите попытку.',{'Set-Cookie':clear,'Referrer-Policy':'no-referrer'});}
+}
+let imageInFlight=false;
+async function protectedImage(req,res){
+  const account=readStudioSession(req);
+  if(!account)return send(res,401,JSON.stringify({error:'not_signed_in',message:'Войдите в NEXORA ID для создания изображения.'}),studioJson);
+  if(imageInFlight)return send(res,429,JSON.stringify({error:'busy',message:'Генератор занят. Повторите запрос позже.'}),studioJson);
+  imageInFlight=true;
+  let reservationId=null,outcome='failure';
+  try{
+    const data=await studioCall({action:'reserve',userId:account.userId,sessionId:account.sessionId});
+    reservationId=data.reservationId;
+    if(!reservationId)throw Error('Не получен резерв кредитов.');
+    await generateNexoraImage(req,res);
+    if(res.statusCode>=200&&res.statusCode<300)outcome='success';
+  }catch(error){
+    if(!res.headersSent){const status=Number(error.status);return send(res,status>=400&&status<600?status:503,JSON.stringify({error:'image_request_failed',message:String(error.message||'Сервис временно недоступен.').slice(0,160)}),studioJson);}
+  }finally{
+    if(reservationId)for(let i=0;i<3;i++){try{await studioCall({action:'finalize',reservationId,outcome});break;}catch(error){if(i===2)console.error('Image usage finalization failed:',reservationId,error.name);}}
+    imageInFlight=false;
+  }
+}
 const imageRate = new Map();
 function allowArgosha(req) {
   const ip = String((process.env.RENDER === 'true' || process.env.TRUST_PROXY === 'true') ? (String(req.headers['x-forwarded-for'] || '').split(',').at(-1).trim() || req.socket.remoteAddress || 'unknown') : (req.socket.remoteAddress || 'unknown'));
@@ -577,6 +637,7 @@ const server = http.createServer(async (req, res) => {
       ok: providers.length > 0,
       service: 'nexora-image-studio',
       imageGeneratorConfigured: providers.length > 0,
+      authenticationConfigured:studioAuthSecret().length>=32,
       imageProviders: providers,
       yandexImage: { configured: yandexMissing.length === 0, missing: yandexMissing, model: 'aliceai-image-art-3.0' },
       aliceTextGateway: {
@@ -604,8 +665,10 @@ const server = http.createServer(async (req, res) => {
     return handleInternalAliceText(req, res);
   }
 
+  if(req.method==='GET'&&url.pathname==='/auth/start')return studioStart(res);
+  if(req.method==='GET'&&url.pathname==='/auth/callback')return studioCallback(req,res,url);
   if (req.method === 'POST' && url.pathname === '/api/images/generate') {
-    return generateNexoraImage(req, res);
+    return protectedImage(req, res);
   }
 
   if (req.method !== 'GET' || !['/', '/index.html'].includes(url.pathname)) {

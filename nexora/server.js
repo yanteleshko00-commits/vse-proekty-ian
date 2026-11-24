@@ -124,7 +124,8 @@ async function startLogin(req, res) {
   });
   const requestedMode = new URL(req.url, appUrl(req)).searchParams.get('mode');
   if (requestedMode === 'register') params.set('mode', 'register');
-  const oauthCookie = Buffer.from(JSON.stringify({ state, verifier, redirectUri })).toString('base64url');
+  const imageState=new URL(req.url,appUrl(req)).searchParams.get('image_state')||'';
+  const oauthCookie = Buffer.from(JSON.stringify({ state, verifier, redirectUri, imageState:/^[A-Za-z0-9_-]{43}$/.test(imageState)?imageState:null })).toString('base64url');
   const cookieHeaders = [cookie('nexora_oauth', oauthCookie, 300)];
   if (!cookies.ecosystem_device) cookieHeaders.push(cookie('ecosystem_device', deviceToken, 315360000));
   const headers = { 'Set-Cookie': cookieHeaders };
@@ -169,7 +170,7 @@ async function finishLogin(req, res, url) {
         cookie('nexora_oauth', '', 0)
       ]
     };
-    redirect(res, '/', headers);
+    redirect(res, /^[A-Za-z0-9_-]{43}$/.test(oauth.imageState||'')?'/auth/image?state='+encodeURIComponent(oauth.imageState):'/', headers);
   } catch (error) {
     console.error('NEXORA OAuth request failed:', error.message);
     redirect(res, '/?login=failed', { 'Set-Cookie': cookie('nexora_oauth', '', 0) });
@@ -211,6 +212,59 @@ async function finalizeArgoshaUsage(reservationId, outcome) {
     signal: AbortSignal.timeout(12000)
   });
   if (!response.ok) throw new Error('Не удалось завершить учёт генерации: HTTP ' + response.status);
+}
+// Studio SSO tickets are one-time, state-bound and exchanged only by the studio backend.
+const studioTickets=new Map();
+const studioAuthSecret=()=>String(process.env.NEXORA_STUDIO_AUTH_TOKEN||process.env.NEXORA_IMAGE_RELAY_TOKEN||'').trim();
+const studioHeaders={'Content-Type':'application/json; charset=utf-8','Referrer-Policy':'no-referrer'};
+function studioTokenValid(value){
+  const secret=studioAuthSecret();
+  if(typeof value!=='string'||secret.length<32)return false;
+  const a=Buffer.from(value),b=Buffer.from(secret);
+  return a.length===b.length&&crypto.timingSafeEqual(a,b);
+}
+async function authSessionCall(path,body){
+  if(authServiceApiKey.length<32)throw Object.assign(Error('NEXORA ID не настроен.'),{status:503});
+  const response=await fetch(authBase+path,{method:'POST',headers:{'Content-Type':'application/json','x-service-id':authServiceClientId,'x-service-api-key':authServiceApiKey},body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw Object.assign(Error(data.error==='no_credits'?'Бесплатные генерации закончились. Выберите пакет.':'Не удалось подтвердить сессию NEXORA ID.'),{status:response.status===401||response.status===404?401:response.status===402?402:503});
+  return data;
+}
+async function studioLogin(req,res,url){
+  const state=url.searchParams.get('state')||'';
+  if(!/^[A-Za-z0-9_-]{43}$/.test(state))return send(res,400,'Некорректный запрос.');
+  if(studioAuthSecret().length<32)return send(res,503,'Авторизация студии ещё не настроена.');
+  const account=readSession(req);
+  if(!account?.sessionId)return redirect(res,'/auth/start?image_state='+encodeURIComponent(state));
+  try{await authSessionCall('/v1/internal/session/validate',{userId:account.id,sessionId:account.sessionId});}
+  catch(error){if(error.status===401)return redirect(res,'/auth/start?image_state='+encodeURIComponent(state));return send(res,503,'NEXORA ID временно недоступен.');}
+  for(const [key,t] of studioTickets)if(t.expiresAt<=Date.now())studioTickets.delete(key);
+  if(studioTickets.size>=1000)return send(res,429,'Повторите попытку позже.');
+  const ticket=secureRandom(32);
+  studioTickets.set(ticket,{state,userId:account.id,sessionId:account.sessionId,expiresAt:Date.now()+60000});
+  return redirect(res,imageStudioUrl+'/auth/callback?ticket='+encodeURIComponent(ticket)+'&state='+encodeURIComponent(state),{'Referrer-Policy':'no-referrer'});
+}
+async function studioInternal(req,res){
+  if(!studioTokenValid(req.headers['x-nexora-studio-token']))return send(res,403,JSON.stringify({error:'forbidden'}),studioHeaders);
+  try{
+    const body=await readJson(req,4096);
+    if(body.action==='exchange'){
+      const t=studioTickets.get(body.ticket);
+      if(!t||t.expiresAt<=Date.now()||t.state!==body.state)return send(res,401,JSON.stringify({error:'invalid_ticket'}),studioHeaders);
+      studioTickets.delete(body.ticket);
+      return send(res,200,JSON.stringify({userId:t.userId,sessionId:t.sessionId}),studioHeaders);
+    }
+    if(body.action==='reserve'){
+      await authSessionCall('/v1/internal/session/validate',{userId:body.userId,sessionId:body.sessionId});
+      const reservationId=await reserveArgoshaUsage(body.userId,crypto.randomUUID());
+      return send(res,200,JSON.stringify({reservationId}),studioHeaders);
+    }
+    if(body.action==='finalize'&&/^[0-9a-f-]{36}$/i.test(body.reservationId||'')&&['success','failure'].includes(body.outcome)){
+      await finalizeArgoshaUsage(body.reservationId,body.outcome);
+      return send(res,200,JSON.stringify({ok:true}),studioHeaders);
+    }
+    return send(res,400,JSON.stringify({error:'invalid_request'}),studioHeaders);
+  }catch(error){const status=Number(error.status);return send(res,status>=400&&status<600?status:503,JSON.stringify({error:'studio_auth_failed',message:String(error.message||'Сервис временно недоступен.').slice(0,160)}),studioHeaders);}
 }
 const argoshaRate = new Map();
 function allowArgosha(req) {
@@ -654,7 +708,7 @@ const server = http.createServer(async (req, res) => {
     if(origin!==expected||!String(req.headers['content-type']||'').startsWith('application/x-www-form-urlencoded'))return send(res,403,'Доступ запрещён.');
     if(url.pathname==='/admin/logout')return send(res,303,'',{Location:'/admin/login','Set-Cookie':cookie('nexora_admin','',0)});
     if(!passwordConfigured())return send(res,503,adminLoginPage('unavailable'),adminHeaders);
-    const ip=String(req.headers['x-forwarded-for']||req.socket.remoteAddress||'').split(',').at(-1).trim();
+    const ip=String((process.env.RENDER==='true'||process.env.TRUST_PROXY==='true')?(String(req.headers['x-forwarded-for']||'').split(',').at(-1).trim()||req.socket.remoteAddress||'unknown'):(req.socket.remoteAddress||'unknown'));
     if(!allowAdminAttempt(ip))return send(res,429,adminLoginPage('limited'),adminHeaders);
     let form;
     try{
@@ -780,9 +834,13 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (url.pathname === '/auth/image' && req.method === 'GET') return studioLogin(req,res,url);
+  if (url.pathname === '/internal/studio-auth' && req.method === 'POST') return studioInternal(req,res);
   if (url.pathname === '/auth/start' && req.method === 'GET') return startLogin(req, res);
   if (url.pathname === '/auth/callback' && req.method === 'GET') return finishLogin(req, res, url);
   if (url.pathname === '/auth/logout' && req.method === 'POST') {
+    const account=readSession(req);
+    if(account?.sessionId)await authSessionCall('/v1/internal/session/revoke',{userId:account.id,sessionId:account.sessionId}).catch(error=>console.warn('Session revocation:',error.name));
     const target = authBase + '/logout?client_id=' + encodeURIComponent(clientId) +
       '&return_to=' + encodeURIComponent(appUrl(req));
     return redirect(res, target, { 'Set-Cookie': cookie('nexora_session', '', 0) });
