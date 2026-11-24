@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""No-credentials live NEXORA Game Studio QA: actual game HTML + CSP sandbox + swipes."""
+"""Live Game Studio QA: arbitrary prompts demand real AI, previews remain sandboxed."""
 import json
 import urllib.error
 import urllib.request
@@ -23,24 +23,46 @@ for item in ['id="ai-workspace"','id="ai-build"','id="ai-idea"','id="ai-source"'
              'id="classic-workspace"','script src="/game-builder.js"']:
     assert item in page,item
 assert 'allow-same-origin' not in page
+assert 'id="ai-login-required"' in page
+assert "любое название" in page
 print("GAME STUDIO UI",code,"code editor=OK, sandbox=OK, arrows=OK")
 
 code,client,headers=load("/game-builder.js")
 assert code==200
 for item in ["/api/game/code","/api/game/preview","nexora-game-control",
+             'data.source!=="ai"', 'ai-login-required',
              "frame.src=data.url","function runEdited","function saveGame"]:
     assert item in client,item
 print("GAME BUILDER JS",code,"generation=OK, edit=OK, download=OK")
 
-code,body,headers=load("/api/game/code",{"idea":"Гонки на машине с препятствиями"})
-result=json.loads(body)
-assert code==200 and result.get("ok") is True,result
-assert result.get("source")=="template","guest source must be truthfully marked as template"
-assert result.get("family")=="racing",result.get("family")
-assert "mode" in result["html"] and "racing" in result["html"]
-print("GAME GENERATION",code,"mode=racing","source=template","HTML chars",len(result["html"]))
 
-code,body,headers=load("/api/game/preview",{"html":result["html"]})
+# A free-form game request must no longer be silently rewritten into a preset.
+for description in [
+    "Майнкрафт",
+    "Гонки на машине с препятствиями",
+    "Ритм-игра, в которой нужно нажимать по нотам в такт",
+    "Симулятор фермы на другой планете с выращиванием растений",
+]:
+    try:
+        load("/api/game/code",{"idea":description})
+        raise AssertionError("Guest AI generation should require NEXORA ID: "+description)
+    except urllib.error.HTTPError as e:
+        assert e.code==401,(description,e.code)
+        result=json.loads(e.read().decode("utf-8"))
+        assert result["error"]=="login_required",result
+        assert result["loginUrl"]=="/auth/start",result
+        assert "html" not in result, "No prebuilt games should be returned as AI generation"
+print("AI-ONLY GAME GENERATION", "arbitrary titles=OK", "no silent presets=OK", "login prompt=OK")
+
+# Independently verify the playground still accepts full user-authored HTML.
+sample='''<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<style>body{background:#152744;color:white;font:16px system-ui}canvas{width:100%;height:auto}</style>
+</head><body><h1>Новая игра</h1><canvas width="720" height="420"></canvas>
+<script>const canvas=document.querySelector("canvas");const ctx=canvas.getContext("2d");
+let t=0;document.addEventListener("keydown",e=>{t+=e.key==="ArrowLeft"?1:2});
+function animate(){t+=1;ctx.fillStyle="#fff";ctx.fillRect(t%720,50,30,30);requestAnimationFrame(animate)}animate();</script>
+</body></html>'''
+code,body,headers=load("/api/game/preview",{"html":sample})
 prepared=json.loads(body)
 assert code==200 and prepared.get("ok") is True,prepared
 assert prepared["url"].startswith("/game/preview/")
@@ -52,11 +74,9 @@ assert "connect-src 'none'" in csp,csp
 assert "frame-ancestors 'self'" in csp,csp
 assert "touchend" in preview
 assert "nexora-game-control" in preview
-assert "racing" in preview
 print("PLAYABLE PREVIEW",code,"CSP=sandbox","swipe controls=OK","code present=OK")
 
-# Modified editor code must create a fresh isolated playable preview.
-edited=result["html"].replace("</body>","<!-- changed by game code editor --></body>")
+edited=sample.replace("</body>","<!-- edited game code --></body>")
 code,body,_=load("/api/game/preview",{"html":edited})
 assert code==200 and json.loads(body).get("ok") is True
 print("GAME CODE EDITOR",code,"recompile=OK")
