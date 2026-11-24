@@ -1,5 +1,5 @@
 import http from 'node:http';
-import {developerRoute} from './developer-console.js';
+import {developerRoute,activeMaintenance} from './developer-console.js';
 import {recordDeepSeek,verifyDeepSeek,deepSeekUsage,isUsageAdmin} from './deepseek-quality.js';
 import {passwordConfigured,checkAdminPassword,createAdminSession,validAdminSession,allowAdminAttempt,adminSessionSeconds,adminLoginPage} from './admin-auth.js';
 import {deepSeekProvider,deepSeekText,deepSeekRelay} from './deepseek.js';
@@ -627,6 +627,8 @@ const server = http.createServer(async (req, res) => {
   try { url = new URL(req.url, base); } catch { return send(res, 400, 'Bad Request'); }
 
   try { if (await developerRoute(req,res,url,base,send)) return; } catch (error) { console.error('Developer console error:',error.name); if(!res.headersSent) return send(res,500,'Консоль временно недоступна.'); res.end(); return; }
+
+  if(req.method==='POST'&&activeMaintenance(url.pathname)) return send(res,503,JSON.stringify({error:'maintenance',message:'Сервис временно на техническом обслуживании.'}),{'Content-Type':'application/json; charset=utf-8','Retry-After':'60'});
 
   const adminHeaders={'Content-Type':'text/html; charset=utf-8','X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",'Referrer-Policy':'no-referrer'};
   if(req.method==='POST' && url.pathname==='/api/admin-ticket'){
