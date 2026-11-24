@@ -1,3 +1,4 @@
+import {serveBrand} from './brand.js';
 import http from 'node:http';
 import {developerRoute,activeMaintenance} from './developer-console.js';
 import {recordDeepSeek,verifyDeepSeek,deepSeekUsage,isUsageAdmin} from './deepseek-quality.js';
@@ -625,6 +626,7 @@ const server = http.createServer(async (req, res) => {
   let url;
   try { url = new URL(req.url, base); } catch { return send(res, 400, 'Bad Request'); }
 
+  if(serveBrand(req,res,url.pathname,"NEXORA"))return;
   try { if (await developerRoute(req,res,url,base,send)) return; } catch (error) { console.error('Developer console error:',error.name); if(!res.headersSent) return send(res,500,'Консоль временно недоступна.'); res.end(); return; }
 
   if(req.method==='POST'&&activeMaintenance(url.pathname)) return send(res,503,JSON.stringify({error:'maintenance',message:'Сервис временно на техническом обслуживании.'}),{'Content-Type':'application/json; charset=utf-8','Retry-After':'60'});
