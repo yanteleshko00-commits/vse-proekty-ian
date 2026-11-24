@@ -178,7 +178,7 @@
 @media(prefers-reduced-motion:reduce){.nx-gallery[open]{animation:none}}
 @media print{.nx-view-open,.nx-view-close,.nx-gallery{display:none!important}}
 </style>
-</head>
+<style>.nx-answer-motion{width:min(250px,70vw);display:grid;gap:9px;padding:12px 0;position:relative}.nx-answer-motion i{height:7px;width:95%;border-radius:8px;background:currentColor;opacity:.12;transform-origin:left;animation:nx-answer 2s ease-in-out infinite}.nx-answer-motion i:nth-child(2){width:78%;animation-delay:.22s}.nx-answer-motion i:nth-child(3){width:50%;animation-delay:.44s}.nx-answer-motion b{height:5px;width:5px;background:currentColor;border-radius:50%;opacity:.45;animation:nx-answer 1.1s ease infinite}@keyframes nx-answer{0%,100%{transform:scaleX(.25);opacity:.12}55%{transform:scaleX(1);opacity:.35}}@media(prefers-reduced-motion:reduce){.nx-answer-motion *{animation:none}}</style></head>
 <body>
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Меню чата">
@@ -398,7 +398,7 @@
       const avatar=document.createElement("div");avatar.className="bubble-avatar";avatar.textContent="✦";
       const body=document.createElement("div");body.className="message-body";
       const meta=document.createElement("div");meta.className="message-meta";meta.textContent="Формирую ответ…";
-      const dots=document.createElement("div");dots.className="typing";dots.innerHTML="<i></i><i></i><i></i>";
+      const dots=document.createElement("div");dots.className="nx-answer-motion";dots.setAttribute("role","status");dots.setAttribute("aria-label","Ожидание ответа");dots.innerHTML="<i></i><i></i><i></i><b></b>";
       body.append(meta,dots);typing.append(avatar,body);box.append(typing);
     }
     if(lastError){
