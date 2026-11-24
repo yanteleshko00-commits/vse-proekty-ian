@@ -26,31 +26,49 @@ async function monitor(){
 }
 let started=false;function startMonitor(){if(started)return;started=true;void monitor();const timer=setInterval(()=>void monitor(),600000);timer.unref();}
 const cookieName='__Host-nexora_console';
+const nonceName='__Host-nexora_login';
+function cookieValue(req,name){return String(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(name+'='))?.slice(name.length+1);}
+export function trustedPost(req,base,loginRequest=false){
+ const origins=new Set(['https://nexora-lobby.onrender.com']);
+ for(const value of [base,process.env.RENDER_EXTERNAL_URL]){try{if(value)origins.add(new URL(value).origin);}catch{}}
+ const origin=req.headers.origin,site=req.headers['sec-fetch-site'];
+ if(site==='cross-site')return false;
+ if(origin&&origin!=='null')return origins.has(origin);
+ if(req.headers.referer){try{return origins.has(new URL(req.headers.referer).origin);}catch{return false;}}
+ // Safari may omit Origin or send null on a form navigation. Login still requires
+ // a matching host-only CSRF nonce and the current TOTP; other POSTs fail closed.
+ return loginRequest||site==='same-origin';
+}
+export function validLoginNonce(req,nonce){
+ const expected=cookieValue(req,nonceName);
+ return /^[a-f0-9]{64}$/.test(expected||'')&&/^[a-f0-9]{64}$/.test(nonce||'')&&crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(nonce));
+}
 function session(req){const raw=String(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(cookieName+'='));const token=raw?.slice(cookieName.length+1);return token&&sessions.has(token)?token:null;}
 function setCookie(token){return cookieName+'='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age='+(token?34560000:0);}
 function allowed(req){const now=Date.now(),cut=now-900000;const ip=String(req.headers['x-forwarded-for']||req.socket.remoteAddress||'').split(',').at(-1).trim();globalAttempts=globalAttempts.filter(t=>t>cut);for(const [key,v] of attempts)if(v.every(t=>t<=cut))attempts.delete(key);const list=(attempts.get(ip)||[]).filter(t=>t>cut);if(list.length>=5||globalAttempts.length>=15)return false;list.push(now);attempts.set(ip,list);globalAttempts.push(now);return true;}
 async function body(req){let size=0,parts=[];for await(const c of req){size+=c.length;if(size>8192)throw Error('body');parts.push(c);}return Buffer.concat(parts).toString('utf8');}
-const headers={'Content-Type':'text/html; charset=utf-8','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"};
-function login(message=''){return '<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NEXORA Security</title><style>*{box-sizing:border-box}body{background:#101112;color:#fff;font:16px system-ui;margin:0;padding:20px}main{max-width:420px;margin:12vh auto;background:#18191c;border:1px solid #343638;border-radius:24px;padding:24px}h1{font-size:28px}p{color:#aaa;line-height:1.5}input,button{width:100%;padding:15px;border-radius:12px;font:inherit;margin:10px 0}input{background:#111;color:white;border:1px solid #666;text-align:center;letter-spacing:8px;font-size:26px}button{background:#caff9d;border:0;color:#14210e;font-weight:700}</style><main><small>NEXORA / SECURITY</small><h1>Вход разработчика</h1><p>Введите шестизначный код из приложения «Пароли» на iPhone. Код меняется каждые 30 секунд.</p><form method="post" action="/developer/login"><label for="code">Код подтверждения</label><input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required><button>Войти</button></form><p role="status">'+message+'</p></main></html>';}
+const headers={'Content-Type':'text/html; charset=utf-8','X-Frame-Options':'DENY','Referrer-Policy':'same-origin','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"};
+function login(message='',nonce=''){return '<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NEXORA Security</title><style>*{box-sizing:border-box}body{background:#101112;color:#fff;font:16px system-ui;margin:0;padding:20px}main{max-width:420px;margin:12vh auto;background:#18191c;border:1px solid #343638;border-radius:24px;padding:24px}h1{font-size:28px}p{color:#aaa;line-height:1.5}input,button{width:100%;padding:15px;border-radius:12px;font:inherit;margin:10px 0}input{background:#111;color:white;border:1px solid #666;text-align:center;letter-spacing:8px;font-size:26px}button{background:#caff9d;border:0;color:#14210e;font-weight:700}</style><main><small>NEXORA / SECURITY</small><h1>Вход разработчика</h1><p>Введите шестизначный код из приложения «Пароли» на iPhone. Код меняется каждые 30 секунд.</p><form method="post" action="/developer/login"><input type="hidden" name="csrf" value="'+nonce+'"><label for="code">Код подтверждения</label><input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required><button>Войти</button></form><p role="status">'+message+'</p></main></html>';}
 export async function developerRoute(req,res,url,base,send){
  if(!(url.pathname==='/developer'||url.pathname.startsWith('/developer/')))return false;
  const path=url.pathname,method=req.method,key=decodeSecret(process.env.NEXORA_ADMIN_TOTP_SECRET);
  const json=(status,data)=>send(res,status,JSON.stringify(data),{'Content-Type':'application/json; charset=utf-8'});
  const html=(status,data)=>send(res,status,data,headers);
- if(method==='POST'&&req.headers.origin!==new URL(base).origin){json(403,{error:'forbidden'});return true;}
+ const loginPage=(status,message='')=>{const nonce=crypto.randomBytes(32).toString('hex');send(res,status,login(message,nonce),{...headers,'Set-Cookie':nonceName+'='+nonce+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=600'});};
+ if(method==='POST'&&!trustedPost(req,base,path==='/developer/login')){if(path==='/developer/login')loginPage(403,'Запрос заблокирован. Откройте админку заново в Safari.');else json(403,{error:'forbidden'});return true;}
  if(path==='/developer/login'&&method==='POST'){
- if(!key){html(503,login('TOTP ещё не настроен на сервере.'));return true;}
- if(!allowed(req)){html(429,login('Слишком много попыток. Повторите через 15 минут.'));return true;}
- let code;try{code=new URLSearchParams(await body(req)).get('code');}catch{html(400,login('Неверный запрос'));return true;}
+ if(!key){loginPage(503,'TOTP ещё не настроен на сервере.');return true;}
+ if(!allowed(req)){loginPage(429,'Слишком много попыток. Повторите через 15 минут.');return true;}
+ let code;try{const form=new URLSearchParams(await body(req));if(!validLoginNonce(req,form.get('csrf'))){loginPage(403,'Форма устарела или браузер заблокировал cookie. Введите новый код на этой странице.');return true;}code=form.get('code');}catch{loginPage(400,'Неверный запрос');return true;}
  const step=Math.floor(Date.now()/30000);
  const match=/^[0-9]{6}$/.test(code||'')?[step,step-1,step+1].find(s=>s>lastStep&&crypto.timingSafeEqual(Buffer.from(code),Buffer.from(totp(key,s)))):undefined;
- if(match===undefined){html(401,login('Неверный или уже использованный код.'));return true;}
+ if(match===undefined){loginPage(401,'Неверный или уже использованный код.');return true;}
  lastStep=match;const token=crypto.randomBytes(32).toString('hex');sessions.set(token,Date.now());if(sessions.size>20)sessions.delete(sessions.keys().next().value);
  remember(audit,{name:'Вход администратора',time:new Date().toISOString(),detail:'TOTP'});
  send(res,303,'',{Location:'/developer','Set-Cookie':setCookie(token)});return true;
  }
  const token=key&&session(req);
- if(path==='/developer'&&method==='GET'){if(token){startMonitor();html(200,await readFile(new URL('./developer-console.html',import.meta.url),'utf8'));}else html(200,login(key?'':'TOTP ещё не настроен на сервере.'));return true;}
+ if(path==='/developer'&&method==='GET'){if(token){startMonitor();html(200,await readFile(new URL('./developer-console.html',import.meta.url),'utf8'));}else loginPage(200,key?'':'TOTP ещё не настроен на сервере.');return true;}
  if(!token){json(401,{error:'unauthorized'});return true;}
  if(path==='/developer/logout'&&method==='POST'){sessions.delete(token);send(res,303,'',{Location:'/developer','Set-Cookie':setCookie('')});return true;}
  if(path==='/developer/api/status'&&method==='GET'){startMonitor();json(200,{snapshot,errors,audit});return true;}
