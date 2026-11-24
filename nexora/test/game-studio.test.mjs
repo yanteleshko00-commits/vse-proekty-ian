@@ -7,8 +7,8 @@ import {spawn} from 'node:child_process';
 import vm from 'node:vm';
 import {GAME_TYPES,gameType,basicGamePlan} from '../game-studio.js';
 
-// The build must never use a real Gemini credential from Render.
-delete process.env.GEMINI_API_KEY;
+// Provider tests must never inherit live credentials or call paid services.
+for(const name of ['GEMINI_API_KEY','DEEPSEEK_API_KEY','GROQ_API_KEY','OPENROUTER_API_KEY','NEXORA_CHAT_INTERNAL_TOKEN','GAME_DEEPSEEK_MODEL','GAME_GEMINI_MODEL','GAME_GEMINI_FALLBACK_MODEL','GAME_GROQ_MODEL','ARGOSHA_GROQ_MODEL','GAME_OPENROUTER_MODEL','GAME_OPENROUTER_FALLBACK_MODEL'])delete process.env[name];
 const root=fileURLToPath(new URL('..',import.meta.url));
 test('game routing and safe presets',()=>{
  assert.deepEqual(GAME_TYPES,['auto','catch','snake','target']);
@@ -604,6 +604,41 @@ test('long game generation returns a job immediately and polling retrieves real 
   assert.equal(calls,1);
  }finally{
   finish();
+  await new Promise(resolve=>server.close(resolve));
+  for(const name of names){if(before[name]===undefined)delete process.env[name];else process.env[name]=before[name];}
+ }
+});
+
+
+test('DeepSeek Flash generates game HTML using the official endpoint and a server-only test credential',async()=>{
+ const {createServer}=await import('node:http');
+ const {makeCodeGame}=await import('../game-code.js');
+ const names=['DEEPSEEK_API_KEY','GAME_DEEPSEEK_MODEL'];
+ const before=Object.fromEntries(names.map(name=>[name,process.env[name]]));
+ process.env.DEEPSEEK_API_KEY='test-deepseek-key';
+ const html='<!doctype html><html><head><meta charset="utf-8"><title>Game</title></head><body><canvas width="720" height="420"></canvas><script>const c=document.querySelector("canvas"),x=c.getContext("2d");let n=0;document.addEventListener("keydown",e=>{n++});function frame(){x.fillRect(n++,10,20,20);requestAnimationFrame(frame)}frame();</script></body></html>';
+ let calls=0;
+ const mock=async(url,options)=>{
+  calls++;
+  assert.equal(url,'https://api.deepseek.com/chat/completions');
+  assert.equal(options.headers.Authorization,'Bearer test-deepseek-key');
+  const body=JSON.parse(options.body);
+  assert.equal(body.model,'deepseek-flash');
+  assert.deepEqual(body.thinking,{type:'disabled'});
+  assert.match(body.messages[1].content,/Гонки с препятствиями/);
+  return new Response(JSON.stringify({choices:[{message:{content:html},finish_reason:'stop'}]}),{status:200});
+ };
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{
+  const response=await fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'192.0.2.44'},body:JSON.stringify({idea:'Гонки с препятствиями',dimension:'2d'})});
+  assert.equal(response.status,200);
+  const result=await response.json();
+  assert.equal(result.provider,'DeepSeek');
+  assert.equal(result.source,'ai');
+  assert.equal(result.html,html);
+  assert.equal(calls,1);
+ }finally{
   await new Promise(resolve=>server.close(resolve));
   for(const name of names){if(before[name]===undefined)delete process.env[name];else process.env[name]=before[name];}
  }
