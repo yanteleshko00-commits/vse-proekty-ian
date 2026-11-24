@@ -142,14 +142,14 @@ export function gameCodePrompt(idea,{dimension='auto'}={}){
  ].join('\n');
 }
 export function isWebGLGame(html){
- return /<canvas[\\s>]/i.test(html)&&/getContext\\s*\\(\\s*['"](?:webgl2?|experimental-webgl)['"]/i.test(html);
+ return /<canvas[\s>]/i.test(html)&&/getContext\s*\(\s*['"](?:webgl2?|experimental-webgl)['"]/i.test(html);
 }
 function playableGameHTML(response){
  const html=normalizeGameHTML(response);
  if(!html||html.length>52000)return null;
  // Syntax-check AI scripts without running them. A broken script must not
  // be presented as a playable game.
- const scripts=[...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(match=>match[1]);
+ const scripts=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(match=>match[1]);
  if(!scripts.length||scripts.every(body=>body.trim().length<160))return null;
  const code=scripts.join('\n');
  if(!/(requestAnimationFrame|setInterval|addEventListener|onkeydown|onpointerdown|onclick|ontouchstart)/i.test(code))return null;
