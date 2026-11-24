@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {decodeSecret,totp,developerRoute,trustedPost,validLoginNonce} from '../developer-console.js';
+import {decodeSecret,totp,developerRoute,activeMaintenance,trustedPost,validLoginNonce} from '../developer-console.js';
 test('TOTP matches RFC 6238 SHA1 test vector',()=>{
  const secret=decodeSecret('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ');
  assert.equal(secret.toString(),'12345678901234567890');
@@ -50,4 +50,13 @@ test('owner diagnostics and session revocation require administrator session',as
   let status;await developerRoute({method,headers:{origin:'https://example.com'}},{},new URL('https://example.com/developer/api/'+path),'https://example.com',(_,s)=>{status=s});
   assert.equal(status,401);
  }
+});
+
+test('history and maintenance are private',async()=>{
+ for(const [path,method] of [['history','GET'],['maintenance','GET'],['maintenance','POST']]){
+  let status;await developerRoute({method,headers:{origin:'https://example.com'}},{},new URL('https://example.com/developer/api/'+path),'https://example.com',(_,s)=>{status=s});assert.equal(status,401);
+ }
+});
+test('maintenance is disabled by default and excludes auth and health',()=>{
+ for(const p of ['/api/nexora-chat','/api/game/code','/health','/developer','/api/auth/login'])assert.equal(activeMaintenance(p),null);
 });
