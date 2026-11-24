@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {requestGeminiImage, firstImageProvider, DEFAULT_IMAGE_MODEL} from './gemini-image.js';
 import crypto from 'node:crypto';
 import { internalAliceTokenValid, imageStudioAliceReady, forwardAliceText } from './alice-text.js';
 import { readFile } from 'node:fs/promises';
@@ -427,8 +428,21 @@ async function generateNexoraImage(req, res) {
 
   const openAIKey = String(process.env.OPENAI_API_KEY || '').trim();
   const hasGigaChat = gigaChatKeys().length > 0;
+  const geminiKey=String(process.env.GEMINI_API_KEY||'').trim();
+  const geminiModel=String(process.env.GEMINI_IMAGE_MODEL||DEFAULT_IMAGE_MODEL).trim()||DEFAULT_IMAGE_MODEL;
   const providers = [];
-  if (openAIKey) providers.push({ name: 'OpenAI', run: signal => requestOpenAIImage({
+  if(geminiKey)providers.push({name:'Gemini',run:signal=>requestGeminiImage({
+    apiKey:geminiKey,model:geminiModel,modelPrompt:prompt+'. Visual style: '+imageStyles[style]+(detailed?'. Fine details, carefully rendered textures, balanced composition.':''),
+    ratio,imageFile,signal,imageMime
+  })});
+  if (yandexKey && yandexFolderId && !imageFile) providers.push({ name: 'Alice AI ART', run: signal => requestAliceImage({
+    apiKey: yandexKey, folderId: yandexFolderId,
+    modelPrompt: prompt + '. Visual style: ' + imageStyles[style] + (detailed ? '. Fine details, carefully rendered textures, balanced composition.' : ''),
+    ratio, detailed, signal
+  }) });
+  // Preserve existing alternatives only if neither preferred provider supports the request.
+  const legacyOnly=providers.length===0;
+  if (openAIKey && (legacyOnly || imageFile)) providers.push({ name: 'OpenAI', run: signal => requestOpenAIImage({
     apiKey: openAIKey,
     modelPrompt: prompt + '. Visual style: ' + imageStyles[style] +
       (detailed ? '. Fine details, carefully rendered textures, balanced composition.' : ''),
@@ -437,54 +451,35 @@ async function generateNexoraImage(req, res) {
     imageFile,
     signal
   }) });
-  if (hasGigaChat && !imageFile) providers.push({ name: 'GigaChat', run: signal => requestGigaChatImage({
+  if (legacyOnly && hasGigaChat && !imageFile) providers.push({ name: 'GigaChat', run: signal => requestGigaChatImage({
     modelPrompt: prompt + '. Visual style: ' + imageStyles[style] +
       (detailed ? '. Fine details, carefully rendered textures, balanced composition.' : ''),
     ratio,
     detailed,
     signal
   }) });
-  if (yandexKey && yandexFolderId && !imageFile) providers.push({ name: 'Alice AI ART', run: signal => requestAliceImage({
-    apiKey: yandexKey,
-    folderId: yandexFolderId,
-    modelPrompt: prompt + '. Visual style: ' + imageStyles[style] + (detailed ? '. Fine details, carefully rendered textures, balanced composition.' : ''),
-    ratio,
-    detailed,
-    signal
-  }) });
+
 
   if (!providers.length) {
-    const editOnly = Boolean(imageFile && !openAIKey);
+    const editOnly = Boolean(imageFile && !openAIKey && !geminiKey);
     return send(res, 503, JSON.stringify({
       error: 'image_not_configured',
       message: editOnly
-        ? 'Редактирование исходного фото требует подключённого OPENAI_API_KEY.'
-        : 'Не подключён ни один генератор изображений. Добавьте OPENAI_API_KEY, GIGACHAT_API_KEY или YANDEX_API_KEY вместе с YANDEX_FOLDER_ID в Environment сервиса NEXORA на Render.'
+        ? 'Редактирование исходного фото требует GEMINI_API_KEY или OPENAI_API_KEY.'
+        : 'Не подключён ни один генератор изображений. Добавьте GEMINI_API_KEY, OPENAI_API_KEY, GIGACHAT_API_KEY или YANDEX_API_KEY вместе с YANDEX_FOLDER_ID в Environment сервиса NEXORA на Render.'
     }), jsonHeaders);
   }
 
-  const controllers = providers.map(() => new AbortController());
-  const tasks = providers.map((provider, index) => provider.run(controllers[index].signal).catch(error => {
-    if (!error.providerName) {
-      error.providerName = provider.name;
-      error.publicMessage = error.name === 'TimeoutError'
-        ? 'Время ожидания ответа ' + provider.name + ' истекло.'
-        : provider.name + ' временно недоступен.';
-    }
-    throw error;
-  }));
-
   try {
-    const winner = await Promise.any(tasks);
-    controllers.forEach(controller => controller.abort());
+    const winner = await firstImageProvider(providers);
+    console.info('NEXORA image generated:',winner.provider,winner.model);
     return send(res, 200, JSON.stringify({
       image: winner.image,
       provider: winner.provider,
       model: winner.model,
-      parallelProviders: providers.map(provider => provider.name)
+      providerOrder: providers.map(provider => provider.name)
     }), jsonHeaders);
   } catch (aggregateError) {
-    controllers.forEach(controller => controller.abort());
     const failures = Array.isArray(aggregateError.errors) ? aggregateError.errors : [aggregateError];
     const details = failures.map(error => ({
       provider: error.providerName || 'Неизвестный провайдер',
@@ -565,9 +560,10 @@ const server = http.createServer(async (req, res) => {
     const keys = gigaChatKeys();
     const hasGigaChat = keys.length > 0;
     const providers = [
+      ...(process.env.GEMINI_API_KEY?.trim() ? ['Gemini'] : []),
+      ...(yandexMissing.length === 0 ? ['Alice AI ART'] : []),
       ...(process.env.OPENAI_API_KEY?.trim() ? ['OpenAI'] : []),
-      ...(hasGigaChat ? ['GigaChat'] : []),
-      ...(yandexMissing.length === 0 ? ['Alice AI ART'] : [])
+      ...(hasGigaChat ? ['GigaChat'] : [])
     ];
     return send(res, providers.length ? 200 : 503, JSON.stringify({
       ok: providers.length > 0,
@@ -583,8 +579,9 @@ const server = http.createServer(async (req, res) => {
         ],
         model: 'aliceai-llm'
       },
-      imageProvider: 'Parallel auto',
-      imageModel: 'First successful provider',
+      geminiImage: {configured:Boolean(process.env.GEMINI_API_KEY?.trim()),model:process.env.GEMINI_IMAGE_MODEL||DEFAULT_IMAGE_MODEL},
+      imageProvider: 'Sequential failover',
+      imageModel: 'Gemini first, Alice backup',
       gigaChatAuth: {
         configured: hasGigaChat,
         primaryConfigured: keys.some(entry => entry.keySlot === 'основной'),
