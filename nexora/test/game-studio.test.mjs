@@ -471,3 +471,54 @@ test('compact central chat fallback stays within message limit for arbitrary 2D 
   if(dim==='3d')assert.match(prompt,/настоящий 3D WebGL/);
  }
 });
+
+
+test('AI document recovery accepts fenced JSON and complete fragments but rejects broken or external scripts',async()=>{
+ const {playableGameHTML,isWebGLGame}=await import('../game-code.js');
+ const code='const c=document.querySelector("canvas"),x=c.getContext("2d");let n=0;document.addEventListener("keydown",e=>{n++});function frame(){x.fillRect(n++,10,20,20);requestAnimationFrame(frame)}frame();';
+ const fragment='<style>canvas{width:100%;background:#222}</style><canvas width="720" height="420"></canvas><script>'+code+'</script>';
+ const wrapped=playableGameHTML('Here is the game:\n'+String.fromCharCode(96).repeat(3)+'html\n'+fragment+'\n'+String.fromCharCode(96).repeat(3));
+ assert.ok(wrapped);
+ assert.match(wrapped,/<html>/);
+ assert.match(wrapped,/<\/html>/);
+ assert.ok(playableGameHTML(JSON.stringify({html:fragment})));
+ assert.ok(playableGameHTML('<!doctype html><html><body>'+fragment));
+ assert.equal(playableGameHTML(fragment.replace('</script>','')),null);
+ assert.equal(playableGameHTML(fragment.replace('frame();','frame(;')),null);
+ assert.equal(playableGameHTML(fragment.replace('<script>','<script src="https://example.com/game.js">')),null);
+ assert.equal(isWebGLGame(wrapped),false);
+});
+
+test('a rejected primary AI answer uses the other code provider and preserves the requested game',async()=>{
+ const {createServer}=await import('node:http');
+ const {makeCodeGame}=await import('../game-code.js');
+ const names=['GROQ_API_KEY','OPENROUTER_API_KEY','GAME_OPENROUTER_MODEL','GAME_OPENROUTER_FALLBACK_MODEL','NEXORA_CHAT_INTERNAL_TOKEN'];
+ const before=Object.fromEntries(names.map(name=>[name,process.env[name]]));
+ delete process.env.GROQ_API_KEY;
+ delete process.env.NEXORA_CHAT_INTERNAL_TOKEN;
+ process.env.OPENROUTER_API_KEY='test-key-only';
+ process.env.GAME_OPENROUTER_MODEL='test-primary';
+ process.env.GAME_OPENROUTER_FALLBACK_MODEL='test-backup';
+ const calls=[];
+ const fragment='<style>canvas{width:100%;background:#222}</style><canvas width="720" height="420"></canvas><script>const c=document.querySelector("canvas"),x=c.getContext("2d");let n=0;document.addEventListener("keydown",e=>{n++});function frame(){x.fillRect(n++,10,20,20);requestAnimationFrame(frame)}frame();</script>';
+ const mock=async(url,options)=>{
+  const input=JSON.parse(options.body);
+  calls.push(input.model);
+  assert.match(input.messages[1].content,/гонки на Луне/);
+  return new Response(JSON.stringify({choices:[{message:{content:input.model==='test-primary'?'not HTML':fragment},finish_reason:'stop'}]}),{status:200});
+ };
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{
+  const response=await fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idea:'гонки на Луне',dimension:'2d'})});
+  assert.equal(response.status,200);
+  const game=await response.json();
+  assert.equal(game.source,'ai');
+  assert.equal(game.provider,'OpenRouter backup');
+  assert.match(game.html,/<\/html>/);
+  assert.deepEqual(calls,['test-primary','test-backup']);
+ }finally{
+  await new Promise(resolve=>server.close(resolve));
+  for(const name of names){if(before[name]===undefined)delete process.env[name];else process.env[name]=before[name];}
+ }
+});
