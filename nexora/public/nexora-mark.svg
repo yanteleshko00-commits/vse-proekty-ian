@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
-<title id="title">NEXORA</title>
-<rect width="128" height="128" rx="32" fill="#1c192e"/>
-<path d="M34 94V34L94 94V34" fill="none" stroke="#fff" stroke-width="11.5" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="NEXORA"><rect width="128" height="128" rx="28" fill="#17132d"/><path d="M39 88V40M89 40V88" fill="none" stroke="#7656cf" stroke-width="17" stroke-linecap="round"/><path d="M39 40L89 88" fill="none" stroke="#c4a7ff" stroke-width="17" stroke-linecap="round"/></svg>
