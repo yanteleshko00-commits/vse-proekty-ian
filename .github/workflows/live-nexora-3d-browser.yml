@@ -1,0 +1,18 @@
+name: Browser NEXORA 3D Game Studio acceptance
+on:
+  push:
+    branches: ['test/live-presentation-2026-11-23']
+    paths:
+      - 'scripts/check-nexora-3d-browser.mjs'
+      - '.github/workflows/live-nexora-3d-browser.yml'
+jobs:
+  mobile-3d:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright-core
+      - run: node scripts/check-nexora-3d-browser.mjs
