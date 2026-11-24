@@ -86,4 +86,4 @@ try:
     raise AssertionError("Invalid game token was accessible")
 except urllib.error.HTTPError as e:
     assert e.code==404,e.code
-print("GAME STUDIO LIVE PASS")
+print("GAME STUDIO LIVE AI-ONLY ACCEPTANCE PASS")
