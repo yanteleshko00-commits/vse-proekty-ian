@@ -24,6 +24,9 @@ for item in ['id="ai-workspace"','id="ai-build"','id="ai-idea"','id="ai-source"'
     assert item in page,item
 assert 'allow-same-origin' not in page
 assert 'id="ai-login-required"' not in page
+assert 'id="ai-loading"' in page
+assert 'data-game-dimension="3d"' in page
+assert 'data-game-dimension="auto"' in page
 assert 'Регистрация и вход не нужны' in page
 assert "любое название" in page
 print("GAME STUDIO UI",code,"code editor=OK, sandbox=OK, arrows=OK")
@@ -83,4 +86,4 @@ try:
     raise AssertionError("Invalid game token was accessible")
 except urllib.error.HTTPError as e:
     assert e.code==404,e.code
-print("GAME STUDIO LIVE DIRECT PROVIDER ANONYMOUS ACCEPTANCE PASS")
+print("GAME STUDIO LIVE 2D/3D PUBLIC AI ACCEPTANCE PASS")
