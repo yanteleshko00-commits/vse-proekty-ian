@@ -59,9 +59,6 @@ textarea,select{width:100%;min-width:0;border:1px solid #e6dfef;border-radius:13
 
 
 /* NEXORA Game Code Studio: real code, safe preview and mobile controls. */
-#ai-login-required[hidden]{display:none!important}
-.ai-login-required{margin-top:12px;padding:14px;border:1px solid #b5a3ec;border-radius:14px;background:#f3eeff;color:#503b87;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:12px;line-height:1.5}
-.ai-login-link{background:#6952c7;color:#fff!important;border-radius:10px;padding:10px 14px;font-weight:800;white-space:nowrap}
 
 .ai-workspace{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:19px;align-items:start}
 .ai-help{color:var(--sub);line-height:1.75;font-size:12px;margin:0 0 12px}
@@ -122,13 +119,10 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
     <button type="button" data-ai-example="Арканоид: ракетка отбивает мяч и разбивает ряды кирпичей, уровни и очки.">🧱 Арканоид</button>
    </div>
    <button id="ai-build" type="button" class="create">✦ Создать и запустить игру</button>
-   <p class="hint">Для генерации кода нужен NEXORA ID. Если ИИ не справится, покажем ошибку, а не подменим вашу идею стандартной игрой. Для игр с управлением стрелками доступны свайпы.</p>
+   <p class="hint">Регистрация и вход не нужны. Напишите название или правила игры — ИИ создаст код. Если генерация не получится, покажем причину вместо случайного шаблона. На телефоне есть свайпы и экранные кнопки.</p>
    <button type="button" id="ai-classic-toggle" class="ai-classic-link">Открыть классические мини-игры →</button>
    <div id="ai-error" class="error" role="alert" hidden></div>
-   <div id="ai-login-required" class="ai-login-required" role="status" hidden>
-    <span>Для генерации собственной игры ИИ войдите в NEXORA ID. Ваше описание сохранится.</span>
-    <a href="/auth/start" class="ai-login-link">Войти в NEXORA ID</a>
-   </div>
+
   </div>
   <section class="card ai-preview-card" id="ai-result-card" aria-labelledby="ai-result-heading">
    <div class="card-top"><h2 id="ai-result-heading">Ваша игра</h2><span class="card-note" id="ai-source-label">02 / PREVIEW</span></div>
