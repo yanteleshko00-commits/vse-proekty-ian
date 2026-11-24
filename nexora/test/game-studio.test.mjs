@@ -331,3 +331,82 @@ test('Anonymous Game Studio generates playable HTML directly with the existing G
   if(previousRouter===undefined)delete process.env.OPENROUTER_API_KEY;else process.env.OPENROUTER_API_KEY=previousRouter;
  }
 });
+
+
+test('creation screen animates HTML code into a 3D scene without fake progress and supports reduced motion',async()=>{
+ const html=await readFile(join(root,'public/game.html'),'utf8');
+ const frontend=await readFile(join(root,'public/game-builder.js'),'utf8');
+ for(const token of ['id="ai-loading"','ai-code-editor','ai-voxel','ai-cube-front','ai-cube-back','ai-build-indicator','ai-code-text','@keyframes ai-spin','@keyframes ai-type','prefers-reduced-motion:reduce']){
+  assert.ok(html.includes(token),'Missing creation animation: '+token);
+ }
+ for(const mode of ['auto','2d','3d'])assert.ok(html.includes('data-game-dimension="'+mode+'"'));
+ assert.match(html,/data-ai-dimension="3d"/);
+ assert.match(frontend,/function setLoader/);
+ assert.match(frontend,/setLoader\(true\)/);
+ assert.match(frontend,/setLoader\(false\)/);
+ assert.match(frontend,/JSON\.stringify\(\{idea:description,dimension\}\)/);
+ assert.match(frontend,/localStorage\.getItem\(MODE_KEY\)/);
+ assert.match(frontend,/nexora-game-look|3D WebGL-игру/);
+ assert.doesNotMatch(frontend,/progress\s*=\s*100|setInterval\(.*progress/i);
+ new vm.Script(frontend);
+});
+test('3D prompts require actual WebGL and all generated games receive touch/keyboard controls',async()=>{
+ const {gameCodePrompt,isWebGLGame,normalizeGameHTML,sandboxGameHTML}=await import('../game-code.js');
+ const forced=gameCodePrompt('Трёхмерные гонки с камерой',{dimension:'3d'});
+ const auto=gameCodePrompt('3D шутер на арене');
+ const flat=gameCodePrompt('2D ритм-игра',{dimension:'2d'});
+ assert.match(forced,/ОБЯЗАТЕЛЬНО.*WebGL/);
+ assert.match(forced,/матриц|перспектив/);
+ assert.match(forced,/nexora-game-look/);
+ assert.match(auto,/настоящий 3D на WebGL/);
+ assert.match(flat,/2D-игру/);
+ assert.match(flat,/2D ритм-игра/);
+ const webgl='<!doctype html><html><head><meta charset="utf-8"><title>3D</title></head><body><canvas width="720" height="420" style="width:100%"></canvas><script>const c=document.querySelector("canvas");const gl=c.getContext("webgl",{antialias:true});let x=0;document.addEventListener("keydown",e=>{if(e.key==="ArrowLeft")x-=1});document.addEventListener("nexora-game-look",e=>{x+=e.detail.dx});function loop(){if(gl){gl.clearColor(0,0,0.5,1);gl.clear(gl.COLOR_BUFFER_BIT)}requestAnimationFrame(loop)}loop();</script></body></html>';
+ assert.equal(isWebGLGame(webgl),true);
+ assert.equal(isWebGLGame(webgl.replace('"webgl"','"2d"')),false);
+ assert.ok(normalizeGameHTML(webgl));
+ const html=sandboxGameHTML(webgl);
+ assert.match(html,/nexora-game-look/);
+ assert.match(html,/touchstart/);
+ assert.match(html,/touchmove/);
+ assert.match(html,/touchend/);
+ assert.match(html,/nexora-game-control/);
+ assert.match(html,/connect-src 'none'/);
+ const adapter=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+ assert.ok(adapter);
+ new vm.Script(adapter);
+});
+test('anonymous 3D game request forwards dimension and returns WebGL rather than a 2D fallback',async()=>{
+ const {createServer}=await import('node:http');
+ const {makeCodeGame}=await import('../game-code.js');
+ const priorGroq=process.env.GROQ_API_KEY,priorRouter=process.env.OPENROUTER_API_KEY;
+ process.env.GROQ_API_KEY='3d-test-token';delete process.env.OPENROUTER_API_KEY;
+ const output='<!doctype html><html><head><meta charset="utf-8"><title>3D</title></head><body><canvas width="720" height="420" style="width:100%"></canvas><script>const c=document.querySelector("canvas");const gl=c.getContext("webgl",{antialias:true});const keys=new Set();document.addEventListener("keydown",e=>keys.add(e.key));document.addEventListener("keyup",e=>keys.delete(e.key));document.addEventListener("nexora-game-look",e=>{window.lookDX=e.detail.dx});function run(){if(gl){gl.clearColor(0.1,0.2,0.4,1);gl.clear(gl.COLOR_BUFFER_BIT)}requestAnimationFrame(run)}run();</script></body></html>';
+ let prompt='';
+ const mock=async(url,options)=>{
+  assert.equal(url,'https://api.groq.com/openai/v1/chat/completions');
+  const payload=JSON.parse(options.body);
+  prompt=payload.messages[1].content;
+  return new Response(JSON.stringify({choices:[{message:{content:output}}]}),{status:200});
+ };
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{
+  const response=await fetch('http://127.0.0.1:'+server.address().port,{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({idea:'3D лабиринт с ловушками',dimension:'3d'})
+  });
+  assert.equal(response.status,200);
+  const data=await response.json();
+  assert.equal(data.dimension,'3d');
+  assert.equal(data.source,'ai');
+  assert.equal(data.provider,'Groq');
+  assert.equal(data.html,output);
+  assert.match(prompt,/ОБЯЗАТЕЛЬНО.*WebGL/);
+  assert.match(prompt,/3D лабиринт с ловушками/);
+ }finally{
+  await new Promise(resolve=>server.close(resolve));
+  if(priorGroq===undefined)delete process.env.GROQ_API_KEY;else process.env.GROQ_API_KEY=priorGroq;
+  if(priorRouter===undefined)delete process.env.OPENROUTER_API_KEY;else process.env.OPENROUTER_API_KEY=priorRouter;
+ }
+});
