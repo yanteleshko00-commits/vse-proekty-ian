@@ -1,0 +1,44 @@
+name: Live Game Studio QA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-game-qa.yml'
+permissions:
+  contents: read
+jobs:
+  live-game:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Generate actual game on public NEXORA API
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://nexora-lobby.onrender.com';
+          const {Script}=await import('node:vm');
+          async function post(path,body,headers={}){
+            const response=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json',...headers},body:JSON.stringify(body),signal:AbortSignal.timeout(45000)});
+            const data=await response.json();
+            if(!response.ok)throw Error(path+' HTTP '+response.status+': '+String(data.message||data.error||'').slice(0,200));
+            return data;
+          }
+          for(const [dimension,idea] of [
+            ['2d','Создай игру: собери пять звёзд на поле, управляй персонажем стрелками и свайпами, счёт и перезапуск'],
+            ['3d','Создай компактную 3D игру на WebGL: собери три светящиеся куба в комнате, движение стрелками и поворот камеры, счёт и перезапуск']
+          ]){
+            let game=await post('/api/game/code',{dimension,idea},{'X-NEXORA-Async':'1'});
+            const deadline=Date.now()+195000;
+            while(game.pending&&Date.now()<deadline){await new Promise(r=>setTimeout(r,5000));game=await post('/api/game/code',{jobId:game.jobId},{'X-NEXORA-Async':'1'});}
+            if(game.pending||!game.ok||game.source!=='ai'||typeof game.html!=='string')throw Error('No actual AI game result: '+dimension);
+            const scripts=[...game.html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)];
+            if(!scripts.length)throw Error('No scripts');
+            for(const script of scripts)new Script(script[1]);
+            if(dimension==='3d'&&!/getContext\s*\(\s*['"](?:webgl2?|experimental-webgl)['"]/i.test(game.html))throw Error('No WebGL context');
+            const preview=await post('/api/game/preview',{html:game.html});
+            if(!/^\/game\/preview\/[a-f0-9-]+$/.test(preview.url))throw Error('Invalid preview');
+            const response=await fetch(base+preview.url,{signal:AbortSignal.timeout(20000)});
+            if(!response.ok||!response.headers.get('content-security-policy')?.includes('sandbox allow-scripts'))throw Error('Preview unavailable or unsafe');
+            await response.text();
+            console.log('LIVE_GAME_QA',JSON.stringify({dimension,provider:game.provider,characters:game.html.length,previewHTTP:response.status,syntax:'passed'}));
+          }
+          NODE
