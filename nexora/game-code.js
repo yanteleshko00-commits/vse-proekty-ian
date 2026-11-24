@@ -55,6 +55,12 @@ const ADAPTER=String.raw`<meta http-equiv="Content-Security-Policy" content="def
  const dirs={left:'ArrowLeft',right:'ArrowRight',up:'ArrowUp',down:'ArrowDown',space:' '};
  const keycodes={left:37,right:39,up:38,down:40,space:32};
  const held=new Set();
+ function report(message){
+  try{parent.postMessage({type:'nexora-game-error',message:String(message||'Ошибка игрового кода').slice(0,170)},'*');}catch{}
+ }
+ window.addEventListener('error',event=>report(event.message||'Ошибка выполнения игры'));
+ window.addEventListener('unhandledrejection',event=>report(event.reason&&event.reason.message||'Ошибка JavaScript'));
+ document.addEventListener('webglcontextcreationerror',()=>report('WebGL недоступен в этом браузере'),true);
  function key(dir,kind){
   if(!Object.prototype.hasOwnProperty.call(dirs,dir))return;
   const e=new KeyboardEvent(kind,{key:dirs[dir],code:dir==='space'?'Space':dirs[dir],bubbles:true,cancelable:true});
@@ -122,6 +128,10 @@ export async function fallbackGameHTML(idea){
 // The main creator is intentionally NOT routed through gameFamily(): the
 // user's free-form request determines the mechanics. Preset engines remain
 // available only in the separate "classic games" UI.
+export function inferGameDimension(idea,selected='auto'){
+ if(selected==='2d'||selected==='3d')return selected;
+ return /(?:\b3\s*[-]?[dд]\b|тр[её]хмерн|объ[её]мн|от первого лица|3d[- ]?мир|трехмерн|voxel|first.person|webgl)/i.test(String(idea||''))?'3d':'auto';
+}
 export function gameCodePrompt(idea,{dimension='auto'}={}){
  const view=dimension==='3d'
   ?'ОБЯЗАТЕЛЬНО создай настоящий интерактивный 3D-мир на WebGL (canvas.getContext("webgl") либо "webgl2") с шейдерами, матрицами проекции/камерой, геометрией, сценой и освещением/цветами. Реализуй движение героя и поворот камеры. Никаких имитаций 3D картинкой или CSS: нужен WebGL-рендер.'
@@ -254,7 +264,7 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
  let input;
  try{input=await parseBody(req);}catch(error){return send(res,400,{ok:false,message:error.message||'Неверный запрос.'});}
  const idea=typeof input.idea==='string'?input.idea.trim():'';
- const dimension=['auto','2d','3d'].includes(input.dimension)?input.dimension:'auto';
+ const dimension=inferGameDimension(idea,['auto','2d','3d'].includes(input.dimension)?input.dimension:'auto');
  if(idea.length<2||idea.length>500)return send(res,400,{ok:false,message:'Введите название или описание игры: от 2 до 500 символов.'});
  const ip=String(req.headers['x-forwarded-for']||req.socket.remoteAddress||'unknown').split(',')[0].trim().slice(0,85);
  const now=Date.now(),used=(recent.get(ip)||[]).filter(t=>now-t<3600000);
