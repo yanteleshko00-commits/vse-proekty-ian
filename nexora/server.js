@@ -654,7 +654,7 @@ const server = http.createServer(async (req, res) => {
     }catch(e){console.error('Game Studio engine error:',e.message);return send(res,500,'Движок игры недоступен.')}
   }
   if(req.method === 'POST' && url.pathname === '/api/game/generate')return makeGame(req,res);
-  if(req.method === 'POST' && url.pathname === '/api/game/code')return makeCodeGame(req,res,{authenticated:!!readSession(req)});
+  if(req.method === 'POST' && url.pathname === '/api/game/code')return makeCodeGame(req,res);
   if(req.method === 'POST' && url.pathname === '/api/game/preview')return prepareGamePreview(req,res);
   if(req.method === 'GET' && url.pathname.startsWith('/game/preview/'))return serveGamePreview(res,url.pathname.slice('/game/preview/'.length));
 

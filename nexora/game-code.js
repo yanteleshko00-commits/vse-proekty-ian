@@ -7,6 +7,9 @@ import {blockSandboxHTML} from './game-block-world.js';
 // scripts enabled, but no same-origin, network, forms, or parent navigation.
 const recent=new Map();
 const previews=new Map();
+// Anonymous game creation is public, so bound server-side model spending.
+const MAX_CONCURRENT_GAMES=3;
+let activeGameGenerations=0;
 const API_URL=(process.env.PROJECT_GENERATOR_URL||'https://vse-proekty-ian.onrender.com').replace(/\/+$/,'');
 function send(res,status,data){
  res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
@@ -148,17 +151,21 @@ async function parseBody(req){
  for await(const chunk of req){total+=chunk.length;if(total>5000)throw Error('Описание слишком длинное.');chunks.push(chunk);}
  return JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');
 }
-export async function makeCodeGame(req,res,{authenticated=false,fetchImpl=fetch}={}){
+export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
  let input;
  try{input=await parseBody(req);}catch(error){return send(res,400,{ok:false,message:error.message||'Неверный запрос.'});}
  const idea=typeof input.idea==='string'?input.idea.trim():'';
  if(idea.length<2||idea.length>500)return send(res,400,{ok:false,message:'Введите название или описание игры: от 2 до 500 символов.'});
- if(!authenticated)return send(res,401,{ok:false,error:'login_required',message:'Чтобы ИИ создал игру именно по вашему описанию, войдите в NEXORA ID.',loginUrl:'/auth/start'});
  const ip=String(req.headers['x-forwarded-for']||req.socket.remoteAddress||'unknown').split(',')[0].trim().slice(0,85);
  const now=Date.now(),used=(recent.get(ip)||[]).filter(t=>now-t<3600000);
- if(used.length>=12)return send(res,429,{ok:false,message:'Не более 12 генераций игр в час. Повторите позже.'});
+ if(used.length>=12)return send(res,429,{ok:false,message:'Лимит — 12 генераций игр в час. Попробуйте позже.'});
+ if(used.filter(t=>now-t<60000).length>=3)
+  return send(res,429,{ok:false,message:'Подождите минуту перед следующей генерацией игры.'});
+ if(activeGameGenerations>=MAX_CONCURRENT_GAMES)
+  return send(res,503,{ok:false,error:'server_busy',message:'Сейчас создаётся много игр. Попробуйте немного позже.'});
  used.push(now);recent.set(ip,used);
  if(recent.size>2000)for(const [key,times] of recent)if(times.every(t=>now-t>3600000))recent.delete(key);
+ activeGameGenerations++;
  try{
   const result=await generateWithAI(idea,(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'').trim(),{fetchImpl});
   return send(res,200,{ok:true,html:result.html,title:idea.slice(0,75),source:'ai',provider:result.provider});
@@ -166,6 +173,8 @@ export async function makeCodeGame(req,res,{authenticated=false,fetchImpl=fetch}
   const status=error.status===503?503:502;
   console.warn('[game-code] No AI game delivered:',error.name||'error');
   return send(res,status,{ok:false,error:'generation_unavailable',message:error.status===503?error.message:'ИИ не удалось завершить создание игры. Попробуйте ещё раз.'});
+ }finally{
+  activeGameGenerations--;
  }
 }
 

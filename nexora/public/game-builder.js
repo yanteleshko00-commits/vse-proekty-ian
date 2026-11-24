@@ -11,9 +11,7 @@
  function setStatus(message){status.textContent=message;}
  function fail(message){error.hidden=false;error.textContent=String(message||"Ошибка генерации.").slice(0,400);}
  function clearError(){error.hidden=true;error.textContent="";}
- function showLoginNotice(visible){
-  $("ai-login-required").hidden=!visible;
- }
+
  function saveDraft(value){
   try{localStorage.setItem(DRAFT_KEY,value.slice(0,500));}catch{}
  }
@@ -49,7 +47,7 @@
  }
  async function createGame(){
   if(busy)return;
-  clearError();showLoginNotice(false);
+  clearError();
   const description=idea.value.trim();
   saveDraft(description);
   if(description.length<2){fail("Напишите название или короткое описание игры.");idea.focus();return;}
@@ -65,10 +63,6 @@
     body:JSON.stringify({idea:description}),signal:AbortSignal.timeout(75000)
    });
    const data=await response.json().catch(()=>({}));
-   if(response.status===401||data.error==="login_required"){
-    showLoginNotice(true);
-    throw Error(data.message||"Войдите в NEXORA ID, чтобы ИИ написал код вашей игры.");
-   }
    if(!response.ok||!data.ok||typeof data.html!=="string")
     throw Error(data.message||"ИИ не смог написать игру. Попробуйте уточнить описание.");
    if(data.source!=="ai")throw Error("ИИ не создал код. Подмена вашего запроса готовым шаблоном отключена.");
