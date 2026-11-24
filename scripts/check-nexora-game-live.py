@@ -23,36 +23,33 @@ for item in ['id="ai-workspace"','id="ai-build"','id="ai-idea"','id="ai-source"'
              'id="classic-workspace"','script src="/game-builder.js"']:
     assert item in page,item
 assert 'allow-same-origin' not in page
-assert 'id="ai-login-required"' in page
+assert 'id="ai-login-required"' not in page
+assert 'Регистрация и вход не нужны' in page
 assert "любое название" in page
 print("GAME STUDIO UI",code,"code editor=OK, sandbox=OK, arrows=OK")
 
 code,client,headers=load("/game-builder.js")
 assert code==200
 for item in ["/api/game/code","/api/game/preview","nexora-game-control",
-             'data.source!=="ai"', 'ai-login-required',
+             'data.source!=="ai"',
              "frame.src=data.url","function runEdited","function saveGame"]:
     assert item in client,item
 print("GAME BUILDER JS",code,"generation=OK, edit=OK, download=OK")
 
 
-# A free-form game request must no longer be silently rewritten into a preset.
-for description in [
-    "Майнкрафт",
-    "Гонки на машине с препятствиями",
-    "Ритм-игра, в которой нужно нажимать по нотам в такт",
-    "Симулятор фермы на другой планете с выращиванием растений",
-]:
-    try:
-        load("/api/game/code",{"idea":description})
-        raise AssertionError("Guest AI generation should require NEXORA ID: "+description)
-    except urllib.error.HTTPError as e:
-        assert e.code==401,(description,e.code)
-        result=json.loads(e.read().decode("utf-8"))
-        assert result["error"]=="login_required",result
-        assert result["loginUrl"]=="/auth/start",result
-        assert "html" not in result, "No prebuilt games should be returned as AI generation"
-print("AI-ONLY GAME GENERATION", "arbitrary titles=OK", "no silent presets=OK", "login prompt=OK")
+# A real anonymous player should receive original AI HTML without a cookie.
+description="Ритм-игра с нотами: нажимай по целям и набирай очки"
+try:
+    code, body, headers=load("/api/game/code", {"idea":description})
+except urllib.error.HTTPError as e:
+    error=e.read().decode("utf-8")[:550]
+    print("PUBLIC AI GENERATION ERROR",e.code,error)
+    raise
+result=json.loads(body)
+assert code==200 and result.get("source")=="ai",result
+assert result.get("ok") is True and "<script" in result.get("html",""),result
+assert "loginUrl" not in result
+print("ANONYMOUS AI GENERATION",code,"provider",result.get("provider"),"HTML chars",len(result["html"]),"no login=OK")
 
 # Independently verify the playground still accepts full user-authored HTML.
 sample='''<!doctype html><html lang="ru"><head><meta charset="utf-8">
@@ -86,4 +83,4 @@ try:
     raise AssertionError("Invalid game token was accessible")
 except urllib.error.HTTPError as e:
     assert e.code==404,e.code
-print("GAME STUDIO LIVE AI-ONLY ACCEPTANCE PASS")
+print("GAME STUDIO LIVE PUBLIC AI ACCEPTANCE PASS")
