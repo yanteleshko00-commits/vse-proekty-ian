@@ -18,7 +18,11 @@ const services=[
  ['Все проекты #Ian','https://vse-proekty-ian.onrender.com','/'],
  ['Все проекты #Ian 2','https://vse-proekty-ian-1.onrender.com','/']
 ];
-let snapshot=null,pending=null;const errors=[],audit=[];
+let snapshot=null,pending=null;
+const maintenancePaths=new Map([['chat',new Set(['/api/nexora-chat'])],['game',new Set(['/api/game/generate','/api/game/code'])]]);
+const maintenanceUntil=new Map();
+export function activeMaintenance(path,now=Date.now()){for(const [name,paths] of maintenancePaths)if(paths.has(path)&&(maintenanceUntil.get(name)||0)>now)return name;return null;}
+function maintenanceState(){return [...maintenancePaths.keys()].map(name=>({name,until:(maintenanceUntil.get(name)||0)>Date.now()?new Date(maintenanceUntil.get(name)).toISOString():null}));}const errors=[],audit=[];
 function remember(list,item){list.unshift(item);if(list.length>100)list.pop();}
 async function monitor(){
  if(pending)return pending;
@@ -72,6 +76,16 @@ export async function developerRoute(req,res,url,base,send){
  if(path==='/developer'&&method==='GET'){if(token){startMonitor();html(200,await readFile(new URL('./developer-console.html',import.meta.url),'utf8'));}else loginPage(200,key?'':'TOTP ещё не настроен на сервере.');return true;}
  if(!token){json(401,{error:'unauthorized'});return true;}
  if(path==='/developer/logout'&&method==='POST'){sessions.delete(token);send(res,303,'',{Location:'/developer','Set-Cookie':setCookie('')});return true;}
+ if(path==='/developer/api/history'&&method==='GET'){
+ const secret=String(process.env.NEXORA_CONSOLE_SECRET||'');
+ if(secret.length<32){json(503,{error:'API NEXORA ID не настроен'});return true;}
+ try{const response=await fetch('https://ecosystem-auth-service.onrender.com/v1/console/usage-history',{headers:{Authorization:'Bearer '+secret},signal:AbortSignal.timeout(20000),redirect:'error'});if(!response.ok){json(response.status,{error:'История NEXORA ID недоступна: HTTP '+response.status});return true;}json(200,await response.json());}catch{json(502,{error:'NEXORA ID не ответил'});}return true;
+ }
+ if(path==='/developer/api/maintenance'&&method==='GET'){json(200,{items:maintenanceState(),scope:'current_lobby_process'});return true;}
+ if(path==='/developer/api/maintenance'&&method==='POST'){
+ try{const data=JSON.parse(await body(req));if(!maintenancePaths.has(data.name)||!Number.isInteger(data.minutes)||data.minutes<0||data.minutes>120){json(400,{error:'invalid_request'});return true;}if(data.minutes===0)maintenanceUntil.delete(data.name);else maintenanceUntil.set(data.name,Date.now()+data.minutes*60000);
+ remember(audit,{name:'Техническое обслуживание',time:new Date().toISOString(),detail:data.name+': '+(data.minutes?data.minutes+' мин':'выключено')});json(200,{items:maintenanceState()});}catch{json(400,{error:'invalid_request'});}return true;
+ }
  if(path==='/developer/api/owner'&&method==='GET'){
  const usage=deepSeekUsage();
  const providers=Object.fromEntries(Object.entries({DeepSeek:['DEEPSEEK_API_KEY'],OpenAI:['OPENAI_API_KEY'],Gemini:['GEMINI_API_KEY'],Groq:['GROQ_API_KEY'],OpenRouter:['OPENROUTER_API_KEY'],Yandex:['YANDEX_API_KEY','YANDEX_FOLDER_ID']}).map(([name,keys])=>[name,keys.every(k=>Boolean(process.env[k]))]));
