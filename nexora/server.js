@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {deepSeekProvider,deepSeekText,deepSeekRelay} from './deepseek.js';
 import {handleGeminiImageRelay} from './gemini-image-relay.js';
 import crypto from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -10,7 +11,7 @@ import { textBridge, textBridgeHealth } from './text-bridge.js';
 import { CONTEXT as ARGOSHA_CONTEXT, contextFor, messageHistory, toolForQuery, safeArgoshaAction, parseArgoshaAnswer, argoshaSystemPrompt, localArgoshaReply } from './argosha-core.js';
 import { makeGame } from './game-studio.js';
 import {makeCodeGame,prepareGamePreview,serveGamePreview} from './game-code.js';
-import { validateChatRequest } from './chat-core.js';
+import { validateChatRequest, chatPrompt } from './chat-core.js';
 import { appendFractionWorking, fractionHelpForProblem } from './math-fractions.js';
 import { inferMathKind, mathStudyGuide, datasetHint, MATH_KINDS, MATH_LEVELS } from './math-curriculum.js';
 
@@ -243,6 +244,8 @@ async function argoshaReply(req, res) {
   const lastUser=clean[clean.length-1].content;
   const fallback=localArgoshaReply(lastUser,context,ARGOSHA_TOOLS);
   const providers=[];
+  const deepseek=deepSeekProvider(process.env,process.env.ARGOSHA_DEEPSEEK_MODEL);
+  if(deepseek)providers.push(deepseek);
   if(process.env.OPENROUTER_API_KEY?.trim()){
     const key=process.env.OPENROUTER_API_KEY.trim();
     const first=process.env.ARGOSHA_OPENROUTER_MODEL||'openrouter/free';
@@ -263,6 +266,7 @@ async function argoshaReply(req, res) {
         headers:{'Authorization':'Bearer '+provider.key,'Content-Type':'application/json','HTTP-Referer':appUrl(req),'X-Title':'NEXORA Argosha'},
         body:JSON.stringify({
           model:provider.model,temperature:0.4,max_tokens:1250,
+          ...(provider.name==='DeepSeek'?{thinking:{type:'disabled'}}:{}),
           ...(provider.name.startsWith('OpenRouter')?{reasoning:{effort:'minimal'}}:{}),
           messages:[{role:'system',content:system},...clean]
         }),
@@ -371,6 +375,8 @@ async function mathBridgeSolve(req, res) {
   if (imageTotalBytes > 6 * 1024 * 1024) return mathJson(res, 413, {error:'large_images',message:'Фотографии слишком большие.'});
   if (problem.length < 5 && images.length === 0) return mathJson(res,400,{error:'empty_problem',message:'Введите условие задачи или добавьте фотографию.'});
   const providers = [];
+  const deepseek=deepSeekProvider(process.env,process.env.MATH_DEEPSEEK_MODEL);
+  if(deepseek)providers.push(deepseek);
   if (process.env.OPENROUTER_API_KEY?.trim()) providers.push({
     name: 'OpenRouter', url: 'https://openrouter.ai/api/v1/chat/completions',
     key: process.env.OPENROUTER_API_KEY.trim(), model: process.env.MATH_OPENROUTER_MODEL || process.env.ARGOSHA_OPENROUTER_MODEL || 'openrouter/free'
@@ -451,6 +457,7 @@ async function mathBridgeSolve(req, res) {
         headers: { Authorization: 'Bearer ' + provider.key, 'Content-Type': 'application/json', 'HTTP-Referer': appUrl(req), 'X-Title': 'NEXORA Math Studio' },
         body: JSON.stringify({
           model: provider.model, temperature: 0.12, max_tokens: 3200,
+          ...(provider.name==='DeepSeek'?{thinking:{type:'disabled'}}:{}),
           ...(provider.name.startsWith('OpenRouter') ? {reasoning:{effort:'minimal'}} : {}),
           messages: [
             { role: 'system', content: instructions },
@@ -523,7 +530,7 @@ async function nexoraChatReply(req, res) {
     error: 'not_signed_in', message: 'Войдите в NEXORA ID, чтобы начать диалог.'
   }), jsonHeaders);
   const secret = process.env.NEXORA_CHAT_INTERNAL_TOKEN || '';
-  if (secret.length < 32) return send(res, 503, JSON.stringify({
+  if (secret.length < 32 && !deepSeekProvider()) return send(res, 503, JSON.stringify({
     error: 'chat_unavailable', message: 'Чат ещё подключается. Попробуйте позднее.'
   }), jsonHeaders);
   const origin = String(req.headers.origin || '');
@@ -571,6 +578,17 @@ async function nexoraChatReply(req, res) {
   if(chatActivity.size>3000)for(const [id,list] of chatActivity)
     if(list.every(t=>now-t>3600000))chatActivity.delete(id);
   try {
+    if(input.model==='deepseek'||input.model==='auto'){
+      const provider=deepSeekProvider(process.env,process.env.CHAT_DEEPSEEK_MODEL);
+      if(provider){
+        try{
+          const answer=await deepSeekText({provider,messages:[{role:'system',content:'Ты помощник NEXORA. Отвечай ясно на языке пользователя. Не утверждай, что выполнял действия, которых не было.'},{role:'user',content:chatPrompt(input.messages)}],maxTokens:4000,timeout:40000});
+          console.info('[nexora-chat] DeepSeek generated reply');
+          return send(res,200,JSON.stringify({ok:true,answer:answer.slice(0,9000),provider:'DeepSeek',model:input.model}),jsonHeaders);
+        }catch(error){console.warn('[nexora-chat] DeepSeek failed:',error.status||error.name);}
+      }
+      if(input.model==='deepseek')return send(res,503,JSON.stringify({error:'provider_unavailable',message:'DeepSeek временно недоступен. Выберите автоматический режим.'}),jsonHeaders);
+    }
     const response=await fetch(PROJECT_GENERATOR_BASE+'/api/nexora-chat/internal',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-NEXORA-Chat-Token':secret},
@@ -601,6 +619,7 @@ const server = http.createServer(async (req, res) => {
   let url;
   try { url = new URL(req.url, base); } catch { return send(res, 400, 'Bad Request'); }
 
+  if (req.method === 'POST' && url.pathname === '/internal/deepseek/text') return deepSeekRelay(req,res);
   if (req.method === 'POST' && url.pathname === '/internal/gemini/image') return handleGeminiImageRelay(req,res);
   if (url.pathname === '/health') {
     const ready = Boolean(clientSecret.length >= 32 && sessionSecret.length >= 32 && (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || req.headers.host));
@@ -608,8 +627,9 @@ const server = http.createServer(async (req, res) => {
       ok: true,
       service: 'nexora-lobby',
       oauthConfigured: ready,
-      argoshaConfigured: Boolean(process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY),
-      chatConfigured: (process.env.NEXORA_CHAT_INTERNAL_TOKEN || '').length >= 32,
+      argoshaConfigured: Boolean(process.env.DEEPSEEK_API_KEY || process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY),
+      deepSeekConfigured: Boolean(process.env.DEEPSEEK_API_KEY?.trim()),
+      chatConfigured: (process.env.NEXORA_CHAT_INTERNAL_TOKEN || '').length >= 32 || Boolean(process.env.DEEPSEEK_API_KEY?.trim()),
       imageStudio: imageStudioUrl,
       authService: authBase
     }), { 'Content-Type': 'application/json; charset=utf-8' });
@@ -769,7 +789,7 @@ const server = http.createServer(async (req, res) => {
     const key = req.headers['x-nexora-math-key'];
     const expected = Buffer.from(mathBridgeToken), supplied = Buffer.from(typeof key === 'string' ? key : '');
     if (expected.length < 32 || expected.length !== supplied.length || !crypto.timingSafeEqual(expected, supplied)) return mathJson(res, 403, { error: 'forbidden' });
-    return mathJson(res, 200, { ok: true, providers: [process.env.OPENROUTER_API_KEY ? 'OpenRouter' : null, process.env.GROQ_API_KEY ? 'Groq' : null].filter(Boolean) });
+    return mathJson(res, 200, { ok: true, providers: [process.env.DEEPSEEK_API_KEY ? 'DeepSeek' : null, process.env.OPENROUTER_API_KEY ? 'OpenRouter' : null, process.env.GROQ_API_KEY ? 'Groq' : null].filter(Boolean) });
   }
   if (url.pathname === '/argosha/embed' && req.method === 'GET') {
     try {

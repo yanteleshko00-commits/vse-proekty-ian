@@ -194,6 +194,7 @@
     <nav class="model-list" aria-label="Нейросети">
       <button class="model-option active" type="button" data-model="alice" aria-pressed="true"><span class="pic">✦</span><span class="model-name"><strong>Стандартный</strong><small>NEXORA AI</small></span><span class="dot"></span></button>
       <button class="model-option" type="button" data-model="gpt" aria-pressed="false"><span class="pic">GPT</span><span class="model-name"><strong>GPT</strong><small>OpenAI · отдельный режим</small></span><span class="dot"></span></button>
+      <button class="model-option" type="button" data-model="deepseek" aria-pressed="false"><span class="pic">DS</span><span class="model-name"><strong>DeepSeek</strong><small>DeepSeek Flash</small></span><span class="dot"></span></button>
       <button class="model-option" type="button" data-model="auto" aria-pressed="false"><span class="pic">✦</span><span class="model-name"><strong>Авто</strong><small>Доступная модель</small></span><span class="dot"></span></button>
     </nav>
     <div class="sb-title history-title"><span>Ваши диалоги</span><span class="history-hint">на устройстве</span></div>
@@ -269,8 +270,8 @@
   const $=id=>document.getElementById(id);
   const STORE="nexora-chat-history-v1";
   const THEME="nexora-chat-theme-v1";
-  const names={alice:"Стандартный",gpt:"GPT",auto:"Авто"};
-  const details={alice:"Ваш чат с ИИ",gpt:"Режим OpenAI GPT",auto:"Автоматический выбор модели"};
+  const names={alice:"Стандартный",gpt:"GPT",auto:"Авто",deepseek:"DeepSeek"};
+  const details={alice:"Ваш чат с ИИ",gpt:"Режим OpenAI GPT",auto:"Автоматический выбор модели",deepseek:"DeepSeek Flash"};
   let sessions=[],activeId=null,defaultModel="alice",signedIn=false,pending=false,controller=null,lastError="";
   const uuid=()=>typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2);
   function getCurrent(){return sessions.find(s=>s.id===activeId)||null;}
@@ -320,7 +321,7 @@
     $("head-detail").textContent=details[m];
     $("composer-model").textContent=names[m];
     $("message-input").placeholder="Спросите что-нибудь…";
-    $("model-status").textContent=m==="gpt"?"GPT":m==="alice"?"Стандартный":"Авто";
+    $("model-status").textContent=names[m];
     $("head-badge").textContent="✦";
   }
   function renderHistory(){
@@ -384,7 +385,7 @@
       const avatar=document.createElement("div");avatar.className="bubble-avatar";avatar.textContent=m.role==="user"?"Я":(m.provider==="OpenAI"?"G":"✦");
       const content=document.createElement("div");content.className="message-body";
       const meta=document.createElement("div");meta.className="message-meta";
-      const title=document.createElement("strong");title.textContent=m.role==="user"?"Вы":m.provider==="OpenAI"?"GPT":"NEXORA";
+      const title=document.createElement("strong");title.textContent=m.role==="user"?"Вы":m.provider==="OpenAI"?"GPT":m.provider==="DeepSeek"?"DeepSeek":"NEXORA";
       meta.append(title);
       const bubble=document.createElement("div");bubble.className="message-card";
       if(m.role==="assistant")bubble.innerHTML=markdown(m.content);else bubble.textContent=m.content;

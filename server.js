@@ -395,7 +395,8 @@ function configuredAIProviders() {
   if (geminiApiKey) providers.push({ name: 'Google Gemini', type: 'gemini', key: geminiApiKey, model: process.env.GEMINI_MODEL || 'gemini-3.8-flash' });
   if (process.env.OPENROUTER_API_KEY) providers.push({ name: 'OpenRouter Free', type: 'openai-compatible', key: process.env.OPENROUTER_API_KEY, baseURL: 'https://openrouter.ai/api/v1', model: process.env.OPENROUTER_MODEL || 'openrouter/free', freeOnly: true });
   if (process.env.GROQ_API_KEY) providers.push({ name: 'Groq', type: 'openai-compatible', key: process.env.GROQ_API_KEY, baseURL: 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b' });
-  if (process.env.DEEPSEEK_API_KEY) providers.push({ name: 'DeepSeek', type: 'openai-compatible', key: process.env.DEEPSEEK_API_KEY, baseURL: 'https://api.deepseek.com', model: process.env.DEEPSEEK_MODEL || 'deepseek-flash' });
+  if (process.env.DEEPSEEK_API_KEY) providers.unshift({ name: 'DeepSeek', type: 'openai-compatible', key: process.env.DEEPSEEK_API_KEY, baseURL: 'https://api.deepseek.com', model: process.env.DEEPSEEK_MODEL || 'deepseek-flash' });
+  else if(String(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'').length>=32)providers.unshift({name:'DeepSeek',type:'deepseek-proxy',model:'deepseek-flash'});
   if (process.env.MISTRAL_API_KEY) providers.push({ name: 'Mistral', type: 'openai-compatible', key: process.env.MISTRAL_API_KEY, baseURL: 'https://api.mistral.ai/v1', model: process.env.MISTRAL_MODEL || 'mistral-small-latest' });
   if (process.env.ANTHROPIC_API_KEY) providers.push({ name: 'Anthropic Claude', type: 'anthropic', key: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5' });
   if (process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN) providers.push({ name: 'Cloudflare Workers AI', type: 'cloudflare', accountId: process.env.CLOUDFLARE_ACCOUNT_ID, key: process.env.CLOUDFLARE_API_TOKEN, model: process.env.CLOUDFLARE_AI_MODEL || '@cf/openai/gpt-oss-120b' });
@@ -408,6 +409,12 @@ function providerErrorMessage(data, status) {
 async function callAIProvider(provider, instructions, input, jsonMode, timeout) {
   const requestTimeout = Math.min(timeout, 55000);
   const signal = AbortSignal.timeout(requestTimeout);
+  if(provider.type==='deepseek-proxy'){
+    const response=await fetch('https://nexora-lobby.onrender.com/internal/deepseek/text',{method:'POST',signal,headers:{'Content-Type':'application/json','X-NEXORA-Chat-Token':process.env.NEXORA_CHAT_INTERNAL_TOKEN},body:JSON.stringify({instructions,input,jsonMode})});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||typeof data.output!=='string'||!data.output.trim())throw Object.assign(new Error('DeepSeek relay HTTP '+response.status),{status:response.status});
+    return data.output;
+  }
   if (provider.type === 'alice') {
     return requestAliceAIText(provider, instructions, input, jsonMode, requestTimeout);
   }
@@ -472,6 +479,7 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
     const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + provider.key,
       ...(provider.name === 'OpenRouter Free' ? { 'HTTP-Referer': 'https://vse-proekty-ian.onrender.com', 'X-Title': 'Vse Proekty Ian' } : {}) };
     const requestBody = { model: provider.model, messages: [{ role: 'system', content: instructions }, { role: 'user', content: input }], max_tokens: 10000,
+      ...(provider.name==='DeepSeek'?{thinking:{type:'disabled'}}:{}),
       ...(jsonMode ? { response_format: { type: 'json_object' } } : {}) };
     let response = await fetch(provider.baseURL + '/chat/completions', {
       method: 'POST', signal, headers, body: JSON.stringify(requestBody)
@@ -587,7 +595,7 @@ function scoreAIJsonCandidate(parsed, payload) {
 
 async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task = 'text') {
   const input = 'Return a valid json object matching the requested schema.\nPayload: ' + JSON.stringify(payload);
-  const preferredType = configuredAIProviders().some(provider => provider.type.startsWith('alice')) ? 'alice-proxy' : (task === 'presentation' ? 'gemini' : 'openai');
+  const preferredType = configuredAIProviders().find(provider=>provider.name==='DeepSeek')?.type || (configuredAIProviders().some(provider => provider.type.startsWith('alice')) ? 'alice-proxy' : (task === 'presentation' ? 'gemini' : 'openai'));
   const providers = configuredAIProviders().filter(provider =>
     !(provider.name === 'OpenAI' && openAIQuotaBlockedUntil > Date.now())
   ).map(provider => ({ ...provider, taskPriority: provider.type === preferredType ? 0 : 1 }));
@@ -625,7 +633,7 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task 
       return { ok: false, provider: provider.name, error: message, elapsedMs: Date.now() - startedAt };
     }
   };
-  const preferredAlice = providers.find(provider => provider.type.startsWith('alice'));
+  const preferredAlice = providers.find(provider => provider.name==='DeepSeek') || providers.find(provider => provider.type.startsWith('alice'));
   const attempts = preferredAlice ? [await attemptProvider(preferredAlice)] : [];
   // On malformed or unsuccessful Alice output, preserve all existing fallbacks.
   if (!preferredAlice || !attempts[0].ok || attempts[0].issues.length > 0) {

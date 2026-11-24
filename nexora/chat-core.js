@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-export const CHAT_MODELS = Object.freeze(['alice','gpt','auto']);
+export const CHAT_MODELS = Object.freeze(['alice','gpt','auto','deepseek']);
 export const CHAT_MAX_MESSAGES = 16;
 
 export function validateChatRequest(value) {
@@ -9,7 +9,7 @@ export function validateChatRequest(value) {
   }
   const model = typeof value.model === 'string' ? value.model : 'alice';
   if (!CHAT_MODELS.includes(model)) {
-    throw Object.assign(new Error('Выберите Алису, GPT или автоматический режим.'), { status: 400 });
+    throw Object.assign(new Error('Выберите Алису, GPT, DeepSeek или автоматический режим.'), { status: 400 });
   }
   if (!Array.isArray(value.messages) || !value.messages.length || value.messages.length > CHAT_MAX_MESSAGES) {
     throw Object.assign(new Error('В одном запросе можно передать от 1 до 16 сообщений.'), { status: 400 });
@@ -42,11 +42,13 @@ export function validInternalToken(received, expected) {
 export function chatModelProviders(configured, model, openAiBlocked = false) {
   const alice = configured.filter(item => item.type === 'alice' || item.type === 'alice-proxy');
   const gpt = configured.filter(item => item.type === 'openai' && !openAiBlocked);
+  const deepseek=configured.filter(item=>item.name==='DeepSeek');
+  if (model === 'deepseek') return deepseek;
   if (model === 'alice') return alice;
   if (model === 'gpt') return gpt;
   const others = configured.filter(item => !alice.includes(item) && !gpt.includes(item) &&
     !(item.type === 'openai' && openAiBlocked));
-  return [...alice, ...gpt, ...others];
+  return [...deepseek, ...alice, ...gpt, ...others.filter(item=>!deepseek.includes(item))];
 }
 
 export function chatPrompt(messages) {

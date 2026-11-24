@@ -1,4 +1,5 @@
 import test from 'node:test';
+delete process.env.DEEPSEEK_API_KEY;
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {readFile} from 'node:fs/promises';

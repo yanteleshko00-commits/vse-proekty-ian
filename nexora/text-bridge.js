@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import {deepSeekProvider} from './deepseek.js';
 import {normalizeTextRequest,buildTextPrompt,buildTextUserMessage,readTextResponse,summarizeTextStats} from './text-engine.js';
 
 const key=(process.env.TEXT_BRIDGE_TOKEN||'').trim();
@@ -26,6 +27,8 @@ async function getJSON(req){
 }
 function providers(){
   const result=[],openrouter=process.env.OPENROUTER_API_KEY?.trim(),groq=process.env.GROQ_API_KEY?.trim();
+  const deepseek=deepSeekProvider(process.env,process.env.TEXT_DEEPSEEK_MODEL);
+  if(deepseek)result.push(deepseek);
   if(openrouter){
     const url='https://openrouter.ai/api/v1/chat/completions';
     const model=process.env.TEXT_OPENROUTER_MODEL||process.env.ARGOSHA_OPENROUTER_MODEL||'openrouter/free';
@@ -134,6 +137,7 @@ export async function textBridge(req,res){
               ? Math.min(4900,Math.max(850,Math.ceil(params.targetWords*3.5)+350))
               : params.size==='long'?3200:params.size==='short'?1100:2200,
             ...(p.name.startsWith('OpenRouter')?{reasoning:{effort:'minimal'}}:{}),
+            ...(p.name==='DeepSeek'?{thinking:{type:'disabled'}}:{}),
             messages:[
               {role:'system',content:buildTextPrompt(params)},
               {role:'user',content:buildTextUserMessage(params)}

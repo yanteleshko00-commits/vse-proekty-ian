@@ -1,4 +1,5 @@
 import test from 'node:test';
+delete process.env.DEEPSEEK_API_KEY;
 import assert from 'node:assert/strict';
 import {validateChatRequest,validInternalToken,chatModelProviders,chatPrompt,safeChatFailure} from '../chat-core.js';
 
@@ -40,7 +41,7 @@ test('chat page includes a working, accessible menu and safe UI interactions', a
   for(const id of ['sidebar','history','search','new-chat','conversation','composer','message-input','send','stop','theme-toggle','account-link']){
     assert.ok(page.includes('id="'+id+'"'),'missing '+id);
   }
-  for(const mode of ['alice','gpt','auto'])assert.ok(page.includes('data-model="'+mode+'"'));
+  for(const mode of ['alice','gpt','auto','deepseek'])assert.ok(page.includes('data-model="'+mode+'"'));
   assert.match(page,/\/api\/nexora-chat/);
   assert.match(page,/\/api\/me/);
   assert.match(page,/localStorage/);
@@ -175,7 +176,7 @@ test('minimal centered GPT-style UI avoids mislabeling the default model', async
     'Prompt suggestions should appear after the central composer');
   assert.match(page,/<strong>Стандартный<\/strong>/);
   assert.match(page,/data-model="gpt"/);
-  assert.match(page,/names=\{alice:"Стандартный",gpt:"GPT",auto:"Авто"\}/);
+  assert.match(page,/names=\{alice:"Стандартный",gpt:"GPT",auto:"Авто",deepseek:"DeepSeek"\}/);
   assert.doesNotMatch(page,/Алиса|Алисы|Алисой|Yandex AI/);
   assert.match(homepage,/<h3>Чат GPT<\/h3>/);
   assert.doesNotMatch(homepage,/<h3>Чат GPT \+ Алиса<\/h3>/);
@@ -210,3 +211,5 @@ test('example idea cards immediately send a prompt and guests see a login action
   assert.doesNotMatch(html, /data-prompt"\]\)\.forEach[\s\S]{0,180}\.focus\(\)/,
     'One-click suggestions should not open the phone keyboard instead of sending');
 });
+
+ test('DeepSeek selection and auto mode prioritize the actual DeepSeek provider',()=>{const ds={type:'deepseek-proxy',name:'DeepSeek'},alice={type:'alice-proxy',name:'Alice AI LLM'};assert.deepEqual(chatModelProviders([alice,ds],'deepseek'),[ds]);assert.deepEqual(chatModelProviders([alice,ds],'auto'),[ds,alice]);});

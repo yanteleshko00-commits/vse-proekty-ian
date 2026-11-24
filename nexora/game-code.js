@@ -227,6 +227,11 @@ export function playableGameHTML(response){
 function gameTextProviders(){
  // Reuse NEXORA's existing server-only providers; never send their keys to the browser.
  const providers=[];
+ if(process.env.DEEPSEEK_API_KEY?.trim())providers.push({
+  name:'DeepSeek',kind:'deepseek',key:process.env.DEEPSEEK_API_KEY.trim(),
+  url:'https://api.deepseek.com/chat/completions',
+  model:process.env.GAME_DEEPSEEK_MODEL?.trim()||'deepseek-flash'
+ });
  if(process.env.GEMINI_API_KEY?.trim())providers.push({
   name:'Gemini',kind:'gemini',key:process.env.GEMINI_API_KEY.trim(),
   model:process.env.GAME_GEMINI_MODEL?.trim()||'gemini-3.8-flash',
@@ -236,11 +241,7 @@ function gameTextProviders(){
   const model=process.env.GAME_GEMINI_FALLBACK_MODEL?.trim()||'gemini-3.6-flash';
   if(model!==providers[0]?.model)providers.push({name:'Gemini резервный',kind:'gemini',key:process.env.GEMINI_API_KEY.trim(),model,url:'https://generativelanguage.googleapis.com/v1beta/models/'});
  }
- if(process.env.DEEPSEEK_API_KEY?.trim())providers.push({
-  name:'DeepSeek',kind:'deepseek',key:process.env.DEEPSEEK_API_KEY.trim(),
-  url:'https://api.deepseek.com/chat/completions',
-  model:process.env.GAME_DEEPSEEK_MODEL?.trim()||'deepseek-flash'
- });
+
  if(process.env.GROQ_API_KEY?.trim())providers.push({
   name:'Groq',key:process.env.GROQ_API_KEY.trim(),
   url:'https://api.groq.com/openai/v1/chat/completions',
