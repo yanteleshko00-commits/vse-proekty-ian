@@ -90,16 +90,21 @@ export async function fallbackGameHTML(idea){
 // The main creator is intentionally NOT routed through gameFamily(): the
 // user's free-form request determines the mechanics. Preset engines remain
 // available only in the separate "classic games" UI.
-export function gameCodePrompt(idea){
- return [
+export function gameCodePrompt(idea,{dimension='auto'}={}){
+ const view=dimension==='3d'
+  ?'ОБЯЗАТЕЛЬНО создай настоящий интерактивный 3D-мир на WebGL (canvas.getContext("webgl") либо "webgl2") с шейдерами, матрицами проекции/камерой, геометрией, сценой и освещением/цветами. Реализуй движение героя и поворот камеры. Никаких имитаций 3D картинкой или CSS: нужен WebGL-рендер.'
+  :dimension==='2d'
+   ?'Создай именно 2D-игру на canvas 2D или HTML/CSS, не имитируй 3D.'
+   :'Определи по пользовательскому запросу, нужна ли 2D или 3D игра. Если пользователь просит 3D, вид от первого лица, объёмный мир или трёхмерную камеру — сделай настоящий 3D на WebGL. Иначе создай подходящую 2D-игру.';
+ return [view,
   'Ты опытный разработчик HTML5-игр. Твоя задача — самостоятельно проанализировать ЛЮБОЕ название игры или свободное описание пользователя и НАПИСАТЬ РАБОТАЮЩУЮ ИГРУ, соответствующую именно его идее.',
   'Сначала определяй из запроса жанр, главную механику, цель, действия игрока, препятствия, правила победы или поражения, управление, оформление. Это внутренняя работа: не выводи анализ вместо кода.',
-  'Если указано только известное название, создай самостоятельную небольшую оригинальную 2D-игру с узнаваемой базовой механикой; не копируй чужие изображения, тексты или логотипы. Если указана необычная механика — реализуй её, а не подменяй одной из стандартных игр.',
+  'Если указано только известное название, создай самостоятельную небольшую оригинальную браузерную игру с узнаваемой базовой механикой; не копируй чужие изображения, тексты или логотипы. Если указана необычная механика — реализуй её, а не подменяй одной из стандартных игр.',
   'Не привязывайся к готовым категориям NEXORA. Допустимы любые подходящие для браузера жанры: головоломки, платформеры, исследования, гонки, ритм, карточные игры, защита башен, симуляторы, приключения, логические и собственные идеи.',
   'Верни ТОЛЬКО ПОЛНЫЙ HTML-документ от <!doctype html> до </html>, БЕЗ markdown, без пояснений и без фрагментов. Весь код HTML/CSS/JavaScript находится в одном файле; НЕ используй внешние библиотеки, CDN, URL, картинки, API, fetch, iframe, модули и внешние файлы.',
-  'Максимум 8500 символов HTML. Пиши компактно, но законченную игру. В браузере должны быть настоящие игровые действия, состояние игры, визуальный процесс, цель, столкновения/проверка правил (где уместно), очки либо прогресс, кнопка «Заново». Не делай макет или неподвижную демонстрацию.',
-  'Для анимации используй requestAnimationFrame и canvas или DOM, если DOM лучше подходит механике. Для canvas устанавливай width=720 height=420 и CSS width:100%; для экранов телефонов используй viewport и адаптивные размеры. Без внешнего доступа в сеть.',
-  'Для игр с направлением движения слушай document.addEventListener("keydown"/"keyup") со стрелками ArrowLeft, ArrowRight, ArrowUp, ArrowDown и по возможности WASD; для действия используй пробел и/или нажатие на игровую область. Система NEXORA преобразует свайпы в клавиши стрелок. Если игра управляется тапами, сделай тап-управление.',
+  'Пиши компактно, но законченную игру в одном HTML-файле, по возможности до 14000 символов (3D WebGL может потребовать больше). Нужны настоящие игровые действия, игровое состояние, визуальный процесс, цель и прогресс, кнопка «Заново». Не делай макет или неподвижную демонстрацию.',
+  'Для анимации используй requestAnimationFrame. Для 2D — canvas 2D или DOM; для настоящего 3D — WebGL/WebGL2 со встроенными шейдерами GLSL и матрицей перспективы/камерой (без библиотек). Для canvas ширина 720 высота 420, CSS width:100%; поддерживай экраны телефонов и viewport. Без внешнего доступа в сеть.',
+  'На ВСЕХ играх сделай мобильное управление. Слушай document.addEventListener("keydown"/"keyup") со стрелками и WASD; для действия используй пробел и/или pointerdown на canvas. NEXORA переводит свайпы и экранные кнопки в стрелки и пробел. Для 3D-поворота камеры дополнительно слушай document.addEventListener("nexora-game-look",e=>{const {dx,dy}=e.detail; ...}) и меняй yaw/pitch, ограничивая угол pitch. Для игр с тапами сделай касания целей. Не зависни без управления на телефоне.',
   'Показывай короткую инструкцию, понятные элементы интерфейса, хорошие контрастные цвета. Язык игры — русский. Если запрос можно выполнить только в ограниченной 2D-версии, реализуй наиболее важную механику, не выдавай её за полноценную коммерческую игру.',
   'ЗАПРОС ПОЛЬЗОВАТЕЛЯ: '+idea
  ].join('\n');
@@ -133,7 +138,7 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl){
   method:'POST',
   headers:{'Content-Type':'application/json','Authorization':'Bearer '+provider.key,'X-Title':'NEXORA Game Studio'},
   body:JSON.stringify({
-   model:provider.model,temperature:0.35,max_tokens:6900,
+   model:provider.model,temperature:0.3,max_tokens:8192,
    messages:[
     {role:'system',content:'Ты профессиональный разработчик самостоятельных HTML5-игр. Отвечай только полноценным HTML-файлом с рабочим игровым кодом.'},
     {role:'user',content:prompt}
@@ -149,8 +154,8 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl){
  if(!html)throw Error('Model did not return a complete playable game');
  return {html,provider:provider.name};
 }
-async function generateWithAI(idea,secret,{fetchImpl=fetch}={}){
- const prompt=gameCodePrompt(idea);
+async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={}){
+ const prompt=gameCodePrompt(idea,{dimension});
  const deadline=Date.now()+65000;
  const direct=gameTextProviders();
  // Local providers can bypass a sleeping or unresponsive remote generator.
@@ -199,6 +204,7 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
  let input;
  try{input=await parseBody(req);}catch(error){return send(res,400,{ok:false,message:error.message||'Неверный запрос.'});}
  const idea=typeof input.idea==='string'?input.idea.trim():'';
+ const dimension=['auto','2d','3d'].includes(input.dimension)?input.dimension:'auto';
  if(idea.length<2||idea.length>500)return send(res,400,{ok:false,message:'Введите название или описание игры: от 2 до 500 символов.'});
  const ip=String(req.headers['x-forwarded-for']||req.socket.remoteAddress||'unknown').split(',')[0].trim().slice(0,85);
  const now=Date.now(),used=(recent.get(ip)||[]).filter(t=>now-t<3600000);
@@ -211,8 +217,10 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
  if(recent.size>2000)for(const [key,times] of recent)if(times.every(t=>now-t>3600000))recent.delete(key);
  activeGameGenerations++;
  try{
-  const result=await generateWithAI(idea,(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'').trim(),{fetchImpl});
-  return send(res,200,{ok:true,html:result.html,title:idea.slice(0,75),source:'ai',provider:result.provider});
+  const result=await generateWithAI(idea,(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'').trim(),{fetchImpl,dimension});
+  if(dimension==='3d'&&!/<canvas[\s>]/i.test(result.html))throw Object.assign(new Error('3D-игра не содержит WebGL-поле.'),{status:503});
+  if(dimension==='3d'&&!/getContext\s*\(\s*['"]webgl2?['"]\s*\)/i.test(result.html))throw Object.assign(new Error('Модель вернула не 3D-код. Попробуйте создать 3D-игру ещё раз.'),{status:503});
+  return send(res,200,{ok:true,html:result.html,title:idea.slice(0,75),source:'ai',provider:result.provider,dimension});
  }catch(error){
   const status=error.status===503?503:502;
   console.warn('[game-code] No AI game delivered:',error.name||'error');
