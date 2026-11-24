@@ -389,6 +389,20 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 
 .composer .settings{display:none!important}
 </style>
+<style id="nx-result-zoom-style">
+.nx-result-zoom{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px;margin:8px 0 10px;min-width:0;flex-shrink:0;color:inherit;font:600 13px/1.25 system-ui,sans-serif;touch-action:manipulation}
+.nx-result-zoom[hidden]{display:none!important}
+.nx-result-zoom button{appearance:none;display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;padding:7px 12px;border:1px solid currentColor;border-radius:11px;background:transparent;color:inherit;font:700 15px/1.2 system-ui,sans-serif;cursor:pointer;touch-action:manipulation}
+.nx-result-zoom button:disabled{opacity:.35;cursor:default}
+.nx-result-zoom button:focus-visible{outline:2px solid #8c78ee;outline-offset:2px}
+[data-nx-zoom-mode="content"]{zoom:var(--nx-result-scale,1);overflow-wrap:anywhere}
+[data-nx-zoom-mode="messages"] .message,[data-nx-zoom-mode="messages"] .argosha-message{zoom:var(--nx-result-scale,1)}
+[data-nx-zoom-mode="editor"]{font-size:var(--nx-result-font,inherit)!important}
+[data-nx-zoom-host="active"]{overflow:auto!important;min-width:0;max-width:100%;grid-template-columns:minmax(0,1fr);justify-items:start;align-items:start}
+[data-nx-zoom-mode="visual"][data-nx-zoom-active="1"]{zoom:var(--nx-result-scale,1);width:var(--nx-result-width)!important;max-width:none!important;flex:none}
+img[data-nx-zoom-mode="visual"][data-nx-zoom-active="1"]{height:auto!important;max-height:none!important;object-fit:contain}
+@media print{.nx-result-zoom{display:none!important}[data-nx-zoom-mode]{zoom:1!important}}
+</style>
 </head>
 <body>
 <header class="topbar">
@@ -683,5 +697,58 @@ body:has(#nxq-project:not([hidden])) .nx-argosha-host,body:has(#nxq-project:not(
  if(!seen)setTimeout(dismiss,11500);
 })();
 </script>
+<script>(function(){
+"use strict";
+const settings=[["#result-image","visual","#stage"]];
+function install(){
+ for(const [selector,mode,hostSelector] of settings){
+  const target=document.querySelector(selector);
+  if(!target||target.dataset.nxZoomReady)continue;
+  const host=hostSelector?target.closest(hostSelector):null;
+  const anchor=host||target;
+  if(!anchor.parentNode)continue;
+  target.dataset.nxZoomReady="1";
+  target.dataset.nxZoomMode=mode;
+  let scale=1;
+  const baseFont=Math.max(16,parseFloat(getComputedStyle(target).fontSize)||16);
+  const tools=document.createElement("div");
+  tools.className="nx-result-zoom";
+  tools.setAttribute("role","group");
+  tools.setAttribute("aria-label","Масштаб результата");
+  const label=document.createElement("span");label.textContent="Масштаб";
+  const make=(text,aria)=>{const b=document.createElement("button");b.type="button";b.textContent=text;b.setAttribute("aria-label",aria);return b;};
+  const minus=make("−","Уменьшить результат");
+  const reset=make("100%","Вернуть исходный масштаб");
+  const plus=make("+","Приблизить результат");
+  tools.append(label,minus,reset,plus);
+  anchor.before(tools);
+  function apply(){
+   target.style.setProperty("--nx-result-scale",String(scale));
+   if(mode==="editor")target.style.setProperty("--nx-result-font",(baseFont*scale)+"px");
+   if(mode==="visual"&&host){
+    if(scale>1){
+     target.style.setProperty("--nx-result-width",Math.max(1,host.clientWidth)+"px");
+     target.dataset.nxZoomActive="1";host.dataset.nxZoomHost="active";
+    }else{
+     delete target.dataset.nxZoomActive;delete host.dataset.nxZoomHost;
+     target.style.removeProperty("--nx-result-width");host.scrollLeft=0;host.scrollTop=0;
+    }
+   }
+   reset.textContent=Math.round(scale*100)+"%";
+   minus.disabled=scale<=1;plus.disabled=scale>=3;
+  }
+  function set(value){scale=Math.min(3,Math.max(1,Math.round(value*100)/100));apply();}
+  minus.addEventListener("click",()=>set(scale-.25));
+  plus.addEventListener("click",()=>set(scale+.25));
+  reset.addEventListener("click",()=>set(1));
+  function visible(){tools.hidden=!target.getClientRects().length;}
+  if(typeof ResizeObserver!=="undefined"){const observer=new ResizeObserver(visible);observer.observe(target);}
+  if(typeof MutationObserver!=="undefined"){const observer=new MutationObserver(visible);for(let el=target;el&&el!==document.body;el=el.parentElement)observer.observe(el,{attributes:true,attributeFilter:["hidden","class","style"]});}
+  window.addEventListener("resize",()=>{if(mode==="visual"&&scale>1&&host)target.style.setProperty("--nx-result-width",Math.max(1,host.clientWidth)+"px");visible();},{passive:true});
+  apply();visible();
+ }
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
+})();</script>
 </body>
 </html>
