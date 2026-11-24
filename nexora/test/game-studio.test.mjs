@@ -558,3 +558,49 @@ test('Gemini is the primary provider and reads native content parts without expo
   for(const name of names){if(before[name]===undefined)delete process.env[name];else process.env[name]=before[name];}
  }
 });
+
+
+test('long game generation returns a job immediately and polling retrieves real AI code',async()=>{
+ const {createServer}=await import('node:http');
+ const {makeCodeGame}=await import('../game-code.js');
+ const names=['GEMINI_API_KEY','GAME_GEMINI_MODEL','OPENROUTER_API_KEY'];
+ const before=Object.fromEntries(names.map(name=>[name,process.env[name]]));
+ process.env.GEMINI_API_KEY='test-job-key';
+ process.env.GAME_GEMINI_MODEL='gemini-3.8-flash';
+ const html='<!doctype html><html><head><meta charset="utf-8"><title>Game</title></head><body><canvas width="720" height="420"></canvas><script>const c=document.querySelector("canvas"),x=c.getContext("2d");let n=0;document.addEventListener("keydown",e=>{n++});function frame(){x.fillRect(n++,10,20,20);requestAnimationFrame(frame)}frame();</script></body></html>';
+ let finish;
+ const gate=new Promise(resolve=>{finish=resolve;});
+ let calls=0;
+ const mock=async(url,options)=>{
+  calls++;
+  await gate;
+  return new Response(JSON.stringify({candidates:[{content:{parts:[{text:html}]},finishReason:'STOP'}]}),{status:200});
+ };
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const post=(body,asyncMode=false)=>fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'192.0.2.43',...(asyncMode?{'X-NEXORA-Async':'1'}:{})},body:JSON.stringify(body)});
+ try{
+  const started=await post({idea:'Платформер на Луне',dimension:'2d'},true);
+  assert.equal(started.status,202);
+  const job=await started.json();
+  assert.equal(job.pending,true);
+  assert.match(job.jobId,/^[a-f0-9-]{36}$/);
+  assert.equal((await post({jobId:job.jobId})).status,202);
+  finish();
+  let result;
+  for(let i=0;i<20;i++){
+   result=await post({jobId:job.jobId});
+   if(result.status!==202)break;
+   await new Promise(resolve=>setTimeout(resolve,15));
+  }
+  assert.equal(result.status,200);
+  const game=await result.json();
+  assert.equal(game.provider,'Gemini');
+  assert.equal(game.html,html);
+  assert.equal(calls,1);
+ }finally{
+  finish();
+  await new Promise(resolve=>server.close(resolve));
+  for(const name of names){if(before[name]===undefined)delete process.env[name];else process.env[name]=before[name];}
+ }
+});
