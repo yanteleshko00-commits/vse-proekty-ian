@@ -643,3 +643,24 @@ test('DeepSeek Flash generates game HTML using the official endpoint and a serve
   for(const name of names){if(before[name]===undefined)delete process.env[name];else process.env[name]=before[name];}
  }
 });
+
+test('Gemini transient 503 is retried once with full 3D prompt',async()=>{
+ const {createServer}=await import('node:http');
+ const {makeCodeGame,gameProviderRetryable}=await import('../game-code.js');
+ assert.equal(gameProviderRetryable(503),true);
+ assert.equal(gameProviderRetryable(401),false);
+ const keys=['DEEPSEEK_API_KEY','GEMINI_API_KEY','GAME_GEMINI_MODEL','GROQ_API_KEY','OPENROUTER_API_KEY','NEXORA_CHAT_INTERNAL_TOKEN'];
+ const prior=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
+ for(const k of keys)delete process.env[k];
+ process.env.GEMINI_API_KEY='test-gemini-only';
+ process.env.GAME_GEMINI_MODEL='test-model';
+ let calls=0;
+ const html='<!doctype html><html><head><meta charset="utf-8"><title>3D</title></head><body><canvas width="720" height="420"></canvas><script>const c=document.querySelector("canvas"),gl=c.getContext("webgl");let n=0;document.addEventListener("keydown",e=>{n++});function frame(){gl.clearColor(n%2,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);requestAnimationFrame(frame)}frame();</script></body></html>';
+ const mock=async(url,options)=>{calls++;assert.match(JSON.parse(options.body).contents[0].parts[0].text,/ОБЯЗАТЕЛЬНО.*WebGL/);return calls===1?new Response('{}',{status:503}):new Response(JSON.stringify({candidates:[{content:{parts:[{text:html}]}}]}),{status:200});};
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{
+ const res=await fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'192.0.2.55'},body:JSON.stringify({idea:'3D гонки',dimension:'3d'})});
+ assert.equal(res.status,200);assert.equal((await res.json()).provider,'Gemini');assert.equal(calls,2);
+ }finally{await new Promise(resolve=>server.close(resolve));for(const k of keys){if(prior[k]===undefined)delete process.env[k];else process.env[k]=prior[k];}}
+});
