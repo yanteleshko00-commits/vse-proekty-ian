@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import {Script} from 'node:vm';
 import {arcadeGameHTML} from './game-arcade.js';
 import {miniGameHTML} from './game-mini.js';
 import {blockSandboxHTML} from './game-block-world.js';
@@ -140,13 +141,20 @@ export function gameCodePrompt(idea,{dimension='auto'}={}){
   'ЗАПРОС ПОЛЬЗОВАТЕЛЯ: '+idea
  ].join('\n');
 }
+export function isWebGLGame(html){
+ return /<canvas[\\s>]/i.test(html)&&/getContext\\s*\\(\\s*['"](?:webgl2?|experimental-webgl)['"]/i.test(html);
+}
 function playableGameHTML(response){
  const html=normalizeGameHTML(response);
- if(!html||html.length>16500)return null;
- // A complete script and genuine user interaction / loop are required.
- const body=html.match(/<script\b[^>]*>([\s\S]*?)<\/script>/i)?.[1]||'';
- if(body.length<160)return null;
- if(!/(requestAnimationFrame|setInterval|addEventListener|onkeydown|onpointerdown|onclick|ontouchstart)/i.test(body))return null;
+ if(!html||html.length>52000)return null;
+ // Syntax-check AI scripts without running them. A broken script must not
+ // be presented as a playable game.
+ const scripts=[...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(match=>match[1]);
+ if(!scripts.length||scripts.every(body=>body.trim().length<160))return null;
+ const code=scripts.join('\n');
+ if(!/(requestAnimationFrame|setInterval|addEventListener|onkeydown|onpointerdown|onclick|ontouchstart)/i.test(code))return null;
+ try{for(const body of scripts)new Script(body,{filename:'generated-game.js'});}
+ catch{return null;}
  return html;
 }
 function gameTextProviders(){
@@ -162,9 +170,15 @@ function gameTextProviders(){
   url:'https://openrouter.ai/api/v1/chat/completions',
   model:process.env.GAME_OPENROUTER_MODEL||process.env.ARGOSHA_OPENROUTER_MODEL||'openrouter/free'
  });
+ if(process.env.OPENROUTER_API_KEY?.trim()){
+  const backup=process.env.GAME_OPENROUTER_FALLBACK_MODEL||process.env.ARGOSHA_OPENROUTER_FALLBACK_MODEL||'google/gemma-4-26b-a4b-it:free';
+  if(!providers.some(p=>p.url==='https://openrouter.ai/api/v1/chat/completions'&&p.model===backup))
+   providers.push({name:'OpenRouter backup',key:process.env.OPENROUTER_API_KEY.trim(),
+    url:'https://openrouter.ai/api/v1/chat/completions',model:backup});
+ }
  return providers;
 }
-async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl){
+async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl,dimension='auto'){
  const response=await fetchImpl(provider.url,{
   method:'POST',
   headers:{'Content-Type':'application/json','Authorization':'Bearer '+provider.key,'X-Title':'NEXORA Game Studio'},
@@ -182,7 +196,8 @@ async function requestDirectGameProvider(provider,prompt,timeout,fetchImpl){
  const content=data?.choices?.[0]?.message?.content;
  const answer=typeof content==='string'?content:Array.isArray(content)?content.map(x=>x.text||'').join(''):'';
  const html=playableGameHTML(answer);
- if(!html)throw Error('Model did not return a complete playable game');
+ if(!html)throw Error('invalid_game_html');
+ if(dimension==='3d'&&!isWebGLGame(html))throw Error('not_webgl_3d');
  return {html,provider:provider.name};
 }
 async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={}){
@@ -194,9 +209,13 @@ async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={})
  for(const provider of direct){
   const remaining=deadline-Date.now();
   if(remaining<9500)break;
-  const allowance=Math.min(direct.length>1?22000:29000,remaining-7000);
-  try{return await requestDirectGameProvider(provider,prompt,allowance,fetchImpl);}
-  catch(error){console.warn('[game-code] Direct text provider failed:',provider.name,error.name||'error');}
+  const allowance=Math.min(direct.length>1?18500:29000,remaining-7000);
+  try{return await requestDirectGameProvider(provider,prompt,allowance,fetchImpl,dimension);}
+  catch(error){
+   const detail=/^AI HTTP [0-9]{3}$/.test(error.message||'')?error.message
+     :['invalid_game_html','not_webgl_3d'].includes(error.message)?error.message:error.name||'error';
+   console.warn('[game-code] Direct text provider failed:',provider.name,detail);
+  }
  }
  if(secret.length>=32){
   for(const model of ['auto','alice']){
@@ -212,7 +231,7 @@ async function generateWithAI(idea,secret,{fetchImpl=fetch,dimension='auto'}={})
     if(!response.ok){console.warn('[game-code] Game provider gateway unavailable:',response.status);continue;}
     const result=await response.json().catch(()=>null);
     const html=playableGameHTML(result?.answer);
-    if(html)return {html,provider:String(result.provider||'NEXORA AI').slice(0,70)};
+    if(html&&(dimension!=='3d'||isWebGLGame(html)))return {html,provider:String(result.provider||'NEXORA AI').slice(0,70)};
     console.warn('[game-code] Model response is not a complete playable HTML game');
    }catch(error){console.warn('[game-code] Generation gateway attempt failed:',error.name||'error');}
   }
@@ -249,8 +268,7 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
  activeGameGenerations++;
  try{
   const result=await generateWithAI(idea,(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'').trim(),{fetchImpl,dimension});
-  if(dimension==='3d'&&!/<canvas[\s>]/i.test(result.html))throw Object.assign(new Error('3D-игра не содержит WebGL-поле.'),{status:503});
-  if(dimension==='3d'&&!/getContext\s*\(\s*['"](?:webgl2?|experimental-webgl)['"]/i.test(result.html))throw Object.assign(new Error('Модель вернула не 3D-код. Попробуйте создать 3D-игру ещё раз.'),{status:503});
+  if(dimension==='3d'&&!isWebGLGame(result.html))throw Object.assign(new Error('Модель вернула не 3D-код. Попробуйте создать 3D-игру ещё раз.'),{status:503});
   return send(res,200,{ok:true,html:result.html,title:idea.slice(0,75),source:'ai',provider:result.provider,dimension});
  }catch(error){
   const status=error.status===503?503:502;
