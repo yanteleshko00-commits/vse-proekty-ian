@@ -44,3 +44,10 @@ test('login form issues host-only nonce and shows HTML instead of raw forbidden'
  assert.equal(output.status,403);
  assert.match(output.body,/Вход разработчика/);
 });
+
+test('owner diagnostics and session revocation require administrator session',async()=>{
+ for(const [path,method] of [['owner','GET'],['revoke-sessions','POST']]){
+  let status;await developerRoute({method,headers:{origin:'https://example.com'}},{},new URL('https://example.com/developer/api/'+path),'https://example.com',(_,s)=>{status=s});
+  assert.equal(status,401);
+ }
+});
