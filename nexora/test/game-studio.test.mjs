@@ -295,3 +295,39 @@ test('Game Studio requests AI for arbitrary names and custom mechanics, never se
  const route=backend.split('export async function makeCodeGame(')[1].split('export async function prepareGamePreview(')[0];
  assert.doesNotMatch(route,/fallbackGameHTML|arcadeGameHTML|miniGameHTML|blockSandboxHTML/);
 });
+
+
+test('Anonymous Game Studio generates playable HTML directly with the existing Groq server key',async()=>{
+ const {createServer}=await import('node:http');
+ const {makeCodeGame}=await import('../game-code.js');
+ const previousGroq=process.env.GROQ_API_KEY,previousRouter=process.env.OPENROUTER_API_KEY;
+ process.env.GROQ_API_KEY='local-test-groq-key';
+ delete process.env.OPENROUTER_API_KEY;
+ let calls=0;
+ const game='<!doctype html><html><head><meta charset="utf-8"><style>canvas{width:100%;background:black}body{margin:0;color:white}</style></head><body><h1>Симулятор фермы</h1><canvas width="720" height="420"></canvas><script>const c=document.querySelector("canvas"),x=c.getContext("2d");let n=0;document.addEventListener("keydown",event=>{n+=event.key==="ArrowLeft"?1:2});function animate(){n++;x.fillStyle="white";x.fillRect(n%700,30,20,20);requestAnimationFrame(animate)}animate();</script></body></html>';
+ const mockFetch=async(url,options)=>{
+  calls++;
+  assert.equal(url,'https://api.groq.com/openai/v1/chat/completions');
+  assert.equal(options.headers.Authorization,'Bearer local-test-groq-key');
+  assert.match(options.body,/ферма с роботами/);
+  return new Response(JSON.stringify({choices:[{message:{content:game}}]}),{status:200,headers:{'Content-Type':'application/json'}});
+ };
+ const server=createServer((req,res)=>{void makeCodeGame(req,res,{fetchImpl:mockFetch});});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{
+  const response=await fetch('http://127.0.0.1:'+server.address().port,{
+   method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({idea:'Космическая ферма с роботами'})
+  });
+  assert.equal(response.status,200);
+  const result=await response.json();
+  assert.equal(result.source,'ai');
+  assert.equal(result.provider,'Groq');
+  assert.equal(result.html,game);
+  assert.equal(calls,1);
+ }finally{
+  await new Promise(resolve=>server.close(resolve));
+  if(previousGroq===undefined)delete process.env.GROQ_API_KEY;else process.env.GROQ_API_KEY=previousGroq;
+  if(previousRouter===undefined)delete process.env.OPENROUTER_API_KEY;else process.env.OPENROUTER_API_KEY=previousRouter;
+ }
+});
