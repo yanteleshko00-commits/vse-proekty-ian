@@ -351,7 +351,12 @@ test('creation screen animates HTML code into a 3D scene without fake progress a
  new vm.Script(frontend);
 });
 test('3D prompts require actual WebGL and all generated games receive touch/keyboard controls',async()=>{
- const {gameCodePrompt,isWebGLGame,normalizeGameHTML,sandboxGameHTML}=await import('../game-code.js');
+ const {gameCodePrompt,inferGameDimension,isWebGLGame,normalizeGameHTML,sandboxGameHTML}=await import('../game-code.js');
+ assert.equal(inferGameDimension('Сделай 3D лабиринт'),'3d');
+ assert.equal(inferGameDimension('Вид от первого лица, поворот камеры'),'3d');
+ assert.equal(inferGameDimension('Трёхмерный мир с кубами'),'3d');
+ assert.equal(inferGameDimension('Ритм-игра'),'auto');
+ assert.equal(inferGameDimension('Трёхмерный мир','2d'),'2d');
  const forced=gameCodePrompt('Трёхмерные гонки с камерой',{dimension:'3d'});
  const auto=gameCodePrompt('3D шутер на арене');
  const flat=gameCodePrompt('2D ритм-игра',{dimension:'2d'});
@@ -371,6 +376,8 @@ test('3D prompts require actual WebGL and all generated games receive touch/keyb
  assert.match(html,/touchmove/);
  assert.match(html,/touchend/);
  assert.match(html,/nexora-game-control/);
+ assert.match(html,/nexora-game-error/);
+ assert.match(html,/webglcontextcreationerror/);
  assert.match(html,/connect-src 'none'/);
  const adapter=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
  assert.ok(adapter);
