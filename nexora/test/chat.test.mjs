@@ -58,7 +58,7 @@ test('chat page includes a working, accessible menu and safe UI interactions', a
   assert.equal((css.match(/\{/g)||[]).length,(css.match(/\}/g)||[]).length);
 });
 
-test('chat page is public, but generation requires NEXORA ID', async()=>{
+test('chat page is public and guest requests still enforce origin and input validation', async()=>{
   const {spawn}=await import('node:child_process');
   const {fileURLToPath}=await import('node:url');
   const {join}=await import('node:path');
@@ -92,7 +92,8 @@ test('chat page is public, but generation requires NEXORA ID', async()=>{
       method:'POST',headers:{'Content-Type':'application/json',...headers},
       body:JSON.stringify(body)
     });
-    assert.equal((await req(sample)).status,401);
+    assert.equal((await req(sample,{Origin:'https://evil.example'})).status,403);
+    assert.equal((await req({model:'unknown',messages:sample.messages})).status,400);
     const payload=Buffer.from(JSON.stringify({
       id:'test-user',name:'Тест',sessionId:'test-session',issuedAt:Date.now()
     })).toString('base64url');
@@ -176,6 +177,9 @@ test('signed-in chat forwards only validated messages to the internal AI server'
     revoked=true;
     const blocked=await fetch(url+'/api/nexora-chat',{method:'POST',headers:{Cookie:'nexora_session='+payload+'.'+sign,Origin:url,'Content-Type':'application/json'},body:JSON.stringify(sample)});
     assert.equal(blocked.status,401);assert.equal(upstreamCalls.length,1);
+    const guest=await fetch(url+'/api/nexora-chat',{method:'POST',headers:{Origin:url,'Content-Type':'application/json'},body:JSON.stringify({...sample,model:'alice'})});
+    assert.equal(guest.status,200);assert.equal((await guest.json()).answer,'Объясняю: 4.');
+    assert.equal(upstreamCalls.length,2);assert.equal(authCalls.length,2);
   }finally{child.kill();await new Promise(resolve=>mock.close(resolve));}
 });
 
@@ -213,7 +217,7 @@ test('iPhone keyboard focus does not automatically zoom the chat viewport', asyn
 });
 
 
-test('example idea cards immediately send a prompt and guests see a login action',async()=>{
+test('example idea cards immediately send prompts with optional login',async()=>{
   const {readFile}=await import('node:fs/promises');
   const {join}=await import('node:path');
   const {fileURLToPath}=await import('node:url');
@@ -221,7 +225,7 @@ test('example idea cards immediately send a prompt and guests see a login action
   assert.ok(html.includes('data-prompt="Помоги придумать интересную идею проекта'), 'Idea suggestion missing');
   assert.match(html, /document\.querySelectorAll\("\[data-prompt\]"\)\.forEach\(b=>b\.addEventListener\("click"/);
   assert.match(html, /void submit\(suggestion\)/, 'Suggestion must directly send, not only prefill input');
-  assert.match(html, /if\(!signedIn\)\{showSignInNotice\(suggestion\);return;\}/);
+  assert.doesNotMatch(html, /if\(!signedIn\)\{showSignInNotice\(suggestion\);return;\}/);
   assert.match(html, /id="chat-signin-notice"/);
   assert.match(html, /id="chat-signin-link"/);
   assert.match(html, /href="\/auth\/start" id="chat-signin-link"/);
