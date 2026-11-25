@@ -235,7 +235,7 @@
     <nav class="history-list" id="history" aria-label="История диалогов"></nav>
     <div class="sb-bottom">
       <div class="privacy-note"><span>♧</span><div>История хранится в этом браузере. Не отправляйте пароли и секретные коды.</div></div>
-      <a class="account-link" id="account-link" href="/auth/start"><span class="account-avatar" id="account-avatar">◈</span><span class="account-meta"><span id="account-name">Войти в NEXORA ID</span><small id="account-detail">Для отправки сообщений</small></span><span>↗</span></a>
+      <a class="account-link" id="account-link" href="/auth/start"><span class="account-avatar" id="account-avatar">◈</span><span class="account-meta"><span id="account-name">Войти в NEXORA ID</span><small id="account-detail">Вход необязателен</small></span><span>↗</span></a>
     </div>
   </aside>
   <div class="shade" id="shade" aria-hidden="true"></div>
@@ -499,7 +499,7 @@
     const value=String(text||"").trim();
     if(pending||!value)return;
     if(value.length>2400){toast("Максимум 2400 символов");return;}
-    if(!signedIn){showSignInNotice(value);return;}
+    
     const current=getOrCreate();
     current.messages.push({role:"user",content:value,provider:""});
     if(current.title==="Новый диалог")current.title=value.replace(/\s+/g," ").slice(0,46);
@@ -522,7 +522,7 @@
   }
   function updateAccount(){
     $("account-name").textContent=signedIn?(window.__chatUser?.name||"Аккаунт NEXORA"):"Войти в NEXORA ID";
-    $("account-detail").textContent=signedIn?"Ваша учётная запись":"Для отправки сообщений";
+    $("account-detail").textContent=signedIn?"Ваша учётная запись":"Вход необязателен";
     $("account-avatar").textContent=signedIn?(window.__chatUser?.name||"N").charAt(0).toUpperCase():"◈";
     $("account-link").href=signedIn?"/":"/auth/start";
   }
@@ -547,7 +547,7 @@
     if(pending){toast("Сначала дождитесь текущего ответа");return;}
     // A suggestion is an action, not just a text shortcut: send it immediately.
     // Without NEXORA ID show an explicit sign-in action and preserve the draft.
-    if(!signedIn){showSignInNotice(suggestion);return;}
+    
     void submit(suggestion);
   }));
   $("composer").addEventListener("submit",event=>{event.preventDefault();submit($("message-input").value);});

@@ -679,6 +679,12 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
  :root:not([data-theme=light]) .nx-redesign .argosha-launcher{background:#282238!important;border-color:#514568!important}
 }
 :root[data-theme=dark] .nx-redesign .hero{background:radial-gradient(ellipse at 90% 4%,#35264d,transparent 58%),var(--nx-surface)}
+</style><style>
+.nx-redesign #tools .tile,#tools .tile{box-sizing:border-box;aspect-ratio:1/1;min-height:0;height:auto;width:100%;padding:clamp(12px,2vw,24px);padding-top:40px;justify-content:flex-end;overflow:hidden}
+#tools .tile .status{top:10px;right:10px;z-index:3}
+#tools .tile h3{margin:0 0 5px;line-height:1.12;max-width:100%;overflow-wrap:normal}
+#tools .tile p{line-height:1.35;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+@media(max-width:600px){.nx-redesign #tools .tile,#tools .tile{padding:12px;padding-top:32px;border-radius:18px}.nx-redesign #tools .tile h3{font-size:clamp(13px,3.7vw,17px)}.nx-redesign #tools .tile p{font-size:clamp(10px,2.8vw,12px)}.nx-redesign #tools .tile::after{display:none}#tools .tile .status{font-size:9px;padding:4px 7px}}
 </style></head>
 <body class="nx-redesign">
 <header class="topbar">
@@ -729,35 +735,35 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
       <span class="status ready">Доступно</span>
       <span class="tile-top">∑</span>
       <h3>Решить задачу</h3>
-      <p>Алгебра и геометрия: «Дано», «Найти», чертежи, вычисления и ответ.</p>
+      <p>Алгебра, геометрия и решения с объяснениями.</p>
 
     </a>
     <a class="tile" data-tool="chat" href="/chat">
       <span class="status ready">Доступно</span>
       <span class="tile-top">✦</span>
       <h3>Чат GPT</h3>
-      <p>Задавайте вопросы в удобном чате с ИИ, сохраняйте диалоги и находите идеи.</p>
+      <p>Общение с ИИ, ответы и идеи.</p>
 
     </a>
     <a class="tile" data-tool="image" href="https://nexora-image-studio.onrender.com/">
       <span class="status ready">Доступно</span>
       <span class="tile-top">▧</span>
       <h3>Создать картинку</h3>
-      <p>Создание, скачивание и редактирование изображений по вашему описанию.</p>
+      <p>Генерация и редактирование изображений.</p>
 
     </a>
     <a class="tile" data-tool="text" href="https://nexora-text-studio.onrender.com/">
       <span class="status ready">Доступно</span>
       <span class="tile-top">¶</span>
       <h3>Создать текст</h3>
-      <p>Статьи, сочинения, посты и письма. Написание, проверка и редактирование текстов с ИИ.</p>
+      <p>Статьи, сочинения, письма и редактура.</p>
 
     </a>
     <a class="tile" data-tool="game" href="/game">
       <span class="status ready">Доступно</span>
       <span class="tile-top">🎮</span>
       <h3>Сделать игру</h3>
-      <p>Опишите игру: ИИ создаст код, запустит её в браузере. Свайпы на телефоне и редактирование HTML.</p>
+      <p>ИИ создаёт игры для телефона и браузера.</p>
     </a>
   </section>
 

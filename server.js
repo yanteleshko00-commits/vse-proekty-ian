@@ -54,7 +54,7 @@ function isOpenAIQuotaError(error) {
 }
 
 const projectServiceKey = process.env.PROJECTS_SECURITY_SERVICE_KEY || process.env.PROJECTS_SERVICE_API_KEY || process.env.AUTH_SERVICE_API_KEY || '';
-const {projectCookieOptions,readRequestCookie,createProjectSession,readProjectSession,takeRate,projectAuthCall,liveProjectAccount,beginProjectWork,endProjectWork,metered}=createProjectSecurity({
+const {projectCookieOptions,readRequestCookie,createProjectSession,readProjectSession,takeRate,projectAuthCall,liveProjectAccount,projectWorkAccount,beginProjectWork,endProjectWork,metered}=createProjectSecurity({
   authPublicUrl:AUTH_PUBLIC_URL,oauthClientId:OAUTH_CLIENT_ID,sessionSecret:PROJECT_SESSION_SECRET,
   sessionCookieName:PROJECT_SESSION_COOKIE,sessionTTL:PROJECT_SESSION_TTL,projectServiceKey,asyncRoute
 });
@@ -2155,7 +2155,7 @@ app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
 }));
 app.get('/api/generation-jobs/:id', asyncRoute(async (req,res)=>{
   if(!takeRate('poll:'+req.ip,120))return res.status(429).json({error:'Слишком много запросов.'});
-  const account=await liveProjectAccount(req);
+  const account=await projectWorkAccount(req);
   const id=req.params.id;
   const job=generationJobs.get(id) || await loadPersistedGenerationJob(id,account.user.id);
   if(!job||job.ownerId!==account.user.id||Date.now()-Number(job.updatedAt)>86400000)return res.status(404).json({error:'Задача не найдена или срок её хранения истёк.'});

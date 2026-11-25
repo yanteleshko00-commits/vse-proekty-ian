@@ -82,14 +82,16 @@ async function studioCallback(req,res,url){
 let imageInFlight=false;
 async function protectedImage(req,res){
   const account=readStudioSession(req);
-  if(!account)return send(res,401,JSON.stringify({error:'not_signed_in',message:'Войдите в NEXORA ID для создания изображения.'}),studioJson);
+  // Guests use the existing IP limiter and global concurrency limit.
   if(imageInFlight)return send(res,429,JSON.stringify({error:'busy',message:'Генератор занят. Повторите запрос позже.'}),studioJson);
   imageInFlight=true;
   let reservationId=null,outcome='failure';
   try{
-    const data=await studioCall({action:'reserve',userId:account.userId,sessionId:account.sessionId});
-    reservationId=data.reservationId;
-    if(!reservationId)throw Error('Не получен резерв кредитов.');
+    if(account){
+      const data=await studioCall({action:'reserve',userId:account.userId,sessionId:account.sessionId});
+      reservationId=data.reservationId;
+      if(!reservationId)throw Error('Не получен резерв кредитов.');
+    }
     await generateNexoraImage(req,res);
     if(res.statusCode>=200&&res.statusCode<300)outcome='success';
   }catch(error){

@@ -80,15 +80,36 @@ async function liveProjectAccount(req) {
   const live=await projectAuthCall('/v1/internal/session/validate',{userId:local.id,sessionId:local.sessionId});
   return {...live,sessionId:local.sessionId};
 }
+const guestKey=PROJECT_SESSION_SECRET.length>=32?PROJECT_SESSION_SECRET:crypto.randomBytes(32);
+function guestSignature(id){return crypto.createHmac('sha256',guestKey).update('project-guest:'+id).digest('hex');}
+function guestAccount(req){
+  const bridge=validInternalToken(req.get('x-nexora-chat-token'),process.env.NEXORA_CHAT_INTERNAL_TOKEN||'');
+  const bridged=req.get('x-nexora-guest-id')||'';
+  if(bridge&&/^[a-f0-9]{64}$/.test(bridged))return {user:{id:'guest:'+bridged},guest:true};
+  const [candidate,signature]=String(readRequestCookie(req,'projects_guest')||'').split('.');
+  let id=candidate;
+  if(!/^[a-f0-9]{64}$/.test(id||'')||signature!==guestSignature(id)){
+    id=crypto.randomBytes(32).toString('hex');
+    req.res.cookie('projects_guest',id+'.'+guestSignature(id),projectCookieOptions(86400*7));
+  }
+  return {user:{id:'guest:'+id},guest:true};
+}
+async function projectWorkAccount(req){
+  const bridge=validInternalToken(req.get('x-nexora-chat-token'),process.env.NEXORA_CHAT_INTERNAL_TOKEN||'');
+  if(readProjectSession(req)||(bridge&&req.get('x-nexora-user-id')&&req.get('x-nexora-session-id')))return liveProjectAccount(req);
+  return guestAccount(req);
+}
 let activeProjectWork=0;
 const activeProjectUsers=new Set();
 async function beginProjectWork(req){
-  const live=await liveProjectAccount(req);
+  const live=await projectWorkAccount(req);
   const id=live.user.id;
+  if(live.guest&&!takeRate('guest-ip:'+req.ip,6,3600000))throw Object.assign(Error('Гостевой лимит: 6 запросов в час. Повторите позже.'),{status:429});
   if(!takeRate('user:'+id,8))throw Object.assign(Error('Слишком много запросов.'),{status:429});
   if(activeProjectWork>=1||activeProjectUsers.has(id))throw Object.assign(Error('Генератор занят. Повторите запрос позже.'),{status:429});
   activeProjectWork++;activeProjectUsers.add(id);
   try{
+    if(live.guest)return {id,guest:true};
     const reserved=await projectAuthCall('/v1/internal/usage/reserve',{userId:id,sessionId:live.sessionId,idempotencyKey:crypto.randomUUID()});
     if(!reserved.reservationId)throw Error('Не получен резерв кредитов.');
     return {id,reservationId:reserved.reservationId};
@@ -96,6 +117,7 @@ async function beginProjectWork(req){
 }
 async function endProjectWork(work,outcome){
   try{
+    if(work.guest)return;
     for(let attempt=0;attempt<3;attempt++){
       try{await projectAuthCall('/v1/internal/usage/'+encodeURIComponent(work.reservationId)+'/finalize',{outcome});break;}
       catch(error){if(attempt===2)console.error('[usage-finalize]',work.reservationId,outcome,error.message);}
@@ -111,5 +133,5 @@ function metered(handler){
   });
 }
 
-  return {projectCookieOptions,readRequestCookie,createProjectSession,readProjectSession,takeRate,projectAuthCall,liveProjectAccount,beginProjectWork,endProjectWork,metered};
+  return {projectCookieOptions,readRequestCookie,createProjectSession,readProjectSession,takeRate,projectAuthCall,liveProjectAccount,projectWorkAccount,beginProjectWork,endProjectWork,metered};
 }

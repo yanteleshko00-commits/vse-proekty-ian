@@ -589,16 +589,27 @@ async function authApi(path, payload, req) {
 
 // Chat messages remain on the user's device; only the recent context is
 // forwarded to the generator for one answer. A signed NEXORA ID is required.
+const lobbyGuestKey=sessionSecret.length>=32?sessionSecret:crypto.randomBytes(32);
+function lobbyGuest(req,res){
+  const [oldId,signature]=String(parseCookies(req).nexora_guest||'').split('.');
+  const sign=id=>crypto.createHmac('sha256',lobbyGuestKey).update('lobby-guest:'+id).digest('hex');
+  if(/^[a-f0-9]{64}$/.test(oldId||'')&&signature===sign(oldId))return oldId;
+  const id=crypto.randomBytes(32).toString('hex');
+  res.setHeader('Set-Cookie',cookie('nexora_guest',id+'.'+sign(id),604800));
+  return id;
+}
+function bridgeIdentity(req,res,account){
+  return account?.sessionId?{'x-nexora-user-id':account.id,'x-nexora-session-id':account.sessionId}:{'x-nexora-guest-id':lobbyGuest(req,res)};
+}
 const chatActivity = new Map();
 const chatInFlight = new Set();
 async function nexoraChatReply(req, res) {
   const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
   const user = readSession(req);
-  if (!user?.sessionId) return send(res, 401, JSON.stringify({
-    error: 'not_signed_in', message: 'Войдите в NEXORA ID, чтобы начать диалог.'
-  }), jsonHeaders);
-  try{await authSessionCall('/v1/internal/session/validate',{userId:user.id,sessionId:user.sessionId});}
-  catch(error){return send(res,error.status===401?401:503,JSON.stringify({error:'session_unavailable',message:'Не удалось подтвердить NEXORA ID.'}),jsonHeaders);}
+  if(user?.sessionId){
+    try{await authSessionCall('/v1/internal/session/validate',{userId:user.id,sessionId:user.sessionId});}
+    catch(error){return send(res,error.status===401?401:503,JSON.stringify({error:'session_unavailable',message:'Не удалось подтвердить NEXORA ID.'}),jsonHeaders);}
+  }else if(!allowArgosha(req))return send(res,429,JSON.stringify({error:'rate_limited',message:'Гостевой лимит запросов. Попробуйте позже.'}),jsonHeaders);
   const secret = process.env.NEXORA_CHAT_INTERNAL_TOKEN || '';
   if (secret.length < 32 && !deepSeekProvider()) return send(res, 503, JSON.stringify({
     error: 'chat_unavailable', message: 'Чат ещё подключается. Попробуйте позднее.'
@@ -634,7 +645,7 @@ async function nexoraChatReply(req, res) {
   let input;
   try {input=validateChatRequest(JSON.parse(Buffer.concat(chunks).toString('utf8')));}
   catch(error){return send(res,error.status||400,JSON.stringify({error:'invalid_request',message:error.message||'Некорректный запрос.'}),jsonHeaders);}
-  const key=String(user.id);
+  const key=user?.sessionId?String(user.id):'guest-ip:'+String((process.env.RENDER==='true'||process.env.TRUST_PROXY==='true')?(String(req.headers['x-forwarded-for']||'').split(',').at(-1).trim()||req.socket.remoteAddress):req.socket.remoteAddress);
   const now=Date.now();
   const prev=(chatActivity.get(key)||[]).filter(t=>now-t<3600000);
   if(prev.length>=30)return send(res,429,JSON.stringify({
@@ -752,9 +763,10 @@ const server = http.createServer(async (req, res) => {
   if(req.method === 'GET' && ['/chat','/chat/','/chat.html'].includes(url.pathname)){
     try{
       const html=await readFile(join(publicDir,'chat.html'));
+      const scriptHashes=[...html.toString('utf8').matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>"'sha256-"+crypto.createHash('sha256').update(m[1]).digest('base64')+"'").join(' ');
       return send(res,200,html,{
         'Content-Type':'text/html; charset=utf-8',
-        'Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'",
+        'Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' " + scriptHashes + "; connect-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'",
         'Referrer-Policy':'same-origin'
       });
     }catch(error){console.error('[nexora-chat] page error:',error.name);return send(res,500,'Чат временно недоступен.');}
@@ -857,7 +869,6 @@ const server = http.createServer(async (req, res) => {
   }
   if (url.pathname === '/api/argosha/generate' && req.method === 'POST') {
     const account = readSession(req);
-    if (!account) return send(res, 401, JSON.stringify({ error: 'Войдите в NEXORA ID, чтобы запускать генерацию.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     if (!allowArgosha(req)) return send(res, 429, JSON.stringify({ error: 'Слишком много запросов. Подожди минуту.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     let body;
     try { body = await readJson(req, 5000); } catch {
@@ -866,12 +877,11 @@ const server = http.createServer(async (req, res) => {
     const topic = typeof body.topic === 'string' ? body.topic.trim().slice(0, 180) : '';
     if (topic.length < 3) return send(res, 400, JSON.stringify({ error: 'Укажи тему проекта.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     try {
-      if(!account.sessionId)return send(res,401,JSON.stringify({error:'Войдите в NEXORA ID повторно.'}),{'Content-Type':'application/json; charset=utf-8'});
       const secret=process.env.NEXORA_CHAT_INTERNAL_TOKEN||'';
       if(secret.length<32)return send(res,503,JSON.stringify({error:'Внутренняя связь с генератором не настроена.'}),{'Content-Type':'application/json; charset=utf-8'});
       const upstream = await fetch(PROJECT_GENERATOR_BASE + '/api/generate-project/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json','x-nexora-chat-token':secret,'x-nexora-user-id':account.id,'x-nexora-session-id':account.sessionId },
+        headers: { 'Content-Type': 'application/json','x-nexora-chat-token':secret,...bridgeIdentity(req,res,account) },
         body: JSON.stringify({ topic, slidesCount: Math.min(30, Math.max(7, Number(body.slidesCount) || 12)) }),
         signal: AbortSignal.timeout(30000)
       });
@@ -884,11 +894,10 @@ const server = http.createServer(async (req, res) => {
   }
   if (url.pathname.startsWith('/api/argosha/generation/') && req.method === 'GET') {
     const account=readSession(req);
-    if (!account?.sessionId) return send(res, 401, JSON.stringify({ error: 'Войдите в NEXORA ID, чтобы смотреть ход генерации.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     const jobId = url.pathname.slice('/api/argosha/generation/'.length);
     if (!/^[0-9a-f-]{36}$/i.test(jobId)) return send(res, 400, JSON.stringify({ error: 'Некорректный номер задачи.' }), { 'Content-Type': 'application/json; charset=utf-8' });
     try {
-      const upstream = await fetch(PROJECT_GENERATOR_BASE + '/api/generation-jobs/' + jobId, { headers:{'x-nexora-chat-token':process.env.NEXORA_CHAT_INTERNAL_TOKEN||'','x-nexora-user-id':account.id,'x-nexora-session-id':account.sessionId},signal: AbortSignal.timeout(15000) });
+      const upstream = await fetch(PROJECT_GENERATOR_BASE + '/api/generation-jobs/' + jobId, { headers:{'x-nexora-chat-token':process.env.NEXORA_CHAT_INTERNAL_TOKEN||'',...bridgeIdentity(req,res,account)},signal: AbortSignal.timeout(15000) });
       const data = await upstream.json().catch(() => ({}));
       return send(res, upstream.status, JSON.stringify(data), { 'Content-Type': 'application/json; charset=utf-8' });
     } catch (error) {

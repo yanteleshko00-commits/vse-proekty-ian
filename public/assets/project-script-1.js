@@ -149,20 +149,20 @@ async function suggestProjectTopics(){
   if(!button||!topicInput||!status)return;
   button.disabled=true;button.textContent="⏳ Генерирую…";
   status.textContent="Искусственный интеллект подбирает тему проекта…";
-  topicInput.value="";topicInput.placeholder="Подбираю тему…";
+  const previousTopic=topicInput.value;topicInput.placeholder="Подбираю тему…";
   try{
-    const response=await fetch("/api/suggest-topics",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({interests:""})});
+    const response=await fetch("/api/suggest-topics",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({interests:previousTopic.trim().slice(0,300)}),signal:AbortSignal.timeout(45000)});
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data.error||"Не удалось сгенерировать тему.");
     const generated=String(data.topic||"").trim();
     if(!generated)throw new Error("ИИ не вернул тему проекта.");
     topicInput.placeholder="";
-    for(let i=0;i<generated.length;i++){topicInput.value=generated.slice(0,i+1);await new Promise(resolve=>setTimeout(resolve,24));}
+    topicInput.value=generated;topicInput.dispatchEvent(new Event("input",{bubbles:true}));
     status.textContent="✨ Тема готова. Её можно изменить вручную.";
     topicInput.focus();
   }catch(error){
     topicInput.placeholder="Например: Снижение расхода электроэнергии";
-    status.textContent="❌ "+(error.message||"Ошибка генерации темы.");
+    topicInput.value=previousTopic;status.textContent="❌ "+(error.name==="TimeoutError"?"ИИ не успел ответить. Попробуй ещё раз.":(error.message||"Ошибка генерации темы."));
   }finally{button.disabled=false;button.textContent="✨ Сгенерировать с ИИ";}
 }
 
