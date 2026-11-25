@@ -64,8 +64,8 @@ export async function developerRoute(req,res,url,base,send){
  if(method==='POST'&&!trustedPost(req,base,path==='/developer/login')){if(path==='/developer/login')loginPage(403,'Запрос заблокирован. Откройте админку заново в Safari.');else json(403,{error:'forbidden'});return true;}
  if(path==='/developer/login'&&method==='POST'){
  if(!key){loginPage(503,'TOTP ещё не настроен на сервере.');return true;}
- try{if(!await persistentAdminAttempt(req,'totp')){loginPage(429,'Слишком много попыток. Повторите через 15 минут.');return true;}}catch{loginPage(503,'Сервис защиты входа временно недоступен.');return true;}
  let code;try{const form=new URLSearchParams(await body(req));if(!validLoginNonce(req,form.get('csrf'))){loginPage(403,'Форма устарела или браузер заблокировал cookie. Введите новый код на этой странице.');return true;}code=form.get('code');}catch{loginPage(400,'Неверный запрос');return true;}
+ try{if(!await persistentAdminAttempt(req,'totp')){loginPage(429,'Слишком много попыток. Повторите через 1 минуту.');return true;}}catch{loginPage(503,'Сервис защиты входа временно недоступен.');return true;}
  const step=Math.floor(Date.now()/30000);
  const match=/^[0-9]{6}$/.test(code||'')?[step,step-1,step+1].find(s=>s>lastStep&&crypto.timingSafeEqual(Buffer.from(code),Buffer.from(totp(key,s)))):undefined;
  if(match===undefined){loginPage(401,'Неверный или уже использованный код.');return true;}
