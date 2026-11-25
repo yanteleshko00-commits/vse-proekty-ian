@@ -1,3 +1,4 @@
+import {handleAnalytics,projectSite} from './nexora/visitor-analytics.js';
 import {serveBrand} from './nexora/brand.js';
 import { createProjectSecurity } from './project-security.js';
 import 'dotenv/config';
@@ -67,6 +68,7 @@ app.use((_req,res,next)=>{
   if(process.env.NODE_ENV==='production')res.set('Strict-Transport-Security','max-age=15552000');
   next();
 });
+app.use((req,res,next)=>{if(!['/api/visitors/ping','/nexora-visitors.js'].includes(req.path))return next();handleAnalytics(req,res,req.path,{site:projectSite(),registered:req=>Boolean(readProjectSession(req)?.sessionId)}).then(handled=>{if(!handled)next();}).catch(()=>{if(!res.headersSent)res.status(503).end();else res.end();});});
 const paidPaths = new Set(['/api/generate-project','/api/generate-project/start','/api/chat','/api/generate-image','/api/edit-project','/api/suggest-topics','/api/nexora-chat/internal']);
 app.use((req,res,next)=>{
   if(paidPaths.has(req.path)&&!takeRate('ip:'+req.ip,20))return res.status(429).json({error:'Слишком много запросов.'});
