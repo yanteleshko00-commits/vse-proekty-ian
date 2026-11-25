@@ -124,11 +124,12 @@ const ADAPTER=String.raw`<meta http-equiv="Content-Security-Policy" content="def
   setTimeout(()=>{
    if(runtimeFailed)return;
    qaStarted=performance.now();const start=qaVisibleStart();if(start)start.click();
+   const qaTimer=setInterval(()=>{if(!runtimeFailed)qaSample(true)},400);
    // Exercise actual gameplay instead of only checking the start screen.
    const dirs=['up','left','right','space','up','down'];
    dirs.forEach((dir,i)=>{setTimeout(()=>{if(!runtimeFailed)down(dir)},250+i*720);setTimeout(()=>up(dir),650+i*720);});
    setTimeout(()=>{
-    release();if(runtimeFailed)return;
+    clearInterval(qaTimer);release();if(runtimeFailed)return;
     // 2D canvases may use setInterval rather than RAF; one final read is safe.
     if(!qaSamples.size)for(const [canvas,e] of qaContexts)if(e.type==='2d'){const m=qaMeasure(canvas,e.ctx,e.type);if(m)qaSamples.set(canvas,[m]);}
     const verdict=qaVisualVerdict();if(verdict.error){report(verdict.error);return;}

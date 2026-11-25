@@ -2,7 +2,7 @@ name: Game browser smoke
 on:
   push:
     branches: [main]
-    paths: ['nexora/game-code.js','nexora/game-review.js','nexora/public/game*','test/game-browser.test.mjs','.github/workflows/game-browser.yml']
+    paths: ['nexora/game-code.js','nexora/game-review.js','nexora/game-visual-qa.js','nexora/public/game*','test/game-browser.test.mjs','.github/workflows/game-browser.yml']
   workflow_dispatch:
 jobs:
   browser:

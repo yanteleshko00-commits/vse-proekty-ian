@@ -37,12 +37,14 @@ function qaMeasure(canvas,ctx,type){
   return {colors:hist.size,dominant:Math.max(...hist.values())/(data.length/4),hash:hash>>>0};
  }catch{return null;}
 }
-function qaSample(){
+function qaSample(twoDOnly=false){
  const now=performance.now();
- if(!qaStarted||now-qaLast<350)return;qaLast=now;
+ if(!qaStarted)return;
  for(const [canvas,entry] of qaContexts){
+  if(twoDOnly&&entry.type!=='2d')continue;
+  const samples=qaSamples.get(canvas)||[];if(samples.length&&now-qaStarted-samples.at(-1).ms<350)continue;
   const m=qaMeasure(canvas,entry.ctx,entry.type);if(!m)continue;
-  const samples=qaSamples.get(canvas)||[];samples.push({...m,ms:Math.round(now-qaStarted)});
+  samples.push({...m,ms:Math.round(now-qaStarted)});
   if(samples.length>40)samples.shift();qaSamples.set(canvas,samples);
  }
 }
@@ -75,7 +77,7 @@ function qaVisualVerdict(){
   const ctx=qaContexts.get(canvas);if(!ctx||!canvas.isConnected||samples.length<4)continue;
   const tail=samples.slice(-4),blank=s=>s.colors<=1||s.dominant>=.998;
   const strong=samples.some(s=>s.colors>=3&&s.dominant<.96);
-  results.push({type:ctx.type,samples:samples.length,blank:tail.every(blank),lost:strong&&tail.every(s=>s.colors<=2||s.dominant>.99),changes:new Set(samples.map(s=>s.hash)).size,area:canvas.getBoundingClientRect().width*canvas.getBoundingClientRect().height});
+  results.push({type:ctx.type,samples:samples.length,blank:tail.every(blank),lost:strong&&tail.every(s=>s.colors<=2||s.dominant>.985),changes:new Set(samples.map(s=>s.hash)).size,area:canvas.getBoundingClientRect().width*canvas.getBoundingClientRect().height});
  }
  const primary=results.sort((a,b)=>b.area-a.area)[0];
  const hasGL=[...qaContexts.values()].some(e=>e.type!=='2d'&&!e.ctx.isContextLost());

@@ -44,3 +44,24 @@ test('mobile game QA runs in an isolated browser; click opens, cross closes and 
 });
 
 test('Argosha composer stays inside 390px viewport and uses 16px input',{timeout:60000},async()=>{const child=spawn(process.execPath,['nexora/server.js'],{env:{...process.env,PORT:String(port),NODE_ENV:'test'},stdio:'ignore'});let browser;try{for(let i=0;i<60;i++){try{if((await fetch(base+'/health')).ok)break}catch{}await new Promise(r=>setTimeout(r,100));}browser=await chromium.launch();const page=await browser.newPage({viewport:{width:390,height:340},isMobile:true,hasTouch:true});await page.goto(base+'/argosha/embed?studio=game');await page.locator('#input').fill('Как дела?');const sizes=await page.evaluate(()=>({font:parseFloat(getComputedStyle(document.querySelector('#input')).fontSize),send:document.querySelector('#send').getBoundingClientRect().right,width:innerWidth,scroll:document.documentElement.scrollWidth}));assert.ok(sizes.font>=16);assert.ok(sizes.send<=sizes.width);assert.ok(sizes.scroll<=sizes.width);}finally{await browser?.close();child.kill();}});
+
+// WebGL regression: a render loop that continues but clears the scene is not
+// a pass, even when there is no JS exception and the HUD remains visible.
+test('3D QA detects a scene that disappears during gameplay',{timeout:60000},async()=>{
+ const port3=26975,base3='http://127.0.0.1:'+port3;
+ const child=spawn(process.execPath,['nexora/server.js'],{env:{...process.env,PORT:String(port3),NODE_ENV:'test'},stdio:'ignore'});
+ let browser;
+ try{
+  let live=false;for(let i=0;i<60;i++){try{if((await fetch(base3+'/health')).ok){live=true;break}}catch{}await new Promise(r=>setTimeout(r,100));}assert.equal(live,true);
+  browser=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+  const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  const source='<!doctype html><html><head><title>3D scene</title><style>canvas{width:100%;height:360px}</style></head><body><button id="start">Играть</button><canvas width="320" height="240"></canvas><div>Счёт: 42</div><script>const c=document.querySelector("canvas"),gl=c.getContext("webgl");let started=0;document.querySelector("#start").onclick=()=>{started=performance.now()};document.addEventListener("keydown",()=>{});function draw(){gl.disable(gl.SCISSOR_TEST);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);if(!started||performance.now()-started<1800){gl.enable(gl.SCISSOR_TEST);gl.scissor(0,0,160,240);gl.clearColor(0,1,0,1);gl.clear(gl.COLOR_BUFFER_BIT);gl.scissor(160,0,160,120);gl.clearColor(1,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);}requestAnimationFrame(draw)}draw();</script></body></html>';
+  await page.route('**/*',route=>route.request().url().startsWith(base3)?route.continue():route.abort());
+  await page.route('**/api/game/code',route=>route.fulfill({json:{ok:true,source:'ai',html:source,title:'3D test',provider:'mock',dimension:'3d',review:{status:'passed',issues:[]}}}));
+  await page.route('**/api/game/repair',route=>route.fulfill({status:503,json:{ok:false}}));
+  await page.goto(base3+'/game');await page.locator('#ai-idea').fill('3D тест');await page.locator('[data-game-dimension="3d"]').click();await page.locator('#ai-build').click();
+  await page.locator('#ai-error').waitFor({state:'visible',timeout:30000});
+  assert.match(await page.locator('#ai-error').textContent(),/сцена исчезает|остаётся пустой/i);
+  assert.equal(await page.locator('#ai-open-game').isVisible(),false);
+ }finally{await browser?.close();child.kill();}
+});
