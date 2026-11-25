@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/playwright-runtime.mjs start",
-    "postinstall": "node scripts/playwright-runtime.mjs install"
+    "postinstall": "node scripts/playwright-runtime.mjs install && npm test",
+    "test": "node --check server.js && node --check public/assets/project-script-1.js && node --test scripts/presentation-smoke.test.mjs"
   },
   "dependencies": {
     "archiver": "^7.0.1",
