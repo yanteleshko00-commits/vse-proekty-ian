@@ -235,7 +235,7 @@
     <nav class="history-list" id="history" aria-label="История диалогов"></nav>
     <div class="sb-bottom">
       <div class="privacy-note"><span>♧</span><div>История хранится в этом браузере. Не отправляйте пароли и секретные коды.</div></div>
-      <a class="account-link" id="account-link" href="/auth/start"><span class="account-avatar" id="account-avatar">◈</span><span class="account-meta"><span id="account-name">Войти в NEXORA ID</span><small id="account-detail">Вход необязателен</small></span><span>↗</span></a>
+      <a class="account-link" id="account-link" href="/auth/start" hidden style="display:none!important"><span class="account-avatar" id="account-avatar">◈</span><span class="account-meta"><span id="account-name">Войти в NEXORA ID</span><small id="account-detail">Вход необязателен</small></span><span>↗</span></a>
     </div>
   </aside>
   <div class="shade" id="shade" aria-hidden="true"></div>
@@ -285,7 +285,7 @@
           <button class="prompt" type="button" data-prompt="Составь простой план изучения английского на неделю: по 20 минут каждый день."><span class="prompt-top"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M4 5h16v14H4zM8 9h8m-8 4h5"/></svg></span><span><strong>Помоги с учёбой</strong><span>Планы, задания и объяснения</span></span></button>
           <button class="prompt" type="button" data-prompt="Помоги составить план дня: учёба, отдых, спорт и время на свои проекты."><span class="prompt-top"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span><strong>Организуй мой день</strong><span>Расписание и полезные привычки</span></span></button>
         </div>
-      <div class="chat-signin-notice" id="chat-signin-notice" role="status" hidden>
+      <div class="chat-signin-notice" id="chat-signin-notice" role="status" hidden style="display:none!important">
         <span>Чтобы получить ответ, войдите в NEXORA ID.</span>
         <a href="/auth/start" id="chat-signin-link">Войти</a>
       </div>
@@ -546,7 +546,7 @@
     if(!suggestion)return;
     if(pending){toast("Сначала дождитесь текущего ответа");return;}
     // A suggestion is an action, not just a text shortcut: send it immediately.
-    // Without NEXORA ID show an explicit sign-in action and preserve the draft.
+    // Guest mode: suggestions and normal messages use the same API.
     
     void submit(suggestion);
   }));
@@ -565,7 +565,7 @@
   document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu();});
   load();
   try{const draft=localStorage.getItem("nexora-chat-draft-v1");if(draft)$("message-input").value=draft.slice(0,2400);}catch{}
-  renderAll();autoGrow();auth();
+  renderAll();autoGrow(); // Public chat works without an account lookup.
 })();
 </script>
 <script>(function(){
