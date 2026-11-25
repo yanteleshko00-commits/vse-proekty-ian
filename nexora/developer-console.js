@@ -1,3 +1,4 @@
+import {visitorSnapshot} from './visitor-analytics.js';
 import crypto from 'node:crypto';
 import { persistentAdminAttempt } from './admin-throttle.js';
 import {deepSeekUsage} from './deepseek-quality.js';
@@ -77,6 +78,7 @@ export async function developerRoute(req,res,url,base,send){
  const token=key&&session(req);
  if(path==='/developer'&&method==='GET'){if(token){startMonitor();html(200,await readFile(new URL('./developer-console.html',import.meta.url),'utf8'));}else loginPage(200,key?'':'TOTP ещё не настроен на сервере.');return true;}
  if(!token){json(401,{error:'unauthorized'});return true;}
+ if(path==='/developer/api/visitors'&&method==='GET'){json(200,visitorSnapshot());return true;}
  if(path==='/developer/logout'&&method==='POST'){sessions.delete(token);send(res,303,'',{Location:'/developer','Set-Cookie':setCookie('')});return true;}
  if(path==='/developer/api/history'&&method==='GET'){
  const secret=String(process.env.NEXORA_CONSOLE_SECRET||'');
