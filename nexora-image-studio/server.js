@@ -451,6 +451,7 @@ async function generateNexoraImage(req, res) {
   if (!allowArgosha(req)) {
     return send(res, 429, JSON.stringify({ error: 'rate_limited', message: 'Слишком много запросов. Подождите минуту и попробуйте ещё раз.' }), jsonHeaders);
   }
+  if(!String(req.headers['content-type']||'').toLowerCase().startsWith('application/json'))return send(res,415,JSON.stringify({error:'content_type',message:'Ожидается JSON-запрос.'}),jsonHeaders);
   let body;
   try { body = await readJson(req, 14 * 1024 * 1024); } catch (error) {
     return send(res, error.message === 'payload_too_large' ? 413 : 400, JSON.stringify({ error: 'invalid_request', message: 'Не удалось прочитать запрос. Попробуйте ещё раз.' }), jsonHeaders);
@@ -690,6 +691,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+server.requestTimeout=240000;
+server.headersTimeout=30000;
 server.listen(port, '0.0.0.0', () => {
   console.info('NEXORA Image Studio API and website listening on port ' + port);
   console.info(yandexMissing.length ? 'Yandex Image: missing ' + yandexMissing.join(', ') : 'Yandex Image: API key and folder configured');

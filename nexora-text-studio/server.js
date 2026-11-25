@@ -57,9 +57,12 @@ const server=http.createServer(async(req,res)=>{
   if(key.length<32)return respond(res,503,{message:'Текстовый ИИ пока не подключён.'});
   if(!allow(req))return respond(res,429,{message:'Слишком много запросов. Попробуйте позднее.'});
   if(active>=4)return respond(res,503,{message:'Сервис занят. Попробуйте позже.'});
+  active++;
+  try{
   let params;
   try{
     const input=await getJSON(req);
+    if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Ожидается объект с заданием.');
     if(typeof input.source==='string' && input.source.length>16000)throw Error('Исходный текст слишком длинный (до 16 000 символов).');
     const files=await decodeAttachments(input.attachments);
     const source=[typeof input.source==='string'?input.source.trim():'',files.documentText].filter(Boolean).join('\n\n');
@@ -67,7 +70,6 @@ const server=http.createServer(async(req,res)=>{
     params=normalizeTextRequest({...input,source,images:files.images});
   }
   catch(error){return respond(res,error.statusCode||400,{message:error.message||'Некорректное задание.'});}
-  active++;
   try{
     const upstream=await fetch(lobby+'/api/text/internal/generate',{
       method:'POST',
@@ -75,11 +77,13 @@ const server=http.createServer(async(req,res)=>{
       body:JSON.stringify(params),
       signal:AbortSignal.timeout(params.images.length?210000:119000)
     });
-    const answer=await upstream.json().catch(()=>({}));
-    return respond(res,upstream.status,answer&&typeof answer==='object'?answer:{message:'Некорректный ответ ИИ.'});
+    const answer=await upstream.json().catch(()=>null);
+    if(!answer||typeof answer!=='object'||Array.isArray(answer))return respond(res,502,{message:'ИИ вернул некорректный ответ. Попробуйте ещё раз.'});
+    return respond(res,upstream.status,answer);
   }catch(error){
     console.error('Text Studio gateway failed:',error.message);
     return respond(res,502,{message:'Нет связи с ИИ. Попробуйте повторить запрос.'});
+  }
   }finally{active--;}
 });
 server.requestTimeout=228000;

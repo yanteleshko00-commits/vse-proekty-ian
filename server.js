@@ -605,6 +605,7 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task 
           (Array.isArray(parsed.questions) ? parsed.questions.filter(x => validText(x?.question) && validText(x?.answer)).length : 0) < 3)) {
         throw new Error('Неполная речь для защиты.');
       }
+      if (task === 'topic' && (typeof parsed.topic !== 'string' || parsed.topic.trim().length < 8 || parsed.topic.length > 240)) throw new Error('ИИ не вернул корректную тему проекта.');
       if (task === 'presentation') parsed = repairInvalidSlideLayouts(parsed);
       const quality = scoreAIJsonCandidate(parsed, payload);
       return {
@@ -2155,8 +2156,9 @@ app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
 }));
 app.get('/api/generation-jobs/:id', asyncRoute(async (req,res)=>{
   if(!takeRate('poll:'+req.ip,120))return res.status(429).json({error:'Слишком много запросов.'});
-  const account=await projectWorkAccount(req);
   const id=req.params.id;
+  if(!/^[a-f0-9-]{36}$/i.test(id))return res.status(404).json({error:'Задача не найдена.'});
+  const account=await projectWorkAccount(req);
   const job=generationJobs.get(id) || await loadPersistedGenerationJob(id,account.user.id);
   if(!job||job.ownerId!==account.user.id||Date.now()-Number(job.updatedAt)>86400000)return res.status(404).json({error:'Задача не найдена или срок её хранения истёк.'});
   const partialFiles = job.status === 'completed' ? undefined : await readGenerationArtifacts(job);
@@ -2218,7 +2220,7 @@ app.post('/api/suggest-topics', metered(async (req, res) => {
 Учитывай интересы пользователя, если они указаны. Если нет — выбери самостоятельно действительно интересную тему.
 Темы могут быть научными, общественными, культурными, технологическими, экологическими, моральными или этическими. Не избегай сложных вопросов: справедливость, свобода и ответственность, влияние технологий на человека, моральный выбор, границы допустимого в науке.
 Формулируй нейтрально. Тема должна быть посильной для школьного исследования через анализ источников, сравнение аргументов, наблюдение или безопасный опрос. Не предлагай опасные эксперименты, незаконные действия или сбор чувствительных личных данных. Не выдумывай факты. Пиши по-русски, кратко и конкретно.`;
-  const result = await aiJson(instructions, { interests }, 35000);
+  const result = await aiJson(instructions, { interests }, 35000, 'topic');
   const topic = normalizeText(result.topic || '', 180);
   if (!topic) { const error = new Error('ИИ не вернул тему. Попробуй ещё раз.'); error.status = 503; throw error; }
   res.json({ topic });
@@ -2400,7 +2402,8 @@ app.use((err, req, res, _next) => {
   if (res.headersSent) return;
   const raw = cleanText(err?.message || 'Неизвестная ошибка сервера.', 600);
   const lower = raw.toLowerCase();
-  let status = Number(err?.status) || (err?.name === 'APIError' ? 502 : 500);
+  const candidateStatus = Number(err?.status);
+  let status = Number.isInteger(candidateStatus)&&candidateStatus>=400&&candidateStatus<=599 ? candidateStatus : (err?.name === 'APIError' ? 502 : 500);
   let userMessage = raw;
   if (lower.includes('все подключённые ии')) {
     status = 503;

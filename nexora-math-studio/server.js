@@ -68,8 +68,10 @@ const server = http.createServer(async (req, res) => {
   if (!bridgeToken || bridgeToken.length < 32) return respond(res, 503, { message: 'ИИ-сервис ещё подключается. Повторите попытку позже.' });
   if (!allowRequest(req)) return respond(res, 429, { message: 'Слишком много запросов. Попробуйте через некоторое время.' });
   if (active >= 4) return respond(res, 503, { message: 'Сервис занят. Попробуйте чуть позже.' });
+  active++;
+  try {
   let input;
-  try { input = await readJson(req, 10500000); }
+  try { input = await readJson(req, 10500000); if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Invalid input'); }
   catch { return respond(res, 400, { message: 'Некорректные данные или слишком большой файл (до 7 МБ вложений).' }); }
   const problem = typeof input.problem === 'string' ? input.problem.trim() : '';
   const kind = ['probability','statistics','probability_statistics'].includes(input.kind)
@@ -87,7 +89,6 @@ const server = http.createServer(async (req, res) => {
   }
   const combinedProblem = [problem,attachments.documentText].filter(Boolean).join('\n\n');
   if (combinedProblem.length > 9800) return respond(res, 400, {message:'Слишком много текста в файлах. Прикрепите документ с одной-двумя задачами.'});
-  active++;
   try {
     const upstream = await fetch(lobby + '/api/math/internal/solve', {
       method: 'POST', headers: {
@@ -96,11 +97,13 @@ const server = http.createServer(async (req, res) => {
       body: JSON.stringify({ problem: combinedProblem, kind, grade, level, textbook, images: attachments.images }),
       signal: AbortSignal.timeout(attachments.images.length ? 165000 : 102000)
     });
-    const json = await upstream.json().catch(() => ({}));
-    return respond(res, upstream.status, json && typeof json === 'object' ? json : { message: 'Некорректный ответ ИИ.' });
+    const json = await upstream.json().catch(() => null);
+    if(!json||typeof json!=='object'||Array.isArray(json))return respond(res,502,{message:'ИИ вернул некорректный ответ. Попробуйте ещё раз.'});
+    return respond(res, upstream.status, json);
   } catch (error) {
     console.error('Math Studio gateway failed:', error.message);
     return respond(res, 502, { message: 'Не удалось связаться с ИИ. Попробуйте ещё раз.' });
+  }
   } finally { active--; }
 });
 server.requestTimeout = 190000;

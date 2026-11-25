@@ -460,7 +460,7 @@
       latest.unshift({role:m.role,content});total+=content.length;
     }
     controller=new AbortController();
-    const timeout=setTimeout(()=>controller?.abort(),83000);
+    let timedOut=false;const timeout=setTimeout(()=>{timedOut=true;controller?.abort();},135000);
     try{
       const response=await fetch("/api/nexora-chat",{
         method:"POST",credentials:"same-origin",
@@ -478,9 +478,9 @@
       current.updated=Date.now();lastError="";save();
     }catch(error){
       if(error.name!=="AbortError")lastError=error.message||"Не удалось отправить сообщение.";
-      else lastError="Ответ остановлен. Можно повторить запрос.";
+      else lastError=timedOut?"ИИ не успел ответить. Можно повторить запрос.":"Ответ остановлен. Можно повторить запрос.";
     }finally{
-      clearTimeout(timeout);controller=null;setPending(false);renderAll();$("message-input").focus();
+      clearTimeout(timeout);controller=null;setPending(false);renderAll();if(!matchMedia("(pointer:coarse)").matches)$("message-input").focus({preventScroll:true});
     }
   }
   function retryLast(){

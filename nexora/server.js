@@ -603,6 +603,7 @@ function bridgeIdentity(req,res,account){
 }
 const chatActivity = new Map();
 const chatInFlight = new Set();
+const maxChatInFlight=8;
 async function nexoraChatReply(req, res) {
   const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
   const user = readSession(req);
@@ -651,6 +652,7 @@ async function nexoraChatReply(req, res) {
   if(prev.length>=30)return send(res,429,JSON.stringify({
     error:'rate_limited',message:'Вы достигли 30 сообщений за час. Попробуйте немного позже.'
   }),jsonHeaders);
+  if(chatInFlight.size>=maxChatInFlight&&!chatInFlight.has(key))return send(res,503,JSON.stringify({error:'server_busy',message:'Чат занят. Повторите чуть позже.'}),{...jsonHeaders,'Retry-After':'10'});
   if(chatInFlight.has(key))return send(res,409,JSON.stringify({
     error:'chat_busy',message:'Предыдущее сообщение ещё обрабатывается.'
   }),jsonHeaders);

@@ -142,6 +142,25 @@ async function generatePicture(){
   try{const r=await fetch("/api/generate-image",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Не удалось создать изображение.");out.textContent="Готово!";if(d.image){const img=document.createElement("img");img.alt="Созданное изображение";img.src="data:"+(d.mime||"image/png")+";base64,"+d.image;out.appendChild(img);const a=document.createElement("a");a.href=img.src;a.download=(d.mime==="image/svg+xml"?"Моя_картинка.svg":"Моя_картинка.png");a.textContent="Скачать изображение";a.style.display="inline-block";a.style.marginTop="12px";a.style.fontWeight="800";a.style.color="#123a80";out.appendChild(a);}}catch(e){out.textContent="Ошибка: "+e.message;}finally{btn.disabled=false;btn.textContent="Создать изображение";}
 }
 
+// Polling GET requests are safe to retry; never silently repeat a paid POST.
+let activeProjectPoll=null;
+async function pollProjectStatus(jobId){
+  let lastError;
+  for(let attempt=0;attempt<4;attempt++){
+    try{
+      const response=await fetch("/api/generation-jobs/"+encodeURIComponent(jobId),{cache:"no-store",signal:AbortSignal.timeout(20000)});
+      const state=await response.json().catch(()=>null);
+      if(response.ok&&state&&["running","completed","failed"].includes(state.status))return state;
+      if([401,403,404].includes(response.status))throw Object.assign(new Error(state?.error||"Задача больше недоступна."),{terminal:true});
+      throw new Error(state?.error||"Сервер временно недоступен. Повторяем проверку.");
+    }catch(error){
+      if(error.terminal)throw error;
+      lastError=error;
+      if(attempt<3)await new Promise(resolve=>setTimeout(resolve,2000*(attempt+1)));
+    }
+  }
+  throw new Error(lastError?.message||"Связь с сервером потеряна. Обновите страницу для восстановления.");
+}
 async function suggestProjectTopics(){
   const button=document.getElementById("suggestTopicsButton");
   const topicInput=document.getElementById("topic");
@@ -191,13 +210,12 @@ try{
   const startResponse=await fetch("/api/generate-project/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
   const started=await startResponse.json().catch(()=>({}));
   if(!startResponse.ok||!started.jobId) throw new Error(started.error||"Не удалось запустить фоновую генерацию.");
-  localStorage.setItem("vseProektyActiveJob",JSON.stringify({jobId:started.jobId,project:{...projectData},startedAt:Date.now()}));
+  activeProjectPoll=started.jobId;
+  try{localStorage.setItem("vseProektyActiveJob",JSON.stringify({jobId:started.jobId,project:{...projectData},startedAt:Date.now()}));}catch{}
   let data=null;
   while(true){
     await new Promise(resolve=>setTimeout(resolve,2200));
-    const poll=await fetch("/api/generation-jobs/"+encodeURIComponent(started.jobId));
-    const state=await poll.json().catch(()=>({}));
-    if(!poll.ok) throw new Error(state.error||"Не удалось проверить статус фоновой задачи.");
+    const state=await pollProjectStatus(started.jobId);
     if(state.status==="completed"){data=state.result;break;}
     if(state.status==="failed"){localStorage.removeItem("vseProektyActiveJob");throw new Error(state.error||"Фоновая генерация завершилась ошибкой.");}
     setGenerationProgress(state.progress||3,state.message||"⚙️ Сервер продолжает собирать проект. Можно свернуть сайт — задача останется на сервере.");
@@ -226,7 +244,7 @@ try{
   bar.style.width="0%";setThinkingState("Ошибка",true);status.textContent="❌ Не удалось создать проект";
   btn.disabled=false;btn.textContent="✨ СОЗДАТЬ ПРОЕКТ";
   alert(error.message||"Ошибка при создании проекта.");
-}
+}finally{activeProjectPoll=null;}
 }
 
 async function editProject() {
@@ -375,17 +393,17 @@ function downloadAll(){downloadFile("Весь_проект.zip");}
 
 async function resumeBackgroundJob(){
   let saved;try{saved=JSON.parse(localStorage.getItem("vseProektyActiveJob")||"null");}catch{}
-  if(!saved?.jobId)return;
+  if(!saved?.jobId||activeProjectPoll)return;
+  activeProjectPoll=saved.jobId;
   const status=document.getElementById("status"),box=document.getElementById("progressBox"),bar=document.getElementById("progressBar");
   box.style.display="block";setGenerationProgress(3,"⚙️ Проверяем фоновую задачу...");
   try{while(true){
-    const r=await fetch("/api/generation-jobs/"+encodeURIComponent(saved.jobId));const state=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(state.error||"Фоновая задача больше недоступна.");
+    const state=await pollProjectStatus(saved.jobId);
     setGenerationProgress(state.progress||3,state.message||"⚙️ Проект создаётся на сервере...");
     if(state.status==="completed"){const data=state.result;projectData={...saved.project,ai:data.project,files:data.files||[],fileErrors:data.fileErrors||[]};saveProjectState();localStorage.removeItem("vseProektyActiveJob");showRestoredProject();return;}
     if(state.status==="failed"){localStorage.removeItem("vseProektyActiveJob");throw new Error(state.error||"Не удалось создать проект.");}
     status.textContent="⚙️ Проект создаётся на сервере — можно пока пользоваться телефоном.";await new Promise(resolve=>setTimeout(resolve,2500));
-  }}catch(e){status.textContent="⚠️ "+e.message;}
+  }}catch(e){if(e.terminal)try{localStorage.removeItem("vseProektyActiveJob");}catch{}status.textContent="⚠️ "+e.message;}finally{activeProjectPoll=null;}
 }
 
 window.addEventListener("pageshow",()=>{restoreProjectState();resumeBackgroundJob();});
