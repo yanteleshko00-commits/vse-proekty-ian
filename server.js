@@ -2156,6 +2156,19 @@ app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
     });
   res.status(202).json({jobId:id,status:'running',progress:3,stage:'starting',message:job.message});
 }));
+// Read-only delivery capability: it never authenticates as the recipient.
+app.get('/internal/support-project/:id',asyncRoute(async(req,res)=>{
+ res.set('Cache-Control','no-store');const id=req.params.id,key=String(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'');
+ const raw=String(req.get('x-nexora-delivery')||'');const [encoded,signature,...rest]=raw.split('.');
+ if(key.length<32||rest.length||!encoded||!signature||raw.length>512||!takeRate('support-delivery:'+req.ip,60))return res.status(403).json({error:'forbidden'});
+ const expected=crypto.createHmac('sha256',key).update('support-delivery-v1:'+encoded).digest('base64url');
+ if(Buffer.byteLength(expected)!==Buffer.byteLength(signature)||!crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(signature)))return res.status(403).json({error:'forbidden'});
+ let cap;try{cap=JSON.parse(Buffer.from(encoded,'base64url').toString('utf8'));}catch{return res.status(403).json({error:'forbidden'});}
+ if(cap.id!==id||!/^[-a-f0-9]{36}$/i.test(id)||!/^guest:[a-f0-9]{64}$/.test(cap.owner||'')||!Number.isFinite(cap.exp)||cap.exp<=Date.now())return res.status(404).json({error:'not_found'});
+ const job=generationJobs.get(id)||await loadPersistedGenerationJob(id,cap.owner);
+ if(!job||job.ownerId!==cap.owner||Date.now()-Number(job.updatedAt)>86400000)return res.status(404).json({error:'not_found'});
+ return res.json({status:job.status,progress:job.progress,error:job.status==='failed'?'Не удалось завершить генерацию.':undefined,result:job.status==='completed'?{files:job.result?.files||[],fileErrors:job.result?.fileErrors||[]}:undefined});
+}));
 app.get('/api/generation-jobs/:id', asyncRoute(async (req,res)=>{
   if(!takeRate('poll:'+req.ip,120))return res.status(429).json({error:'Слишком много запросов.'});
   const id=req.params.id;
