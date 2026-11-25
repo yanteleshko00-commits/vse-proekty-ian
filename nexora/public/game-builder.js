@@ -12,13 +12,13 @@
  let raw="",compiled="",busy=false,ready=false,sourceKind="",previewUrl="",playing=false,testing=false,restoreOverflow="",restoreBodyOverflow="",playerAnchor=null;
  const player=$("ai-game-view"),launch=$("ai-open-game"),close=$("ai-close-game");
  const LIBRARY_KEY="nexora-my-games-v1",library=$("my-games-list"),libraryStatus=$("my-games-status");
- let selectedId=null,currentReview=null,gameDimension="auto";
+ let selectedId=null,currentReview=null,gameDimension="auto",runtimeQA=null,previewCreatedAt=0;
  function readLibrary(){try{const items=JSON.parse(localStorage.getItem(LIBRARY_KEY)||"[]");return Array.isArray(items)?items.filter(x=>x&&typeof x.id==="string"&&typeof x.html==="string"&&x.html.length<=52000&&typeof x.title==="string").slice(0,25):[];}catch{return [];}}
  function storeLibrary(items){try{localStorage.setItem(LIBRARY_KEY,JSON.stringify(items.slice(0,25)));return true;}catch{libraryStatus.textContent="Не удалось сохранить игру: хранилище заполнено или недоступно.";return false;}}
  function renderLibrary(){library.replaceChildren();const items=readLibrary();if(!items.length){libraryStatus.textContent="Пока нет сохранённых игр. Создайте первую игру.";return;}libraryStatus.textContent=items.length+" · сохранено в этом браузере";for(const item of items){const card=document.createElement("article"),open=document.createElement("button"),title=document.createElement("strong"),meta=document.createElement("small"),del=document.createElement("button");card.className="nx-library-card";open.type="button";open.className="nx-library-open";title.textContent=item.title;meta.textContent=(item.dimension==="3d"?"3D":"Игра")+" · "+(item.review?.status==="passed"?"ИИ-проверка пройдена":"Черновик");open.append(title,meta);open.addEventListener("click",()=>void loadSaved(item));del.type="button";del.className="nx-library-delete";del.textContent="×";del.setAttribute("aria-label","Удалить "+item.title);del.addEventListener("click",()=>{if(storeLibrary(readLibrary().filter(x=>x.id!==item.id)))renderLibrary();});card.append(open,del);library.append(card);}}
  function persistGame(){if(!ready||!raw||!currentReview)return;const id=selectedId||globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2);const item={id,title:$("ai-game-title").textContent.slice(0,75),idea:idea.value.trim().slice(0,500),html:raw,dimension:gameDimension,review:currentReview,createdAt:Date.now()};if(storeLibrary([item,...readLibrary().filter(x=>x.id!==id)])){selectedId=id;renderLibrary();}}
- function reportReview(){const passed=currentReview?.status==="passed";$("ai-source-label").textContent=passed?"ИИ проверил код":"Личный черновик";launch.querySelector("strong").textContent=passed?"Открыть игру":"Открыть черновик";$("ai-review-report").textContent=passed?(currentReview.repaired?"ИИ исправил замечания, повторная проверка и пробный запуск пройдены.":"ИИ-проверка и пробный запуск пройдены."):"Пробный запуск пройден, но ИИ не подтвердил качество. Это личный черновик, возможны баги. "+(currentReview?.issues||[]).slice(0,3).join(" · ");}
- async function loadSaved(item){if(busy)return;clearError();setBusy(true);try{if(playing)closeGame();ready=false;launch.hidden=true;selectedId=item.id;currentReview=item.review||{status:"needs_review",issues:[]};gameDimension=item.dimension;idea.value=item.idea||item.title;selectDimension(["auto","2d","3d"].includes(item.dimension)?item.dimension:"auto");raw=item.html;code.value=raw;$("ai-game-title").textContent=item.title;$("ai-description").textContent="Сохранённая игра";setStatus("Проверяю запуск сохранённой игры…");await compileGame(raw,true);showReady();reportReview();setStatus("Игра открыта из библиотеки.");setBusy(false);openGame();}catch(e){fail(e.message);setStatus("Не удалось открыть сохранённую игру.");}finally{setBusy(false);}}
+ function reportReview(){const passed=currentReview?.status==="passed";$("ai-source-label").textContent=passed?"ИИ проверил код":"Личный черновик";launch.querySelector("strong").textContent=passed?"Открыть игру":"Открыть черновик";$("ai-review-report").textContent=passed?(currentReview.repaired?"ИИ исправил замечания, повторная проверка и пробный запуск пройдены.":"ИИ-проверка и пробный запуск пройдены."):"Пробный запуск пройден, но ИИ не подтвердил качество. Это личный черновик, возможны баги. "+(currentReview?.issues||[]).slice(0,3).join(" · ");if(runtimeQA?.visual==="sampled")$("ai-review-report").textContent+=" Проверены кадры сцены после старта.";else $("ai-review-report").textContent+=" Проверка изображения сцены недоступна для этого формата.";}
+ async function loadSaved(item){if(busy)return;clearError();setBusy(true);try{if(playing)closeGame();ready=false;launch.hidden=true;selectedId=item.id;currentReview=item.review||{status:"needs_review",issues:[]};gameDimension=item.dimension;idea.value=item.idea||item.title;selectDimension(["auto","2d","3d"].includes(item.dimension)?item.dimension:"auto");raw=item.html;code.value=raw;$("ai-game-title").textContent=item.title;$("ai-description").textContent="Сохранённая игра";setStatus("Проверяю запуск сохранённой игры…");await compileGame(raw,true);showReady();reportReview();persistGame();setStatus("Игра открыта из библиотеки.");setBusy(false);void openGame();}catch(e){fail(e.message);setStatus("Не удалось открыть сохранённую игру.");}finally{setBusy(false);}}
  renderLibrary();
  function setStatus(message){status.textContent=message;}
  function fail(message){error.hidden=false;error.textContent=String(message||"Ошибка генерации.").slice(0,400);}
@@ -96,23 +96,23 @@
   // Only the server-sanitized, expiring same-origin URL is loaded, and it is
   // rendered with a unique opaque origin thanks to iframe[sandbox=allow-scripts].
   if(!/^\/game\/preview\/[0-9a-f-]{36}$/.test(data.url))throw Error("Некорректный адрес предпросмотра.");
-  testing=true;ready=false;previewUrl=data.url;
+  testing=true;ready=false;previewUrl=data.url;previewCreatedAt=Date.now();runtimeQA=null;
   // Give the test document a real viewport even while the result is hidden.
   // It is off-screen, sandboxed, and destroyed before the public play button.
   const probe=document.createElement("iframe");
   probe.setAttribute("sandbox","allow-scripts");probe.setAttribute("aria-hidden","true");probe.setAttribute("referrerpolicy","no-referrer");probe.tabIndex=-1;
-  probe.className="nx-game-probe";probe.style.width=Math.min(window.innerWidth,960)+"px";probe.style.height=Math.max(320,Math.min(window.innerHeight,600))+"px";
+  probe.className="nx-game-probe";probe.style.width=Math.min(window.innerWidth,960)+"px";probe.style.height=Math.max(200,Math.min(window.innerHeight-150,700))+"px";
   document.body.append(probe);
   try{
    await new Promise((resolve,reject)=>{
-    const timer=setTimeout(()=>finish(Object.assign(Error("Игра не завершила пробный запуск."),{runtime:true,detail:"Тайм-аут запуска; проверь цикл и инициализацию"})),15000);
+    const timer=setTimeout(()=>finish(Object.assign(Error("Игра не завершила проверку запуска."),{runtime:true,detail:"Тайм-аут запуска; проверь цикл и инициализацию"})),22000);
     function finish(err){clearTimeout(timer);window.removeEventListener("message",check);err?reject(err):resolve();}
     function check(event){if(event.source!==probe.contentWindow||!event.data)return;
      if(event.data.type==="nexora-game-error"){const detail=String(event.data.message||"JavaScript").slice(0,170);finish(Object.assign(Error(/^(?:Script error\.?|Script error\. \(строка 0\))$/i.test(detail)?"Браузер остановил игровой скрипт; точная причина скрыта песочницей.":"Ошибка пробного запуска: "+detail),{runtime:true,detail}));}
-     if(event.data.type==="nexora-game-ready")finish();
+     if(event.data.type==="nexora-game-ready"){runtimeQA=event.data.qa||null;finish();}
     }
     window.addEventListener("message",check);
-    probe.src=data.url+"#nx-check";
+    probe.src=data.url+"#nx-check"+(gameDimension==="3d"?"-3d":"");
    });
    compiled=data.html||"";
   }catch(err){
@@ -127,8 +127,10 @@
    await compileGame(raw,false);
   }finally{testing=false;probe.remove();}
  }
- function openGame(){
+ async function openGame(){
   if(!ready||!previewUrl||playing||busy)return;
+  if(Date.now()-previewCreatedAt>25*60*1000){setBusy(true);try{await compileGame(raw,false);showReady();reportReview();}catch(e){fail(e.message);return;}finally{setBusy(false);}}
+  if(!ready)return;
   showTab("play");player.classList.remove("ai-enter");playing=true;restoreOverflow=document.documentElement.style.overflow;restoreBodyOverflow=document.body.style.overflow;
   playerAnchor=document.createComment("NEXORA game player");player.before(playerAnchor);document.body.append(player);
   document.documentElement.style.overflow="hidden";document.body.style.overflow="hidden";player.classList.add("nx-game-playing");
@@ -215,8 +217,8 @@
    $("ai-control-hint").textContent=renderedDimension==="3d"
     ?"В 3D: свайпайте по сцене для поворота камеры, экранные стрелки — движение, «Действие» — взаимодействие. На компьютере — WASD и мышь."
     :"На телефоне проводите пальцем по игровому полю или держите стрелки. Нажмите «Действие» для прыжка/выстрела.";
-   setStatus("Выполняю пробный запуск и проверяю управление…");
-   $("nx-live-phase").textContent="Пробный запуск в песочнице";
+   setStatus("Проверяю начало игры, движение и видимость сцены…");
+   $("nx-live-phase").textContent="Проверка игровых кадров и управления";
    await compileGame(raw,true);showReady();
    reportReview();persistGame();
    setStatus(currentReview.status==="passed"?"Игра готова к запуску.":"Черновик сохранён. Можно проверить его лично.");

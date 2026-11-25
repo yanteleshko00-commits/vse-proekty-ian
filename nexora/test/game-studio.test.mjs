@@ -725,3 +725,6 @@ test('game launch and close controls stay outside sandbox; runtime errors block 
 });
 
 test('runtime repair is bound to a preview and sandbox retains opaque origin',async()=>{const {sandboxGameHTML}=await import('../game-code.js');const source='<!doctype html><html><head><title>Test</title></head><body><canvas></canvas><script>'+ 'let n=0;document.addEventListener("keydown",()=>n++);requestAnimationFrame(()=>document.body.dataset.n=n);'.repeat(2)+'</script></body></html>';const html=sandboxGameHTML(source);assert.match(html,/Object.defineProperty\(window,name/);assert.match(html,/connect-src 'none'/);const js=await readFile(join(root,'public/game-builder.js'),'utf8');assert.match(js,/\/api\/game\/repair/);new vm.Script(js);});
+
+test('sandbox visual QA samples frames after gameplay starts',async()=>{const {sandboxGameHTML}=await import('../game-code.js');const html=await fallbackForVisual();const out=sandboxGameHTML(html);assert.match(out,/qaVisualVerdict/);assert.match(out,/readPixels/);assert.match(out,/start\.click\(\)/);assert.match(out,/5800/);});
+async function fallbackForVisual(){const {fallbackGameHTML}=await import('../game-code.js');return fallbackGameHTML('Гонки');}

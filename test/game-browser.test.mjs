@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {spawn} from 'node:child_process';
 const port=26974,base='http://127.0.0.1:'+port;
-const valid='<!doctype html><html><head><meta charset="utf-8"><title>Game</title></head><body><canvas width="720" height="420"></canvas><script>const c=document.querySelector("canvas"),x=c.getContext("2d");let n=0;document.addEventListener("keydown",e=>n++);function frame(){x.fillRect(n++,10,20,20);requestAnimationFrame(frame)}frame();</script></body></html>';
+const valid='<!doctype html><html><head><meta charset="utf-8"><title>Game</title></head><body><canvas width="720" height="420"></canvas><script>const c=document.querySelector("canvas"),x=c.getContext("2d");let n=0;document.addEventListener("keydown",e=>n++);function frame(){x.fillStyle="#284561";x.fillRect(0,0,720,420);x.fillStyle="#ffd34a";x.fillRect(n++%600,60,100,80);x.fillStyle="#63bd7b";x.fillRect(0,300,720,120);requestAnimationFrame(frame)}frame();</script></body></html>';
 test('mobile game QA runs in an isolated browser; click opens, cross closes and broken code stays blocked',{timeout:90000},async()=>{
  const child=spawn(process.execPath,['nexora/server.js'],{env:{...process.env,PORT:String(port),NODE_ENV:'test'},stdio:'ignore'});
  let browser;
@@ -38,6 +38,8 @@ test('mobile game QA runs in an isolated browser; click opens, cross closes and 
   await page.locator('#ai-error').waitFor({state:'visible',timeout:25000});
   assert.match(await page.locator('#ai-error').textContent(),/пробного запуска/i);
   assert.equal(await page.locator('#ai-open-game').isVisible(),false);
+  code=valid.replace('let n=0;','let n=0;let started=0;').replace('function frame(){','function frame(){if(!started)started=performance.now();if(performance.now()-started>1800){x.clearRect(0,0,720,420);requestAnimationFrame(frame);return;}');
+  await page.locator('#ai-build').click();await page.locator('#ai-error').waitFor({state:'visible',timeout:25000});assert.match(await page.locator('#ai-error').textContent(),/сцена исчезает|остаётся пустой/i);assert.equal(await page.locator('#ai-open-game').isVisible(),false);
  }finally{await browser?.close();child.kill();}
 });
 
