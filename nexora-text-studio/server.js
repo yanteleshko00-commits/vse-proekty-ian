@@ -1,3 +1,4 @@
+import {handleAnalytics,injectAnalytics} from './visitor-analytics.js';
 import {serveBrand} from './brand.js';
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
@@ -40,11 +41,12 @@ const server=http.createServer(async(req,res)=>{
   let url;
   try{url=new URL(req.url||'/','http://localhost');}
   catch{return respond(res,400,{message:'Некорректный адрес.'});}
+  if(['/api/visitors/ping','/nexora-visitors.js','/internal/visitors/ingest'].includes(url.pathname)&&await handleAnalytics(req,res,url.pathname,{site:'nexora-text-studio'}))return;
   if(serveBrand(req,res,url.pathname,"NEXORA Text Studio"))return;
   if(req.method==='GET'&&url.pathname==='/health')return respond(res,200,{ok:true,service:'nexora-text-studio',bridgeConfigured:key.length>=32});
   if(req.method==='GET'&&(url.pathname==='/'||url.pathname==='/index.html')){
     try{
-      const html=await readFile(join(here,'index.html'));
+      const html=Buffer.from(injectAnalytics(await readFile(join(here,'index.html'))));
       res.writeHead(200,{
         'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=90',
         'X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin',
