@@ -152,7 +152,7 @@ async function beginProjectWork(req){
   if(activeProjectWork>=1||activeProjectUsers.has(id))throw Object.assign(Error('Генератор занят. Повторите запрос позже.'),{status:429});
   activeProjectWork++;activeProjectUsers.add(id);
   try{
-    const reserved=await projectAuthCall('/v1/internal/usage/reserve',{userId:id,idempotencyKey:crypto.randomUUID()});
+    const reserved=await projectAuthCall('/v1/internal/usage/reserve',{userId:id,sessionId:live.sessionId,idempotencyKey:crypto.randomUUID()});
     if(!reserved.reservationId)throw Error('Не получен резерв кредитов.');
     return {id,reservationId:reserved.reservationId};
   }catch(error){activeProjectWork--;activeProjectUsers.delete(id);throw error;}
@@ -2090,6 +2090,7 @@ function queuePersistGenerationJob(job) {
     console.warn('[generation-job-store] Не удалось сохранить задачу:', cleanText(error?.message || error, 220));
   });
   generationJobWrites.set(job.id, next);
+  void next.finally(()=>{if(generationJobWrites.get(job.id)===next)generationJobWrites.delete(job.id);});
   return next;
 }
 async function persistGenerationArtifact(job, file, source = 'deliverable') {
@@ -2122,12 +2123,12 @@ async function readGenerationArtifacts(job) {
   }
   return files;
 }
-async function loadPersistedGenerationJob(id) {
+async function loadPersistedGenerationJob(id,ownerId) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   try {
     const raw = await fs.promises.readFile(path.join(generationJobStoreDir, id + '.json'), 'utf8');
     const job = JSON.parse(raw);
-    if (!job || job.id !== id) return null;
+    if (!job || job.id !== id || job.ownerId!==ownerId || Date.now()-Number(job.updatedAt)>86400000) return null;
     job.artifacts = Array.isArray(job.artifacts) ? job.artifacts : [];
     const availableArtifacts = await readGenerationArtifacts(job);
     const filesByName = new Map(availableArtifacts.map(file => [file.name, file]));
@@ -2144,7 +2145,6 @@ async function loadPersistedGenerationJob(id) {
       job.error = job.message;
       job.updatedAt = Date.now();
     }
-    generationJobs.set(id, job);
     if (wasRunning) await queuePersistGenerationJob(job);
     return job;
   } catch {
@@ -2182,9 +2182,9 @@ async function pruneGenerationJobs() {
   }
 }
 app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
+  const work=await beginProjectWork(req);
   await pruneGenerationJobs();
   for(const [key,job] of generationJobs)if(job.status!=='running'&&generationJobs.size>=12)generationJobs.delete(key);
-  const work=await beginProjectWork(req);
   const id=crypto.randomUUID();
   const job={id,ownerId:work.id,status:'running',stage:'starting',progress:3,message:'🔎 Проверяем тему и параметры проекта...',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null,checkpoint:null,artifacts:[]};
   generationJobs.set(id,job);
@@ -2217,8 +2217,8 @@ app.get('/api/generation-jobs/:id', asyncRoute(async (req,res)=>{
   if(!takeRate('poll:'+req.ip,120))return res.status(429).json({error:'Слишком много запросов.'});
   const account=await liveProjectAccount(req);
   const id=req.params.id;
-  const job=generationJobs.get(id) || await loadPersistedGenerationJob(id);
-  if(!job||job.ownerId!==account.user.id)return res.status(404).json({error:'Задача не найдена или срок её хранения истёк.'});
+  const job=generationJobs.get(id) || await loadPersistedGenerationJob(id,account.user.id);
+  if(!job||job.ownerId!==account.user.id||Date.now()-Number(job.updatedAt)>86400000)return res.status(404).json({error:'Задача не найдена или срок её хранения истёк.'});
   const partialFiles = job.status === 'completed' ? undefined : await readGenerationArtifacts(job);
   res.json({
     jobId:job.id,status:job.status,progress:job.progress,stage:job.stage,message:job.message,

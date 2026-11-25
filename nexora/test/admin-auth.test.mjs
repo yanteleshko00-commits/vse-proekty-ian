@@ -8,3 +8,15 @@ test('admin session is independent of email, signed and expires',()=>{const now=
 test('admin password attempts are throttled',()=>{for(let i=0;i<5;i++)assert.equal(allowAdminAttempt('unit-test'),true);assert.equal(allowAdminAttempt('unit-test'),false);});
 
 test('other addresses do not exhaust an administrator global allowance',()=>{for(let i=0;i<45;i++)assert.equal(allowAdminAttempt('other-'+i),true);assert.equal(allowAdminAttempt('separate-admin'),true);});
+
+import {trustedClientIp,persistentAdminAttempt} from '../admin-throttle.js';
+test('only the configured trusted proxy can supply the last address',()=>{
+ const req={headers:{'x-forwarded-for':'1.2.3.4, 8.8.8.8'},socket:{remoteAddress:'127.0.0.1'}};
+ assert.equal(trustedClientIp(req,{}),'127.0.0.1');assert.equal(trustedClientIp(req,{RENDER:'true'}),'8.8.8.8');
+});
+test('persistent admin throttle fails closed on backend errors',async()=>{
+ const req={headers:{},socket:{remoteAddress:'127.0.0.1'}},env={AUTH_SERVICE_API_KEY:'x'.repeat(32)};
+ assert.equal(await persistentAdminAttempt(req,'password',env,async()=>({status:429})),false);
+ await assert.rejects(persistentAdminAttempt(req,'password',env,async()=>({status:503,ok:false})));
+ assert.equal(await persistentAdminAttempt(req,'password',env,async()=>({status:200,ok:true,json:async()=>({allowed:true})})),true);
+});

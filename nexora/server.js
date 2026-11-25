@@ -1,4 +1,5 @@
 import {serveBrand} from './brand.js';
+import { persistentAdminAttempt } from './admin-throttle.js';
 import http from 'node:http';
 import {developerRoute,activeMaintenance} from './developer-console.js';
 import {recordDeepSeek,verifyDeepSeek,deepSeekUsage,isUsageAdmin} from './deepseek-quality.js';
@@ -191,12 +192,12 @@ const PROJECT_GENERATOR_BASE = (process.env.PROJECT_GENERATOR_URL || 'https://vs
 const authServiceApiKey = process.env.AUTH_SERVICE_API_KEY || '';
 const authServiceClientId = process.env.AUTH_SERVICE_CLIENT_ID || 'nexora';
 
-async function reserveArgoshaUsage(userId, idempotencyKey) {
+async function reserveArgoshaUsage(userId, idempotencyKey, sessionId) {
   if (!authServiceApiKey) throw Object.assign(new Error('Для запуска Аргоши нужно добавить AUTH_SERVICE_API_KEY в переменные Render NEXORA.'), { status: 503 });
   const response = await fetch(authBase + '/v1/internal/usage/reserve', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-service-id': authServiceClientId, 'x-service-api-key': authServiceApiKey },
-    body: JSON.stringify({ userId, idempotencyKey }),
+    body: JSON.stringify({ userId, idempotencyKey, sessionId }),
     signal: AbortSignal.timeout(12000)
   });
   const data = await response.json().catch(() => ({}));
@@ -256,7 +257,7 @@ async function studioInternal(req,res){
     }
     if(body.action==='reserve'){
       await authSessionCall('/v1/internal/session/validate',{userId:body.userId,sessionId:body.sessionId});
-      const reservationId=await reserveArgoshaUsage(body.userId,crypto.randomUUID());
+      const reservationId=await reserveArgoshaUsage(body.userId,crypto.randomUUID(),body.sessionId);
       return send(res,200,JSON.stringify({reservationId}),studioHeaders);
     }
     if(body.action==='finalize'&&/^[0-9a-f-]{36}$/i.test(body.reservationId||'')&&['success','failure'].includes(body.outcome)){
@@ -593,9 +594,11 @@ const chatInFlight = new Set();
 async function nexoraChatReply(req, res) {
   const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
   const user = readSession(req);
-  if (!user) return send(res, 401, JSON.stringify({
+  if (!user?.sessionId) return send(res, 401, JSON.stringify({
     error: 'not_signed_in', message: 'Войдите в NEXORA ID, чтобы начать диалог.'
   }), jsonHeaders);
+  try{await authSessionCall('/v1/internal/session/validate',{userId:user.id,sessionId:user.sessionId});}
+  catch(error){return send(res,error.status===401?401:503,JSON.stringify({error:'session_unavailable',message:'Не удалось подтвердить NEXORA ID.'}),jsonHeaders);}
   const secret = process.env.NEXORA_CHAT_INTERNAL_TOKEN || '';
   if (secret.length < 32 && !deepSeekProvider()) return send(res, 503, JSON.stringify({
     error: 'chat_unavailable', message: 'Чат ещё подключается. Попробуйте позднее.'
@@ -714,7 +717,8 @@ const server = http.createServer(async (req, res) => {
     if(url.pathname==='/admin/logout')return send(res,303,'',{Location:'/admin/login','Set-Cookie':cookie('nexora_admin','',0)});
     if(!passwordConfigured())return send(res,503,adminLoginPage('unavailable'),adminHeaders);
     const ip=String((process.env.RENDER==='true'||process.env.TRUST_PROXY==='true')?(String(req.headers['x-forwarded-for']||'').split(',').at(-1).trim()||req.socket.remoteAddress||'unknown'):(req.socket.remoteAddress||'unknown'));
-    if(!allowAdminAttempt(ip))return send(res,429,adminLoginPage('limited'),adminHeaders);
+    try{if(!await persistentAdminAttempt(req,'password'))return send(res,429,adminLoginPage('limited'),adminHeaders);}
+    catch(error){console.warn('Admin limiter unavailable:',error.name);return send(res,503,adminLoginPage('unavailable'),adminHeaders);}
     let form;
     try{
       let length=0;const parts=[];
@@ -924,25 +928,12 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/me' && req.method === 'GET') {
     const user = readSession(req);
     if (!user) return send(res, 401, JSON.stringify({ error: 'not_signed_in' }), { 'Content-Type': 'application/json; charset=utf-8' });
-    let usage = user.usage || null;
-    let packages = user.packages || null;
-    // The signed cookie holds a snapshot from login time; refresh the balance so it is not stale after generations/payments.
-    if (authServiceApiKey) {
-      try {
-        const summary = await fetch(authBase + '/v1/internal/users/' + encodeURIComponent(user.id) + '/summary', {
-          headers: { 'x-service-id': authServiceClientId, 'x-service-api-key': authServiceApiKey },
-          signal: AbortSignal.timeout(5000)
-        });
-        if (summary.ok) {
-          const fresh = await summary.json();
-          usage = fresh.usage || usage;
-          packages = fresh.packages || packages;
-        }
-      } catch (error) {
-        console.error('NEXORA usage refresh failed:', error.message);
-      }
-    }
-    return send(res, 200, JSON.stringify({ user: { id: user.id, name: user.name, email: user.email }, usage, packages }), { 'Content-Type': 'application/json; charset=utf-8' });
+    if(!user.sessionId)return send(res,401,JSON.stringify({error:'not_signed_in'}),studioHeaders);
+    try{
+      const fresh=await authSessionCall('/v1/internal/session/validate',{userId:user.id,sessionId:user.sessionId});
+      return send(res,200,JSON.stringify(fresh),studioHeaders);
+    }catch(error){return send(res,error.status===401?401:503,JSON.stringify({error:'session_unavailable',message:'Не удалось подтвердить NEXORA ID.'}),studioHeaders);}
+
   }
 
   if (url.pathname.startsWith('/docs/') && req.method === 'GET') {

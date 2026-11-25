@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { persistentAdminAttempt } from './admin-throttle.js';
 import {deepSeekUsage} from './deepseek-quality.js';
 import {readFile} from 'node:fs/promises';
 const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -8,7 +9,7 @@ export function decodeSecret(value){
  let n=0,bits=0,out=[];for(const c of s){n=(n<<5)|alphabet.indexOf(c);bits+=5;if(bits>=8){bits-=8;out.push((n>>bits)&255);}}return Buffer.from(out);
 }
 export function totp(key,step){const b=Buffer.alloc(8);b.writeBigUInt64BE(BigInt(step));const h=crypto.createHmac('sha1',key).update(b).digest(),o=h[19]&15;return String((h.readUInt32BE(o)&0x7fffffff)%1000000).padStart(6,'0');}
-const sessions=new Map(),attempts=new Map();let lastStep=-1,globalAttempts=[];
+const sessions=new Map();let lastStep=-1;
 const services=[
  ['NEXORA Lobby','https://nexora-lobby.onrender.com','/health'],
  ['NEXORA ID','https://ecosystem-auth-service.onrender.com','/health'],
@@ -48,9 +49,9 @@ export function validLoginNonce(req,nonce){
  const expected=cookieValue(req,nonceName);
  return /^[a-f0-9]{64}$/.test(expected||'')&&/^[a-f0-9]{64}$/.test(nonce||'')&&crypto.timingSafeEqual(Buffer.from(expected),Buffer.from(nonce));
 }
-function session(req){const raw=String(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(cookieName+'='));const token=raw?.slice(cookieName.length+1);return token&&sessions.has(token)?token:null;}
-function setCookie(token){return cookieName+'='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age='+(token?34560000:0);}
-function allowed(req){const now=Date.now(),cut=now-900000;const ip=String(req.headers['x-forwarded-for']||req.socket.remoteAddress||'').split(',').at(-1).trim();globalAttempts=globalAttempts.filter(t=>t>cut);for(const [key,v] of attempts)if(v.every(t=>t<=cut))attempts.delete(key);const list=(attempts.get(ip)||[]).filter(t=>t>cut);if(list.length>=5||globalAttempts.length>=15)return false;list.push(now);attempts.set(ip,list);globalAttempts.push(now);return true;}
+function session(req){const raw=String(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(cookieName+'='));const token=raw?.slice(cookieName.length+1);const issued=token&&sessions.get(token);if(!issued||Date.now()-issued>8*3600000){if(token)sessions.delete(token);return null;}return token;}
+function setCookie(token){return cookieName+'='+token+'; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age='+(token?28800:0);}
+
 async function body(req){let size=0,parts=[];for await(const c of req){size+=c.length;if(size>8192)throw Error('body');parts.push(c);}return Buffer.concat(parts).toString('utf8');}
 const headers={'Content-Type':'text/html; charset=utf-8','X-Frame-Options':'DENY','Referrer-Policy':'same-origin','Content-Security-Policy':"default-src 'none'; img-src 'self'; manifest-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"};
 function login(message='',nonce=''){return '<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NEXORA Security</title><link rel="icon" href="/nexora-mark.svg?v=2" type="image/svg+xml"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2"><link rel="manifest" href="/nexora-admin.webmanifest"><style>*{box-sizing:border-box}body{background:#101112;color:#fff;font:16px system-ui;margin:0;padding:20px}main{max-width:420px;margin:12vh auto;background:#18191c;border:1px solid #343638;border-radius:24px;padding:24px}h1{font-size:28px}p{color:#aaa;line-height:1.5}input,button{width:100%;padding:15px;border-radius:12px;font:inherit;margin:10px 0}input{background:#111;color:white;border:1px solid #666;text-align:center;letter-spacing:8px;font-size:26px}button{background:#caff9d;border:0;color:#14210e;font-weight:700}</style><main><img src="/nexora-mark.svg?v=2" alt="NEXORA" width="56" height="56" style="display:block;margin-bottom:18px"><small>NEXORA / SECURITY</small><h1>Вход разработчика</h1><p>Введите шестизначный код из приложения «Пароли» на iPhone. Код меняется каждые 30 секунд.</p><form method="post" action="/developer/login"><input type="hidden" name="csrf" value="'+nonce+'"><label for="code">Код подтверждения</label><input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required><button>Войти</button></form><p role="status">'+message+'</p></main></html>';}
@@ -63,7 +64,7 @@ export async function developerRoute(req,res,url,base,send){
  if(method==='POST'&&!trustedPost(req,base,path==='/developer/login')){if(path==='/developer/login')loginPage(403,'Запрос заблокирован. Откройте админку заново в Safari.');else json(403,{error:'forbidden'});return true;}
  if(path==='/developer/login'&&method==='POST'){
  if(!key){loginPage(503,'TOTP ещё не настроен на сервере.');return true;}
- if(!allowed(req)){loginPage(429,'Слишком много попыток. Повторите через 15 минут.');return true;}
+ try{if(!await persistentAdminAttempt(req,'totp')){loginPage(429,'Слишком много попыток. Повторите через 15 минут.');return true;}}catch{loginPage(503,'Сервис защиты входа временно недоступен.');return true;}
  let code;try{const form=new URLSearchParams(await body(req));if(!validLoginNonce(req,form.get('csrf'))){loginPage(403,'Форма устарела или браузер заблокировал cookie. Введите новый код на этой странице.');return true;}code=form.get('code');}catch{loginPage(400,'Неверный запрос');return true;}
  const step=Math.floor(Date.now()/30000);
  const match=/^[0-9]{6}$/.test(code||'')?[step,step-1,step+1].find(s=>s>lastStep&&crypto.timingSafeEqual(Buffer.from(code),Buffer.from(totp(key,s)))):undefined;
