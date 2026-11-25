@@ -15,7 +15,7 @@ import { mathAnswerPrompt } from './math-prompt.js';
 import { textBridge, textBridgeHealth } from './text-bridge.js';
 import { CONTEXT as ARGOSHA_CONTEXT, contextFor, messageHistory, toolForQuery, safeArgoshaAction, parseArgoshaAnswer, argoshaSystemPrompt, localArgoshaReply } from './argosha-core.js';
 import { makeGame } from './game-studio.js';
-import {makeCodeGame,prepareGamePreview,serveGamePreview} from './game-code.js';
+import {makeCodeGame,prepareGamePreview,serveGamePreview,repairGameRuntime} from './game-code.js';
 import { validateChatRequest, chatPrompt } from './chat-core.js';
 import { appendFractionWorking, fractionHelpForProblem } from './math-fractions.js';
 import { inferMathKind, mathStudyGuide, datasetHint, MATH_KINDS, MATH_LEVELS } from './math-curriculum.js';
@@ -792,6 +792,7 @@ const server = http.createServer(async (req, res) => {
   if(req.method === 'POST' && url.pathname === '/api/game/generate')return makeGame(req,res);
   if(req.method === 'POST' && url.pathname === '/api/game/code')return makeCodeGame(req,res);
   if(req.method === 'POST' && url.pathname === '/api/game/preview')return prepareGamePreview(req,res);
+  if(req.method === 'POST' && url.pathname === '/api/game/repair')return repairGameRuntime(req,res);
   if(req.method === 'GET' && url.pathname.startsWith('/game/preview/'))return serveGamePreview(res,url.pathname.slice('/game/preview/'.length));
 
   if (url.pathname === '/api/images/generate') {
@@ -914,7 +915,7 @@ const server = http.createServer(async (req, res) => {
       ].join(' ');
       return send(res,200,html,{
         'Content-Type':'text/html; charset=utf-8',
-        'Cache-Control':'public, max-age=120',
+        'Cache-Control':'no-store',
         'Content-Security-Policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; frame-ancestors "+parents+"; form-action 'self'; object-src 'none'; base-uri 'self'",
         'X-Content-Type-Options':'nosniff',
         'Referrer-Policy':'no-referrer'

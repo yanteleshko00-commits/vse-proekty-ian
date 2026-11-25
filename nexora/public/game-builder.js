@@ -18,7 +18,7 @@
  function renderLibrary(){library.replaceChildren();const items=readLibrary();if(!items.length){libraryStatus.textContent="Пока нет сохранённых игр. Создайте первую игру.";return;}libraryStatus.textContent=items.length+" · сохранено в этом браузере";for(const item of items){const card=document.createElement("article"),open=document.createElement("button"),title=document.createElement("strong"),meta=document.createElement("small"),del=document.createElement("button");card.className="nx-library-card";open.type="button";open.className="nx-library-open";title.textContent=item.title;meta.textContent=(item.dimension==="3d"?"3D":"Игра")+" · "+(item.review?.status==="passed"?"ИИ-проверка пройдена":"Черновик");open.append(title,meta);open.addEventListener("click",()=>void loadSaved(item));del.type="button";del.className="nx-library-delete";del.textContent="×";del.setAttribute("aria-label","Удалить "+item.title);del.addEventListener("click",()=>{if(storeLibrary(readLibrary().filter(x=>x.id!==item.id)))renderLibrary();});card.append(open,del);library.append(card);}}
  function persistGame(){if(!ready||!raw||!currentReview)return;const id=selectedId||globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2);const item={id,title:$("ai-game-title").textContent.slice(0,75),idea:idea.value.trim().slice(0,500),html:raw,dimension:gameDimension,review:currentReview,createdAt:Date.now()};if(storeLibrary([item,...readLibrary().filter(x=>x.id!==id)])){selectedId=id;renderLibrary();}}
  function reportReview(){const passed=currentReview?.status==="passed";$("ai-source-label").textContent=passed?"ИИ проверил код":"Личный черновик";launch.querySelector("strong").textContent=passed?"Открыть игру":"Открыть черновик";$("ai-review-report").textContent=passed?(currentReview.repaired?"ИИ исправил замечания, повторная проверка и пробный запуск пройдены.":"ИИ-проверка и пробный запуск пройдены."):"Пробный запуск пройден, но ИИ не подтвердил качество. Это личный черновик, возможны баги. "+(currentReview?.issues||[]).slice(0,3).join(" · ");}
- async function loadSaved(item){if(busy)return;clearError();setBusy(true);try{if(playing)closeGame();ready=false;launch.hidden=true;selectedId=item.id;currentReview=item.review||{status:"needs_review",issues:[]};gameDimension=item.dimension;idea.value=item.idea||item.title;selectDimension(["auto","2d","3d"].includes(item.dimension)?item.dimension:"auto");raw=item.html;code.value=raw;$("ai-game-title").textContent=item.title;$("ai-description").textContent="Сохранённая игра";setStatus("Проверяю запуск сохранённой игры…");await compileGame(raw);showReady();reportReview();setStatus("Игра открыта из библиотеки.");setBusy(false);openGame();}catch(e){fail(e.message);setStatus("Не удалось открыть сохранённую игру.");}finally{setBusy(false);}}
+ async function loadSaved(item){if(busy)return;clearError();setBusy(true);try{if(playing)closeGame();ready=false;launch.hidden=true;selectedId=item.id;currentReview=item.review||{status:"needs_review",issues:[]};gameDimension=item.dimension;idea.value=item.idea||item.title;selectDimension(["auto","2d","3d"].includes(item.dimension)?item.dimension:"auto");raw=item.html;code.value=raw;$("ai-game-title").textContent=item.title;$("ai-description").textContent="Сохранённая игра";setStatus("Проверяю запуск сохранённой игры…");await compileGame(raw,true);showReady();reportReview();setStatus("Игра открыта из библиотеки.");setBusy(false);openGame();}catch(e){fail(e.message);setStatus("Не удалось открыть сохранённую игру.");}finally{setBusy(false);}}
  renderLibrary();
  function setStatus(message){status.textContent=message;}
  function fail(message){error.hidden=false;error.textContent=String(message||"Ошибка генерации.").slice(0,400);}
@@ -86,7 +86,7 @@
   if(window.matchMedia("(max-width:900px)").matches)
    $("ai-result-card").scrollIntoView({behavior:"smooth",block:"start"});
  }
- async function compileGame(html){
+ async function compileGame(html,allowRepair=false){
   const response=await fetch("/api/game/preview",{
    method:"POST",headers:{"Content-Type":"application/json"},
    body:JSON.stringify({html}),signal:AbortSignal.timeout(18000)
@@ -105,16 +105,26 @@
   document.body.append(probe);
   try{
    await new Promise((resolve,reject)=>{
-    const timer=setTimeout(()=>finish(Error("Игра не завершила пробный запуск.")),12000);
+    const timer=setTimeout(()=>finish(Object.assign(Error("Игра не завершила пробный запуск."),{runtime:true,detail:"Тайм-аут запуска; проверь цикл и инициализацию"})),15000);
     function finish(err){clearTimeout(timer);window.removeEventListener("message",check);err?reject(err):resolve();}
     function check(event){if(event.source!==probe.contentWindow||!event.data)return;
-     if(event.data.type==="nexora-game-error")finish(Error("Ошибка пробного запуска: "+String(event.data.message||"JavaScript").slice(0,170)));
+     if(event.data.type==="nexora-game-error"){const detail=String(event.data.message||"JavaScript").slice(0,170);finish(Object.assign(Error(/^(?:Script error\.?|Script error\. \(строка 0\))$/i.test(detail)?"Браузер остановил игровой скрипт; точная причина скрыта песочницей.":"Ошибка пробного запуска: "+detail),{runtime:true,detail}));}
      if(event.data.type==="nexora-game-ready")finish();
     }
     window.addEventListener("message",check);
     probe.src=data.url+"#nx-check";
    });
    compiled=data.html||"";
+  }catch(err){
+   if(!allowRepair||!err.runtime)throw err;
+   probe.remove();
+   setStatus("ИИ исправляет ошибку пробного запуска…");
+   $("nx-live-phase").textContent="Автоисправление ошибки выполнения";
+   const repairResponse=await fetch("/api/game/repair",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:data.url.split("/").pop(),idea:idea.value.trim(),dimension:gameDimension,error:err.detail}),signal:AbortSignal.timeout(95000)});
+   const fixed=await repairResponse.json().catch(()=>({}));
+   if(!repairResponse.ok||!fixed.ok||typeof fixed.html!=="string")throw err;
+   raw=fixed.html;code.value=raw;currentReview={status:"needs_review",repaired:true,issues:["ИИ исправил ошибку выполнения; требуется повторная проверка механики."]};
+   await compileGame(raw,false);
   }finally{testing=false;probe.remove();}
  }
  function openGame(){
@@ -141,7 +151,7 @@
   if(description.length<2){fail("Напишите название или короткое описание игры.");idea.focus();return;}
   if(description.length>500){fail("Описание не должно превышать 500 символов.");return;}
   setBusy(true);setStatus("ИИ создаёт "+(dimension==="3d"?"трёхмерный":"игровой")+" мир, код и управление…");
-  if(playing)closeGame();selectedId=null;currentReview=null;ready=false;compiled="";previewUrl="";launch.hidden=true;resetLive();setLoader(true);
+  if(playing)closeGame();selectedId=null;currentReview=null;raw="";compiled="";ready=false;previewUrl="";launch.hidden=true;resetLive();setLoader(true);
   $("ai-placeholder").hidden=false;
   $("ai-result").hidden=true;$("ai-toolbar").hidden=true;
   $("ai-placeholder-title").textContent="Создаю вашу игру…";
@@ -207,7 +217,7 @@
     :"На телефоне проводите пальцем по игровому полю или держите стрелки. Нажмите «Действие» для прыжка/выстрела.";
    setStatus("Выполняю пробный запуск и проверяю управление…");
    $("nx-live-phase").textContent="Пробный запуск в песочнице";
-   await compileGame(raw);showReady();
+   await compileGame(raw,true);showReady();
    reportReview();persistGame();
    setStatus(currentReview.status==="passed"?"Игра готова к запуску.":"Черновик сохранён. Можно проверить его лично.");
   }catch(e){
@@ -215,6 +225,7 @@
    $("ai-placeholder-description").textContent="Ваш запрос сохранён. ИИ не создал игру — готовый шаблон вместо неё не подставляется.";
    setStatus("Не удалось подготовить игру.");
    fail(e.message||"Произошла ошибка при создании игры.");
+   if(raw){$("ai-placeholder").hidden=true;$("ai-result").hidden=false;$("ai-toolbar").hidden=false;showTab("code");$("ai-review-report").textContent="Код доступен для исправления; запуск заблокирован.";}
   }finally{setBusy(false);setLoader(false);}
  }
  async function runEdited(){

@@ -1075,7 +1075,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
    node.textContent='Переписка очищена. Чем могу помочь?';messages.appendChild(node);
    suggestions.style.display='flex';input.focus();
  });
- function setOpen(open){panel.classList.toggle('open',open);panel.setAttribute('aria-hidden',String(!open));launcher.setAttribute('aria-expanded',String(open));if(open){launcher.classList.add('listening');setTimeout(()=>input.focus(),250)}else{launcher.classList.remove('listening','thinking','speaking')}}
+ function setOpen(open){panel.classList.toggle('open',open);panel.setAttribute('aria-hidden',String(!open));launcher.setAttribute('aria-expanded',String(open));if(open){launcher.classList.add('listening');if(!matchMedia('(pointer:coarse)').matches)setTimeout(()=>input.focus({preventScroll:true}),250)}else{launcher.classList.remove('listening','thinking','speaking')}}
  launcher.addEventListener('click',()=>setOpen(true));close.addEventListener('click',()=>setOpen(false));
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.classList.contains('open'))setOpen(false)});
  async function startProjectGeneration(action){
@@ -1196,5 +1196,5 @@ body:has(.modal.open) .argosha-greeting{display:none!important}
  if(!seen)setTimeout(dismiss,11500);
 })();
 </script>
-</body>
+<style id="nx-argosha-lobby-mobile-fix">.argosha-panel .argosha-input{font-size:16px!important;min-width:0}.argosha-panel .argosha-compose{min-width:0}.argosha-panel .argosha-suggestions{max-width:100%;overflow-x:auto}.argosha-panel .argosha-messages{min-height:0;overflow-x:hidden}@media(max-width:700px){.argosha-panel.open{top:var(--nx-argo-top,8px)!important;bottom:auto!important;left:8px!important;right:8px!important;width:auto!important;height:var(--nx-argo-height, min(570px,calc(100dvh - 16px)))!important;max-height:none!important;min-height:0!important}.argosha-panel:focus-within .argosha-suggestions{display:none!important}}</style><script>;(()=>{const p=document.getElementById("argosha-panel"),v=window.visualViewport;if(!p)return;function fit(){if(!p.classList.contains("open")||!matchMedia("(max-width:700px)").matches)return;p.style.setProperty("--nx-argo-top",((v?.offsetTop||0)+8)+"px");p.style.setProperty("--nx-argo-height",Math.max(100,Math.min(570,(v?.height||innerHeight)-16))+"px");}new MutationObserver(fit).observe(p,{attributes:true,attributeFilter:["class"]});v?.addEventListener("resize",fit);v?.addEventListener("scroll",fit);window.addEventListener("resize",fit);})();</script></body>
 </html>

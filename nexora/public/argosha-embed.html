@@ -37,6 +37,8 @@ textarea:focus{border-color:#9294f2;box-shadow:0 0 0 3px rgba(139,127,255,.12)}t
 .footer{padding:0 13px 7px;color:#777d9d;font-size:9px;text-align:center}
 @media(max-width:520px){.header{padding:11px 13px 10px}.orb{width:37px;height:37px;flex-basis:37px}.messages{padding:13px 12px}.message{font-size:12px}.compose{padding:10px 10px max(10px,env(safe-area-inset-bottom))}}
 @media(prefers-reduced-motion:reduce){.orb,.orb.busy,.typing i{animation:none!important}}
+/* iOS Safari zooms editable fields below 16px. Keep composer fully inside viewport. */
+html,body{width:100%;max-width:100%;overscroll-behavior:none}.wrap{height:100%;min-height:0;max-width:100%;overflow:hidden}.header,.suggestions,.compose,.footer{flex-shrink:0;min-width:0;max-width:100%}.messages{min-width:0;overflow-x:hidden}.compose{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:8px;align-items:end}#input{width:100%;font-size:16px!important;line-height:1.4;max-height:100px;min-height:44px}.send{width:44px;height:44px}.suggestions{overscroll-behavior-x:contain}.footer{white-space:normal;overflow-wrap:anywhere;line-height:1.35}.wrap:focus-within .suggestions{display:none}@media(max-height:340px){.header{padding:7px 10px}.header-copy small,.footer{display:none}.messages{padding:7px 10px}.compose{padding:7px 10px}}
 </style>
 
 </head>
@@ -136,13 +138,14 @@ async function submit(value){
   addMessage(error.name==="AbortError"?"Ответ ИИ занял слишком много времени. Попробуй ещё раз.":error.message,"assistant");
  }finally{
   clearTimeout(timeout);busy=false;$("send").disabled=false;$("orb").classList.remove("busy");
-  $("input").focus();
+  // Do not reopen the iOS keyboard after an asynchronous response.
  }
 }
 $("compose").addEventListener("submit",event=>{event.preventDefault();void submit()});
-$("input").addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();void submit()}});
+$("input").addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey&&!event.isComposing){event.preventDefault();void submit()}});
 $("input").addEventListener("input",()=>{$("input").style.height="auto";$("input").style.height=Math.min(135,$("input").scrollHeight)+"px"});
 $("clear").addEventListener("click",()=>{history=[];save();drawHistory();quick();$("input").focus()});
+$("input").addEventListener("focus",()=>{if(parent!==window)parent.postMessage({type:"nx-argosha-focus",focused:true},"*");});$("input").addEventListener("blur",()=>{if(parent!==window)parent.postMessage({type:"nx-argosha-focus",focused:false},"*");});
 drawHistory();quick();
 </script>
 </body>

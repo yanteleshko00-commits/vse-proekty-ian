@@ -32,6 +32,7 @@ test('mobile game QA runs in an isolated browser; click opens, cross closes and 
   await page.locator('#ai-close-game').click();
   await page.reload();await page.locator('.nx-library-open').first().click();await page.locator('#ai-close-game').waitFor({state:'visible',timeout:25000});await page.locator('#ai-close-game').click();
   await page.locator('#ai-idea').fill('Тестовая игра');
+  await page.route('**/api/game/repair',route=>route.fulfill({status:503,json:{ok:false}}));
   code=valid.replace('let n=0;','let n=0;throw new Error("test runtime bug");');
   await page.locator('#ai-build').click();
   await page.locator('#ai-error').waitFor({state:'visible',timeout:25000});
@@ -39,3 +40,5 @@ test('mobile game QA runs in an isolated browser; click opens, cross closes and 
   assert.equal(await page.locator('#ai-open-game').isVisible(),false);
  }finally{await browser?.close();child.kill();}
 });
+
+test('Argosha composer stays inside 390px viewport and uses 16px input',{timeout:60000},async()=>{const child=spawn(process.execPath,['nexora/server.js'],{env:{...process.env,PORT:String(port),NODE_ENV:'test'},stdio:'ignore'});let browser;try{for(let i=0;i<60;i++){try{if((await fetch(base+'/health')).ok)break}catch{}await new Promise(r=>setTimeout(r,100));}browser=await chromium.launch();const page=await browser.newPage({viewport:{width:390,height:340},isMobile:true,hasTouch:true});await page.goto(base+'/argosha/embed?studio=game');await page.locator('#input').fill('Как дела?');const sizes=await page.evaluate(()=>({font:parseFloat(getComputedStyle(document.querySelector('#input')).fontSize),send:document.querySelector('#send').getBoundingClientRect().right,width:innerWidth,scroll:document.documentElement.scrollWidth}));assert.ok(sizes.font>=16);assert.ok(sizes.send<=sizes.width);assert.ok(sizes.scroll<=sizes.width);}finally{await browser?.close();child.kill();}});
