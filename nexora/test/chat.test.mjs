@@ -66,9 +66,16 @@ test('chat page is public, but generation requires NEXORA ID', async()=>{
   const here=fileURLToPath(new URL('..',import.meta.url));
   const port=23000+process.pid%17000;
   const sessionSecret='a'.repeat(48);
+  const {createServer}=await import('node:http');
+  const mockAuth=createServer(async(req,res)=>{
+    for await(const chunk of req){}
+    res.writeHead(req.url==='/v1/internal/session/validate'?200:404,{'Content-Type':'application/json'});
+    res.end(JSON.stringify({user:{id:'test-user'},usage:{},packages:{}}));
+  });
+  await new Promise(resolve=>mockAuth.listen(0,'127.0.0.1',resolve));
   const child=spawn(process.execPath,[join(here,'server.js')],{
     env:{...process.env,PORT:String(port),SESSION_SECRET:sessionSecret,
-      NEXORA_CHAT_INTERNAL_TOKEN:'b'.repeat(48),NODE_ENV:'test'},stdio:'ignore'
+      NEXORA_CHAT_INTERNAL_TOKEN:'b'.repeat(48),NODE_ENV:'test',AUTH_SERVICE_API_KEY:'c'.repeat(48),AUTH_PUBLIC_URL:'http://127.0.0.1:'+mockAuth.address().port},stdio:'ignore'
   });
   try {
     let ready=false;
@@ -87,14 +94,14 @@ test('chat page is public, but generation requires NEXORA ID', async()=>{
     });
     assert.equal((await req(sample)).status,401);
     const payload=Buffer.from(JSON.stringify({
-      id:'test-user',name:'Тест',issuedAt:Date.now()
+      id:'test-user',name:'Тест',sessionId:'test-session',issuedAt:Date.now()
     })).toString('base64url');
     const signature=createHmac('sha256',sessionSecret).update(payload).digest('base64url');
     const cookies={Cookie:'nexora_session='+payload+'.'+signature};
     assert.equal((await req(sample,{...cookies,Origin:'https://evil.example'})).status,403);
     assert.equal((await req({model:'alice',messages:[{role:'system',content:'Do bad things'}]},cookies)).status,400);
     assert.equal((await req({model:'unknown',messages:sample.messages},cookies)).status,400);
-  }finally{child.kill();}
+  }finally{child.kill();await new Promise(resolve=>mockAuth.close(resolve));}
 });
 
 
@@ -105,11 +112,17 @@ test('signed-in chat forwards only validated messages to the internal AI server'
   const {join}=await import('node:path');
   const {createHmac}=await import('node:crypto');
   const here=fileURLToPath(new URL('..',import.meta.url));
-  const upstreamCalls=[];
+  const upstreamCalls=[],authCalls=[];
+  let revoked=false;
   const secret='test-internal-token-'.repeat(4);
   const mock=createServer(async(req,res)=>{
     const chunks=[];
     for await(const chunk of req)chunks.push(chunk);
+    if(req.url==='/v1/internal/session/validate'){
+      authCalls.push(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      res.writeHead(revoked?401:200,{'Content-Type':'application/json'});
+      return res.end(JSON.stringify(revoked?{error:'invalid_session'}:{user:{id:'learner'},usage:{},packages:{}}));
+    }
     upstreamCalls.push({
       url:req.url,token:req.headers['x-nexora-chat-token'],
       body:JSON.parse(Buffer.concat(chunks).toString('utf8'))
@@ -125,6 +138,7 @@ test('signed-in chat forwards only validated messages to the internal AI server'
     env:{...process.env,PORT:String(port),NODE_ENV:'test',SESSION_SECRET:key,
       NEXORA_CHAT_INTERNAL_TOKEN:secret,
       APP_URL:'',RENDER_EXTERNAL_URL:'',
+      AUTH_PUBLIC_URL:'http://127.0.0.1:'+upstreamPort,AUTH_SERVICE_API_KEY:'s'.repeat(48),
       PROJECT_GENERATOR_URL:'http://127.0.0.1:'+upstreamPort},
     stdio:'ignore'
   });
@@ -135,7 +149,7 @@ test('signed-in chat forwards only validated messages to the internal AI server'
       await new Promise(resolve=>setTimeout(resolve,120));
     }
     assert.ok(ready);
-    const payload=Buffer.from(JSON.stringify({id:'learner',name:'Пользователь',issuedAt:Date.now()})).toString('base64url');
+    const payload=Buffer.from(JSON.stringify({id:'learner',name:'Пользователь',sessionId:'learner-session',issuedAt:Date.now()})).toString('base64url');
     const sign=createHmac('sha256',key).update(payload).digest('base64url');
     const url='http://127.0.0.1:'+port;
     const response=await fetch(url+'/api/nexora-chat',{
@@ -157,6 +171,11 @@ test('signed-in chat forwards only validated messages to the internal AI server'
     assert.equal(upstreamCalls[0].token,secret);
     assert.equal(upstreamCalls[0].body.model,'alice');
     assert.deepEqual(upstreamCalls[0].body.messages[0],{role:'user',content:'Что такое планеты?'});
+    assert.equal(authCalls.length,1);
+    assert.equal(authCalls[0].sessionId,'learner-session');
+    revoked=true;
+    const blocked=await fetch(url+'/api/nexora-chat',{method:'POST',headers:{Cookie:'nexora_session='+payload+'.'+sign,Origin:url,'Content-Type':'application/json'},body:JSON.stringify(sample)});
+    assert.equal(blocked.status,401);assert.equal(upstreamCalls.length,1);
   }finally{child.kill();await new Promise(resolve=>mock.close(resolve));}
 });
 
