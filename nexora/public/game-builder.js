@@ -11,6 +11,15 @@
  let dimension="auto";
  let raw="",compiled="",busy=false,ready=false,sourceKind="",previewUrl="",playing=false,testing=false,restoreOverflow="",restoreBodyOverflow="",playerAnchor=null;
  const player=$("ai-game-view"),launch=$("ai-open-game"),close=$("ai-close-game");
+ const LIBRARY_KEY="nexora-my-games-v1",library=$("my-games-list"),libraryStatus=$("my-games-status");
+ let selectedId=null,currentReview=null,gameDimension="auto";
+ function readLibrary(){try{const items=JSON.parse(localStorage.getItem(LIBRARY_KEY)||"[]");return Array.isArray(items)?items.filter(x=>x&&typeof x.id==="string"&&typeof x.html==="string"&&x.html.length<=52000&&typeof x.title==="string").slice(0,25):[];}catch{return [];}}
+ function storeLibrary(items){try{localStorage.setItem(LIBRARY_KEY,JSON.stringify(items.slice(0,25)));return true;}catch{libraryStatus.textContent="Не удалось сохранить игру: хранилище заполнено или недоступно.";return false;}}
+ function renderLibrary(){library.replaceChildren();const items=readLibrary();if(!items.length){libraryStatus.textContent="Пока нет сохранённых игр. Создайте первую игру.";return;}libraryStatus.textContent=items.length+" · сохранено в этом браузере";for(const item of items){const card=document.createElement("article"),open=document.createElement("button"),title=document.createElement("strong"),meta=document.createElement("small"),del=document.createElement("button");card.className="nx-library-card";open.type="button";open.className="nx-library-open";title.textContent=item.title;meta.textContent=(item.dimension==="3d"?"3D":"Игра")+" · "+(item.review?.status==="passed"?"ИИ-проверка пройдена":"Черновик");open.append(title,meta);open.addEventListener("click",()=>void loadSaved(item));del.type="button";del.className="nx-library-delete";del.textContent="×";del.setAttribute("aria-label","Удалить "+item.title);del.addEventListener("click",()=>{if(storeLibrary(readLibrary().filter(x=>x.id!==item.id)))renderLibrary();});card.append(open,del);library.append(card);}}
+ function persistGame(){if(!ready||!raw||!currentReview)return;const id=selectedId||globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2);const item={id,title:$("ai-game-title").textContent.slice(0,75),idea:idea.value.trim().slice(0,500),html:raw,dimension:gameDimension,review:currentReview,createdAt:Date.now()};if(storeLibrary([item,...readLibrary().filter(x=>x.id!==id)])){selectedId=id;renderLibrary();}}
+ function reportReview(){const passed=currentReview?.status==="passed";$("ai-source-label").textContent=passed?"ИИ проверил код":"Личный черновик";launch.querySelector("strong").textContent=passed?"Открыть игру":"Открыть черновик";$("ai-review-report").textContent=passed?(currentReview.repaired?"ИИ исправил замечания, повторная проверка и пробный запуск пройдены.":"ИИ-проверка и пробный запуск пройдены."):"Пробный запуск пройден, но ИИ не подтвердил качество. Это личный черновик, возможны баги. "+(currentReview?.issues||[]).slice(0,3).join(" · ");}
+ async function loadSaved(item){if(busy)return;clearError();setBusy(true);try{if(playing)closeGame();ready=false;launch.hidden=true;selectedId=item.id;currentReview=item.review||{status:"needs_review",issues:[]};gameDimension=item.dimension;idea.value=item.idea||item.title;selectDimension(["auto","2d","3d"].includes(item.dimension)?item.dimension:"auto");raw=item.html;code.value=raw;$("ai-game-title").textContent=item.title;$("ai-description").textContent="Сохранённая игра";setStatus("Проверяю запуск сохранённой игры…");await compileGame(raw);showReady();reportReview();setStatus("Игра открыта из библиотеки.");setBusy(false);openGame();}catch(e){fail(e.message);setStatus("Не удалось открыть сохранённую игру.");}finally{setBusy(false);}}
+ renderLibrary();
  function setStatus(message){status.textContent=message;}
  function fail(message){error.hidden=false;error.textContent=String(message||"Ошибка генерации.").slice(0,400);}
  function clearError(){error.hidden=true;error.textContent="";}
@@ -110,7 +119,7 @@
  }
  function openGame(){
   if(!ready||!previewUrl||playing||busy)return;
-  showTab("play");playing=true;restoreOverflow=document.documentElement.style.overflow;restoreBodyOverflow=document.body.style.overflow;
+  showTab("play");player.classList.remove("ai-enter");playing=true;restoreOverflow=document.documentElement.style.overflow;restoreBodyOverflow=document.body.style.overflow;
   playerAnchor=document.createComment("NEXORA game player");player.before(playerAnchor);document.body.append(player);
   document.documentElement.style.overflow="hidden";document.body.style.overflow="hidden";player.classList.add("nx-game-playing");
   launch.hidden=true;close.hidden=false;frame.addEventListener("load",revealGame,{once:true});frame.src=previewUrl;
@@ -132,7 +141,7 @@
   if(description.length<2){fail("Напишите название или короткое описание игры.");idea.focus();return;}
   if(description.length>500){fail("Описание не должно превышать 500 символов.");return;}
   setBusy(true);setStatus("ИИ создаёт "+(dimension==="3d"?"трёхмерный":"игровой")+" мир, код и управление…");
-  if(playing)closeGame();ready=false;compiled="";previewUrl="";launch.hidden=true;resetLive();setLoader(true);
+  if(playing)closeGame();selectedId=null;currentReview=null;ready=false;compiled="";previewUrl="";launch.hidden=true;resetLive();setLoader(true);
   $("ai-placeholder").hidden=false;
   $("ai-result").hidden=true;$("ai-toolbar").hidden=true;
   $("ai-placeholder-title").textContent="Создаю вашу игру…";
@@ -146,7 +155,7 @@
    let response=await startJob();
    let data=await response.json().catch(()=>({}));
    showLive(data.progress);
-   let jobId=data.jobId,deadline=Date.now()+380000,missing=0,restarted=false;
+   let jobId=data.jobId,deadline=Date.now()+480000,missing=0,restarted=false;
    while(response.status===202&&data.pending&&jobId){
     if(Date.now()>deadline)throw Error("ИИ не завершил генерацию за отведённое время.");
     await new Promise(resolve=>setTimeout(resolve,2500));
@@ -171,7 +180,7 @@
      setStatus("Сервер обновился. Восстанавливаю создание игры по вашему описанию…");
      response=await startJob();
      data=await response.json().catch(()=>({}));
-     jobId=data.jobId;deadline=Date.now()+380000;
+     jobId=data.jobId;deadline=Date.now()+480000;
      continue;
     }
     missing=0;
@@ -180,7 +189,8 @@
    if(!response.ok||!data.ok||typeof data.html!=="string")
     throw Error(data.message||"ИИ не смог написать игру. Попробуйте уточнить описание.");
    if(data.source!=="ai")throw Error("ИИ не создал код. Подмена вашего запроса готовым шаблоном отключена.");
-   if(data.review?.status!=="passed")throw Error("ИИ не подтвердил качество кода. Игра не опубликована.");
+   if(!["passed","needs_review"].includes(data.review?.status))throw Error("Проверка игры не завершена.");
+   currentReview=data.review;gameDimension=data.dimension||dimension;
    raw=data.html;code.value=raw;sourceKind=data.source;
    showLive({provider:data.provider,phase:"writing",source:raw,attempt:"final"});
    $("nx-live-phase").textContent="Код получен · проверка и запуск";
@@ -189,17 +199,17 @@
    $("ai-placeholder-description").textContent="Проверяю HTML и подготавливаю безопасное игровое окно.";
    setStatus("Код готов. Подготавливаю "+(dimension==="3d"?"3D WebGL":"игру")+" для запуска…");
    $("ai-game-title").textContent=data.title||description;
-   $("ai-source-label").textContent="ИИ проверил код";
+   $("ai-source-label").textContent=data.review.status==="passed"?"ИИ проверил код":"Личный черновик";
    $("ai-source-label").classList.add("generated");
    $("ai-description").textContent="ИИ создал "+(renderedDimension==="3d"?"3D WebGL-игру":"игру")+" по вашему описанию. Исходный код доступен во вкладке «Код».";
    $("ai-control-hint").textContent=renderedDimension==="3d"
     ?"В 3D: свайпайте по сцене для поворота камеры, экранные стрелки — движение, «Действие» — взаимодействие. На компьютере — WASD и мышь."
     :"На телефоне проводите пальцем по игровому полю или держите стрелки. Нажмите «Действие» для прыжка/выстрела.";
-   setStatus("ИИ проверил код. Выполняю пробный запуск и проверяю управление…");
+   setStatus("Выполняю пробный запуск и проверяю управление…");
    $("nx-live-phase").textContent="Пробный запуск в песочнице";
    await compileGame(raw);showReady();
-   $("ai-review-report").textContent=data.review.repaired?"ИИ исправил замечания и повторно проверил код. Пробный запуск пройден. "+(Array.isArray(data.review.issues)?data.review.issues.slice(0,3).join(" · "):""):"ИИ проверил код, пробный запуск пройден. Нажмите на игру, чтобы открыть.";
-   setStatus("Игра готова к запуску.");
+   reportReview();persistGame();
+   setStatus(currentReview.status==="passed"?"Игра готова к запуску.":"Черновик сохранён. Можно проверить его лично.");
   }catch(e){
    $("ai-placeholder-title").textContent="Игра пока не создана";
    $("ai-placeholder-description").textContent="Ваш запрос сохранён. ИИ не создал игру — готовый шаблон вместо неё не подставляется.";
@@ -219,12 +229,12 @@
    raw=next;sourceKind="edited";
    $("ai-source-label").textContent="Код изменён";$("ai-source-label").classList.remove("generated");
    $("ai-description").textContent="Игра перезапущена из отредактированного HTML-кода.";
-   showReady();$("ai-review-report").textContent="Ручной код: синтаксис и пробный запуск проверены; ИИ-аудит не выполнялся.";setStatus("Изменения готовы к запуску.");
+   currentReview={status:"needs_review",issues:["Ручной код: ИИ-аудит не выполнялся."]};selectedId=null;showReady();reportReview();persistGame();setStatus("Изменения готовы к запуску.");
   }catch(e){fail(e.message||"Код не удалось запустить.");showTab("code");}
   finally{setBusy(false);}
  }
  function saveGame(){
-  if(!ready||!compiled){fail("Сначала завершите проверку игры.");return;}
+  if(!ready||!compiled){fail("Сначала завершите пробный запуск игры.");return;}
   const file=new Blob([compiled],{type:"text/html;charset=utf-8"});
   const url=URL.createObjectURL(file),link=document.createElement("a");
   link.href=url;link.download="NEXORA-Game-"+(idea.value.trim().replace(/[^\p{L}\p{N}_-]/gu,"-").slice(0,40)||"my-game")+".html";

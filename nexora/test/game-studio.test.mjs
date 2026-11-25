@@ -711,14 +711,15 @@ test('QA blocks failed verdicts and reviews repaired source again',async()=>{
  const opts={result:{html:'original',provider:'A'},idea:'game',dimension:'2d',providers:[],validate:html=>html==='fixed',repair:async()=>{repairs++;return {html:'fixed',provider:'A'}},verdictImpl:async({html})=>{rounds++;return html==='original'?{ok:false,issues:['missing restart'],reviewer:'B'}:{ok:true,issues:[],reviewer:'B'}}};
  const result=await reviewAndRepairGame(opts);
  assert.equal(result.html,'fixed');assert.equal(result.review.repaired,true);assert.equal(rounds,2);assert.equal(repairs,1);
- await assert.rejects(reviewAndRepairGame({...opts,verdictImpl:async()=>({ok:false,issues:['bug'],reviewer:'B'})}),/не опубликована/);
+ const draft=await reviewAndRepairGame({...opts,verdictImpl:async()=>({ok:false,issues:['bug'],reviewer:'B'})});assert.equal(draft.review.status,'needs_review');
  await assert.rejects(reviewAndRepairGame({...opts,verdictImpl:async()=>{throw Error('review offline')}}),/review offline/);
+ const offline=await reviewAndRepairGame({...opts,validate:()=>true,verdictImpl:async()=>{throw Error('review offline')}});assert.equal(offline.review.status,'needs_review');
 });
 test('game launch and close controls stay outside sandbox; runtime errors block ready state',async()=>{
  const html=await readFile(join(root,'public/game.html'),'utf8'),js=await readFile(join(root,'public/game-builder.js'),'utf8');
  assert.match(html,/id="ai-open-game"/);assert.match(html,/id="ai-close-game"[^>]*aria-label="Закрыть игру/);
  assert.doesNotMatch(html,/id="ai-frame"[^>]*allow="fullscreen"/);
- assert.match(js,/data\.review\?\.status!=="passed"/);
+ assert.match(js,/\["passed","needs_review"\]\.includes\(data\.review\?\.status\)/);assert.match(html,/id="my-games-list"/);assert.match(js,/nexora-my-games-v1/);
  assert.match(js,/nexora-game-ready/);assert.match(js,/probe\.src=data\.url\+"#nx-check"/);
  assert.match(js,/frame\.src="about:blank"/);new vm.Script(js);
 });

@@ -23,13 +23,15 @@ test('mobile game QA runs in an isolated browser; click opens, cross closes and 
   await page.locator('#ai-open-game').click();
   await page.locator('#ai-close-game').waitFor({state:'visible'});
   const bounds=await page.locator('#ai-game-view').boundingBox();
-  assert.ok(bounds.width>=388&&bounds.height>=800,'player fills mobile viewport');
+  const viewport=await page.evaluate(()=>({w:innerWidth,h:innerHeight}));assert.ok(Math.abs(bounds.width-viewport.w)<=2&&Math.abs(bounds.height-viewport.h)<=2,JSON.stringify({bounds,viewport}));
   assert.equal(await page.locator('#ai-frame').getAttribute('sandbox'),'allow-scripts');
   await page.locator('#ai-close-game').click();
   await page.locator('#ai-open-game').waitFor({state:'visible'});
   assert.equal(await page.locator('#ai-frame').getAttribute('src'),'about:blank');
   await page.locator('#ai-open-game').click();
   await page.locator('#ai-close-game').click();
+  await page.reload();await page.locator('.nx-library-open').first().click();await page.locator('#ai-close-game').waitFor({state:'visible',timeout:25000});await page.locator('#ai-close-game').click();
+  await page.locator('#ai-idea').fill('Тестовая игра');
   code=valid.replace('let n=0;','let n=0;throw new Error("test runtime bug");');
   await page.locator('#ai-build').click();
   await page.locator('#ai-error').waitFor({state:'visible',timeout:25000});
