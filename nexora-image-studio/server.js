@@ -1,3 +1,4 @@
+import {handleAnalytics,injectAnalytics} from './visitor-analytics.js';
 import {serveBrand} from './brand.js';
 import http from 'node:http';
 import {requestGeminiImage, requestGeminiImageRelay, firstImageProvider, DEFAULT_IMAGE_MODEL} from './gemini-image.js';
@@ -626,6 +627,7 @@ const server = http.createServer(async (req, res) => {
     return send(res, 400, 'Bad Request');
   }
 
+  if(['/api/visitors/ping','/nexora-visitors.js','/internal/visitors/ingest'].includes(url.pathname)&&await handleAnalytics(req,res,url.pathname,{site:'nexora-image-studio',registered:req=>Boolean(readStudioSession(req))}))return;
   if(serveBrand(req,res,url.pathname,"NEXORA Image Studio"))return;
   if (req.method === 'GET' && url.pathname === '/health') {
     const keys = gigaChatKeys();
@@ -679,7 +681,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
-    const html = await readFile(join(publicDir, 'index.html'));
+    const html=Buffer.from(injectAnalytics(await readFile(join(publicDir, 'index.html'))));
     return send(res, 200, html, {
       'Content-Type': 'text/html; charset=utf-8',
       'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-src https://nexora-lobby.onrender.com; frame-ancestors 'none'",
