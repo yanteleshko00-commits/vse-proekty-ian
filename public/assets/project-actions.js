@@ -18,7 +18,7 @@ document.addEventListener('click',event=>{
   case 'action-13': downloadFile('Итоговый_продукт.pdf'); break;
   case 'action-14': downloadFile('Итоговый_продукт.png'); break;
   case 'action-15': downloadAll(); break;
-  case 'action-16': window.open('https://t.me/vseproekty_bot','_blank'); break;
+  case 'action-16': window.open('https://t.me/Ian2011t','_blank','noopener,noreferrer'); break;
   case 'action-17': openModal('phone'); break;
   case 'action-18': closeModal('info'); break;
   case 'action-19': closeModal('phone'); break;
