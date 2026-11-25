@@ -1,6 +1,6 @@
 /* NEXORA design system · editorial hierarchy, focused actions, quiet surfaces */
 :root{--nx-accent:#5c48d6;--nx-accent-hover:#4835be;--nx-ink:#201b36;--nx-muted:#625c76;--nx-surface:#fff;--nx-line:#e6e2ef;--nx-soft:#f1edfc;--nx-radius:22px;--nx-shadow:0 12px 40px rgba(40,28,75,.075)}
-:root[data-theme=dark]{--nx-accent:#aa9aff;--nx-accent-hover:#c1b5ff;--nx-ink:#f3effc;--nx-muted:#bcb4ce;--nx-surface:#262237;--nx-line:#443d59;--nx-soft:#332b4b;--nx-shadow:0 12px 36px rgba(0,0,0,.2)}
+:root[data-theme=dark]{--nx-accent:#ac9bff;--nx-accent-hover:#c1b5ff;--nx-ink:#f4effc;--nx-muted:#bcb4ce;--nx-surface:#211c30;--nx-line:#393247;--nx-soft:#2d263f;--nx-shadow:0 10px 28px rgba(0,0,0,.18)}
 .nx-redesign{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;text-rendering:optimizeLegibility}
 .nx-redesign :where(h1,h2,h3){text-wrap:balance}
 .nx-redesign :where(button,a,input,select,textarea):focus-visible{outline:3px solid var(--nx-accent);outline-offset:3px}

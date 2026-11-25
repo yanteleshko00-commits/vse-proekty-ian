@@ -128,3 +128,12 @@ test('Argosha embed and local fallback respond over HTTP without provider secret
   assert.ok(action.url.startsWith('https://vse-proekty-ian.onrender.com'));
  }finally{child.kill()}
 });
+
+test('system dark mode provides design tokens even without a data-theme attribute',async()=>{
+ const html=await readFile(join(here,'public/index.html'),'utf8');
+ const css=html.match(/<style id="nexora-design-v3">([\s\S]*?)<\/style>/)?.[1];
+ assert.ok(css);
+ assert.match(css,/@media\(prefers-color-scheme:dark\)\s*\{\s*:root:not\(\[data-theme=light\]\)\s*\{[^}]*--nx-surface:#211c30/);
+ assert.match(css,/\.hero-content h1\{color:var\(--nx-ink\)/);
+ assert.match(css,/\.argosha-launcher\{width:52px!important/);
+});
