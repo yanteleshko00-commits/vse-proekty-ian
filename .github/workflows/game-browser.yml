@@ -1,0 +1,18 @@
+name: Game browser smoke
+on:
+  push:
+    branches: [main]
+    paths: ['nexora/game-code.js','nexora/game-review.js','nexora/public/game*','test/game-browser.test.mjs','.github/workflows/game-browser.yml']
+  workflow_dispatch:
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: node --test test/game-browser.test.mjs

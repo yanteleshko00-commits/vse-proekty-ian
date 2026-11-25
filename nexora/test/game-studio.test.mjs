@@ -10,6 +10,9 @@ import {GAME_TYPES,gameType,basicGamePlan} from '../game-studio.js';
 // Provider tests must never inherit live credentials or call paid services.
 for(const name of ['GEMINI_API_KEY','DEEPSEEK_API_KEY','GROQ_API_KEY','OPENROUTER_API_KEY','NEXORA_CHAT_INTERNAL_TOKEN','GAME_DEEPSEEK_MODEL','GAME_GEMINI_MODEL','GAME_GEMINI_FALLBACK_MODEL','GAME_GROQ_MODEL','ARGOSHA_GROQ_MODEL','GAME_OPENROUTER_MODEL','GAME_OPENROUTER_FALLBACK_MODEL'])delete process.env[name];
 const root=fileURLToPath(new URL('..',import.meta.url));
+// Simulate the configured reverse proxy in local HTTP fixtures. Production
+// still trusts forwarded addresses only when deployed behind a trusted proxy.
+process.env.TRUST_PROXY='true';
 // Existing generator-specific fixtures return a separate mock QA verdict.
 // Real reviewer/repair behavior is tested below, not bypassed in production.
 const reviewAware=mock=>async(url,options)=>{
@@ -112,7 +115,7 @@ test('Game Studio supports genuine editable HTML code and swipe-to-arrow control
  assert.match(html,/data-game-arrow="space"/);
  assert.match(client,/\/api\/game\/code/);
  assert.match(client,/\/api\/game\/preview/);
- assert.match(client,/frame\.src=data\.url/);
+ assert.match(client,/probe\.src=data\.url/);
  assert.match(client,/nexora-game-control/);
  assert.match(client,/function runEdited/);
  assert.match(client,/function saveGame/);
@@ -716,6 +719,6 @@ test('game launch and close controls stay outside sandbox; runtime errors block 
  assert.match(html,/id="ai-open-game"/);assert.match(html,/id="ai-close-game"[^>]*aria-label="Закрыть игру/);
  assert.doesNotMatch(html,/id="ai-frame"[^>]*allow="fullscreen"/);
  assert.match(js,/data\.review\?\.status!=="passed"/);
- assert.match(js,/nexora-game-ready/);assert.match(js,/frame\.src=data\.url\+"#nx-check"/);
+ assert.match(js,/nexora-game-ready/);assert.match(js,/probe\.src=data\.url\+"#nx-check"/);
  assert.match(js,/frame\.src="about:blank"/);new vm.Script(js);
 });
