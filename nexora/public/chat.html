@@ -178,8 +178,38 @@
 @media(prefers-reduced-motion:reduce){.nx-gallery[open]{animation:none}}
 @media print{.nx-view-open,.nx-view-close,.nx-gallery{display:none!important}}
 </style>
-<style>.nx-answer-motion{width:min(250px,70vw);display:grid;gap:9px;padding:12px 0;position:relative}.nx-answer-motion i{height:7px;width:95%;border-radius:8px;background:currentColor;opacity:.12;transform-origin:left;animation:nx-answer 2s ease-in-out infinite}.nx-answer-motion i:nth-child(2){width:78%;animation-delay:.22s}.nx-answer-motion i:nth-child(3){width:50%;animation-delay:.44s}.nx-answer-motion b{height:5px;width:5px;background:currentColor;border-radius:50%;opacity:.45;animation:nx-answer 1.1s ease infinite}@keyframes nx-answer{0%,100%{transform:scaleX(.25);opacity:.12}55%{transform:scaleX(1);opacity:.35}}@media(prefers-reduced-motion:reduce){.nx-answer-motion *{animation:none}}</style><link rel="icon" type="image/svg+xml" href="/nexora-mark.svg?v=2"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2"><link rel="manifest" href="/nexora.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><style>.nx-brand-img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}.brand-mark:has(.nx-brand-img),.brand-icon:has(.nx-brand-img),.brand-symbol:has(.nx-brand-img),.logo:has(>.nx-brand-img),.mark:has(.nx-brand-img),.nxq-mark:has(.nx-brand-img),.nxq-brandmark:has(.nx-brand-img),.wizard-brand-mark:has(.nx-brand-img),.nxqp-mark:has(.nx-brand-img),.auth-mark:has(.nx-brand-img){padding:0;background:transparent;box-shadow:none;overflow:hidden}.nx-eco-core>.nx-brand-img{position:absolute;inset:0}.nx-eco-core>span{z-index:1}</style></head>
-<body>
+<style>.nx-answer-motion{width:min(250px,70vw);display:grid;gap:9px;padding:12px 0;position:relative}.nx-answer-motion i{height:7px;width:95%;border-radius:8px;background:currentColor;opacity:.12;transform-origin:left;animation:nx-answer 2s ease-in-out infinite}.nx-answer-motion i:nth-child(2){width:78%;animation-delay:.22s}.nx-answer-motion i:nth-child(3){width:50%;animation-delay:.44s}.nx-answer-motion b{height:5px;width:5px;background:currentColor;border-radius:50%;opacity:.45;animation:nx-answer 1.1s ease infinite}@keyframes nx-answer{0%,100%{transform:scaleX(.25);opacity:.12}55%{transform:scaleX(1);opacity:.35}}@media(prefers-reduced-motion:reduce){.nx-answer-motion *{animation:none}}</style><link rel="icon" type="image/svg+xml" href="/nexora-mark.svg?v=2"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2"><link rel="manifest" href="/nexora.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><style>.nx-brand-img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}.brand-mark:has(.nx-brand-img),.brand-icon:has(.nx-brand-img),.brand-symbol:has(.nx-brand-img),.logo:has(>.nx-brand-img),.mark:has(.nx-brand-img),.nxq-mark:has(.nx-brand-img),.nxq-brandmark:has(.nx-brand-img),.wizard-brand-mark:has(.nx-brand-img),.nxqp-mark:has(.nx-brand-img),.auth-mark:has(.nx-brand-img){padding:0;background:transparent;box-shadow:none;overflow:hidden}.nx-eco-core>.nx-brand-img{position:absolute;inset:0}.nx-eco-core>span{z-index:1}</style><style id="nexora-design-v3">
+/* NEXORA design system · editorial hierarchy, focused actions, quiet surfaces */
+:root{--nx-accent:#5c48d6;--nx-accent-hover:#4835be;--nx-ink:#201b36;--nx-muted:#625c76;--nx-surface:#fff;--nx-line:#e6e2ef;--nx-soft:#f1edfc;--nx-radius:22px;--nx-shadow:0 12px 40px rgba(40,28,75,.075)}
+:root[data-theme=dark]{--nx-accent:#aa9aff;--nx-accent-hover:#c1b5ff;--nx-ink:#f3effc;--nx-muted:#bcb4ce;--nx-surface:#262237;--nx-line:#443d59;--nx-soft:#332b4b;--nx-shadow:0 12px 36px rgba(0,0,0,.2)}
+.nx-redesign{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;text-rendering:optimizeLegibility}
+.nx-redesign :where(h1,h2,h3){text-wrap:balance}
+.nx-redesign :where(button,a,input,select,textarea):focus-visible{outline:3px solid var(--nx-accent);outline-offset:3px}
+.nx-redesign :where(header,main,section,article,nav,footer){min-width:0}
+.nx-redesign :where(input,textarea,select){max-width:100%}
+.nx-redesign :where(.hero,.intro,.card,.panel,.tile,.plan-card,.tariff){scroll-margin-top:90px}
+.nx-redesign .nx-link-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin-top:20px}
+.nx-redesign .nx-cta{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:12px 20px;border:1px solid transparent;border-radius:14px;background:#5c48d6;color:#fff;text-decoration:none;font-size:15px;font-weight:720;line-height:1.25;box-shadow:0 7px 18px rgba(92,72,214,.17)}
+.nx-redesign .nx-cta.secondary{background:var(--nx-surface);color:var(--nx-ink);border-color:var(--nx-line);box-shadow:none}
+.nx-redesign .nx-footer-links{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
+.nx-redesign .nx-footer-links a{font-size:13px;color:inherit;text-decoration:none;font-weight:650;line-height:1.8}
+.nx-redesign .nx-footer-links a:hover{text-decoration:underline;text-underline-offset:4px}
+@media(hover:hover) and (pointer:fine){.nx-redesign .nx-cta:hover{background:#4835be}.nx-redesign .nx-cta.secondary:hover{background:var(--nx-soft)}}
+@media(max-width:600px){.nx-redesign :where(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),textarea,select){font-size:16px!important}.nx-redesign .nx-link-row{gap:8px}.nx-redesign .nx-cta{min-height:46px;padding:11px 16px}.nx-redesign .nx-footer-links{gap:6px 15px}}
+@media(prefers-reduced-motion:reduce){.nx-redesign .nx-cta,.nx-redesign .nx-footer-links a{transition:none!important}html{scroll-behavior:auto!important}}
+.nx-redesign .sidebar{border-right:1px solid var(--line)}
+.nx-redesign .workspace .topbar{border-bottom:1px solid var(--line);box-shadow:none}
+.nx-redesign .workspace .welcome h1{letter-spacing:-.055em;font-weight:760}
+.nx-redesign .workspace .hero-symbol{background:linear-gradient(145deg,#7663e9,#5140c6);box-shadow:0 8px 24px rgba(92,72,214,.18)}
+.nx-redesign #composer{border:1px solid var(--line);border-radius:24px;box-shadow:0 9px 30px rgba(42,35,76,.08)}
+.nx-redesign #composer:focus-within{border-color:var(--nx-accent)}
+.nx-redesign .send-button:not(.stop-button):not(:disabled){background:#5c48d6;color:white}
+.nx-redesign .prompts .prompt{border:1px solid var(--line);border-radius:15px;box-shadow:none}
+.nx-redesign .model-option.active{border-radius:12px}
+.nx-redesign .conversation{overflow-wrap:anywhere}
+@media(max-width:600px){.nx-redesign #composer{border-radius:20px}.nx-redesign .composer textarea{font-size:16px!important}.nx-redesign .prompts .prompt{min-height:44px}}
+</style></head>
+<body class="nx-redesign">
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Меню чата">
     <div class="sb-head">

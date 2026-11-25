@@ -1,0 +1,32 @@
+/* NEXORA design system · editorial hierarchy, focused actions, quiet surfaces */
+:root{--nx-accent:#5c48d6;--nx-accent-hover:#4835be;--nx-ink:#201b36;--nx-muted:#625c76;--nx-surface:#fff;--nx-line:#e6e2ef;--nx-soft:#f1edfc;--nx-radius:22px;--nx-shadow:0 12px 40px rgba(40,28,75,.075)}
+:root[data-theme=dark]{--nx-accent:#aa9aff;--nx-accent-hover:#c1b5ff;--nx-ink:#f3effc;--nx-muted:#bcb4ce;--nx-surface:#262237;--nx-line:#443d59;--nx-soft:#332b4b;--nx-shadow:0 12px 36px rgba(0,0,0,.2)}
+.nx-redesign{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;text-rendering:optimizeLegibility}
+.nx-redesign :where(h1,h2,h3){text-wrap:balance}
+.nx-redesign :where(button,a,input,select,textarea):focus-visible{outline:3px solid var(--nx-accent);outline-offset:3px}
+.nx-redesign :where(header,main,section,article,nav,footer){min-width:0}
+.nx-redesign :where(input,textarea,select){max-width:100%}
+.nx-redesign :where(.hero,.intro,.card,.panel,.tile,.plan-card,.tariff){scroll-margin-top:90px}
+.nx-redesign .nx-link-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin-top:20px}
+.nx-redesign .nx-cta{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:12px 20px;border:1px solid transparent;border-radius:14px;background:#5c48d6;color:#fff;text-decoration:none;font-size:15px;font-weight:720;line-height:1.25;box-shadow:0 7px 18px rgba(92,72,214,.17)}
+.nx-redesign .nx-cta.secondary{background:var(--nx-surface);color:var(--nx-ink);border-color:var(--nx-line);box-shadow:none}
+.nx-redesign .nx-footer-links{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
+.nx-redesign .nx-footer-links a{font-size:13px;color:inherit;text-decoration:none;font-weight:650;line-height:1.8}
+.nx-redesign .nx-footer-links a:hover{text-decoration:underline;text-underline-offset:4px}
+@media(hover:hover) and (pointer:fine){.nx-redesign .nx-cta:hover{background:#4835be}.nx-redesign .nx-cta.secondary:hover{background:var(--nx-soft)}}
+@media(max-width:600px){.nx-redesign :where(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),textarea,select){font-size:16px!important}.nx-redesign .nx-link-row{gap:8px}.nx-redesign .nx-cta{min-height:46px;padding:11px 16px}.nx-redesign .nx-footer-links{gap:6px 15px}}
+@media(prefers-reduced-motion:reduce){.nx-redesign .nx-cta,.nx-redesign .nx-footer-links a{transition:none!important}html{scroll-behavior:auto!important}}
+.nx-redesign .nx-project-hero{width:min(1120px,calc(100% - 32px));margin:28px auto 8px;padding:clamp(24px,5vw,62px);border:1px solid var(--nx-line);border-radius:28px;background:radial-gradient(ellipse at 92% 10%,rgba(137,111,245,.15),transparent 48%),var(--nx-surface);color:var(--nx-ink);box-shadow:var(--nx-shadow);display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);align-items:center;gap:25px}
+.nx-redesign .nx-project-hero h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:-.055em;line-height:1.04;margin:12px 0 14px}
+.nx-redesign .nx-project-hero p{font-size:16px;line-height:1.6;color:var(--nx-muted);max-width:50ch;margin:0}
+.nx-redesign .nx-project-kicker{font-size:11px;letter-spacing:.13em;font-weight:750;color:var(--nx-muted)}
+.nx-redesign .nx-project-preview{display:grid;gap:10px;padding:18px;border:1px solid var(--nx-line);border-radius:20px;background:var(--nx-soft)}
+.nx-redesign .nx-project-preview span{display:flex;align-items:center;gap:12px;padding:13px;background:var(--nx-surface);border:1px solid var(--nx-line);border-radius:12px;color:var(--nx-ink);font-size:14px;font-weight:650}
+.nx-redesign .nx-project-preview b{color:var(--nx-accent);font-size:20px}
+.nx-redesign #generator .form,.nx-redesign .step,.nx-redesign #tariffs .tariff{border:1px solid var(--nx-line);border-radius:22px;box-shadow:var(--nx-shadow)}
+.nx-redesign #tariffs .tariff.pro{border:2px solid var(--nx-accent)}
+.nx-redesign #tariffs .tariff .price{font-weight:780;letter-spacing:-.045em}
+.nx-redesign #generator .create-btn:not(:disabled),.nx-redesign #tariffs .create-btn{background:#5c48d6;color:#fff;border-radius:14px;min-height:48px}
+.nx-redesign header .nav button{border-radius:12px}
+.nx-redesign .nx-project-footer{width:min(1120px,calc(100% - 32px));margin:25px auto;padding:24px 0;border-top:1px solid var(--nx-line);color:var(--nx-muted);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media(max-width:650px){.nx-redesign .nx-project-hero{grid-template-columns:1fr;border-radius:21px;margin-top:14px;gap:18px}.nx-redesign .nx-project-preview{grid-template-columns:repeat(2,minmax(0,1fr));padding:10px;gap:7px}.nx-redesign .nx-project-preview span{padding:9px;gap:7px;font-size:12px}.nx-redesign .nx-project-footer{padding-bottom:calc(25px + env(safe-area-inset-bottom))}}
