@@ -19,6 +19,8 @@ const tools=[
 test('NEXORA homepage has clean hero and working registration entry points',async()=>{
  const html=await readFile(join(here,'public/index.html'),'utf8');
  assert.doesNotMatch(html,/Выбрать инструмент <span/);
+ assert.match(html,/<a class="nx-cta" href="#tools">Все инструменты/);
+ assert.match(html,/id="tools"/);
  assert.doesNotMatch(html,/Создать изображение →/);
  assert.match(html,/id="login-link" type="button"/);
  assert.match(html,/id="register-link" type="button"/);
