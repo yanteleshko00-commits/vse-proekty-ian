@@ -146,6 +146,7 @@ function pause(){
 }
 $("start").addEventListener("click",()=>{if(status==="playing")return;start()});
 $("pause").addEventListener("click",pause);
+document.addEventListener("nexora-classic-close",()=>{if(status==="playing")pause();held.clear();});
 $("reset").addEventListener("click",()=>{resetGame();start()});
 function endGame(message){
  status="finished";cancelAnimationFrame(frame);frame=0;draw();

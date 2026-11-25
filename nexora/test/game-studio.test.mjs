@@ -10,6 +10,15 @@ import {GAME_TYPES,gameType,basicGamePlan} from '../game-studio.js';
 // Provider tests must never inherit live credentials or call paid services.
 for(const name of ['GEMINI_API_KEY','DEEPSEEK_API_KEY','GROQ_API_KEY','OPENROUTER_API_KEY','NEXORA_CHAT_INTERNAL_TOKEN','GAME_DEEPSEEK_MODEL','GAME_GEMINI_MODEL','GAME_GEMINI_FALLBACK_MODEL','GAME_GROQ_MODEL','ARGOSHA_GROQ_MODEL','GAME_OPENROUTER_MODEL','GAME_OPENROUTER_FALLBACK_MODEL'])delete process.env[name];
 const root=fileURLToPath(new URL('..',import.meta.url));
+// Existing generator-specific fixtures return a separate mock QA verdict.
+// Real reviewer/repair behavior is tested below, not bypassed in production.
+const reviewAware=mock=>async(url,options)=>{
+ if(String(options?.body||'').includes('NEXORA_GAME_REVIEW')){
+  const verdict=JSON.stringify({ok:true,issues:[]});
+  return new Response(JSON.stringify(url.includes('googleapis.com')?{candidates:[{content:{parts:[{text:verdict}]}}]}:{choices:[{message:{content:verdict}}]}),{status:200});
+ }
+ return mock(url,options);
+};
 test('game routing and safe presets',()=>{
  assert.deepEqual(GAME_TYPES,['auto','catch','snake','target']);
  assert.equal(gameType('Космическая змейка собирает еду'),'snake');
@@ -228,6 +237,7 @@ test('Unauthenticated players can create an original game through the protected 
   const parts=[];for await(const chunk of req)parts.push(chunk);
   const input=JSON.parse(Buffer.concat(parts).toString('utf8'));
   assert.equal(input.model,'auto');
+  if(input.messages[0].content.includes('NEXORA_GAME_REVIEW')){res.writeHead(200,{'Content-Type':'application/json'});return res.end(JSON.stringify({answer:'{"ok":true,"issues":[]}',provider:'Alice AI LLM'}));}
   assert.match(input.messages[0].content,/ОПИСАНИЕ ИГРЫ: Платформер с монетами/);
   assert.match(input.messages[0].content,/любому названию или описанию/i);
   assert.match(input.messages[0].content,/именно запрошенную механику/);
@@ -259,7 +269,8 @@ test('Unauthenticated players can create an original game through the protected 
   assert.equal(game.source,'ai');
   assert.equal(game.provider,'Alice AI LLM');
   assert.equal(game.html,resultHtml);
-  assert.equal(calls,1);
+  assert.equal(game.review.status,'passed');
+  assert.equal(calls,2);
  }finally{child.kill();await new Promise(resolve=>mock.close(resolve));}
 });
 
@@ -314,7 +325,7 @@ test('Anonymous Game Studio generates playable HTML directly with the existing G
   assert.match(options.body,/ферма с роботами/);
   return new Response(JSON.stringify({choices:[{message:{content:game}}]}),{status:200,headers:{'Content-Type':'application/json'}});
  };
- const server=createServer((req,res)=>{void makeCodeGame(req,res,{fetchImpl:mockFetch});});
+ const server=createServer((req,res)=>{void makeCodeGame(req,res,{fetchImpl:reviewAware(mockFetch)});});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  try{
   const response=await fetch('http://127.0.0.1:'+server.address().port,{
@@ -398,7 +409,7 @@ test('anonymous 3D game request forwards dimension and returns WebGL rather than
   prompt=payload.messages[1].content;
   return new Response(JSON.stringify({choices:[{message:{content:output}}]}),{status:200});
  };
- const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:reviewAware(mock)}));
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  try{
   const response=await fetch('http://127.0.0.1:'+server.address().port,{
@@ -436,7 +447,7 @@ test('public Game Studio prioritizes the dedicated free coding model over random
   assert.equal(options.headers.Authorization,'Bearer testing-only-openrouter-key');
   return new Response(JSON.stringify({choices:[{message:{content:html}}]}),{status:200,headers:{'Content-Type':'application/json'}});
  };
- const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:reviewAware(mock)}));
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  try{
   const response=await fetch('http://127.0.0.1:'+server.address().port,{
@@ -509,7 +520,7 @@ test('a rejected primary AI answer uses the other code provider and preserves th
   assert.match(input.messages[1].content,/гонки на Луне/);
   return new Response(JSON.stringify({choices:[{message:{content:input.model==='test-primary'?'not HTML':fragment},finish_reason:'stop'}]}),{status:200});
  };
- const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:reviewAware(mock)}));
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  try{
   const response=await fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'192.0.2.41'},body:JSON.stringify({idea:'гонки на Луне',dimension:'2d'})});
@@ -544,7 +555,7 @@ test('Gemini is the primary provider and reads native content parts without expo
   assert.match(JSON.parse(options.body).contents[0].parts[0].text,/3D гонки/);
   return new Response(JSON.stringify({candidates:[{content:{parts:[{thought:true,text:'internal'},{text:html}]},finishReason:'STOP'}]}),{status:200});
  };
- const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:reviewAware(mock)}));
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  try{
   const response=await fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'192.0.2.42'},body:JSON.stringify({idea:'3D гонки',dimension:'3d'})});
@@ -577,7 +588,7 @@ test('long game generation returns a job immediately and polling retrieves real 
   await gate;
   return new Response(JSON.stringify({candidates:[{content:{parts:[{text:html}]},finishReason:'STOP'}]}),{status:200});
  };
- const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:reviewAware(mock)}));
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const post=(body,asyncMode=false)=>fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'192.0.2.43',...(asyncMode?{'X-NEXORA-Async':'1'}:{})},body:JSON.stringify(body)});
  try{
@@ -628,7 +639,7 @@ test('DeepSeek Flash generates game HTML using the official endpoint and a serve
   assert.match(body.messages[1].content,/Гонки с препятствиями/);
   return new Response(JSON.stringify({choices:[{message:{content:html},finish_reason:'stop'}]}),{status:200});
  };
- const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:reviewAware(mock)}));
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  try{
   const response=await fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'192.0.2.44'},body:JSON.stringify({idea:'Гонки с препятствиями',dimension:'2d'})});
@@ -657,7 +668,7 @@ test('Gemini transient 503 is retried once with full 3D prompt',async()=>{
  let calls=0;
  const html='<!doctype html><html><head><meta charset="utf-8"><title>3D</title></head><body><canvas width="720" height="420"></canvas><script>const c=document.querySelector("canvas"),gl=c.getContext("webgl");let n=0;document.addEventListener("keydown",e=>{n++});function frame(){gl.clearColor(n%2,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);requestAnimationFrame(frame)}frame();</script></body></html>';
  const mock=async(url,options)=>{calls++;assert.match(JSON.parse(options.body).contents[0].parts[0].text,/ОБЯЗАТЕЛЬНО.*WebGL/);return calls===1?new Response('{}',{status:503}):new Response(JSON.stringify({candidates:[{content:{parts:[{text:html}]}}]}),{status:200});};
- const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:mock}));
+ const server=createServer((req,res)=>void makeCodeGame(req,res,{fetchImpl:reviewAware(mock)}));
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  try{
  const res=await fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'192.0.2.55'},body:JSON.stringify({idea:'3D гонки',dimension:'3d'})});
@@ -687,4 +698,24 @@ test('OpenAI style stream uses content deltas, not reasoning deltas',async()=>{
  const rows=[{choices:[{delta:{reasoning_content:'ignore'}}]},{choices:[{delta:{content:'<html>'}}]},{choices:[{delta:{content:'</html>'},finish_reason:'stop'}]},{usage:{total_tokens:4},choices:[]}];
  const result=await readGameStream(new Response(rows.map(x=>'data: '+JSON.stringify(x)+'\n\n').join('')+'data: [DONE]\n\n'),false);
  assert.equal(result.answer,'<html></html>');assert.equal(result.finish,'stop');assert.equal(result.usage.total_tokens,4);
+});
+
+test('QA blocks failed verdicts and reviews repaired source again',async()=>{
+ const {parseGameVerdict,reviewAndRepairGame}=await import('../game-review.js');
+ assert.equal(parseGameVerdict('PASS'),null);
+ assert.equal(parseGameVerdict('{"ok":true,"issues":["bug"]}'),null);
+ let rounds=0,repairs=0;
+ const opts={result:{html:'original',provider:'A'},idea:'game',dimension:'2d',providers:[],validate:html=>html==='fixed',repair:async()=>{repairs++;return {html:'fixed',provider:'A'}},verdictImpl:async({html})=>{rounds++;return html==='original'?{ok:false,issues:['missing restart'],reviewer:'B'}:{ok:true,issues:[],reviewer:'B'}}};
+ const result=await reviewAndRepairGame(opts);
+ assert.equal(result.html,'fixed');assert.equal(result.review.repaired,true);assert.equal(rounds,2);assert.equal(repairs,1);
+ await assert.rejects(reviewAndRepairGame({...opts,verdictImpl:async()=>({ok:false,issues:['bug'],reviewer:'B'})}),/не опубликована/);
+ await assert.rejects(reviewAndRepairGame({...opts,verdictImpl:async()=>{throw Error('review offline')}}),/review offline/);
+});
+test('game launch and close controls stay outside sandbox; runtime errors block ready state',async()=>{
+ const html=await readFile(join(root,'public/game.html'),'utf8'),js=await readFile(join(root,'public/game-builder.js'),'utf8');
+ assert.match(html,/id="ai-open-game"/);assert.match(html,/id="ai-close-game"[^>]*aria-label="Закрыть игру/);
+ assert.doesNotMatch(html,/id="ai-frame"[^>]*allow="fullscreen"/);
+ assert.match(js,/data\.review\?\.status!=="passed"/);
+ assert.match(js,/nexora-game-ready/);assert.match(js,/frame\.src=data\.url\+"#nx-check"/);
+ assert.match(js,/frame\.src="about:blank"/);new vm.Script(js);
 });

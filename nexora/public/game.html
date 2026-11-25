@@ -206,6 +206,8 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
 .nx-redesign :where(.site-footer,.footer,main>footer){margin-top:40px;padding:24px 0;border-top:1px solid var(--nx-line);gap:14px}
 @media(max-width:600px){.nx-redesign .intro,.nx-redesign .hero{border-radius:21px}.nx-redesign .intro h1,.nx-redesign .hero h1{font-size:clamp(32px,9vw,46px)}.nx-redesign .card,.nx-redesign .workspace>.panel{border-radius:18px}.nx-redesign :where(.site-footer,.footer,main>footer){margin-top:28px;flex-wrap:wrap;padding-bottom:calc(25px + env(safe-area-inset-bottom))}}
 .nx-redesign .hero{padding:clamp(22px,5vw,48px);text-align:left}.nx-redesign .hero h1{font-size:clamp(38px,6vw,64px)}.nx-redesign .ai-dimension button{min-height:42px;border-radius:12px}.nx-redesign .ai-toolbar{gap:8px;flex-wrap:wrap}.nx-redesign .ai-game-frame{max-width:100%;border-radius:16px}.nx-redesign .nx-game-footer{color:var(--nx-muted);font-size:13px}
+</style><style id="nx-game-player-v4">
+#ai-game-view:not(.nx-game-playing) .ai-game-frame{position:absolute!important;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden}#ai-game-view:not(.nx-game-playing) .ai-control-hint,#ai-game-view:not(.nx-game-playing) .ai-dpad{display:none!important}.nx-game-launch{display:grid;gap:10px;place-items:center;width:100%;min-height:205px;border:1px solid #8d78c83d;border-radius:20px;background:linear-gradient(145deg,#24203b,#493568);color:white;cursor:pointer;padding:24px;font:inherit}.nx-game-launch span{font-size:45px}.nx-game-launch strong{font-size:22px}.nx-game-launch small{color:#e8def8}.nx-review-report{font-size:13px;line-height:1.5;color:var(--sub,#625c76);margin:10px 0}.nx-game-launch[hidden],.nx-game-close[hidden]{display:none!important}#ai-game-view.nx-game-playing{position:fixed!important;inset:0!important;z-index:2147483000;background:#111426;color:#fff;display:flex!important;flex-direction:column;gap:8px;padding:calc(max(8px,env(safe-area-inset-top)) + 48px) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));height:100dvh;overflow:auto;box-sizing:border-box}#ai-game-view.nx-game-playing .ai-game-frame{position:relative;flex:1 1 auto;min-height:160px;display:flex;overflow:hidden;border:1px solid #ffffff22}#ai-game-view.nx-game-playing #ai-frame{height:100%!important;min-height:0!important;flex:1;display:block}#ai-game-view.nx-game-playing .nx-review-report{display:none}#ai-game-view.nx-game-playing .ai-control-hint{color:#ddd7f0;font-size:12px;line-height:1.35}#ai-game-view.nx-game-playing .ai-dpad{flex-shrink:0;width:100%;margin:0 auto;max-width:550px}#ai-close-game{position:absolute;z-index:2;right:max(10px,env(safe-area-inset-right));top:max(7px,env(safe-area-inset-top));width:44px;height:44px;border:1px solid #ffffff33;border-radius:14px;background:#302e43;color:white;font-size:32px;line-height:1;cursor:pointer}#ai-close-game:focus-visible{outline:3px solid #b8a6ff}@media(min-width:850px){#ai-game-view.nx-game-playing .ai-dpad{max-width:420px}}
 </style></head>
 <body class="nx-redesign">
 <header class="top"><div class="top-inner">
@@ -237,7 +239,7 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
     <button type="button" data-ai-example="Flappy Bird: маленькая птица летает через трубы по нажатию и набирает очки.">🐦 Flappy</button>
     <button type="button" data-ai-example="Арканоид: ракетка отбивает мяч и разбивает ряды кирпичей, уровни и очки.">🧱 Арканоид</button>
    </div>
-   <button id="ai-build" type="button" class="create">✦ Создать и запустить игру</button>
+   <button id="ai-build" type="button" class="create">✦ Создать игру</button>
    <p class="hint">Без входа в аккаунт. ИИ анализирует любую идею и создаёт 2D или настоящую 3D-игру на WebGL. На телефоне есть свайпы и экранные кнопки. Если ИИ не справится, покажем ошибку, а не другую игру.</p>
    <button type="button" id="ai-classic-toggle" class="ai-classic-link">Открыть классические мини-игры →</button>
    <div id="ai-error" class="error" role="alert" hidden></div>
@@ -266,8 +268,11 @@ body:has(#classic-workspace:not([hidden])) .classic-head{display:flex}
    <div id="ai-result" hidden>
     <div class="game-head"><div><h3 id="ai-game-title">Новая игра</h3><p id="ai-description">Играть можно здесь.</p></div></div>
     <div id="ai-game-view" role="tabpanel" aria-labelledby="ai-play-tab">
+     <button id="ai-open-game" type="button" class="nx-game-launch" hidden><span aria-hidden="true">🎮</span><strong>Открыть игру</strong><small>Нажмите, чтобы играть на весь экран</small></button>
+     <p id="ai-review-report" class="nx-review-report" role="status"></p>
+     <button id="ai-close-game" type="button" class="nx-game-close" aria-label="Закрыть игру и вернуться" hidden>×</button>
      <div class="ai-game-frame">
-      <iframe id="ai-frame" title="Игра NEXORA — изолированный предпросмотр" sandbox="allow-scripts" referrerpolicy="no-referrer" allow="fullscreen"></iframe>
+      <iframe id="ai-frame" title="Игра NEXORA — изолированный предпросмотр" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>
      </div>
      <div class="ai-control-hint" id="ai-control-hint">Свайпайте по игровому полю или используйте кнопки. На компьютере — стрелки, WASD и пробел.</div>
      <div class="ai-dpad" aria-label="Управление игрой на телефоне">
@@ -438,7 +443,7 @@ body:has(#nxq-project:not([hidden])) .nx-argosha-host,body:has(#nxq-project:not(
 </script>
 <script>(function(){
 "use strict";
-const settings=[["#ai-game-view","game"],["#ai-code-view","panel"],["#play-area","game"]];
+const settings=[["#ai-code-view","panel"],["#play-area","game"]];
 let activePanel=null,closePanel=null,savedOverflow="",savedHtmlOverflow="",gallery=null;
 function lock(){savedOverflow=document.body.style.overflow;savedHtmlOverflow=document.documentElement.style.overflow;document.body.style.overflow="hidden";document.documentElement.style.overflow="hidden";}
 function unlock(){document.body.style.overflow=savedOverflow;document.documentElement.style.overflow=savedHtmlOverflow;}
@@ -487,9 +492,10 @@ function install(){
   const close=button("× Закрыть","nx-view-close","Закрыть полноэкранный результат");close.hidden=true;
   target.before(open,close);
   function visible(){open.hidden=!target.getClientRects().length||activePanel===target;}
-  function collapse(){if(activePanel!==target)return;target.classList.remove("nx-view-expanded");close.hidden=true;activePanel=null;closePanel=null;unlock();visible();open.focus({preventScroll:true});}
+  function collapse(){if(activePanel!==target)return;target.classList.remove("nx-view-expanded");if(selector==="#play-area")document.dispatchEvent(new Event("nexora-classic-close"));close.hidden=true;activePanel=null;closePanel=null;unlock();visible();open.focus({preventScroll:true});}
   function expand(){if(activePanel===target)return;if(closePanel)closePanel();lock();activePanel=target;closePanel=collapse;target.classList.add("nx-view-expanded");close.hidden=false;visible();close.focus({preventScroll:true});}
   open.addEventListener("click",expand);close.addEventListener("click",collapse);
+  if(selector==="#play-area"){document.getElementById("start")?.addEventListener("click",expand);close.addEventListener("click",()=>document.dispatchEvent(new Event("nexora-classic-close")));}
   if(mode==="panel"){
    target.classList.add("nx-view-clickable");
    target.addEventListener("click",e=>{const img=e.target.closest("img");if(img&&img.naturalWidth>0){e.preventDefault();showImage(img);return;}if(activePanel===target||e.target.closest("button,a,input,textarea,select,label,[contenteditable],summary")||String(window.getSelection()||"").trim())return;expand();});
