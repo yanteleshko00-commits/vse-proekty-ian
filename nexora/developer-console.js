@@ -102,6 +102,35 @@ export async function developerRoute(req,res,url,base,send){
  }
  if(path==='/developer/api/status'&&method==='GET'){startMonitor();json(200,{snapshot,errors,audit});return true;}
  if(path==='/developer/api/refresh'&&method==='POST'){if(!snapshot||Date.now()-Date.parse(snapshot.checkedAt)>30000)void monitor();json(202,{ok:true});return true;}
+ if(/^\/developer\/api\/workspace\/[0-9a-f-]{36}$/i.test(path)&&['GET','POST'].includes(method)){
+ const id=path.split('/').at(-1),secret=String(process.env.NEXORA_CONSOLE_SECRET||'');
+ if(secret.length<32){json(503,{error:'API поддержки не настроен'});return true;}
+ const endpoint='https://ecosystem-auth-service.onrender.com/v1/console/workspace/'+id;
+ const call=(method,data)=>fetch(endpoint,{method,headers:{Authorization:'Bearer '+secret,'Content-Type':'application/json'},body:data?JSON.stringify(data):undefined,signal:AbortSignal.timeout(20000),redirect:'error'});
+ try{
+ if(method==='GET'){const r=await call('GET');json(r.status,await r.json());return true;}
+ const input=JSON.parse(await body(req));let data;
+ if(!['message','note','credits','project'].includes(input.kind)){json(400,{error:'Недопустимое действие'});return true;}
+ if(input.kind==='credits'){if(!Number.isInteger(input.credits)||input.credits<1||input.credits>1000){json(400,{error:'От 1 до 1000 генераций'});return true;}data={kind:'credits',title:'Бонус от поддержки',credits:input.credits};}
+ else if(input.kind==='project'){
+ const topic=String(input.topic||'').trim();const slides=Number(input.slides);
+ if(topic.length<3||topic.length>180||!Number.isInteger(slides)||slides<7||slides>30){json(400,{error:'Укажите тему и 7–30 слайдов'});return true;}
+ const account=await call('GET');if(!account.ok){json(account.status,{error:'Аккаунт недоступен'});return true;}
+ const key=String(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'');if(key.length<32){json(503,{error:'Генератор не подключён'});return true;}
+ const origin=(process.env.PROJECT_GENERATOR_URL||'https://vse-proekty-ian.onrender.com').replace(/\/$/,'');if(!['https://vse-proekty-ian.onrender.com','https://vse-proekty-ian-1.onrender.com'].includes(origin)){json(503,{error:'Адрес генератора не поддерживается'});return true;}
+ const owner=crypto.randomBytes(32).toString('hex');
+ const started=await fetch(origin+'/api/generate-project/start',{method:'POST',headers:{'Content-Type':'application/json','x-nexora-chat-token':key,'x-nexora-guest-id':owner},body:JSON.stringify({topic,slidesCount:slides}),signal:AbortSignal.timeout(25000),redirect:'error'});
+ const result=await started.json();if(!started.ok||!/^[-a-f0-9]{36}$/i.test(result.jobId||'')){json(started.ok?502:started.status,{error:'Генератор не запустил проект: '+String(result.error||started.status).slice(0,180)});return true;}
+ const encoded=Buffer.from(JSON.stringify({id:result.jobId,owner:'guest:'+owner,exp:Date.now()+86400000})).toString('base64url');
+ const cap=encoded+'.'+crypto.createHmac('sha256',key).update('support-delivery-v1:'+encoded).digest('base64url');
+ data={kind:'project',title:topic,body:'Проект создан по поручению поддержки NEXORA. Проверьте готовность и скачайте файлы в течение 24 часов.',projectJob:result.jobId,projectCap:cap,projectOrigin:origin};
+ }else{
+ const value=String(input.body||'').trim();if(!value||value.length>2000){json(400,{error:'Введите сообщение до 2000 символов'});return true;}
+ data={kind:input.kind,title:input.kind==='note'?'Заметка разработчика':'Сообщение поддержки',body:value};
+ }
+ const r=await call('POST',data);const result=await r.json();if(r.ok)remember(audit,{name:'Поддержка пользователей',time:new Date().toISOString(),detail:data.kind});json(r.status,result);
+ }catch{json(502,{error:'Операция не подтверждена. Проверьте историю перед повтором.'});}return true;
+ }
  if(path==='/developer/api/users'&&['GET','POST'].includes(method)){
  const secret=String(process.env.NEXORA_CONSOLE_SECRET||'');if(secret.length<32){json(503,{error:'API NEXORA ID не настроен'});return true;}
  try{const options={method,headers:{Authorization:'Bearer '+secret,'Content-Type':'application/json'},signal:AbortSignal.timeout(20000),redirect:'error'};
