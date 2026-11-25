@@ -1,0 +1,19 @@
+:root{--g:#2878f0;--gd:#123a80;--gl:#e6f2ff;--d:#0b1b3a;--m:#526783;--bg:#f2f7ff;--w:#fff;--b:#d4e2f4}
+header{border-bottom-color:#d7e5f8}.logo i{background:#2878f0}.nav button:hover{background:#e8f2ff}.mobile-menu{background:#e6f2ff;color:#123a80}
+.hero{background:radial-gradient(circle at 90% 10%,#cbe6ff,transparent 38%),linear-gradient(135deg,#fff,#f2f8ff)}.badge,.step-number{background:#e6f2ff;color:#123a80}
+.generator{background:linear-gradient(135deg,#0b1b3a,#123a80);color:#fff}.field input,.field textarea,.field select{border-color:#d4e2f4;color:#0b1b3a!important;-webkit-text-fill-color:#0b1b3a!important;caret-color:#2878f0}.field input:focus,.field textarea:focus,.field select:focus{border-color:#2878f0}
+.progress{background:#dce9fb}.progress-bar{background:#2878f0}.ready{background:#e6f2ff;border-color:#c4dcff}.ready-title{color:#123a80}.meta,.file{background:#f2f7ff;border-color:#d4e2f4}.file button,.create-btn,.main-btn,.menu-btn{background:#2878f0}.download{background:#0b1b3a}.tariff{border-color:#d4e2f4}.tariff.pro{border-color:#2878f0}.popular-badge{background:#2878f0}.tariff li::before,.checks .check span{color:#2878f0}.check{border-color:#d4e2f4}.support{background:linear-gradient(110deg,#2878f0,#123a80)}.support button{color:#123a80}.phone-tile{border-color:#d4e2f4}.modal-item{border-bottom-color:#dce7f5}.close{background:#e6f2ff;color:#123a80}
+.quick-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 20px}.tool-tile{display:flex;align-items:center;gap:13px;text-align:left;min-width:0;padding:17px;border:1px solid #cfe0f6;border-radius:16px;background:linear-gradient(135deg,#fff,#eaf4ff);color:#0b1b3a;box-shadow:0 5px 18px rgba(18,58,128,.07)}.tool-icon{flex:0 0 44px;width:44px;height:44px;display:grid;place-items:center;border-radius:13px;background:#2878f0;color:white;font-size:23px}.tool-tile b{display:block;font-size:16px}.tool-tile small{display:block;margin-top:3px;color:#526783;font-size:13px;line-height:1.35}.tool-tile:active{transform:scale(.99)}.tool-form{display:flex;flex-direction:column;gap:12px;margin-top:15px}.tool-form textarea,.tool-form input{width:100%;padding:13px;border:1px solid #d4e2f4;border-radius:12px;font:inherit;color:#0b1b3a;background:#fff}.tool-form textarea{min-height:115px;resize:vertical}.tool-output{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:14px;padding:15px;border-radius:13px;background:#f2f7ff;border:1px solid #d4e2f4;display:none}.tool-output img{display:block;width:100%;height:auto;border-radius:10px;margin-top:10px}
+@media(max-width:600px){.quick-tools{grid-template-columns:1fr}.tool-tile{padding:14px}}
+/* Header app icon and accessible expandable Russian project requirements */
+.logo-app-icon{width:42px;height:42px;display:block;object-fit:cover;border-radius:13px;box-shadow:0 5px 16px rgba(15,95,55,.16)}
+.check details,details.check{cursor:pointer}
+details.check{padding:0;overflow:hidden}
+details.check summary{list-style:none;display:flex;align-items:center;gap:9px;padding:17px;font-weight:750;line-height:1.4;cursor:pointer}
+details.check summary::-webkit-details-marker{display:none}
+details.check summary:after{content:"＋";margin-left:auto;flex:0 0 auto;font-size:20px;color:var(--g);transition:transform .2s ease}
+details.check[open] summary:after{content:"−"}
+details.check summary span{flex:0 0 auto}
+details.check p{margin:0;padding:0 17px 18px 43px;color:var(--m);font-size:14px;line-height:1.6}
+details.check[open]{background:rgba(255,255,255,.66)!important;border-color:rgba(22,134,83,.28)!important}
+@media(max-width:750px){.logo-app-icon{width:38px;height:38px}}

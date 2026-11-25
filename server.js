@@ -1,4 +1,5 @@
 import {serveBrand} from './nexora/brand.js';
+import { createProjectSecurity } from './project-security.js';
 import 'dotenv/config';
 import express from 'express';
 import OpenAI from 'openai';
@@ -27,53 +28,6 @@ const PROJECT_OAUTH_COOKIE = 'projects_ian_oauth';
 const PROJECT_SITE_URL = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || 'https://vse-proekty-ian-1.onrender.com').replace(/\/$/, '');
 const PROJECT_SESSION_TTL = 7 * 24 * 60 * 60;
 
-function projectCookieOptions(maxAge) {
-  return {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: maxAge * 1000
-  };
-}
-function readRequestCookie(req, name) {
-  for (const part of String(req.headers.cookie || '').split(';')) {
-    const index = part.indexOf('=');
-    if (index < 0 || part.slice(0, index).trim() !== name) continue;
-    try { return decodeURIComponent(part.slice(index + 1).trim()); } catch { return null; }
-  }
-  return null;
-}
-function projectSessionSignature(payload) {
-  return crypto.createHmac('sha256', PROJECT_SESSION_SECRET).update(payload).digest('base64url');
-}
-function createProjectSession(user, sessionId) {
-  const payload = Buffer.from(JSON.stringify({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    sessionId,
-    expiresAt: Date.now() + PROJECT_SESSION_TTL * 1000
-  })).toString('base64url');
-  return payload + '.' + projectSessionSignature(payload);
-}
-function readProjectSession(req) {
-  if (PROJECT_SESSION_SECRET.length < 32) return null;
-  const token = readRequestCookie(req, PROJECT_SESSION_COOKIE);
-  if (!token) return null;
-  const parts = token.split('.');
-  if (parts.length !== 2) return null;
-  const expected = Buffer.from(projectSessionSignature(parts[0]));
-  const actual = Buffer.from(parts[1]);
-  if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) return null;
-  try {
-    const user = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
-    if (!user.id || !user.sessionId || !Number.isFinite(user.expiresAt) || Date.now() > user.expiresAt) return null;
-    return user;
-  } catch {
-    return null;
-  }
-}
 function projectOAuthReady() {
   return OAUTH_CLIENT_SECRET.length >= 32 && PROJECT_SESSION_SECRET.length >= 32;
 }
@@ -99,25 +53,21 @@ function isOpenAIQuotaError(error) {
   return Number(error?.status) === 429 && (error?.code === 'insufficient_quota' || /insufficient_quota|exceeded your current quota|billing hard limit|no credits remaining/.test(message));
 }
 
+const projectServiceKey = process.env.PROJECTS_SECURITY_SERVICE_KEY || process.env.PROJECTS_SERVICE_API_KEY || process.env.AUTH_SERVICE_API_KEY || '';
+const {projectCookieOptions,readRequestCookie,createProjectSession,readProjectSession,takeRate,projectAuthCall,liveProjectAccount,beginProjectWork,endProjectWork,metered}=createProjectSecurity({
+  authPublicUrl:AUTH_PUBLIC_URL,oauthClientId:OAUTH_CLIENT_ID,sessionSecret:PROJECT_SESSION_SECRET,
+  sessionCookieName:PROJECT_SESSION_COOKIE,sessionTTL:PROJECT_SESSION_TTL,projectServiceKey,asyncRoute
+});
 app.disable('x-powered-by');
 if (process.env.RENDER === 'true' || process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1);
 app.use((_req,res,next)=>{
   res.set({'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'strict-origin-when-cross-origin',
     'Permissions-Policy':'camera=(), microphone=(), geolocation=()',
-    'Content-Security-Policy':"base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https:",
-    'Content-Security-Policy-Report-Only':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data:"});
+    'Content-Security-Policy':"default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'; font-src 'self' data:; frame-src https://nexora-lobby.onrender.com"});
   if(process.env.NODE_ENV==='production')res.set('Strict-Transport-Security','max-age=15552000');
   next();
 });
 const paidPaths = new Set(['/api/generate-project','/api/generate-project/start','/api/chat','/api/generate-image','/api/edit-project','/api/suggest-topics','/api/nexora-chat/internal']);
-const requestRates = new Map();
-function takeRate(key, limit, period=60000) {
-  const now=Date.now();
-  for(const [k,v] of requestRates) if(v.until<=now)requestRates.delete(k);
-  let entry=requestRates.get(key);
-  if(!entry){if(requestRates.size>=5000)return false;entry={count:0,until:now+period};requestRates.set(key,entry);}
-  return ++entry.count<=limit;
-}
 app.use((req,res,next)=>{
   if(paidPaths.has(req.path)&&!takeRate('ip:'+req.ip,20))return res.status(429).json({error:'Слишком много запросов.'});
   next();
@@ -125,54 +75,7 @@ app.use((req,res,next)=>{
 app.use(express.json({ limit: '4mb' }));
 app.use(express.urlencoded({ extended: false, limit: '256kb' }));
 
-const projectServiceKey = process.env.PROJECTS_SECURITY_SERVICE_KEY || process.env.PROJECTS_SERVICE_API_KEY || process.env.AUTH_SERVICE_API_KEY || '';
-async function projectAuthCall(endpoint, body) {
-  if(projectServiceKey.length<32)throw Object.assign(Error('Сервис учёта NEXORA ID не настроен.'),{status:503});
-  const response=await fetch(AUTH_PUBLIC_URL+endpoint,{
-    method:'POST',headers:{'Content-Type':'application/json','x-service-id':OAUTH_CLIENT_ID,'x-service-api-key':projectServiceKey},
-    body:JSON.stringify(body),signal:AbortSignal.timeout(12000)
-  });
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw Object.assign(Error(data.error==='no_credits'?'Бесплатные генерации закончились. Выберите пакет.':'Не удалось подтвердить сессию или учесть генерацию.'),{status:response.status===401?401:response.status===402?402:response.status===404?401:503});
-  return data;
-}
-async function liveProjectAccount(req) {
-  const bridge=validInternalToken(req.get('x-nexora-chat-token'),process.env.NEXORA_CHAT_INTERNAL_TOKEN||'');
-  const local=bridge?{id:req.get('x-nexora-user-id'),sessionId:req.get('x-nexora-session-id')}:readProjectSession(req);
-  if(!local?.id||!local?.sessionId)throw Object.assign(Error('Войдите в NEXORA ID.'),{status:401});
-  const live=await projectAuthCall('/v1/internal/session/validate',{userId:local.id,sessionId:local.sessionId});
-  return {...live,sessionId:local.sessionId};
-}
-let activeProjectWork=0;
-const activeProjectUsers=new Set();
-async function beginProjectWork(req){
-  const live=await liveProjectAccount(req);
-  const id=live.user.id;
-  if(!takeRate('user:'+id,8))throw Object.assign(Error('Слишком много запросов.'),{status:429});
-  if(activeProjectWork>=1||activeProjectUsers.has(id))throw Object.assign(Error('Генератор занят. Повторите запрос позже.'),{status:429});
-  activeProjectWork++;activeProjectUsers.add(id);
-  try{
-    const reserved=await projectAuthCall('/v1/internal/usage/reserve',{userId:id,sessionId:live.sessionId,idempotencyKey:crypto.randomUUID()});
-    if(!reserved.reservationId)throw Error('Не получен резерв кредитов.');
-    return {id,reservationId:reserved.reservationId};
-  }catch(error){activeProjectWork--;activeProjectUsers.delete(id);throw error;}
-}
-async function endProjectWork(work,outcome){
-  try{
-    for(let attempt=0;attempt<3;attempt++){
-      try{await projectAuthCall('/v1/internal/usage/'+encodeURIComponent(work.reservationId)+'/finalize',{outcome});break;}
-      catch(error){if(attempt===2)console.error('[usage-finalize]',work.reservationId,outcome,error.message);}
-    }
-  }finally{activeProjectWork--;activeProjectUsers.delete(work.id);}
-}
-function metered(handler){
-  return asyncRoute(async(req,res)=>{
-    const work=await beginProjectWork(req);
-    let outcome='failure';
-    try{await handler(req,res);if(res.statusCode>=200&&res.statusCode<300)outcome='success';}
-    finally{await endProjectWork(work,outcome);}
-  });
-}
+
 
 const COLORS = {
   blue: { bg: 'F3F6FC', ink: '18243A', muted: '63718A', accent: '315EDB', accent2: 'AFC5FF' },

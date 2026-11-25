@@ -1,0 +1,32 @@
+name: Lock website dependencies
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lock-dependencies.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate missing dependency locks
+        run: |
+          set -e
+          for dir in . nexora nexora-image-studio nexora-math-studio nexora-text-studio; do
+            (cd "$dir" && if [ ! -f package-lock.json ]; then npm install --package-lock-only --ignore-scripts --no-audit --no-fund; fi)
+          done
+      - name: Commit generated locks
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git add package-lock.json nexora/package-lock.json nexora-image-studio/package-lock.json nexora-math-studio/package-lock.json nexora-text-studio/package-lock.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Lock all website dependencies"
+          git push origin HEAD:main

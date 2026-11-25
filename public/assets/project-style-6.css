@@ -1,0 +1,55 @@
+/* Six independent requirement panels: only the plus control toggles a panel. */
+.checks .check{
+  padding:0!important;min-width:0;overflow:hidden;border:1px solid rgba(40,120,240,.14);
+  border-radius:19px;background:rgba(255,255,255,.86);
+  box-shadow:0 5px 20px rgba(24,57,98,.045);
+  transition:border-color .32s ease,background .32s ease,box-shadow .36s ease,transform .36s cubic-bezier(.2,.8,.2,1);
+}
+.checks .check:hover{border-color:rgba(40,120,240,.3);transform:translateY(-2px);box-shadow:0 12px 26px rgba(24,57,98,.09)}
+.check-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:72px;padding:14px 16px}
+.check-label{display:flex;align-items:center;gap:12px;flex:1;min-width:0;pointer-events:none}
+.checks .check .check-mark{
+  flex:0 0 30px;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;
+  color:#2878f0!important;background:rgba(40,120,240,.10);font-size:14px;font-weight:850;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1),background .3s ease;
+}
+.checks .check .check-title{color:#172b45!important;font-size:15px;font-weight:760;line-height:1.4}
+.check-toggle{
+  flex:0 0 40px;width:40px;height:40px;display:grid;place-items:center;padding:0;
+  border:1px solid rgba(40,120,240,.13);border-radius:50%;
+  color:#2878f0;background:rgba(40,120,240,.075);
+  transition:transform .3s cubic-bezier(.2,.8,.2,1),background .3s ease,border-color .3s ease,box-shadow .3s ease;
+}
+.check-toggle:hover{background:rgba(40,120,240,.14);border-color:rgba(40,120,240,.3)}
+.check-toggle:active{transform:scale(.9)}
+.check-toggle:focus-visible{outline:3px solid rgba(40,120,240,.28);outline-offset:3px}
+.check-plus{position:relative;display:block;width:16px;height:16px}
+.check-plus:before,.check-plus:after{
+  content:"";position:absolute;left:50%;top:50%;width:16px;height:2px;border-radius:2px;
+  background:currentColor;transform:translate(-50%,-50%);transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .22s ease;
+}
+.check-plus:after{transform:translate(-50%,-50%) rotate(90deg)}
+.check-panel{
+  display:grid;grid-template-rows:0fr;opacity:0;visibility:hidden;
+  transition:grid-template-rows .52s cubic-bezier(.22,.8,.25,1),opacity .32s ease,visibility 0s linear .52s;
+}
+.check-panel-inner{min-height:0;overflow:hidden;transform:translateY(-9px);transition:transform .42s cubic-bezier(.2,.8,.2,1)}
+.checks .check .check-panel-inner p{
+  margin:0;padding:1px 18px 19px 58px;border-top:1px solid rgba(40,120,240,.09);
+  color:#526783!important;font-size:14px;line-height:1.65;animation:none!important;
+}
+.checks .check.is-open{
+  border-color:rgba(40,120,240,.32);background:rgba(248,251,255,.96);
+  box-shadow:0 14px 32px rgba(32,87,158,.10);
+}
+.checks .check.is-open .check-mark{background:rgba(40,120,240,.16);transform:scale(1.06)}
+.checks .check.is-open .check-panel{grid-template-rows:1fr;opacity:1;visibility:visible;transition:grid-template-rows .52s cubic-bezier(.22,.8,.25,1),opacity .32s ease,visibility 0s}
+.checks .check.is-open .check-panel-inner{transform:translateY(0)}
+.checks .check.is-open .check-plus:after{transform:translate(-50%,-50%) scaleY(0);opacity:0}
+html[data-theme="dark"] .checks .check{background:rgba(22,34,52,.78);border-color:rgba(124,174,245,.18)}
+html[data-theme="dark"] .checks .check.is-open{background:rgba(28,46,72,.94);border-color:rgba(124,174,245,.42)}
+html[data-theme="dark"] .checks .check .check-title{color:#eef5ff!important}
+html[data-theme="dark"] .checks .check .check-panel-inner p{color:#c2d0e4!important;border-top-color:rgba(124,174,245,.15)}
+html[data-theme="dark"] .check-toggle{color:#9bc4ff;background:rgba(90,147,226,.13);border-color:rgba(124,174,245,.2)}
+@media(max-width:600px){.check-heading{min-height:68px;padding:12px 13px}.checks .check .check-title{font-size:14px}.checks .check .check-panel-inner p{padding:0 15px 17px 55px;font-size:13.5px}.check-toggle{width:38px;height:38px;flex-basis:38px}}
+@media(prefers-reduced-motion:reduce){.checks .check,.check-toggle,.check-plus:before,.check-plus:after,.check-panel,.check-panel-inner,.check-mark{transition:none!important}.checks .check:hover{transform:none}}

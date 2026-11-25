@@ -1,0 +1,46 @@
+/* Shared Argosha launcher across NEXORA sites: one widget, no duplicate AI keys. */
+.nx-argosha-host{position:fixed;z-index:900;right:max(15px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));width:max-content;max-width:calc(100vw - 20px);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;pointer-events:none;isolation:isolate;color:#fff}
+.nx-argosha-host>summary{pointer-events:auto;list-style:none;display:flex;align-items:center;gap:9px;min-width:106px;height:48px;border-radius:28px;padding:0 15px;background:linear-gradient(145deg,#161825,#080b17) padding-box,conic-gradient(from 60deg,#5a91ff,#d084ff,#ffacb8,#86d2ff,#5a91ff) border-box;border:1.5px solid transparent;box-shadow:0 10px 28px rgba(26,24,61,.26),0 0 22px rgba(108,134,250,.26);font-size:12px;font-weight:830;letter-spacing:.01em;cursor:pointer;user-select:none;-webkit-user-select:none}
+.nx-argosha-host>summary::-webkit-details-marker{display:none}
+.nx-argosha-host>summary::marker{content:""}
+.nx-argosha-host>summary:focus-visible{outline:3px solid #8b80ff;outline-offset:3px}
+.nx-argosha-orb{width:24px;height:24px;flex:0 0 24px;border-radius:50%;background:radial-gradient(circle at 34% 25%,#fff 0 7%,#b0ddff 16%,#7d88ff 38%,#bd73f2 66%,#f2a5a2 84%,#2c1e5a 100%);box-shadow:0 0 13px rgba(157,149,255,.75);animation:nx-argosha-glow 4s ease-in-out infinite}
+@keyframes nx-argosha-glow{50%{filter:hue-rotate(35deg);box-shadow:0 0 21px rgba(180,130,255,.85)}}
+.nx-argosha-host .nx-argosha-close{display:none;font-size:18px;line-height:1;font-weight:700}
+.nx-argosha-host[open]>summary{box-shadow:0 6px 24px rgba(35,29,81,.3)}
+.nx-argosha-host[open] .nx-argosha-close{display:inline}
+.nx-argosha-frame{pointer-events:auto;position:fixed;right:max(10px,env(safe-area-inset-right));bottom:calc(max(78px,env(safe-area-inset-bottom) + 65px));width:min(405px,calc(100vw - 20px));height:min(570px,calc(100dvh - 100px));min-height:240px;overflow:hidden;border-radius:25px;border:1px solid rgba(151,138,218,.25);box-shadow:0 25px 85px rgba(18,12,51,.35);background:#121526}
+.nx-argosha-frame iframe{width:100%;height:100%;border:0;display:block;background:#121526}
+@media(max-width:550px){.nx-argosha-host{right:12px;bottom:max(11px,env(safe-area-inset-bottom))}.nx-argosha-host>summary{height:47px;min-width:106px;padding:0 12px}.nx-argosha-frame{right:8px;width:calc(100vw - 16px);height:min(605px,calc(100dvh - 96px));bottom:calc(max(70px,env(safe-area-inset-bottom) + 61px));border-radius:22px}}
+@media(prefers-reduced-motion:reduce){.nx-argosha-orb{animation:none!important}}
+
+/* Argosha design from reference: white round button, cobalt face and floating welcome bubble. */
+.nx-argosha-host{right:max(17px,env(safe-area-inset-right));bottom:max(17px,env(safe-area-inset-bottom));z-index:920}
+.nx-argosha-host>summary,.nx-argosha-host[open]>summary{width:84px;height:84px;min-width:84px;padding:0;display:grid;place-items:center;border:2px solid #edf0fa;border-radius:50%;background:#fff;box-shadow:0 8px 29px rgba(30,39,94,.19),0 2px 7px rgba(31,51,91,.08);color:#1a2a58;transform:none;transition:transform .16s ease,box-shadow .16s ease}
+.nx-argosha-host>summary:hover{transform:scale(1.045);box-shadow:0 10px 32px rgba(25,55,150,.24)}
+.nx-argosha-host>summary>span:nth-child(2),.nx-argosha-host .nx-argosha-close{display:none!important}
+.nx-argosha-host .nx-argosha-orb{position:relative;display:block;flex:none;width:56px;height:56px;border-radius:50%;background:#2950ec;box-shadow:none;animation:none;filter:none}
+.nx-argosha-host .nx-argosha-orb::before,.nx-argosha-host .nx-argosha-orb::after{content:"";position:absolute;top:19px;width:10px;height:17px;background:#fff;border-radius:50%;transform:rotate(-8deg)}
+.nx-argosha-host .nx-argosha-orb::before{left:16px}.nx-argosha-host .nx-argosha-orb::after{right:16px;transform:rotate(8deg)}
+.nx-argosha-frame{bottom:calc(max(110px,env(safe-area-inset-bottom) + 100px));height:min(570px,calc(100dvh - 125px));z-index:921}
+.nx-argosha-greeting[hidden]{display:none!important}
+.nx-argosha-greeting{position:fixed;z-index:919;right:max(21px,env(safe-area-inset-right));bottom:calc(max(118px,env(safe-area-inset-bottom) + 106px));width:min(330px,calc(100vw - 32px));padding:19px 49px 19px 20px;border-radius:25px;background:#fff;color:#111c40;border:1px solid #e9edf9;box-shadow:0 10px 36px rgba(14,26,79,.18);font:750 16px/1.54 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;pointer-events:auto;overflow-wrap:anywhere}
+.nx-argosha-greeting strong{display:block;font-weight:900;font-size:18px;line-height:1.35;margin-bottom:5px}
+.nx-argosha-greeting button{position:absolute;right:13px;top:13px;width:31px;height:31px;display:grid;place-items:center;border:0;border-radius:50%;color:#232e58;background:#eef1ff;font:850 21px/1 Arial,sans-serif;cursor:pointer}
+.nx-argosha-greeting button:focus-visible{outline:3px solid #385bf2;outline-offset:2px}
+.nx-argosha-host[open]~.nx-argosha-greeting{display:none!important}
+body:has(#nxquiz:not([hidden])) .nx-argosha-host,body:has(#nxquiz:not([hidden])) .nx-argosha-greeting,
+body:has(#topic-wizard:not([hidden])) .nx-argosha-host,body:has(#topic-wizard:not([hidden])) .nx-argosha-greeting,
+body:has(#nxq-project:not([hidden])) .nx-argosha-host,body:has(#nxq-project:not([hidden])) .nx-argosha-greeting,
+.standalone .nx-argosha-greeting{display:none!important}
+@media(max-width:550px){
+ .nx-argosha-host{right:13px;bottom:max(13px,env(safe-area-inset-bottom))}
+ .nx-argosha-host>summary,.nx-argosha-host[open]>summary{width:78px;height:78px;min-width:78px}
+ .nx-argosha-host .nx-argosha-orb{width:52px;height:52px}
+ .nx-argosha-host .nx-argosha-orb::before,.nx-argosha-host .nx-argosha-orb::after{top:18px;width:9px;height:16px}
+ .nx-argosha-host .nx-argosha-orb::before{left:15px}.nx-argosha-host .nx-argosha-orb::after{right:15px}
+ .nx-argosha-frame{bottom:calc(max(103px,env(safe-area-inset-bottom) + 94px));height:min(585px,calc(100dvh - 115px))}
+ .nx-argosha-greeting{right:16px;bottom:calc(max(107px,env(safe-area-inset-bottom) + 100px));width:min(315px,calc(100vw - 30px));font-size:15px;padding:17px 46px 17px 18px;border-radius:24px}
+ .nx-argosha-greeting strong{font-size:17px}
+}
+@media(prefers-reduced-motion:reduce){.nx-argosha-host>summary{transition:none!important}}
