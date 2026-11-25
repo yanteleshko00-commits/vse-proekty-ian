@@ -62,3 +62,16 @@ test('maintenance is disabled by default and excludes auth and health',()=>{
 });
 
 test('brand assets have valid PNG dimensions and app manifest paths',async()=>{const {brandPNG,serveBrand}=await import('../brand.js');for(const n of [180,192,512]){const png=brandPNG(n);assert.equal(png.subarray(0,8).toString('hex'),'89504e470d0a1a0a');assert.equal(png.readUInt32BE(16),n);assert.equal(png.readUInt32BE(20),n);}let result;const res={writeHead(status,headers){result={status,headers};},end(body){result.body=body;}};assert.equal(serveBrand({method:'GET'},res,'/nexora-admin.webmanifest'),true);assert.equal(JSON.parse(result.body).start_url,'/developer');assert.equal(serveBrand({method:'GET'},res,'/api/health'),false);});
+
+test('visitor analytics cannot be read without an administrator session',async()=>{
+ let status;await developerRoute({method:'GET',headers:{}},{},new URL('https://example.com/developer/api/visitors'),'https://example.com',(_,s)=>{status=s});assert.equal(status,401);
+});
+test('guest heartbeats deduplicate views, distinguish sites and expire online activity',async()=>{
+ const {handleAnalytics,visitorSnapshot}=await import('../visitor-analytics.js');
+ const {Readable}=await import('node:stream');
+ const visitor='b3d59d70-ae4c-45b4-9abc-111111111111',page='c3d59d70-ae4c-45b4-9abc-222222222222';
+ async function ping(site,registered=false){const req=Readable.from([Buffer.from(JSON.stringify({visitor,page,registered:true}))]);req.method='POST';req.headers={'content-type':'application/json',host:'localhost',origin:'http://localhost'};let status;await handleAnalytics(req,{writeHead(s){status=s;},end(){}},'/api/visitors/ping',{site,collector:true,registered:()=>registered});assert.equal(status,204);}
+ await ping('nexora-lobby');await ping('nexora-lobby');await ping('nexora-text-studio',true);
+ const d=visitorSnapshot();assert.equal(d.totals.online,2);assert.equal(d.totals.guests,1);assert.equal(d.totals.registered,1);assert.equal(d.totals.views24h,2);assert.equal(visitorSnapshot(Date.now()+91000).totals.online,0);
+ let status;await handleAnalytics({method:'POST',headers:{}},{writeHead(s){status=s;},end(){}},'/internal/visitors/ingest',{collector:true});assert.equal(status,403);
+});
