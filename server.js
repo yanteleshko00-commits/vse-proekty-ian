@@ -423,7 +423,7 @@ async function callAIProvider(provider, instructions, input, jsonMode, timeout) 
   }
   if (provider.type === 'gemini') {
     // Gemini capacity can vary by model. Try the configured model, then current supported fallbacks.
-    const models = [...new Set(['gemini-3.8-flash', provider.model, 'gemini-3.7-flash', 'gemini-3.5-flash-lite'].filter(Boolean))];
+    const models = [...new Set([provider.model, 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash-lite'].filter(Boolean))];
     let lastError = null;
     for (const model of models) {
       const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(provider.key);
@@ -578,15 +578,34 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task 
   }
 
   // Give Alice the first chance before invoking billable alternatives.
-  const perProviderTimeout = Math.max(15000, Math.min(55000, timeout));
+  const budget = Math.max(1000, Number.isFinite(timeout) ? timeout : 95000);
   const waveStartedAt = Date.now();
-  const attemptProvider = async provider => {
+  const attemptProvider = async (provider, attemptTimeout) => {
     const startedAt = Date.now();
     try {
-      const output = await callAIProvider(provider, instructions, input, true, Math.min(perProviderTimeout, Math.max(1000,timeout-(Date.now()-waveStartedAt))));
+      const output = await callAIProvider(provider, instructions, input, true, attemptTimeout);
       if (!cleanText(output, 12000)) throw new Error('Пустой ответ.');
-      const parsed = extractJson(output);
+      let parsed = extractJson(output);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Неверная структура JSON.');
       if (containsCorruptedText(parsed)) throw new Error('Ответ содержит повреждённый текст/ошибку кодировки.');
+      // Reject incomplete JSON for project stages before accepting a provider.
+      const validText = v => typeof v === 'string' && v.trim().length > 0;
+      const validList = v => Array.isArray(v) ? v.filter(validText) : [];
+      if (instructions === PROJECT_CONTENT_INSTRUCTIONS &&
+          (!validText(parsed.problem) || !validText(parsed.goal) || validList(parsed.tasks).length < 3 || !validText(parsed.conclusion))) {
+        throw new Error('Неполная текстовая основа проекта.');
+      }
+      if (instructions === PRODUCT_INSTRUCTIONS &&
+          ((Array.isArray(parsed.sections) ? parsed.sections.filter(x => validText(x?.heading) && validText(x?.body)).length : 0) < 2 ||
+          (!validList(parsed.steps).length && !validList(parsed.checklist).length))) {
+        throw new Error('Неполный итоговый продукт.');
+      }
+      if (instructions === DEFENSE_INSTRUCTIONS &&
+          (cleanText(parsed.speech, 9000).length < 500 ||
+          (Array.isArray(parsed.questions) ? parsed.questions.filter(x => validText(x?.question) && validText(x?.answer)).length : 0) < 3)) {
+        throw new Error('Неполная речь для защиты.');
+      }
+      if (task === 'presentation') parsed = repairInvalidSlideLayouts(parsed);
       const quality = scoreAIJsonCandidate(parsed, payload);
       return {
         ok: true, provider: provider.name, parsed,
@@ -607,14 +626,18 @@ async function aiJson(instructions, payload, timeout = REQUEST_TIMEOUT_MS, task 
       return { ok: false, provider: provider.name, error: message, elapsedMs: Date.now() - startedAt };
     }
   };
-  const preferredAlice = providers.find(provider => provider.name==='DeepSeek') || providers.find(provider => provider.type.startsWith('alice'));
   const attempts = [];
-  const ordered = preferredAlice ? [preferredAlice,...providers.filter(provider=>provider!==preferredAlice)] : providers;
-  for(const provider of ordered){
-    if(attempts.length>=4 || Date.now()-waveStartedAt>=timeout)break;
-    const result=await attemptProvider(provider);
+  // Keep DeepSeek first, then Alice/Gemini, then the remaining configured services.
+  const rank = p => p.taskPriority === 0 ? 0 : p.type.startsWith('alice') ? 1 : p.type === 'gemini' ? 2 : p.name === 'Groq' ? 3 : p.name === 'OpenAI' ? 5 : 4;
+  const ordered = [...providers].sort((a,b) => rank(a)-rank(b)).slice(0,4);
+  for (const [index, provider] of ordered.entries()) {
+    const remaining = budget - (Date.now() - waveStartedAt);
+    if (remaining < 1000) break;
+    const slots = ordered.length - index;
+    const attemptTimeout = Math.min(55000, remaining, Math.max(1000, Math.floor(remaining / (slots > 1 ? Math.min(slots, 2) : 1))));
+    const result = await attemptProvider(provider, attemptTimeout);
     attempts.push(result);
-    if(result.ok && result.issues.length===0)break;
+    if (result.ok && result.issues.length === 0) break;
   }
 
   const successes = attempts.filter(attempt => attempt.ok);
@@ -957,7 +980,7 @@ ${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
   return raw;
 }
 
-async function commonsImage(query, used, additionalSubjects = []) {
+async function commonsImage(query, used, additionalSubjects = [], deadline = Date.now() + 15000) {
   // Wikipedia's public API is accessible to Render; Commons API sometimes
   // responds with HTTP 429 from shared hosting IPs. Keep both as fallbacks.
   const queries = [...new Set([query, ...additionalSubjects]
@@ -969,6 +992,8 @@ async function commonsImage(query, used, additionalSubjects = []) {
   for (const [sourceIndex, endpoint] of endpoints.entries()) {
     // Do not repeatedly hammer an already rate-limited Commons endpoint.
     for (const q of (sourceIndex === 0 ? queries : queries.slice(0, 2))) {
+      const remaining = deadline - Date.now();
+      if (remaining < 500) return null;
       try {
         const url = new URL(endpoint);
         url.search = new URLSearchParams({
@@ -981,8 +1006,8 @@ async function commonsImage(query, used, additionalSubjects = []) {
             'User-Agent': 'NEXORA/1.3 (https://vse-proekty-ian.onrender.com; educational presentations)',
             'Accept': 'application/json'
           },
-          signal: AbortSignal.timeout(5500)
-        }), 6000, 'Поиск изображения');
+          signal: AbortSignal.timeout(Math.min(5500, remaining))
+        }), Math.min(6000, remaining), 'Поиск изображения');
         if (!res.ok) {
           console.warn('[image-source] ' + url.hostname + ' HTTP ' + res.status);
           if (res.status === 429) break;
@@ -1046,17 +1071,18 @@ async function generateImageBuffer(prompt) {
 }
 async function attachImages(plan) {
   const used = new Set();
+  const deadline = Date.now() + 50000;
   // Ограниченный пул: не перегружаем Wikimedia и уменьшаем вероятность тайм-аутов.
   // commonsImage резервирует URL в Set сразу после ответа, поэтому повторов меньше.
   let nextSlide = 0;
   const workerCount = Math.min(3, plan.slides.length);
   const workers = Array.from({ length: workerCount }, async () => {
-    while (nextSlide < plan.slides.length) {
+    while (nextSlide < plan.slides.length && Date.now() < deadline) {
       const slide = plan.slides[nextSlide++];
       try {
         const query = cleanText(slide.imageQuery, 180).toLocaleLowerCase('en');
-        const found = await commonsImage(query, used, [slide.title, plan.title]);
-        if (!found) continue;
+        const found = await commonsImage(query, used, [slide.title, plan.title], Math.min(deadline, Date.now() + 12000));
+        if (!found || Date.now() >= deadline) continue;
         const image = await downloadImage(found.url);
         slide.imageUrl = found.url;
         slide.imageCredit = found.credit;
@@ -1072,18 +1098,18 @@ async function attachImages(plan) {
   console.log(`[images] Найдено реальных изображений: ${realImageCount}/${plan.slides.length}`);
   // AI-картинки включаются только настройкой в Render; лимит защищает время и стоимость.
   if (process.env.ENABLE_AI_IMAGE_GENERATION === 'true') {
-    let generatedCount = 0;
+    let attempted = false;
     // One short AI-image fallback per deck: internet images cover the remaining slides.
     // This prevents sequential image requests from exhausting the whole generation timeout.
     for (const slide of plan.slides) {
-      if (slide.imageBytes || generatedCount >= 1) continue;
+      if (slide.imageBytes || attempted) continue;
+      attempted = true;
       try {
         const generated = await generateImageBuffer(slide.imageQuery || slide.title);
         if (generated) {
           slide.imageBytes = generated.bytes;
           slide.imageMime = generated.mime;
           slide.imageCredit = 'Иллюстрация создана ИИ';
-          generatedCount++;
         }
       } catch (err) {
         console.warn('AI image failed:', err.message);
@@ -1691,7 +1717,10 @@ async function buildFiles(plan, onFileReady = async () => {}) {
     {
       name: 'Текст_защиты.pdf',
       mime: 'application/pdf',
-      create: createDefensePdfBuffer
+      create: async p => {
+        if (p.defenseWarning && !p.defense) throw new Error(p.defenseWarning);
+        return createDefensePdfBuffer(p);
+      }
     },
   ];
 
@@ -1816,9 +1845,16 @@ async function generateProject(body, onProgress = () => {}, onCheckpoint = async
 
   // Stage 4: write a defense speech against the final slide order and the real product.
   onProgress(64, 'defense', '🎙️ Готовим речь и ответы комиссии по готовым слайдам...');
-  const defenseMaterial = await generateDefenseMaterial(topic, projectContent, plan, product);
-  plan.defense = defenseMaterial.speech;
-  plan.projectContent.defenseQuestions = defenseMaterial.questions;
+  try {
+    const defenseMaterial = await generateDefenseMaterial(topic, projectContent, plan, product);
+    plan.defense = defenseMaterial.speech;
+    plan.projectContent.defenseQuestions = defenseMaterial.questions;
+  } catch (error) {
+    // An optional defense request must never discard a valid presentation.
+    console.warn('[defense] Дополнительная генерация речи не удалась:', cleanText(error?.message || error, 180));
+    if (cleanText(plan.defense, 9000).length < 500) plan.defense = '';
+    plan.defenseWarning = 'Не удалось подготовить полную речь для защиты. Презентация и остальные материалы сохранены.';
+  }
   await onCheckpoint({ stage: 'defense-ready', project: publicProject(plan) });
 
   // Stage 5: fetch slide-specific photos, then add the exact saved product image.
@@ -1833,6 +1869,7 @@ async function generateProject(body, onProgress = () => {}, onCheckpoint = async
   await onCheckpoint({ stage: 'building-files', project: publicProject(plan) });
   const built = await withTimeout(buildFiles(plan, file => onFileReady(file, 'deliverable')), 55000, 'Сборка файлов');
   await onCheckpoint({ stage: 'files-built', project: publicProject(plan), fileErrors: built.fileErrors });
+  if (plan.defenseWarning && plan.defense) built.fileErrors.push({ name: 'Текст_защиты.pdf', message: plan.defenseWarning });
   onProgress(98, 'final-check', '🔍 Проверяем готовые файлы...');
   if (!built.files.some(file => file.name === 'Презентация_проекта.pptx' || file.name === 'Презентация_проекта.pdf')) {
     throw new Error('Не удалось создать ни PPTX, ни PDF презентации. Остальные файлы не будут выданы как полноценный готовый проект.');
