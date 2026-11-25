@@ -1,3 +1,4 @@
+import {handleAnalytics,injectAnalytics} from './visitor-analytics.js';
 import {serveBrand} from './brand.js';
 import { persistentAdminAttempt } from './admin-throttle.js';
 import http from 'node:http';
@@ -702,6 +703,7 @@ const server = http.createServer(async (req, res) => {
   let url;
   try { url = new URL(req.url, base); } catch { return send(res, 400, 'Bad Request'); }
 
+  if(['/api/visitors/ping','/nexora-visitors.js','/internal/visitors/ingest'].includes(url.pathname)&&await handleAnalytics(req,res,url.pathname,{site:'nexora-lobby',collector:true,registered:req=>Boolean(readSession(req)?.sessionId)}))return;
   if(serveBrand(req,res,url.pathname,"NEXORA"))return;
   try { if (await developerRoute(req,res,url,base,send)) return; } catch (error) { console.error('Developer console error:',error.name); if(!res.headersSent) return send(res,500,'Консоль временно недоступна.'); res.end(); return; }
 
@@ -764,7 +766,7 @@ const server = http.createServer(async (req, res) => {
 
   if(req.method === 'GET' && ['/chat','/chat/','/chat.html'].includes(url.pathname)){
     try{
-      const html=await readFile(join(publicDir,'chat.html'));
+      const html=Buffer.from(injectAnalytics(await readFile(join(publicDir,'chat.html'))));
       const scriptHashes=[...html.toString('utf8').matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>"'sha256-"+crypto.createHash('sha256').update(m[1]).digest('base64')+"'").join(' ');
       return send(res,200,html,{
         'Content-Type':'text/html; charset=utf-8',
@@ -778,7 +780,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && ['/game','/game/','/game.html'].includes(url.pathname)) {
     try {
-      const html=await readFile(join(publicDir,'game.html'));
+      const html=Buffer.from(injectAnalytics(await readFile(join(publicDir,'game.html'))));
       return send(res,200,html,{
         'Content-Type':'text/html; charset=utf-8',
         'Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'",
@@ -985,7 +987,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/' || url.pathname === '/index.html') {
     try {
-      const html = await readFile(join(publicDir, 'index.html'));
+      const html=Buffer.from(injectAnalytics(await readFile(join(publicDir, 'index.html'))));
       return send(res, 200, html, {
         'Content-Type': 'text/html; charset=utf-8',
         'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://images.unsplash.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'",
