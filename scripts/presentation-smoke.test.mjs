@@ -19,6 +19,6 @@ test('PDF generation creates a real PDF with the expected number of pages',async
  assert.ok(Buffer.isBuffer(data)&&data.length>1000);
  assert.equal(data.subarray(0,5).toString(),'%PDF-');
  const source=data.toString('latin1');
- assert.equal((source.match(/\\/Type\\s*\\/Page\\b/g)||[]).length,3);
+ assert.equal((source.match(/\/Type\s*\/Page\b/g)||[]).length,3);
  assert.ok(source.includes('%%EOF'));
 });
