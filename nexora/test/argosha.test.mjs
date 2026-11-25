@@ -16,7 +16,7 @@ const tools=[
  {id:'game',name:'Сделать игру',status:'available',description:'Игры',url:'/game'},
  {id:'chat',name:'Не работает',status:'coming_soon',description:'',url:'https://wrong.example/'}
 ];
-test('NEXORA homepage has clean hero and working registration entry points',async()=>{
+test('NEXORA homepage has clean hero, guest tools and private administrator entry',async()=>{
  const html=await readFile(join(here,'public/index.html'),'utf8');
  assert.doesNotMatch(html,/Выбрать инструмент <span/);
  assert.match(html,/<a class="nx-cta" href="#tools">Все инструменты/);
@@ -24,8 +24,9 @@ test('NEXORA homepage has clean hero and working registration entry points',asyn
  assert.doesNotMatch(html,/Создать изображение →/);
  assert.match(html,/id="login-link" type="button"/);
  assert.match(html,/id="register-link" type="button"/);
- assert.match(html,/registerTrigger\.addEventListener\('click'/);
- assert.match(html,/setMode\('register'\);open\(\)/);
+ assert.doesNotMatch(html,/registerTrigger\.addEventListener\('click'/);
+ assert.match(html,/temporary-guest-mode/);
+ assert.match(html,/ecosystem-auth-service\.onrender\.com\/workspace/);
  assert.match(html,/id="auth-form"/);
  assert.match(html,/request\('verify-email'/);
  assert.match(html,/request\('login'/);
