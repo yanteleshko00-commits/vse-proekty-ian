@@ -17,7 +17,7 @@ import { textBridge, textBridgeHealth } from './text-bridge.js';
 import { CONTEXT as ARGOSHA_CONTEXT, contextFor, messageHistory, toolForQuery, safeArgoshaAction, parseArgoshaAnswer, argoshaSystemPrompt, localArgoshaReply } from './argosha-core.js';
 import { makeGame } from './game-studio.js';
 import {makeCodeGame,prepareGamePreview,serveGamePreview,repairGameRuntime} from './game-code.js';
-import { validateChatRequest, chatPrompt } from './chat-core.js';
+import { validateChatRequest, chatPrompt, CHAT_POLICY, chatRequestStudio, chatStudioReply, enforceChatReply } from './chat-core.js';
 import { appendFractionWorking, fractionHelpForProblem } from './math-fractions.js';
 import { inferMathKind, mathStudyGuide, datasetHint, MATH_KINDS, MATH_LEVELS } from './math-curriculum.js';
 
@@ -662,13 +662,15 @@ async function nexoraChatReply(req, res) {
   if(chatActivity.size>3000)for(const [id,list] of chatActivity)
     if(list.every(t=>now-t>3600000))chatActivity.delete(id);
   try {
+    const studio=chatRequestStudio(input.messages);
+    if(studio)return send(res,200,JSON.stringify({ok:true,answer:chatStudioReply(studio),provider:'NEXORA',model:input.model}),jsonHeaders);
     if(input.model==='deepseek'||input.model==='auto'){
       const provider=deepSeekProvider(process.env,process.env.CHAT_DEEPSEEK_MODEL);
       if(provider){
         try{
-          const answer=await deepSeekText({provider,messages:[{role:'system',content:'Ты помощник NEXORA. Отвечай ясно на языке пользователя. Не утверждай, что выполнял действия, которых не было.'},{role:'user',content:chatPrompt(input.messages)}],maxTokens:4000,timeout:40000});
+          const answer=await deepSeekText({provider,messages:[{role:'system',content:CHAT_POLICY+' Отвечай ясно на языке пользователя. Не утверждай, что выполнял действия, которых не было.'},{role:'user',content:chatPrompt(input.messages)}],maxTokens:4000,timeout:40000});
           console.info('[nexora-chat] DeepSeek generated reply');
-          return send(res,200,JSON.stringify({ok:true,answer:answer.slice(0,9000),provider:'DeepSeek',model:input.model}),jsonHeaders);
+          return send(res,200,JSON.stringify({ok:true,answer:enforceChatReply(answer).slice(0,9000),provider:'DeepSeek',model:input.model}),jsonHeaders);
         }catch(error){console.warn('[nexora-chat] DeepSeek failed:',error.status||error.name);}
       }
       if(input.model==='deepseek')input={...input,model:'auto'};
@@ -686,7 +688,7 @@ async function nexoraChatReply(req, res) {
     }),jsonHeaders);
     if(typeof payload.answer!=='string'||!payload.answer.trim())throw Error('Empty provider answer');
     return send(res,200,JSON.stringify({
-      ok:true,answer:payload.answer.slice(0,9000),
+      ok:true,answer:enforceChatReply(payload.answer).slice(0,9000),
       provider:String(payload.provider||'NEXORA AI').slice(0,50),
       model:input.model
     }),jsonHeaders);

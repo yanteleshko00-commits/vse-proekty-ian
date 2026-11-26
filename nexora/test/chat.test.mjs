@@ -236,3 +236,17 @@ test('example idea cards immediately send prompts with optional login',async()=>
 });
 
  test('DeepSeek selection and auto mode prioritize the actual DeepSeek provider',()=>{const ds={type:'deepseek-proxy',name:'DeepSeek'},alice={type:'alice-proxy',name:'Alice AI LLM'};assert.deepEqual(chatModelProviders([alice,ds],'deepseek'),[ds]);assert.deepEqual(chatModelProviders([alice,ds],'auto'),[ds,alice]);});
+
+
+test('chat routes creation requests, but keeps conceptual questions in chat',async()=>{
+  const {chatRequestStudio,chatStudioReply,enforceChatReply,CHAT_GAME_URL,CHAT_IMAGE_URL}=await import('../chat-core.js');
+  const route=content=>chatRequestStudio([{role:'user',content}]);
+  for(const prompt of ['Напиши код на Python','Создай игру','Сделай сайт','Write a script','Исправь код'])assert.equal(route(prompt),'game',prompt);
+  for(const prompt of ['Создай картинку кота','Нарисуй собаку','Generate an image','Сгенерируй логотип'])assert.equal(route(prompt),'image',prompt);
+  for(const prompt of ['Как дела?','Что такое Python?','Объясни как работает код','Что такое фотография?'])assert.equal(route(prompt),null,prompt);
+  assert.ok(chatStudioReply('game').includes(CHAT_GAME_URL));
+  assert.ok(chatStudioReply('image').includes(CHAT_IMAGE_URL));
+  assert.ok(enforceChatReply('Вот код:\n'+String.fromCharCode(96).repeat(3)+'js\nconst x=1;\n'+String.fromCharCode(96).repeat(3)).includes(CHAT_GAME_URL));
+  assert.ok(enforceChatReply('![image](https://example.org/a.png)').includes(CHAT_IMAGE_URL));
+  assert.equal(enforceChatReply('Объясняю: 4.'),'Объясняю: 4.');
+});

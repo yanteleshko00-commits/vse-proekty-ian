@@ -208,7 +208,54 @@
 .nx-redesign .model-option.active{border-radius:12px}
 .nx-redesign .conversation{overflow-wrap:anywhere}
 @media(max-width:600px){.nx-redesign #composer{border-radius:20px}.nx-redesign .composer textarea{font-size:16px!important}.nx-redesign .prompts .prompt{min-height:44px}}
-</style></head>
+</style><style id="nexora-chat-polish">
+:root{--bg:#fff;--paper:#fff;--paper2:#f3f4f6;--text:#1d1d1f;--muted:#73737b;--line:#e5e5ea;--nav:#f7f7f8;--nx-accent:#0071e3;--nav-text:#1d1d1f}
+:root[data-theme=dark]{--bg:#101012;--paper:#1c1c1e;--paper2:#252528;--text:#f5f5f7;--muted:#a1a1aa;--line:#333337;--nav:#19191b;--nx-accent:#64a8ff;--nav-text:#f5f5f7}
+body.nx-redesign{font-size:16px;overflow:hidden;-webkit-font-smoothing:antialiased}
+.app{min-height:0;height:100vh;height:100dvh}
+.workspace{min-height:0;overflow:hidden}
+.workspace .topbar{height:56px;min-height:56px;padding-inline:16px;background:var(--bg);backdrop-filter:none;gap:8px}
+.head-title strong{font-size:16px;font-weight:650;letter-spacing:-.025em}
+.top-right,.top-left{gap:6px}
+.icon-btn{width:44px;height:44px;border-radius:50%;box-shadow:none;flex-shrink:0}
+.icon-btn svg{width:21px;height:21px}
+.scroll{overflow-x:hidden;overscroll-behavior-y:contain;scroll-behavior:auto}
+.conversation{width:min(720px,calc(100% - 32px));padding:22px 0 20px;gap:22px;cursor:auto;min-width:0}
+.message{gap:10px;min-width:0}
+.message-body{max-width:calc(100% - 38px);min-width:0}
+.message.user{padding-left:36px}
+.message.user .bubble-avatar,.message.user .message-meta{display:none}
+.message.user .message-body{max-width:100%}
+.message.user .message-card{border:0;border-radius:20px 20px 5px 20px;background:var(--paper2);padding:11px 15px}
+.message-card{font-size:16px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.bubble-avatar{width:28px;height:28px;flex:0 0 28px;border-radius:10px;background:#0071e3;font-size:14px}
+.message-meta{margin:1px 0 5px}.message-meta strong{font-size:12px;font-weight:650}
+.message-actions{margin-top:6px}.tiny-btn{padding:6px 8px;min-height:32px;font-size:12px}
+.composer-shell,.workspace.is-empty .composer-shell{padding:8px 16px max(10px,env(safe-area-inset-bottom));background:var(--bg)}
+.composer-max{max-width:720px}
+.nx-redesign #composer{border:1px solid var(--line);border-radius:23px;box-shadow:0 2px 12px rgba(0,0,0,.05);padding:9px 10px}
+.composer textarea{font-size:16px;min-height:39px;padding:6px 8px;line-height:1.5;max-height:128px}
+.composer-bottom{gap:6px}
+.composer-model{padding:3px 8px;font-size:12px;min-width:0}
+#message-count{display:none}
+.nx-redesign .send-button:not(.stop-button):not(:disabled){background:#0071e3;border-radius:50%;width:40px;height:40px;box-shadow:none}
+.send-button svg{width:21px;height:21px}
+.composer-caption{font-size:10px;line-height:1.4;margin:8px 0 0}
+.welcome h1{font-weight:680;letter-spacing:-.045em}
+.welcome-desc{font-size:14px}
+.prompts .prompt{transition:background-color .15s,border-color .15s;min-height:62px}
+.prompt:hover{transform:none}
+.nx-view-open,.nx-view-close{display:none!important}
+.studio-link{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:12px;background:var(--paper2);color:var(--nx-accent);font-weight:650;font-size:14px;margin:8px 0 0;max-width:100%;overflow-wrap:anywhere;border:1px solid var(--line)}
+.studio-link:hover{text-decoration:underline}
+.nx-answer-motion{display:flex;align-items:center;gap:5px;width:auto;padding:10px 0}
+.nx-answer-motion i,.nx-answer-motion i:nth-child(2),.nx-answer-motion i:nth-child(3){width:6px;height:6px;background:var(--muted);animation:nx-chat-pulse 1.2s ease-in-out infinite;transform:none;opacity:.4}
+.nx-answer-motion i:nth-child(2){animation-delay:.15s}.nx-answer-motion i:nth-child(3){animation-delay:.3s}.nx-answer-motion b{display:none}
+@keyframes nx-chat-pulse{0%,100%{opacity:.35}50%{opacity:1}}
+@media(max-width:740px){.sidebar:not(.open){visibility:hidden;box-shadow:none;pointer-events:none}.sidebar.open{visibility:visible}.sidebar{transition:none;box-shadow:0 0 24px rgba(0,0,0,.14)}.shade.show{backdrop-filter:none;background:rgba(0,0,0,.24)}.conversation{width:calc(100% - 28px);gap:20px}.composer-shell,.workspace.is-empty .composer-shell{padding-inline:12px}.workspace.is-empty .scroll{padding-top:12px}.composer-caption{font-size:10px}.prompts .prompt{min-height:58px;padding:10px}.prompt strong{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.nx-answer-motion i{animation:none!important}}
+</style>
+</head>
 <body class="nx-redesign">
 <div class="app">
   <aside class="sidebar" id="sidebar" aria-label="Меню чата">
@@ -272,10 +319,10 @@
     </main>
     <div class="composer-shell"><div class="composer-max">
       <form id="composer" class="composer">
-        <textarea id="message-input" rows="2" maxlength="2400" placeholder="Спросите что-нибудь…" aria-label="Сообщение" autocomplete="off"></textarea>
+        <textarea id="message-input" rows="1" maxlength="2400" placeholder="Спросите что-нибудь…" aria-label="Сообщение" autocomplete="off"></textarea>
         <div class="composer-bottom">
           <span class="composer-model">✦ &nbsp;<b id="composer-model">Стандартный</b><span id="message-count">· до 2400 символов</span></span>
-          <button class="send-button" id="send" type="submit" aria-label="Отправить сообщение" title="Отправить (Enter)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="m4 12 16-8-5 16-3-7-8-1Z"/></svg></button>
+          <button class="send-button" id="send" type="submit" aria-label="Отправить сообщение" title="Отправить (Enter)"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button>
           <button class="send-button stop-button" id="stop" type="button" aria-label="Остановить ответ" title="Остановить" hidden>■</button>
         </div>
       </form>
@@ -418,7 +465,16 @@
       const title=document.createElement("strong");title.textContent=m.role==="user"?"Вы":m.provider==="OpenAI"?"GPT":m.provider==="DeepSeek"?"DeepSeek":"NEXORA";
       meta.append(title);
       const bubble=document.createElement("div");bubble.className="message-card";
-      if(m.role==="assistant")bubble.innerHTML=markdown(m.content);else bubble.textContent=m.content;
+      if(m.role==="assistant"){
+        const studios=[["https://nexora-lobby.onrender.com/game","NEXORA GAME STUDIO"],["https://nexora-image-studio.onrender.com/","NEXORA IMAGE STUDIO"]];
+        let answer=m.content;
+        const links=studios.filter(([url])=>answer.includes(url));
+        for(const [url] of links)answer=answer.split(url).join("").trim();
+        bubble.innerHTML=markdown(answer);
+        for(const [url,name] of links){
+          const link=document.createElement("a");link.className="studio-link";link.href=url;link.textContent="Открыть "+name+" ↗";bubble.append(document.createElement("br"),link);
+        }
+      }else bubble.textContent=m.content;
       const buttons=document.createElement("div");buttons.className="message-actions";
       const cp=document.createElement("button");cp.type="button";cp.className="tiny-btn";cp.textContent="⧉ Копировать";cp.addEventListener("click",()=>copy(m.content));buttons.append(cp);
       content.append(meta,bubble,buttons);row.append(avatar,content);box.append(row);
@@ -437,7 +493,7 @@
       const retry=document.createElement("button");retry.type="button";retry.textContent="↻ Повторить";retry.addEventListener("click",retryLast);
       err.append(p,retry);box.append(err);
     }
-    requestAnimationFrame(()=>$("scroll").scrollTo({top:$("scroll").scrollHeight,behavior:"smooth"}));
+    requestAnimationFrame(()=>$("scroll").scrollTo({top:$("scroll").scrollHeight,behavior:"auto"}));
   }
   function renderAll(){renderModels();renderHistory();renderMessages();}
   function toggleMenu(show){$("sidebar").classList.toggle("open",show);$("shade").classList.toggle("show",show);}
@@ -570,7 +626,7 @@
 </script>
 <script>(function(){
 "use strict";
-const settings=[["#conversation","panel"]];
+const settings=[]; // Chat is already full-screen; do not intercept message taps.
 let activePanel=null,closePanel=null,savedOverflow="",savedHtmlOverflow="",gallery=null;
 function lock(){savedOverflow=document.body.style.overflow;savedHtmlOverflow=document.documentElement.style.overflow;document.body.style.overflow="hidden";document.documentElement.style.overflow="hidden";}
 function unlock(){document.body.style.overflow=savedOverflow;document.documentElement.style.overflow=savedHtmlOverflow;}
