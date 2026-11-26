@@ -43,6 +43,7 @@ export function backgroundJSON(scope,handler,{maxBody=14*1024*1024,maxActive=4,m
   try{for await(const chunk of req){bytes+=chunk.length;if(bytes>maxBody)return json(res,413,{message:'Слишком большой запрос.'});chunks.push(chunk);}}
   catch{return json(res,400,{message:'Не удалось принять задание.'});}
   const again=await lookup(id);if(again)return sendState(res,id,again);
+  if(active.has(id))return sendState(res,id,{running:true});
   if(active.size>=maxActive)return json(res,503,{error:'job_busy',message:'Очередь занята, запрос будет повторён.'});
   // All input is received before returning 202; no dependency on the client socket thereafter.
   active.set(id,true);

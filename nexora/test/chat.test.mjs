@@ -250,3 +250,33 @@ test('chat routes creation requests, but keeps conceptual questions in chat',asy
   assert.ok(enforceChatReply('![image](https://example.org/a.png)').includes(CHAT_IMAGE_URL));
   assert.equal(enforceChatReply('Объясняю: 4.'),'Объясняю: 4.');
 });
+
+
+test('background JSON job survives client departure and duplicate start; finished result is recoverable',async()=>{
+ const {backgroundJSON}=await import('../background-jobs.js');
+ const {createServer}=await import('node:http');
+ const {randomUUID}=await import('node:crypto');
+ const {mkdtemp,rm}=await import('node:fs/promises');
+ const {tmpdir}=await import('node:os');
+ const {join}=await import('node:path');
+ const dir=await mkdtemp(join(tmpdir(),'nx-bg-test-'));
+ const old=process.env.NEXORA_JOB_DIR;process.env.NEXORA_JOB_DIR=dir;
+ let calls=0,release;const gate=new Promise(r=>{release=r;});
+ const handler=async(req,res)=>{calls++;const chunks=[];for await(const c of req)chunks.push(c);const input=JSON.parse(Buffer.concat(chunks).toString());await gate;res.writeHead(200);res.end(JSON.stringify({ok:true,answer:input.question}));};
+ const background=backgroundJSON('test',handler);
+ const server=createServer((req,res)=>void background(req,res));
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const url='http://127.0.0.1:'+server.address().port,id=randomUUID();
+ const post=(header,body={})=>fetch(url,{method:'POST',headers:{'Content-Type':'application/json',[header]:id},body:JSON.stringify(body)});
+ try{
+  const first=await post('X-NEXORA-Job',{question:'Тест'});assert.equal(first.status,202);
+  const duplicate=await post('X-NEXORA-Job',{question:'Не повторять'});assert.equal(duplicate.status,202);
+  release();await new Promise(r=>setTimeout(r,50));
+  let result;for(let i=0;i<30;i++){result=await post('X-NEXORA-Job-Poll');if(result.status!==202)break;await new Promise(r=>setTimeout(r,20));}
+  assert.equal(result.status,200);assert.equal((await result.json()).answer,'Тест');assert.equal(calls,1);
+  const restarted=backgroundJSON('test',()=>{throw Error('must not regenerate');});
+  const other=createServer((req,res)=>void restarted(req,res));
+  await new Promise(r=>other.listen(0,'127.0.0.1',r));
+  try{const r=await fetch('http://127.0.0.1:'+other.address().port,{method:'POST',headers:{'Content-Type':'application/json','X-NEXORA-Job-Poll':id},body:'{}'});assert.equal(r.status,200);assert.equal((await r.json()).answer,'Тест');}finally{await new Promise(r=>other.close(r));}
+ }finally{release();await new Promise(r=>server.close(r));if(old===undefined)delete process.env.NEXORA_JOB_DIR;else process.env.NEXORA_JOB_DIR=old;await rm(dir,{recursive:true,force:true});}
+});

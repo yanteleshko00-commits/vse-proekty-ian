@@ -452,45 +452,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 .nx-redesign :where(.site-footer,.footer,main>footer){margin-top:40px;padding:24px 0;border-top:1px solid var(--nx-line);gap:14px}
 @media(max-width:600px){.nx-redesign .intro,.nx-redesign .hero{border-radius:21px}.nx-redesign .intro h1,.nx-redesign .hero h1{font-size:clamp(32px,9vw,46px)}.nx-redesign .card,.nx-redesign .workspace>.panel{border-radius:18px}.nx-redesign :where(.site-footer,.footer,main>footer){margin-top:28px;flex-wrap:wrap;padding-bottom:calc(25px + env(safe-area-inset-bottom))}}
 .nx-redesign .math-paper{box-shadow:0 14px 34px rgba(46,32,78,.10)}.nx-redesign .modes{gap:7px}.nx-redesign .mode{min-height:40px}.nx-redesign .examples{gap:7px}.nx-redesign .stage{border-radius:17px}
-</style><script>
-(function(){
- const ttl=24*60*60*1000,prefix='nexora-bg-v1:';
- const delay=ms=>new Promise(r=>setTimeout(r,ms));
- const key=scope=>prefix+scope;
- function read(scope){try{const p=JSON.parse(localStorage.getItem(key(scope))||'null');if(p&&typeof p.id==='string'&&Date.now()-p.createdAt<ttl)return p;}catch{}return null;}
- function save(scope,p){try{localStorage.setItem(key(scope),JSON.stringify(p));return true;}catch{return false;}}
- function clear(scope,id){try{if(read(scope)?.id===id)localStorage.removeItem(key(scope));}catch{}void dbOp('delete',id).catch(()=>{});}
- function dbOp(op,id,value){return new Promise((resolve,reject)=>{
-  if(!globalThis.indexedDB)return reject(Error('storage unavailable'));
-  const req=indexedDB.open('nexora-background-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('payloads');
-  req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result;try{const tx=db.transaction('payloads',op==='get'?'readonly':'readwrite'),store=tx.objectStore('payloads'),r=op==='get'?store.get(id):op==='delete'?store.delete(id):store.put(value,id);let result;r.onsuccess=()=>{result=r.result;};tx.oncomplete=()=>{db.close();resolve(result);};tx.onabort=tx.onerror=()=>{db.close();reject(tx.error);};}catch(e){db.close();reject(e);}};
- });}
- function uuid(){return crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),(v,i)=>((i===6?(v&15)|64:i===8?(v&63)|128:v).toString(16).padStart(2,'0'))).join('').replace(/^(........)(....)(....)(....)/,'$1-$2-$3-$4-');}
- async function run(scope,url,payload,{resume=null,signal,context={},onStatus=()=>{}}={}){
-  let p=resume||{id:uuid(),createdAt:Date.now(),context},body=payload;
-  if(!resume){const old=read(scope);if(old)clear(scope,old.id);save(scope,p);try{await dbOp('put',p.id,{body,at:p.createdAt});}catch{}}
-  else if(!body){try{body=(await dbOp('get',p.id))?.body;}catch{}}
-  let start=!resume,misses=0;
-  while(Date.now()-p.createdAt<ttl){
-   if(signal?.aborted){clear(scope,p.id);throw new DOMException('Ожидание остановлено','AbortError');}
-   try{
-    const text=start?JSON.stringify(body):'{}';
-    if(start&&!body)throw Object.assign(Error('Сервер потерял задание. Исходные данные недоступны.'),{terminal:true});
-    const timeout=AbortSignal.timeout(25000),r=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',[start?'X-NEXORA-Job':'X-NEXORA-Job-Poll']:p.id},body:text,keepalive:start&&new TextEncoder().encode(text).length<60000,signal:signal?AbortSignal.any([signal,timeout]):timeout});
-    const data=await r.clone().json().catch(()=>({}));
-    if(r.status===202&&data.pending){start=false;misses=0;onStatus('ИИ продолжает работу. Можно закрыть сайт.');}
-    else if(r.status===404&&data.error==='job_missing'){if(++misses>=2){if(!body)throw Object.assign(Error('Задание не найдено. Повторите запрос.'),{terminal:true});start=true;}onStatus('Восстанавливаем задание…');}
-    else if(data.error==='job_busy'||[502,503,504].includes(r.status)&&!data.message){onStatus('Сервер временно занят. Повторяем проверку…');}
-    else{if(!r.ok)clear(scope,p.id);else{try{await dbOp('delete',p.id);}catch{}}
-     return r;}
-   }catch(e){if(signal?.aborted){clear(scope,p.id);throw new DOMException('Ожидание остановлено','AbortError');}if(e.terminal){clear(scope,p.id);throw e;}start=false;onStatus('Связь потеряна. Восстанавливаем соединение…');}
-   await delay(2500);
-  }
-  clear(scope,p.id);throw Error('Срок хранения задания истёк.');
- }
- window.NXBackground={read,run,clear};
-})();
-</script>
+</style>
 </head>
 <body class="nx-redesign">
 <header class="topbar"><div class="wrap top-inner">
@@ -598,6 +560,46 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
  </div>
 </div>
 <script>
+
+(function(){
+ const ttl=24*60*60*1000,prefix='nexora-bg-v1:';
+ const delay=ms=>new Promise(r=>setTimeout(r,ms));
+ const key=scope=>prefix+scope;
+ function read(scope){try{const p=JSON.parse(localStorage.getItem(key(scope))||'null');if(p&&typeof p.id==='string'&&Date.now()-p.createdAt<ttl)return p;}catch{}return null;}
+ function save(scope,p){try{localStorage.setItem(key(scope),JSON.stringify(p));return true;}catch{return false;}}
+ function clear(scope,id){try{if(read(scope)?.id===id)localStorage.removeItem(key(scope));}catch{}void dbOp('delete',id).catch(()=>{});}
+ function dbOp(op,id,value){return new Promise((resolve,reject)=>{
+  if(!globalThis.indexedDB)return reject(Error('storage unavailable'));
+  const req=indexedDB.open('nexora-background-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('payloads');
+  req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result;try{const tx=db.transaction('payloads',op==='get'?'readonly':'readwrite'),store=tx.objectStore('payloads'),r=op==='get'?store.get(id):op==='delete'?store.delete(id):store.put(value,id);let result;r.onsuccess=()=>{result=r.result;};tx.oncomplete=()=>{db.close();resolve(result);};tx.onabort=tx.onerror=()=>{db.close();reject(tx.error);};}catch(e){db.close();reject(e);}};
+ });}
+ function uuid(){return crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),(v,i)=>((i===6?(v&15)|64:i===8?(v&63)|128:v).toString(16).padStart(2,'0'))).join('').replace(/^(........)(....)(....)(....)/,'$1-$2-$3-$4-');}
+ async function run(scope,url,payload,{resume=null,signal,context={},onStatus=()=>{}}={}){
+  let p=resume||{id:uuid(),createdAt:Date.now(),context},body=payload;
+  if(!resume){const old=read(scope);if(old)clear(scope,old.id);save(scope,p);try{await dbOp('put',p.id,{body,at:p.createdAt});}catch{}}
+  else if(!body){try{body=(await dbOp('get',p.id))?.body;}catch{}}
+  let start=!resume,misses=0;
+  while(Date.now()-p.createdAt<ttl){
+   if(signal?.aborted){clear(scope,p.id);throw new DOMException('Ожидание остановлено','AbortError');}
+   try{
+    const text=start?JSON.stringify(body):'{}';
+    if(start&&!body)throw Object.assign(Error('Сервер потерял задание. Исходные данные недоступны.'),{terminal:true});
+    const timeout=AbortSignal.timeout(25000),r=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',[start?'X-NEXORA-Job':'X-NEXORA-Job-Poll']:p.id},body:text,keepalive:start&&new TextEncoder().encode(text).length<60000,signal:signal?AbortSignal.any([signal,timeout]):timeout});
+    const data=await r.clone().json().catch(()=>({}));
+    if(r.status===202&&data.pending){start=false;misses=0;onStatus('ИИ продолжает работу. Можно закрыть сайт.');}
+    else if(r.status===404&&data.error==='job_missing'){if(++misses>=2){if(!body)throw Object.assign(Error('Задание не найдено. Повторите запрос.'),{terminal:true});start=true;}onStatus('Восстанавливаем задание…');}
+    else if(data.error==='job_busy'||[502,503,504].includes(r.status)&&!data.message){onStatus('Сервер временно занят. Повторяем проверку…');}
+    else{if(!r.ok)clear(scope,p.id);else{try{await dbOp('delete',p.id);}catch{}}
+     return r;}
+   }catch(e){if(signal?.aborted){clear(scope,p.id);throw new DOMException('Ожидание остановлено','AbortError');}if(e.terminal){clear(scope,p.id);throw e;}start=false;onStatus('Связь потеряна. Восстанавливаем соединение…');}
+   await delay(2500);
+  }
+  clear(scope,p.id);throw Error('Срок хранения задания истёк.');
+ }
+ window.NXBackground={read,run,clear};
+})();
+
+
 (()=>{"use strict";
 const $=id=>document.getElementById(id);
 const input=$("problem"),solve=$("solve"),errors=$("error"),solution=$("solution"),result=$("result"),stage=$("stage");

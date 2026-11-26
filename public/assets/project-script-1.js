@@ -413,7 +413,8 @@ async function resumeBackgroundJob(){
 }
 
 window.addEventListener("pageshow",()=>{restoreProjectState();resumeBackgroundJob();});
-window.addEventListener("popstate",()=>{restoreProjectState();});
+window.addEventListener("popstate",()=>{restoreProjectState();resumeBackgroundJob();});
+window.addEventListener("online",()=>{resumeBackgroundJob();});
 
 document.addEventListener("DOMContentLoaded",()=>{
  document.querySelectorAll("input,textarea,select").forEach(el=>{
