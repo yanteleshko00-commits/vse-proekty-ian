@@ -1,3 +1,13 @@
+// Game-specific provider selection; the conversational chat order is separate.
+export function gameProviderTier(p){
+ const name=String(p?.name||'').toLowerCase(),kind=p?.kind||p?.type;
+ if(kind==='deepseek'||kind==='deepseek-proxy'||kind==='gemini'||name.includes('deepseek')||name.includes('gemini'))return 0;
+ if(kind==='alice'||kind==='alice-proxy'||name.includes('alice')||name.includes('алиса'))return 2;
+ return 1;
+}
+export function prioritizeGameProviders(providers,generator=''){
+ return [...providers].sort((a,b)=>gameProviderTier(a)-gameProviderTier(b)||Number(a.name===generator)-Number(b.name===generator)||Number(!/deepseek/i.test(a.name))-Number(!/deepseek/i.test(b.name)));
+}
 // Dedicated game review: require an explicit verdict, never claim that a
 // missing or malformed reviewer response is a pass. Model output is data.
 export function parseGameVerdict(answer){
@@ -14,7 +24,7 @@ function chunks(text){return text.match(/[\s\S]{1,2200}/g)||[];}
 export async function gatewayGameRequest({apiUrl,secret,fetchImpl,prompt,timeout=24000}){
  if(secret.length<32||prompt.length>13000)throw Error('game_gateway_review_unavailable');
  const messages=chunks(prompt).map(content=>({role:'user',content}));
- const r=await fetchImpl(apiUrl+'/api/nexora-chat/internal',{method:'POST',headers:{'Content-Type':'application/json','X-NEXORA-Chat-Token':secret},body:JSON.stringify({model:'auto',messages}),signal:AbortSignal.timeout(timeout)});
+ const r=await fetchImpl(apiUrl+'/api/nexora-game/internal',{method:'POST',headers:{'Content-Type':'application/json','X-NEXORA-Chat-Token':secret},body:JSON.stringify({model:'auto',messages}),signal:AbortSignal.timeout(timeout)});
  if(!r.ok)throw Error('game_gateway_review_http');
  const data=await r.json();return {answer:data.answer,provider:String(data.provider||'NEXORA AI').slice(0,70)};
 }
@@ -22,7 +32,7 @@ export async function requestGameVerdict({html,idea,dimension,providers,fetchImp
  const prompt=instruction+'\n'+JSON.stringify({idea,dimension,html});
  // Prefer a second model if available. Otherwise use a fresh request to the
  // same provider, not the generation response itself.
- const sorted=[...providers].sort((a,b)=>Number(a.name===generator)-Number(b.name===generator));
+ const sorted=prioritizeGameProviders(providers,generator);
  for(const p of sorted.slice(0,2)){
   try{
    const gemini=p.kind==='gemini';

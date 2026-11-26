@@ -235,7 +235,7 @@ test('Unauthenticated players can create an original game through the protected 
  let calls=0;
  const mock=createServer(async(req,res)=>{
   calls++;
-  assert.equal(req.url,'/api/nexora-chat/internal');
+  assert.equal(req.url,'/api/nexora-game/internal');
   assert.equal(req.headers['x-nexora-chat-token'],secret);
   const parts=[];for await(const chunk of req)parts.push(chunk);
   const input=JSON.parse(Buffer.concat(parts).toString('utf8'));
@@ -307,7 +307,8 @@ test('Game Studio requests AI for arbitrary names and custom mechanics, never se
  assert.doesNotMatch(backend,/if\(!authenticated\)return send\(res,401/);
  assert.match(backend,/activeGameGenerations/);
  assert.match(backend,/used\.filter\(t=>now-t<60000\)\.length>=3/);
- assert.match(backend,/for\(const model of \['auto','alice'\]\)/);
+ assert.match(backend,/\/api\/nexora-game\/internal/);
+ assert.doesNotMatch(backend,/Promise\.any\(alternatives\)/);
  const route=backend.split('export async function makeCodeGame(')[1].split('export async function prepareGamePreview(')[0];
  assert.doesNotMatch(route,/fallbackGameHTML|arcadeGameHTML|miniGameHTML|blockSandboxHTML/);
 });
@@ -728,3 +729,19 @@ test('runtime repair is bound to a preview and sandbox retains opaque origin',as
 
 test('sandbox visual QA samples frames after gameplay starts',async()=>{const {sandboxGameHTML}=await import('../game-code.js');const html=await fallbackForVisual();const out=sandboxGameHTML(html);assert.match(out,/qaVisualVerdict/);assert.match(out,/readPixels/);assert.match(out,/start\.click\(\)/);assert.match(out,/5800/);});
 async function fallbackForVisual(){const {fallbackGameHTML}=await import('../game-code.js');return fallbackGameHTML('Гонки');}
+
+
+test('Game Studio always prioritizes DeepSeek and Gemini above Alice',async()=>{
+ const {prioritizeGameProviders}=await import('../game-review.js');
+ const {gameTextProviders}=await import('../game-code.js');
+ const providers=[{name:'Alice AI LLM',type:'alice-proxy'},{name:'Groq'},{name:'Gemini',kind:'gemini'},{name:'DeepSeek',kind:'deepseek'}];
+ assert.deepEqual(prioritizeGameProviders(providers).map(p=>p.name),['DeepSeek','Gemini','Groq','Alice AI LLM']);
+ assert.deepEqual(prioritizeGameProviders(providers,'DeepSeek').map(p=>p.name),['Gemini','DeepSeek','Groq','Alice AI LLM']);
+ const keys=['DEEPSEEK_API_KEY','GEMINI_API_KEY','GAME_GEMINI_MODEL','GAME_GEMINI_FALLBACK_MODEL'];
+ const previous=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
+ try{
+  process.env.DEEPSEEK_API_KEY='test';process.env.GEMINI_API_KEY='test';
+  process.env.GAME_GEMINI_MODEL='test-model';process.env.GAME_GEMINI_FALLBACK_MODEL='test-model';
+  assert.deepEqual(gameTextProviders().filter(p=>p.kind).map(p=>p.name),['DeepSeek','Gemini']);
+ }finally{for(const k of keys){if(previous[k]===undefined)delete process.env[k];else process.env[k]=previous[k];}}
+});
