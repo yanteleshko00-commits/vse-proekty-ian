@@ -1,3 +1,4 @@
+import {backgroundJSON} from './background-jobs.js';
 import {handleAnalytics,injectAnalytics} from './visitor-analytics.js';
 import {serveBrand} from './brand.js';
 import http from 'node:http';
@@ -37,6 +38,7 @@ async function getJSON(req){
   }
   return JSON.parse(Buffer.concat(items).toString('utf8')||'{}');
 }
+const backgroundText=backgroundJSON('text',generateText,{maxActive:4,maxBody:10500000});
 const server=http.createServer(async(req,res)=>{
   let url;
   try{url=new URL(req.url||'/','http://localhost');}
@@ -56,6 +58,9 @@ const server=http.createServer(async(req,res)=>{
     }catch(error){console.error('Text Studio page unavailable:',error.message);return respond(res,500,{message:'Страница временно недоступна.'});}
   }
   if(req.method!=='POST'||url.pathname!=='/api/generate')return respond(res,404,{message:'Не найдено.'});
+  return backgroundText(req,res);
+});
+async function generateText(req,res){
   if(key.length<32)return respond(res,503,{message:'Текстовый ИИ пока не подключён.'});
   if(!allow(req))return respond(res,429,{message:'Слишком много запросов. Попробуйте позднее.'});
   if(active>=4)return respond(res,503,{message:'Сервис занят. Попробуйте позже.'});
@@ -87,7 +92,7 @@ const server=http.createServer(async(req,res)=>{
     return respond(res,502,{message:'Нет связи с ИИ. Попробуйте повторить запрос.'});
   }
   }finally{active--;}
-});
+}
 server.requestTimeout=228000;
 server.listen(port,'0.0.0.0',()=>{
   console.log('NEXORA Text Studio listening on port '+port);

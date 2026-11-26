@@ -452,7 +452,46 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 .nx-redesign .hero-visual{isolation:isolate}.nx-redesign .hero-frame{box-shadow:0 16px 36px rgba(38,27,72,.13)}.nx-redesign .ideas-track{animation-duration:48s}.nx-redesign .ideas-window:focus-within .ideas-track,.nx-redesign .ideas-window:hover .ideas-track{animation-play-state:paused}.nx-redesign .stage{border-radius:17px}@media(prefers-reduced-motion:reduce){.nx-redesign .ideas-track{animation:none!important}}
 
 .nx-redesign :is(.hero,.intro){color:var(--nx-ink)}.nx-redesign :is(.hero,.intro) h1{color:var(--nx-ink)}.nx-redesign :is(.hero,.intro) p{color:var(--nx-muted)}
-</style></head>
+</style><script>
+(function(){
+ const ttl=24*60*60*1000,prefix='nexora-bg-v1:';
+ const delay=ms=>new Promise(r=>setTimeout(r,ms));
+ const key=scope=>prefix+scope;
+ function read(scope){try{const p=JSON.parse(localStorage.getItem(key(scope))||'null');if(p&&typeof p.id==='string'&&Date.now()-p.createdAt<ttl)return p;}catch{}return null;}
+ function save(scope,p){try{localStorage.setItem(key(scope),JSON.stringify(p));return true;}catch{return false;}}
+ function clear(scope,id){try{if(read(scope)?.id===id)localStorage.removeItem(key(scope));}catch{}void dbOp('delete',id).catch(()=>{});}
+ function dbOp(op,id,value){return new Promise((resolve,reject)=>{
+  if(!globalThis.indexedDB)return reject(Error('storage unavailable'));
+  const req=indexedDB.open('nexora-background-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('payloads');
+  req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result;try{const tx=db.transaction('payloads',op==='get'?'readonly':'readwrite'),store=tx.objectStore('payloads'),r=op==='get'?store.get(id):op==='delete'?store.delete(id):store.put(value,id);let result;r.onsuccess=()=>{result=r.result;};tx.oncomplete=()=>{db.close();resolve(result);};tx.onabort=tx.onerror=()=>{db.close();reject(tx.error);};}catch(e){db.close();reject(e);}};
+ });}
+ function uuid(){return crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),(v,i)=>((i===6?(v&15)|64:i===8?(v&63)|128:v).toString(16).padStart(2,'0'))).join('').replace(/^(........)(....)(....)(....)/,'$1-$2-$3-$4-');}
+ async function run(scope,url,payload,{resume=null,signal,context={},onStatus=()=>{}}={}){
+  let p=resume||{id:uuid(),createdAt:Date.now(),context},body=payload;
+  if(!resume){const old=read(scope);if(old)clear(scope,old.id);save(scope,p);try{await dbOp('put',p.id,{body,at:p.createdAt});}catch{}}
+  else if(!body){try{body=(await dbOp('get',p.id))?.body;}catch{}}
+  let start=!resume,misses=0;
+  while(Date.now()-p.createdAt<ttl){
+   if(signal?.aborted){clear(scope,p.id);throw new DOMException('Ожидание остановлено','AbortError');}
+   try{
+    const text=start?JSON.stringify(body):'{}';
+    if(start&&!body)throw Object.assign(Error('Сервер потерял задание. Исходные данные недоступны.'),{terminal:true});
+    const timeout=AbortSignal.timeout(25000),r=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',[start?'X-NEXORA-Job':'X-NEXORA-Job-Poll']:p.id},body:text,keepalive:start&&new TextEncoder().encode(text).length<60000,signal:signal?AbortSignal.any([signal,timeout]):timeout});
+    const data=await r.clone().json().catch(()=>({}));
+    if(r.status===202&&data.pending){start=false;misses=0;onStatus('ИИ продолжает работу. Можно закрыть сайт.');}
+    else if(r.status===404&&data.error==='job_missing'){if(++misses>=2){if(!body)throw Object.assign(Error('Задание не найдено. Повторите запрос.'),{terminal:true});start=true;}onStatus('Восстанавливаем задание…');}
+    else if(data.error==='job_busy'||[502,503,504].includes(r.status)&&!data.message){onStatus('Сервер временно занят. Повторяем проверку…');}
+    else{if(!r.ok)clear(scope,p.id);else{try{await dbOp('delete',p.id);}catch{}}
+     return r;}
+   }catch(e){if(signal?.aborted){clear(scope,p.id);throw new DOMException('Ожидание остановлено','AbortError');}if(e.terminal){clear(scope,p.id);throw e;}start=false;onStatus('Связь потеряна. Восстанавливаем соединение…');}
+   await delay(2500);
+  }
+  clear(scope,p.id);throw Error('Срок хранения задания истёк.');
+ }
+ window.NXBackground={read,run,clear};
+})();
+</script>
+</head>
 <body class="nx-redesign">
 <header class="topbar">
  <div class="wrap top-inner">
@@ -599,7 +638,7 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
  function addVersion(data,description){versions.unshift({data,prompt:description||'',id:Date.now()});versions=versions.slice(0,8);renderHistory()}
  function renderHistory(){const list=$('history-list');list.textContent='';$('history-count').textContent=versions.length+' из 8 версий';if(!versions.length){const e=document.createElement('div');e.className='history-empty';e.textContent='Здесь будут ваши версии. Можно вернуться к любой из них.';list.appendChild(e);return}versions.forEach((v,i)=>{const b=document.createElement('button');b.type='button';b.className='history-item'+(v.data===currentImage?' active':'');const im=document.createElement('img');im.src=v.data;im.alt='Версия '+(versions.length-i);const label=document.createElement('span');label.textContent=i===0?'Последняя':'Версия '+(versions.length-i);b.append(im,label);b.addEventListener('click',()=>{currentImage=v.data;currentPrompt=v.prompt;image.src=v.data;image.style.display='block';empty.style.display='none';actions.classList.add('visible');$('result-status').textContent='Открыта предыдущая версия';$('edit-prompt').value='';renderHistory()});list.appendChild(b)})}
  async function smallImageData(fileOrData){return new Promise((resolve,reject)=>{const src=typeof fileOrData==='string'?fileOrData:URL.createObjectURL(fileOrData);const im=new Image();im.onload=()=>{const scale=Math.min(1,500/Math.max(im.naturalWidth,im.naturalHeight));const w=Math.max(1,Math.round(im.naturalWidth*scale)),h=Math.max(1,Math.round(im.naturalHeight*scale));const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.drawImage(im,0,0,w,h);if(typeof fileOrData!=='string')URL.revokeObjectURL(src);resolve(canvas.toDataURL('image/jpeg',.86))};im.onerror=()=>{if(typeof fileOrData!=='string')URL.revokeObjectURL(src);reject(new Error('Не удалось прочитать изображение.'))};im.src=src})}
- async function run(promptText,imageData){if(busy)return;const clean=String(promptText||'').trim();if(clean.length<4){showMessage('Опиши изображение чуть подробнее.','error');prompt.focus();return}setBusy(true);showMessage('');try{let small=null;if(imageData)small=await smallImageData(imageData);const response=await fetch('/api/images/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:clean,style:'realistic',ratio:$('ratio').value,quality:$('quality').value,image:small})});const data=await response.json().catch(()=>({}));if(!response.ok){let failureText=data.message||data.error||'Не удалось создать изображение.';if(Array.isArray(data.providers)&&data.providers.length){const diagnosticLines=data.providers.map(item=>{let line=item.provider+': HTTP '+(item.status||0)+', этап '+(item.stage||'unknown')+', код '+(item.code||'unknown');if(item.oauthScope)line+='; scope='+item.oauthScope;if(item.detail)line+='; ответ провайдера: '+item.detail;if(Array.isArray(item.authAttempts)&&item.authAttempts.length){line+='; попытки ключей: '+item.authAttempts.map(a=>(a.keySlot||'ключ')+' → HTTP '+(a.status||0)+', код '+(a.code||'unknown')+(a.detail?' ('+a.detail+')':'')).join('; ')}return line});failureText+='\\nДиагностика: '+diagnosticLines.join(' | ')}throw new Error(failureText)}if(!data.image||typeof data.image!=='string')throw new Error('Сервис не вернул готовое изображение.');showImage(data.image,clean,data.provider||data.model);showMessage('Изображение готово. Его можно скачать, отправить или изменить следующим промптом.','success')}catch(error){empty.style.display=currentImage?'none':'block';image.style.display=currentImage?'block':'none';if(currentImage)actions.classList.add('visible');showMessage(error.message==='Failed to fetch'?'Не удалось связаться с сервером NEXORA Image Studio. Проверьте подключение и попробуйте снова.':error.message,'error');$('result-status').textContent='Не удалось завершить генерацию'}finally{setBusy(false)}}
+ async function run(promptText,imageData,resume=null){if(busy)return;const clean=String(resume?.context?.prompt||promptText||'').trim();if(clean.length<4){showMessage('Опиши изображение чуть подробнее.','error');prompt.focus();return}setBusy(true);showMessage('');try{let small=null;if(imageData)small=await smallImageData(imageData);const response=await NXBackground.run('image','/api/images/generate',resume?null:{prompt:clean,style:'realistic',ratio:$('ratio').value,quality:$('quality').value,image:small},{resume,context:{prompt:clean},onStatus:t=>{$('result-status').textContent=t;}});const data=await response.json().catch(()=>({}));if(!response.ok){let failureText=data.message||data.error||'Не удалось создать изображение.';if(Array.isArray(data.providers)&&data.providers.length){const diagnosticLines=data.providers.map(item=>{let line=item.provider+': HTTP '+(item.status||0)+', этап '+(item.stage||'unknown')+', код '+(item.code||'unknown');if(item.oauthScope)line+='; scope='+item.oauthScope;if(item.detail)line+='; ответ провайдера: '+item.detail;if(Array.isArray(item.authAttempts)&&item.authAttempts.length){line+='; попытки ключей: '+item.authAttempts.map(a=>(a.keySlot||'ключ')+' → HTTP '+(a.status||0)+', код '+(a.code||'unknown')+(a.detail?' ('+a.detail+')':'')).join('; ')}return line});failureText+='\\nДиагностика: '+diagnosticLines.join(' | ')}throw new Error(failureText)}if(!data.image||typeof data.image!=='string')throw new Error('Сервис не вернул готовое изображение.');showImage(data.image,clean,data.provider||data.model);showMessage('Изображение готово. Его можно скачать, отправить или изменить следующим промптом.','success')}catch(error){empty.style.display=currentImage?'none':'block';image.style.display=currentImage?'block':'none';if(currentImage)actions.classList.add('visible');showMessage(error.message==='Failed to fetch'?'Не удалось связаться с сервером NEXORA Image Studio. Проверьте подключение и попробуйте снова.':error.message,'error');$('result-status').textContent='Не удалось завершить генерацию'}finally{setBusy(false)}}
  
 const nxqSteps=[
  {key:"style",title:"В каком стиле создать изображение?",options:[["photo","Фотореализм"],["illustration","Иллюстрация"],["threeD","3D-графика"],["watercolor","Акварель"],["anime","Аниме"],["cinema","Кинематографичный"]]},
@@ -663,6 +702,7 @@ generate.addEventListener('click',nxqOpenImage);
  $('theme-toggle').addEventListener('click',()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';localStorage.setItem(themeKey,next);applyTheme(next)});
  const syncSystemTheme=event=>{if(!localStorage.getItem(themeKey))applyTheme(event.matches?'dark':'light')};
  if(typeof themeMedia.addEventListener==='function')themeMedia.addEventListener('change',syncSystemTheme);else if(typeof themeMedia.addListener==='function')themeMedia.addListener(syncSystemTheme);
+ const savedImageJob=NXBackground.read('image');if(savedImageJob){prompt.value=savedImageJob.context?.prompt||'';void run(prompt.value,null,savedImageJob);}
  fetch('/health').then(r=>r.json()).then(d=>{if(!d.imageGeneratorConfigured)showMessage('Сервер генерации изображений временно не подключён. Проверьте ключи провайдеров в Environment сервиса NEXORA Image Studio.','')}).catch(()=>showMessage('Не удалось проверить подключение к серверу NEXORA Image Studio.',''));
 })();
 </script>

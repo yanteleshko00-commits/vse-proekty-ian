@@ -452,7 +452,46 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 .nx-redesign :where(.site-footer,.footer,main>footer){margin-top:40px;padding:24px 0;border-top:1px solid var(--nx-line);gap:14px}
 @media(max-width:600px){.nx-redesign .intro,.nx-redesign .hero{border-radius:21px}.nx-redesign .intro h1,.nx-redesign .hero h1{font-size:clamp(32px,9vw,46px)}.nx-redesign .card,.nx-redesign .workspace>.panel{border-radius:18px}.nx-redesign :where(.site-footer,.footer,main>footer){margin-top:28px;flex-wrap:wrap;padding-bottom:calc(25px + env(safe-area-inset-bottom))}}
 .nx-redesign .math-paper{box-shadow:0 14px 34px rgba(46,32,78,.10)}.nx-redesign .modes{gap:7px}.nx-redesign .mode{min-height:40px}.nx-redesign .examples{gap:7px}.nx-redesign .stage{border-radius:17px}
-</style></head>
+</style><script>
+(function(){
+ const ttl=24*60*60*1000,prefix='nexora-bg-v1:';
+ const delay=ms=>new Promise(r=>setTimeout(r,ms));
+ const key=scope=>prefix+scope;
+ function read(scope){try{const p=JSON.parse(localStorage.getItem(key(scope))||'null');if(p&&typeof p.id==='string'&&Date.now()-p.createdAt<ttl)return p;}catch{}return null;}
+ function save(scope,p){try{localStorage.setItem(key(scope),JSON.stringify(p));return true;}catch{return false;}}
+ function clear(scope,id){try{if(read(scope)?.id===id)localStorage.removeItem(key(scope));}catch{}void dbOp('delete',id).catch(()=>{});}
+ function dbOp(op,id,value){return new Promise((resolve,reject)=>{
+  if(!globalThis.indexedDB)return reject(Error('storage unavailable'));
+  const req=indexedDB.open('nexora-background-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('payloads');
+  req.onerror=()=>reject(req.error);req.onsuccess=()=>{const db=req.result;try{const tx=db.transaction('payloads',op==='get'?'readonly':'readwrite'),store=tx.objectStore('payloads'),r=op==='get'?store.get(id):op==='delete'?store.delete(id):store.put(value,id);let result;r.onsuccess=()=>{result=r.result;};tx.oncomplete=()=>{db.close();resolve(result);};tx.onabort=tx.onerror=()=>{db.close();reject(tx.error);};}catch(e){db.close();reject(e);}};
+ });}
+ function uuid(){return crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),(v,i)=>((i===6?(v&15)|64:i===8?(v&63)|128:v).toString(16).padStart(2,'0'))).join('').replace(/^(........)(....)(....)(....)/,'$1-$2-$3-$4-');}
+ async function run(scope,url,payload,{resume=null,signal,context={},onStatus=()=>{}}={}){
+  let p=resume||{id:uuid(),createdAt:Date.now(),context},body=payload;
+  if(!resume){const old=read(scope);if(old)clear(scope,old.id);save(scope,p);try{await dbOp('put',p.id,{body,at:p.createdAt});}catch{}}
+  else if(!body){try{body=(await dbOp('get',p.id))?.body;}catch{}}
+  let start=!resume,misses=0;
+  while(Date.now()-p.createdAt<ttl){
+   if(signal?.aborted){clear(scope,p.id);throw new DOMException('Ожидание остановлено','AbortError');}
+   try{
+    const text=start?JSON.stringify(body):'{}';
+    if(start&&!body)throw Object.assign(Error('Сервер потерял задание. Исходные данные недоступны.'),{terminal:true});
+    const timeout=AbortSignal.timeout(25000),r=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json',[start?'X-NEXORA-Job':'X-NEXORA-Job-Poll']:p.id},body:text,keepalive:start&&new TextEncoder().encode(text).length<60000,signal:signal?AbortSignal.any([signal,timeout]):timeout});
+    const data=await r.clone().json().catch(()=>({}));
+    if(r.status===202&&data.pending){start=false;misses=0;onStatus('ИИ продолжает работу. Можно закрыть сайт.');}
+    else if(r.status===404&&data.error==='job_missing'){if(++misses>=2){if(!body)throw Object.assign(Error('Задание не найдено. Повторите запрос.'),{terminal:true});start=true;}onStatus('Восстанавливаем задание…');}
+    else if(data.error==='job_busy'||[502,503,504].includes(r.status)&&!data.message){onStatus('Сервер временно занят. Повторяем проверку…');}
+    else{if(!r.ok)clear(scope,p.id);else{try{await dbOp('delete',p.id);}catch{}}
+     return r;}
+   }catch(e){if(signal?.aborted){clear(scope,p.id);throw new DOMException('Ожидание остановлено','AbortError');}if(e.terminal){clear(scope,p.id);throw e;}start=false;onStatus('Связь потеряна. Восстанавливаем соединение…');}
+   await delay(2500);
+  }
+  clear(scope,p.id);throw Error('Срок хранения задания истёк.');
+ }
+ window.NXBackground={read,run,clear};
+})();
+</script>
+</head>
 <body class="nx-redesign">
 <header class="topbar"><div class="wrap top-inner">
 <a class="brand" href="/" aria-label="NEXORA Math Studio"><span class="brand-icon" aria-hidden="true"><img class="nx-brand-img" src="/nexora-mark.svg?v=2" alt="" aria-hidden="true" decoding="async"></span><span class="brand-copy"><b>NEXORA</b><small>MATH STUDIO</small></span></a>
@@ -756,10 +795,11 @@ function render(sol,provider){last=sol;$("preview").classList.toggle("compact-vi
  if(sol.warning)result.appendChild(make("p","warning",sol.warning))}
  solution.classList.add("show");$("preview").classList.add("has-result");$("result-actions").classList.add("show");$("result-status").textContent="Готово · "+(provider||"ИИ");if(window.innerWidth<850)$("preview").scrollIntoView({behavior:"smooth",block:"start"})}
 function solutionText(){if(!last)return"";const x=last;const lines=[x.title||"Решение задачи",""];if(x.needs_clarification)return "Нужно уточнить: "+x.clarification;if(["geometry","probability_statistics","probability","statistics"].includes(x.kind)){lines.push("Дано:",...(x.given||[]),"","Найти:",...(x.find||[]),"")}else lines.push("Условие:",...(x.given?.length?x.given:[input.value]),"");lines.push("Решение:");(x.steps||[]).forEach((v,i)=>lines.push((i+1)+". "+v.title,v.text||"",v.formula?"Формула: "+v.formula:"",v.symbols?"Обозначения: "+v.symbols:"",v.substitution?"Подстановка: "+v.substitution:"",v.calculation?"Вычисление: "+v.calculation:"",""));lines.push("Ответ: "+(x.answer||""));if(x.verification)lines.push("Проверка: "+x.verification);return lines.join("\n")}
-async function run(){
+async function run(resume=null){
  if(busy)return;
+ if(!resume?.id)resume=null;
  const problem=input.value.trim();
- if(problem.length<5&&!attachments.length){fail("Напишите условие или прикрепите фотографию/файл с задачей.");input.focus();return}
+ if(!resume&&problem.length<5&&!attachments.length){fail("Напишите условие или прикрепите фотографию/файл с задачей.");input.focus();return}
  errors.classList.remove("show");
  const controller=new AbortController();
  requestController=controller;
@@ -767,11 +807,10 @@ async function run(){
  let timeout=null;
  busyState(true);
  try{
-  const files=await prepareAttachments();
+  const files=resume?[]:await prepareAttachments();
   if(controller.signal.aborted)return;
   loaderStatus("Запрос отправлен…","ИИ анализирует условие и составляет пошаговое решение.");
-  timeout=setTimeout(()=>{timedOut=true;controller.abort()},files.some(x=>String(x.data).startsWith("data:image/"))?178000:115000);
-  const response=await fetch("/api/solve",{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal,body:JSON.stringify({problem,kind:mode,grade:Number($("grade").value),level:$("level").value,textbook:$("source-mode").value==="textbook"?$("textbook").value.trim():"",attachments:files})});
+  const response=await NXBackground.run('math','/api/solve',resume?null:{problem,kind:mode,grade:Number($("grade").value),level:$("level").value,textbook:$("source-mode").value==="textbook"?$("textbook").value.trim():"",attachments:files},{resume,context:{problem},signal:controller.signal,onStatus:t=>loaderStatus(t,"Результат сохранится на сервере.")});
   const payload=await response.json().catch(()=>({}));
   if(!response.ok||!payload.ok||!payload.solution)throw new Error(payload.message||"Сервис не смог подготовить решение.");
   if(controller.signal.aborted)return;
@@ -787,6 +826,7 @@ async function run(){
   busyState(false);
  }
 }
+const savedMathJob=NXBackground.read('math');if(savedMathJob){input.value=savedMathJob.context?.problem||'';void run(savedMathJob);}
 $("cancel-solve").addEventListener("click",()=>{if(requestController&&!requestController.signal.aborted){loaderStatus("Отменяю…","Останавливаю ожидание ответа.");requestController.abort()}});
 
 

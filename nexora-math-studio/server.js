@@ -1,3 +1,4 @@
+import {backgroundJSON} from './background-jobs.js';
 import {handleAnalytics,injectAnalytics} from './visitor-analytics.js';
 import {serveBrand} from './brand.js';
 import http from 'node:http';
@@ -43,6 +44,7 @@ async function readJson(req, limit = 12000) {
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
 }
+const backgroundMath=backgroundJSON('math',solveMath,{maxActive:4,maxBody:10500000});
 const server = http.createServer(async (req, res) => {
   let url;
   try { url = new URL(req.url || '/', 'http://localhost'); }
@@ -67,6 +69,9 @@ const server = http.createServer(async (req, res) => {
     }
   }
   if (req.method !== 'POST' || url.pathname !== '/api/solve') return respond(res, 404, { message: 'Не найдено.' });
+  return backgroundMath(req,res);
+});
+async function solveMath(req,res){
   if (!bridgeToken || bridgeToken.length < 32) return respond(res, 503, { message: 'ИИ-сервис ещё подключается. Повторите попытку позже.' });
   if (!allowRequest(req)) return respond(res, 429, { message: 'Слишком много запросов. Попробуйте через некоторое время.' });
   if (active >= 4) return respond(res, 503, { message: 'Сервис занят. Попробуйте чуть позже.' });
@@ -107,7 +112,7 @@ const server = http.createServer(async (req, res) => {
     return respond(res, 502, { message: 'Не удалось связаться с ИИ. Попробуйте ещё раз.' });
   }
   } finally { active--; }
-});
+}
 server.requestTimeout = 190000;
 server.listen(port, '0.0.0.0', () => {
   console.log('NEXORA Math Studio listening on port ' + port);

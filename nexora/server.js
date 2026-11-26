@@ -1,3 +1,4 @@
+import {backgroundJSON} from './background-jobs.js';
 import {handleAnalytics,injectAnalytics} from './visitor-analytics.js';
 import {serveBrand} from './brand.js';
 import { persistentAdminAttempt } from './admin-throttle.js';
@@ -700,6 +701,7 @@ async function nexoraChatReply(req, res) {
   }finally{chatInFlight.delete(key);}
 }
 
+const backgroundChat=backgroundJSON('chat',nexoraChatReply,{maxActive:8,maxBody:20000});
 const server = http.createServer(async (req, res) => {
   const base = appUrl(req);
   let url;
@@ -778,7 +780,7 @@ const server = http.createServer(async (req, res) => {
     }catch(error){console.error('[nexora-chat] page error:',error.name);return send(res,500,'Чат временно недоступен.');}
   }
   if(req.method === 'POST' && url.pathname === '/api/nexora-chat')
-    return nexoraChatReply(req,res);
+    return backgroundChat(req,res);
 
   if (req.method === 'GET' && ['/game','/game/','/game.html'].includes(url.pathname)) {
     try {

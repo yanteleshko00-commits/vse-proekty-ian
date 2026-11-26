@@ -1,3 +1,4 @@
+import {backgroundJSON} from './background-jobs.js';
 import {handleAnalytics,injectAnalytics} from './visitor-analytics.js';
 import {serveBrand} from './brand.js';
 import http from 'node:http';
@@ -619,6 +620,7 @@ async function handleInternalAliceText(req, res) {
   }
 }
 
+const backgroundImage=backgroundJSON('image',protectedImage,{maxActive:2});
 const server = http.createServer(async (req, res) => {
   let url;
   try {
@@ -673,7 +675,7 @@ const server = http.createServer(async (req, res) => {
   if(req.method==='GET'&&url.pathname==='/auth/start')return studioStart(res);
   if(req.method==='GET'&&url.pathname==='/auth/callback')return studioCallback(req,res,url);
   if (req.method === 'POST' && url.pathname === '/api/images/generate') {
-    return protectedImage(req, res);
+    return backgroundImage(req, res);
   }
 
   if (req.method !== 'GET' || !['/', '/index.html'].includes(url.pathname)) {

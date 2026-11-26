@@ -2125,10 +2125,13 @@ async function pruneGenerationJobs() {
   }
 }
 app.post('/api/generate-project/start', asyncRoute(async (req,res)=>{
+  const requestedId=typeof req.body?.requestId==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.body.requestId)?req.body.requestId:null;
+  if(requestedId){const account=await projectWorkAccount(req);const existing=generationJobs.get(requestedId)||await loadPersistedGenerationJob(requestedId,account.user.id);if(existing){if(existing.ownerId!==account.user.id)return res.status(404).json({error:'Задание не найдено.'});return res.status(202).json({jobId:existing.id,status:existing.status,progress:existing.progress,stage:existing.stage,message:existing.message});}}
   const work=await beginProjectWork(req);
   await pruneGenerationJobs();
   for(const [key,job] of generationJobs)if(job.status!=='running'&&generationJobs.size>=12)generationJobs.delete(key);
-  const id=crypto.randomUUID();
+  const id=requestedId||crypto.randomUUID();
+  if(generationJobs.has(id)){const existing=generationJobs.get(id);await endProjectWork(work,'failure');if(existing.ownerId!==work.id)return res.status(404).json({error:'Задание не найдено.'});return res.status(202).json({jobId:id,status:existing.status,progress:existing.progress,stage:existing.stage,message:existing.message});}
   const job={id,ownerId:work.id,status:'running',stage:'starting',progress:3,message:'🔎 Проверяем тему и параметры проекта...',createdAt:Date.now(),updatedAt:Date.now(),result:null,error:null,checkpoint:null,artifacts:[]};
   generationJobs.set(id,job);
   void queuePersistGenerationJob(job);
