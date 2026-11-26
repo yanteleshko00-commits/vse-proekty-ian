@@ -13,7 +13,11 @@ const recent=new Map();
 const previews=new Map();
 const runtimeRepairs=new Map();let activeRuntimeRepairs=0;
 const gameJobs=new Map();
-const JOB_TTL=15*60*1000;
+const JOB_TTL=24*60*60*1000;
+const MAX_GAME_JOBS=300;
+const validGameJobId=id=>typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+function gameJobResponse(res,id,job){return job.result?send(res,job.result.status,job.result.data):send(res,202,{ok:true,pending:true,jobId:id,progress:job.progress||null});}
+function pruneGameJobs(now){for(const [id,job] of gameJobs)if(job.result&&now-(job.finishedAt||job.createdAt)>JOB_TTL)gameJobs.delete(id);}
 // Anonymous game creation is public, so bound server-side model spending.
 const MAX_CONCURRENT_GAMES=3;
 let activeGameGenerations=0;
@@ -477,11 +481,16 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
  try{input=await parseBody(req);}catch(error){return send(res,400,{ok:false,message:error.message||'Неверный запрос.'});}
  // A random unguessable job token lets the browser poll without holding an HTTP
  // connection open while a large WebGL game is being generated.
+ pruneGameJobs(Date.now());
  if(typeof input.jobId==='string'){
-  const job=gameJobs.get(input.jobId);
-  if(!job||Date.now()-job.createdAt>JOB_TTL)return send(res,404,{ok:false,error:'job_missing',message:'Сервер не нашёл задание. Можно восстановить генерацию по исходному описанию.'});
-  return job.result?send(res,job.result.status,job.result.data):send(res,202,{ok:true,pending:true,jobId:input.jobId,progress:job.progress||null});
+  const job=validGameJobId(input.jobId)?gameJobs.get(input.jobId):null;
+  if(!job)return send(res,404,{ok:false,error:'job_missing',message:'Сервер не нашёл задание. Можно восстановить генерацию по исходному описанию.'});
+  return gameJobResponse(res,input.jobId,job);
  }
+ const asyncMode=req.headers['x-nexora-async']==='1';
+ const requestId=asyncMode&&validGameJobId(input.requestId)?input.requestId:null;
+ // Retrying the start after a dropped connection must not spend tokens twice.
+ if(requestId&&gameJobs.has(requestId))return gameJobResponse(res,requestId,gameJobs.get(requestId));
  const idea=typeof input.idea==='string'?input.idea.trim():'';
  const dimension=inferGameDimension(idea,['auto','2d','3d'].includes(input.dimension)?input.dimension:'auto');
  if(idea.length<2||idea.length>500)return send(res,400,{ok:false,message:'Введите название или описание игры: от 2 до 500 символов.'});
@@ -494,9 +503,7 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
   return send(res,503,{ok:false,error:'server_busy',message:'Сейчас создаётся много игр. Попробуйте немного позже.'});
  used.push(now);recent.set(ip,used);
  if(recent.size>2000)for(const [key,times] of recent)if(times.every(t=>now-t>3600000))recent.delete(key);
- for(const [id,job] of gameJobs)if(Date.now()-job.createdAt>JOB_TTL)gameJobs.delete(id);
- const asyncMode=req.headers['x-nexora-async']==='1';
- if(asyncMode&&gameJobs.size>=100)return send(res,503,{ok:false,message:'Очередь игр заполнена. Попробуйте позже.'});
+ if(asyncMode&&gameJobs.size>=MAX_GAME_JOBS)return send(res,503,{ok:false,error:'job_capacity',message:'Хранилище заданий заполнено. Попробуйте позже.'});
  activeGameGenerations++;
  const generate=async(onProgress=null)=>{
   try{
@@ -523,11 +530,12 @@ export async function makeCodeGame(req,res,{fetchImpl=fetch}={}){
   }finally{activeGameGenerations--;}
  };
  if(asyncMode){
-  const id=crypto.randomUUID();
+  const id=requestId||crypto.randomUUID();
   const job={createdAt:Date.now(),result:null,progress:null};
   gameJobs.set(id,job);
-  void generate(progress=>{if(!job.result)job.progress=progress;}).then(result=>{job.result=result;job.progress=null;});
-  return send(res,202,{ok:true,pending:true,jobId:id});
+  // This promise belongs to the server, not the lifetime of the browser request.
+  void generate(progress=>{if(!job.result)job.progress=progress;}).then(result=>{job.result=result;job.progress=null;job.finishedAt=Date.now();});
+  return gameJobResponse(res,id,job);
  }
  const result=await generate();
  return send(res,result.status,result.data);

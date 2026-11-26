@@ -8,6 +8,13 @@
  const playTab=$("ai-play-tab"),codeTab=$("ai-code-tab");
  const DRAFT_KEY="nexora-game-idea-draft-v1";
  const MODE_KEY="nexora-game-dimension-v1";
+ const PENDING_KEY="nexora-game-pending-v2";
+ const PENDING_TTL=24*60*60*1000;
+ function readPending(){try{const p=JSON.parse(localStorage.getItem(PENDING_KEY)||"null");if(p&&typeof p.id==="string"&&typeof p.description==="string"&&["auto","2d","3d"].includes(p.dimension)&&Number.isFinite(p.createdAt)&&Date.now()-p.createdAt<PENDING_TTL)return p;}catch{}return null;}
+ function savePending(p){try{localStorage.setItem(PENDING_KEY,JSON.stringify(p));return true;}catch{return false;}}
+ function clearPending(id){try{if(readPending()?.id===id)localStorage.removeItem(PENDING_KEY);}catch{}}
+ function newJobId(){if(globalThis.crypto?.randomUUID)return crypto.randomUUID();const bytes=crypto.getRandomValues(new Uint8Array(16));bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;const h=Array.from(bytes,n=>n.toString(16).padStart(2,"0")).join("");return h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20);}
+
  let dimension="auto";
  let raw="",compiled="",busy=false,ready=false,sourceKind="",previewUrl="",playing=false,testing=false,restoreOverflow="",restoreBodyOverflow="",playerAnchor=null;
  const player=$("ai-game-view"),launch=$("ai-open-game"),close=$("ai-close-game");
@@ -66,7 +73,8 @@
   try{localStorage.setItem(DRAFT_KEY,value.slice(0,500));}catch{}
  }
  function setBusy(value){
-  busy=value;build.disabled=value;$("ai-run-code").disabled=value;
+  busy=value;build.disabled=value;$("ai-run-code").disabled=value;idea.disabled=value;
+  document.querySelectorAll("[data-game-dimension],[data-ai-example]").forEach(b=>b.disabled=value);
   build.textContent=value?"✦ Создаю и проверяю игру…":"✦ Создать игру";
  }
  function showTab(which){
@@ -148,62 +156,73 @@
  async function createGame(){
   if(busy)return;
   clearError();
+  const saved=readPending();
+  if(saved){idea.value=saved.description;selectDimension(saved.dimension);}
   const description=idea.value.trim();
   saveDraft(description);
   if(description.length<2){fail("Напишите название или короткое описание игры.");idea.focus();return;}
   if(description.length>500){fail("Описание не должно превышать 500 символов.");return;}
-  setBusy(true);setStatus("ИИ создаёт "+(dimension==="3d"?"трёхмерный":"игровой")+" мир, код и управление…");
+  const pending=saved||{id:newJobId(),description,dimension,createdAt:Date.now()};
+  const stored=savePending(pending);
+  let terminal=false;
+  setBusy(true);setStatus(saved?"Восстанавливаю генерацию…":"ИИ создаёт "+(dimension==="3d"?"трёхмерный":"игровой")+" мир, код и управление…");
   if(playing)closeGame();selectedId=null;currentReview=null;raw="";compiled="";ready=false;previewUrl="";launch.hidden=true;resetLive();setLoader(true);
   $("ai-placeholder").hidden=false;
   $("ai-result").hidden=true;$("ai-toolbar").hidden=true;
   $("ai-placeholder-title").textContent="Создаю вашу игру…";
-  $("ai-placeholder-description").textContent="Показываем полученные от модели строки. Игра запустится только после проверки полного кода.";
+  $("ai-placeholder-description").textContent=stored?"Можно закрыть сайт: сервер продолжит генерацию, а при возвращении мы восстановим задание.":"Хранилище браузера недоступно: сервер продолжит работу, но восстановление после закрытия не гарантировано.";
   if(window.matchMedia("(max-width:900px)").matches)$("ai-result-card").scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth",block:"start"});
   try{
    const startJob=()=>fetch("/api/game/code",{
     method:"POST",headers:{"Content-Type":"application/json","X-NEXORA-Async":"1"},
-    body:JSON.stringify({idea:description,dimension}),signal:AbortSignal.timeout(20000)
+    body:JSON.stringify({idea:description,dimension:pending.dimension,requestId:pending.id}),keepalive:true,signal:AbortSignal.timeout(20000)
    });
-   let response=await startJob();
-   let data=await response.json().catch(()=>({}));
-   showLive(data.progress);
-   let jobId=data.jobId,deadline=Date.now()+480000,missing=0,restarted=false;
-   while(response.status===202&&data.pending&&jobId){
-    if(Date.now()>deadline)throw Error("ИИ не завершил генерацию за отведённое время.");
-    await new Promise(resolve=>setTimeout(resolve,2500));
+   const pollJob=()=>fetch("/api/game/code",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({jobId:pending.id}),signal:AbortSignal.timeout(15000)
+   });
+   let response,data,needsStart=!saved,missing=0;
+   // If the tab is suspended, wall-clock time is not a generation timeout.
+   // The server is authoritative; transient offline errors retain the same ID.
+   while(true){
+    if(Date.now()-pending.createdAt>=PENDING_TTL){terminal=true;throw Error("Срок хранения задания истёк. Создайте игру ещё раз.");}
+    const starting=needsStart;
     try{
-     response=await fetch("/api/game/code",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({jobId}),signal:AbortSignal.timeout(15000)
-     });
-     if([502,503,504].includes(response.status)){
-      const error=await response.json().catch(()=>null);
-      if(error?.error==="generation_unavailable"){data=error;break;}
-      response={status:202,ok:true};data={pending:true};continue;
-     }
+     response=await (starting?startJob():pollJob());
      data=await response.json().catch(()=>({}));
-    }catch(error){
-     response={status:202,ok:true};data={pending:true};continue;
+    }catch{
+     setStatus("Связь с сервером прервана. Продолжу проверку после восстановления соединения…");
+     needsStart=false;
+     await new Promise(resolve=>setTimeout(resolve,4000));continue;
     }
-    if(response.status===404&&(data.error==="job_missing"||!data.error)){
-     if(restarted&&missing>=2)throw Error("Сервер снова потерял задание. Ваше описание сохранено.");
-     if(++missing<3){response={status:202,ok:true};data={pending:true};continue;}
-     restarted=true;missing=0;
-     setStatus("Сервер обновился. Восстанавливаю создание игры по вашему описанию…");
-     response=await startJob();
-     data=await response.json().catch(()=>({}));
-     jobId=data.jobId;deadline=Date.now()+480000;
-     continue;
+    if(response.status===202&&data.pending){
+     needsStart=false;missing=0;
+     if(data.jobId&&data.jobId!==pending.id){pending.id=data.jobId;savePending(pending);}
+     showLive(data.progress);setStatus("ИИ продолжает генерацию. Сайт можно закрыть.");
+    }else if(response.status===404&&data.error==="job_missing"){
+     // Missing after a server restart or a start that never reached the server.
+     // Retry with the original id; the live server deduplicates repeated starts.
+     needsStart=++missing>=2;
+     setStatus("Восстанавливаю задание на сервере…");
+    }else if([502,503,504].includes(response.status)&&data.error!=="generation_unavailable"){
+     if(data.error==="job_capacity"){terminal=true;throw Error(data.message);}
+     setStatus("Сервер временно недоступен. Задание сохранено…");
+     needsStart=starting;
+    }else{
+     terminal=true;break;
     }
-    missing=0;
-    showLive(data.progress);
+    await new Promise(resolve=>setTimeout(resolve,2500));
    }
    if(!response.ok||!data.ok||typeof data.html!=="string")
     throw Error(data.message||"ИИ не смог написать игру. Попробуйте уточнить описание.");
    if(data.source!=="ai")throw Error("ИИ не создал код. Подмена вашего запроса готовым шаблоном отключена.");
    if(!["passed","needs_review"].includes(data.review?.status))throw Error("Проверка игры не завершена.");
-   currentReview=data.review;gameDimension=data.dimension||dimension;
+   currentReview=data.review;gameDimension=data.dimension||pending.dimension;
    raw=data.html;code.value=raw;sourceKind=data.source;
+   // Preserve the generated source even if the browser closes during WebGL QA.
+   selectedId=pending.id;
+   const draft={id:pending.id,title:data.title||description,idea:description,html:raw,dimension:gameDimension,review:{...currentReview,status:"needs_review",issues:[...(currentReview.issues||[]),"Пробный запуск в браузере ещё не завершён."]},createdAt:Date.now()};
+   storeLibrary([draft,...readLibrary().filter(x=>x.id!==pending.id)]);renderLibrary();
    showLive({provider:data.provider,phase:"writing",source:raw,attempt:"final"});
    $("nx-live-phase").textContent="Код получен · проверка и запуск";
    const renderedDimension=data.dimension==="3d"?"3d":dimension;
@@ -228,7 +247,7 @@
    setStatus("Не удалось подготовить игру.");
    fail(e.message||"Произошла ошибка при создании игры.");
    if(raw){$("ai-placeholder").hidden=true;$("ai-result").hidden=false;$("ai-toolbar").hidden=false;showTab("code");$("ai-review-report").textContent="Код доступен для исправления; запуск заблокирован.";}
-  }finally{setBusy(false);setLoader(false);}
+  }finally{if(terminal)clearPending(pending.id);setBusy(false);setLoader(false);}
  }
  async function runEdited(){
   if(busy)return;
@@ -281,6 +300,7 @@
  document.querySelectorAll("[data-game-dimension]").forEach(b=>
   b.addEventListener("click",()=>selectDimension(b.dataset.gameDimension)));
  document.querySelectorAll("[data-ai-example]").forEach(b=>b.addEventListener("click",()=>{
+  if(busy)return;
   if(b.dataset.aiDimension)selectDimension(b.dataset.aiDimension);
   idea.value=b.dataset.aiExample||"";
   saveDraft(idea.value);
@@ -293,6 +313,8 @@
   selectDimension(localStorage.getItem(MODE_KEY)||"auto");
  }catch{selectDimension("auto");}
  build.addEventListener("click",createGame);
+ window.addEventListener("pageshow",()=>{if(!busy&&readPending())void createGame();});
+ window.addEventListener("storage",e=>{if(e.key===PENDING_KEY&&!busy&&readPending())void createGame();});
  playTab.addEventListener("click",()=>{showTab("play");openGame();});
  codeTab.addEventListener("click",()=>showTab("code"));
  $("ai-run-code").addEventListener("click",runEdited);
@@ -311,4 +333,5 @@
  // When switching away, keep iframe sandboxed. Reopening creates a fresh
  // game document and resets gameplay, matching the Replay button behavior.
  showTab("play");
+ if(readPending())void createGame();
 })();

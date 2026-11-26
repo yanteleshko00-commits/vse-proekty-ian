@@ -596,16 +596,21 @@ test('long game generation returns a job immediately and polling retrieves real 
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const post=(body,asyncMode=false)=>fetch('http://127.0.0.1:'+server.address().port,{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'192.0.2.43',...(asyncMode?{'X-NEXORA-Async':'1'}:{})},body:JSON.stringify(body)});
  try{
-  const started=await post({idea:'Платформер на Луне',dimension:'2d'},true);
+  const requestId='abc12345-1234-4abc-8abc-123456789abc';
+  const started=await post({idea:'Платформер на Луне',dimension:'2d',requestId},true);
   assert.equal(started.status,202);
   const job=await started.json();
   assert.equal(job.pending,true);
-  assert.match(job.jobId,/^[a-f0-9-]{36}$/);
+  assert.equal(job.jobId,requestId);
+  const duplicate=await post({idea:'Платформер на Луне',dimension:'2d',requestId},true);
+  assert.equal(duplicate.status,202);assert.equal((await duplicate.json()).jobId,requestId);
   assert.equal((await post({jobId:job.jobId})).status,202);
   const missing=await post({jobId:'00000000-0000-4000-8000-000000000000'});
   assert.equal(missing.status,404);
   assert.equal((await missing.json()).error,'job_missing');
+  // Simulate leaving the site: no client polls while the model finishes.
   finish();
+  await new Promise(resolve=>setTimeout(resolve,50));
   let result;
   for(let i=0;i<20;i++){
    result=await post({jobId:job.jobId});
@@ -616,6 +621,8 @@ test('long game generation returns a job immediately and polling retrieves real 
   const game=await result.json();
   assert.equal(game.provider,'Gemini');
   assert.equal(game.html,html);
+  const recovered=await post({idea:'Платформер на Луне',dimension:'2d',requestId},true);
+  assert.equal(recovered.status,200);assert.equal((await recovered.json()).html,html);
   assert.equal(calls,1);
  }finally{
   finish();
@@ -744,4 +751,16 @@ test('Game Studio always prioritizes DeepSeek and Gemini above Alice',async()=>{
   process.env.GAME_GEMINI_MODEL='test-model';process.env.GAME_GEMINI_FALLBACK_MODEL='test-model';
   assert.deepEqual(gameTextProviders().filter(p=>p.kind).map(p=>p.name),['DeepSeek','Gemini']);
  }finally{for(const k of keys){if(previous[k]===undefined)delete process.env[k];else process.env[k]=previous[k];}}
+});
+
+
+test('browser persists a job before starting and resumes it after reopening',async()=>{
+ const source=await readFile(join(root,'public/game-builder.js'),'utf8');
+ assert.match(source,/const PENDING_KEY=/);
+ assert.match(source,/savePending\(pending\)[\s\S]*requestId:pending\.id/);
+ assert.match(source,/keepalive:true/);
+ assert.match(source,/if\(readPending\(\)\)void createGame\(\)/);
+ assert.match(source,/body:JSON\.stringify\(\{jobId:pending\.id\}\)/);
+ assert.match(source,/if\(terminal\)clearPending\(pending\.id\)/);
+ new vm.Script(source);
 });
