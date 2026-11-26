@@ -361,7 +361,7 @@ test('creation screen animates HTML code into a 3D scene without fake progress a
  assert.match(frontend,/function setLoader/);
  assert.match(frontend,/setLoader\(true\)/);
  assert.match(frontend,/setLoader\(false\)/);
- assert.match(frontend,/JSON\.stringify\(\{idea:description,dimension\}\)/);
+ assert.match(frontend,/JSON\.stringify\(\{idea:description,dimension:pending\.dimension,requestId:pending\.id\}\)/);
  assert.match(frontend,/localStorage\.getItem\(MODE_KEY\)/);
  assert.match(frontend,/nexora-game-look|3D WebGL-игру/);
  assert.doesNotMatch(frontend,/progress\s*=\s*100|setInterval\(.*progress/i);
