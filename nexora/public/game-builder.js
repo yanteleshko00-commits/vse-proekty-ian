@@ -66,6 +66,7 @@
  function revealGame(){
   const wrapper=frame.closest(".ai-game-frame");
   if(!wrapper)return;
+  if(playing&&matchMedia("(any-pointer:fine)").matches)frame.focus({preventScroll:true});
   wrapper.classList.remove("nx-real-reveal");
   void wrapper.offsetWidth;wrapper.classList.add("nx-real-reveal");
  }
@@ -147,12 +148,31 @@
  }
  function closeGame(){
   if(!playing)return;
-  playing=false;frame.src="about:blank";player.classList.remove("nx-game-playing");
+  releaseDesktop();playing=false;frame.src="about:blank";player.classList.remove("nx-game-playing");
   if(playerAnchor?.isConnected){playerAnchor.replaceWith(player);playerAnchor=null;}
   document.documentElement.style.overflow=restoreOverflow;document.body.style.overflow=restoreBodyOverflow;close.hidden=true;launch.hidden=false;launch.focus({preventScroll:true});
  }
  launch.addEventListener("click",openGame);close.addEventListener("click",closeGame);
- document.addEventListener("keydown",e=>{if(e.key==="Escape"&&playing){e.preventDefault();closeGame();}});
+ const desktopKeys=new Map();
+ const desktopDirection=e=>({KeyA:"left",KeyD:"right",KeyW:"up",KeyS:"down",ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",Space:"space"})[e.code];
+ function releaseDesktop(){for(const dir of new Set(desktopKeys.values()))control(dir,"up");desktopKeys.clear();}
+ document.addEventListener("keydown",e=>{
+  if(!playing||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.key==="Escape"){e.preventDefault();closeGame();return;}
+  if(e.target?.closest?.("input,textarea,select,[contenteditable]"))return;
+  if(e.code==="Space"&&e.target?.closest?.("button,a,[role=button]"))return;
+  const dir=desktopDirection(e);if(!dir)return;
+  e.preventDefault();const id=e.code;if(desktopKeys.has(id))return;
+  if(![...desktopKeys.values()].includes(dir))control(dir,"down");
+  desktopKeys.set(id,dir);
+ });
+ document.addEventListener("keyup",e=>{
+  const dir=desktopKeys.get(e.code);if(!dir)return;
+  desktopKeys.delete(e.code);if(![...desktopKeys.values()].includes(dir))control(dir,"up");
+ });
+ window.addEventListener("blur",releaseDesktop);
+ document.addEventListener("visibilitychange",()=>{if(document.hidden)releaseDesktop()});
+ window.addEventListener("message",e=>{if(playing&&e.source===frame.contentWindow&&e.data?.type==="nexora-game-exit")closeGame()});
  async function createGame(){
   if(busy)return;
   clearError();
@@ -234,8 +254,8 @@
    $("ai-source-label").classList.add("generated");
    $("ai-description").textContent="ИИ создал "+(renderedDimension==="3d"?"3D WebGL-игру":"игру")+" по вашему описанию. Исходный код доступен во вкладке «Код».";
    $("ai-control-hint").textContent=renderedDimension==="3d"
-    ?"В 3D: свайпайте по сцене для поворота камеры, экранные стрелки — движение, «Действие» — взаимодействие. На компьютере — WASD и мышь."
-    :"На телефоне проводите пальцем по игровому полю или держите стрелки. Нажмите «Действие» для прыжка/выстрела.";
+    ?"В 3D: свайпайте по сцене для поворота камеры, экранные стрелки — движение, «Действие» — взаимодействие. На компьютере — WASD/стрелки, пробел; удерживайте левую кнопку мыши или трекпада и перемещайте для обзора. Esc — выход."
+    :"На телефоне проводите пальцем по игровому полю или держите стрелки. Нажмите «Действие» для прыжка/выстрела. Компьютер: WASD, стрелки, пробел, мышь; Esc — выход.";
    setStatus("Проверяю начало игры, движение и видимость сцены…");
    $("nx-live-phase").textContent="Проверка игровых кадров и управления";
    await compileGame(raw,true);showReady();
@@ -320,7 +340,7 @@
  $("ai-run-code").addEventListener("click",runEdited);
  $("ai-download").addEventListener("click",saveGame);
  $("ai-restart").addEventListener("click",()=>{
-  if(ready&&playing&&previewUrl)frame.src=previewUrl;else openGame();
+  if(ready&&playing&&previewUrl){releaseDesktop();frame.addEventListener("load",revealGame,{once:true});frame.src=previewUrl;}else openGame();
  });
  $("ai-classic-toggle").addEventListener("click",()=>{
   if(playing)closeGame();$("ai-workspace").hidden=true;$("classic-workspace").hidden=false;

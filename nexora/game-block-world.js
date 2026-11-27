@@ -109,8 +109,8 @@ function action(){
  interact(x,Math.max(0,Math.min(HH-1,y)));
 }
 function key(event,on){
- const map={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",a:"left",d:"right",w:"up",s:"down"};
- const d=map[event.key];
+ const map={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",KeyA:"left",KeyD:"right",KeyW:"up",KeyS:"down",a:"left",d:"right",w:"up",s:"down"};
+ const d=map[event.code||event.key];
  if(d){
   event.preventDefault();
   if(on){keys.add(d);if(d==="up")jump();}
@@ -120,6 +120,7 @@ function key(event,on){
 }
 document.addEventListener("keydown",e=>key(e,true));
 document.addEventListener("keyup",e=>key(e,false));
+window.addEventListener("blur",()=>keys.clear());document.addEventListener("visibilitychange",()=>{if(document.hidden)keys.clear()});
 let pointer=null;
 canvas.addEventListener("pointerdown",e=>{
  pointer={x:e.clientX,y:e.clientY};

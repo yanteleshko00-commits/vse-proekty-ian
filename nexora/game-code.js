@@ -122,8 +122,37 @@ const ADAPTER=String.raw`<meta http-equiv="Content-Security-Policy" content="def
  document.addEventListener('touchend',finishTouch,{passive:true,capture:true});
  document.addEventListener('touchcancel',finishTouch,{passive:true,capture:true});
  function release(){for(const dir of Array.from(held))up(dir);touch=null;}
- window.addEventListener('blur',release);
- document.addEventListener('visibilitychange',()=>{if(document.hidden)release();});
+ const physical=new Map();
+ document.addEventListener('keydown',e=>{
+  if(!e.isTrusted||e.ctrlKey||e.metaKey||e.altKey||e.target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])'))return;
+  if(e.key==='Escape'&&parent!==window){e.preventDefault();parent.postMessage({type:'nexora-game-exit'},'*');return;}
+  if(!/^(Arrow(Left|Right|Up|Down)|Key[WASD]|Space)$/.test(e.code))return;
+  if(e.code==='Space'&&e.target?.closest?.('button,a,[role=button]'))return;
+  e.preventDefault();physical.set(e.code,{key:e.key,code:e.code,keyCode:e.keyCode});
+ },true);
+ document.addEventListener('keyup',e=>{if(e.isTrusted)physical.delete(e.code)},true);
+ let drag=null;
+ document.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='mouse'&&e.button===0&&e.target?.closest?.('canvas'))drag={id:e.pointerId,x:e.clientX,y:e.clientY};
+ },true);
+ document.addEventListener('pointermove',e=>{
+  if(!drag||drag.id!==e.pointerId)return;
+  if(!(e.buttons&1)){drag=null;return;}
+  const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
+  if(dx||dy)document.dispatchEvent(new CustomEvent('nexora-game-look',{detail:{dx,dy,source:'mouse'}}));
+ },true);
+ for(const name of ['pointerup','pointercancel','lostpointercapture'])document.addEventListener(name,e=>{if(drag?.id===e.pointerId)drag=null},true);
+ function releaseAll(){
+  release();drag=null;
+  for(const p of physical.values()){
+   const ev=new KeyboardEvent('keyup',{key:p.key,code:p.code,bubbles:true,cancelable:true});
+   try{Object.defineProperty(ev,'keyCode',{get:()=>p.keyCode})}catch{}
+   document.dispatchEvent(ev);
+  }
+  physical.clear();
+ }
+ window.addEventListener('blur',releaseAll);
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseAll();});
  window.addEventListener('load',()=>{if(!qaMode)return;
   setTimeout(()=>{
    if(runtimeFailed)return;
@@ -186,7 +215,8 @@ export function gameCodePrompt(idea,{dimension='auto'}={}){
   'Пиши компактно, но законченную игру в одном HTML-файле, по возможности до 14000 символов (3D WebGL может потребовать больше). Нужны настоящие игровые действия, игровое состояние, визуальный процесс, цель и прогресс, кнопка «Заново». Не делай макет или неподвижную демонстрацию.',
   'Для анимации используй requestAnimationFrame. Для 2D — canvas 2D или DOM; для настоящего 3D — WebGL/WebGL2 со встроенными шейдерами GLSL и матрицей перспективы/камерой (без библиотек). Для canvas ширина 720 высота 420, CSS width:100%; поддерживай экраны телефонов и viewport. Без внешнего доступа в сеть.',
   'На ВСЕХ играх сделай мобильное управление. Слушай document.addEventListener("keydown"/"keyup") со стрелками и WASD; для действия используй пробел и/или pointerdown на canvas. NEXORA переводит свайпы и экранные кнопки в стрелки и пробел. Для 3D-поворота камеры дополнительно слушай document.addEventListener("nexora-game-look",e=>{const {dx,dy}=e.detail; ...}) и меняй yaw/pitch, ограничивая угол pitch. Для игр с тапами сделай касания целей. Не зависни без управления на телефоне.',
-  'После нажатия Играть проверяй, что дорога/машина/персонажи и окружение остаются видимыми в течение всей игры. Для WebGL используй корректную перспективу, near/far, обновление камеры, gl.viewport при resize, gl.clearColor и gl.clear каждый кадр, проверку шейдеров, depth test и правильный порядок отрисовки. Не показывай лишь счётчик на пустом холсте. Не создавай свои экранные стрелки, если доступны стандартные стрелки NEXORA: используй клавиатурный мост и свайпы.',
+  'На компьютере используй event.code для WASD независимо от раскладки; для камеры только nexora-game-look (свайп или перетаскивание мышью/трекпадом), без двойного поворота. Очищай клавиши при blur.',
+   'После нажатия Играть проверяй, что дорога/машина/персонажи и окружение остаются видимыми в течение всей игры. Для WebGL используй корректную перспективу, near/far, обновление камеры, gl.viewport при resize, gl.clearColor и gl.clear каждый кадр, проверку шейдеров, depth test и правильный порядок отрисовки. Не показывай лишь счётчик на пустом холсте. Не создавай свои экранные стрелки, если доступны стандартные стрелки NEXORA: используй клавиатурный мост и свайпы.',
   'Код исполняется в iframe с непрозрачным origin: не используй localStorage, sessionStorage, parent/top, requestPointerLock, requestFullscreen, внешние ресурсы или сетевые запросы. Обрабатывай отсутствие WebGL и ошибки компиляции шейдеров. Инициализируй DOM после его создания.',
   'При первом запуске, если возможно, сделай короткое (до 1.2 секунды) появление реальных объектов своей игровой сцены по очереди: например, дорога, кузов автомобиля, колёса. Используй собственный рендер игры, а не отдельный ролик. Не блокируй управление и отключай эффект при prefers-reduced-motion.',
   'Показывай короткую инструкцию, понятные элементы интерфейса, хорошие контрастные цвета. Язык игры — русский. Если запрос можно выполнить только в ограниченной 2D-версии, реализуй наиболее важную механику, не выдавай её за полноценную коммерческую игру.',
@@ -209,7 +239,7 @@ export function compactGatewayGamePrompt(idea,dimension='auto'){
   'Ответ — ТОЛЬКО полный HTML от <!doctype html> до </html>, без markdown и пояснений. Все CSS и JavaScript в одном файле. Никаких библиотек, CDN, iframe, fetch, модулей и внешних ресурсов.',
   'Нужна работающая игра с целью, действиями игрока, взаимодействием и состоянием, очками или прогрессом, кнопкой перезапуска.',
   'Используй requestAnimationFrame. Для canvas ширина 720 высота 420 и CSS width:100%; интерфейс адаптивен на телефоне.',
-  'Управление стрелками, WASD и пробелом через document.addEventListener("keydown"/"keyup"). Свайпы NEXORA преобразует в стрелки; для 3D-камеры слушай CustomEvent "nexora-game-look" с detail.dx и detail.dy. Тапы по игровому полю — для действий.',
+  'Управление стрелками, WASD и пробелом через document.addEventListener("keydown"/"keyup"). Свайпы NEXORA преобразует в стрелки; для 3D-камеры слушай CustomEvent "nexora-game-look" с detail.dx и detail.dy. Тапы по игровому полю — для действий. Используй event.code для WASD независимо от раскладки; для камеры только nexora-game-look (свайп или перетаскивание мышью/трекпадом), без двойного поворота.',
   'Визуализация должна реально двигаться. Интерфейс на русском. Генерируй компактный рабочий код, не статичный макет.',
   'ОПИСАНИЕ ИГРЫ: '+String(idea||'').slice(0,500)
  ].join('\n').slice(0,2350);

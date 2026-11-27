@@ -276,23 +276,24 @@ document.querySelectorAll("[data-dir]").forEach(b=>{
 document.addEventListener("keydown",e=>{
  const tag=document.activeElement?.tagName;
  if(["INPUT","TEXTAREA","SELECT"].includes(tag))return;
- const dir={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",a:"left",d:"right",w:"up",s:"down"}[e.key];
+ const dir={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",KeyA:"left",KeyD:"right",KeyW:"up",KeyS:"down",a:"left",d:"right",w:"up",s:"down"}[e.code||e.key];
  if(dir){if(!plan)return;e.preventDefault();held.add(dir);direction(dir)}
- if(e.code==="Space"&&plan){e.preventDefault();if(status==="ready"||status==="finished")start();else pause()}
+ if(e.code==="Space"&&plan&&!e.repeat){e.preventDefault();if(status==="ready"||status==="finished")start();else pause()}
 });
-document.addEventListener("keyup",e=>{const dir={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",a:"left",d:"right",w:"up",s:"down"}[e.key];if(dir)held.delete(dir)});
+document.addEventListener("keyup",e=>{const dir={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",KeyA:"left",KeyD:"right",KeyW:"up",KeyS:"down",a:"left",d:"right",w:"up",s:"down"}[e.code||e.key];if(dir)held.delete(dir)});
 let pointerStart=null;
 canvas.addEventListener("pointerdown",e=>{
  if(!plan||status!=="playing")return;
  const box=canvas.getBoundingClientRect(),x=(e.clientX-box.left)*W/box.width,y=(e.clientY-box.top)*H/box.height;
- pointerStart={x,y};
+ if(e.pointerType==="mouse"&&e.button!==0)return;
+  pointerStart={x,y};try{canvas.setPointerCapture(e.pointerId)}catch{}
  if(plan.type==="target"){
   const t=session.target;
   if(t&&Math.hypot(x-t.x,y-t.y)<t.r+5){session.score+=10;session.hits++;spawnTarget()}else session.miss++;
  }else if(plan.type==="catch"){session.playerX=Math.max(44,Math.min(W-44,x))}
 });
 canvas.addEventListener("pointermove",e=>{
- if(plan?.type!=="catch"||status!=="playing"||!pointerStart)return;
+ if(plan?.type!=="catch"||status!=="playing"||(!pointerStart&&e.pointerType!=="mouse"))return;
  const box=canvas.getBoundingClientRect(),x=(e.clientX-box.left)*W/box.width;
  session.playerX=Math.max(44,Math.min(W-44,x));
 });
@@ -303,6 +304,10 @@ canvas.addEventListener("pointerup",e=>{
  }
  pointerStart=null;
 });
+canvas.addEventListener("pointercancel",()=>{pointerStart=null});
+canvas.addEventListener("lostpointercapture",()=>{pointerStart=null});
+window.addEventListener("blur",()=>{held.clear();pointerStart=null});
+document.addEventListener("visibilitychange",()=>{if(document.hidden){held.clear();pointerStart=null}});
 async function download(){
  if(!plan)return;
  $("download").disabled=true;

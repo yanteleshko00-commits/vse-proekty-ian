@@ -91,7 +91,7 @@ function render(){
  }
 }
 function key(e,down){
- const name={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",a:"left",d:"right",w:"up",s:"down"}[e.key];
+ const name={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down",KeyA:"left",KeyD:"right",KeyW:"up",KeyS:"down",a:"left",d:"right",w:"up",s:"down"}[e.code||e.key];
  if(!name)return;e.preventDefault();
  if(down){
   held.add(name);
@@ -114,6 +114,8 @@ canvas.addEventListener("pointerdown",e=>{
   }
  }else if(mode==="catch"){state.basket=x}
 });
+canvas.addEventListener("pointermove",e=>{if(mode==="catch"&&!state.over&&e.pointerType==="mouse"){const b=canvas.getBoundingClientRect();state.basket=Math.max(0,Math.min(W,(e.clientX-b.left)*W/b.width));}});
+window.addEventListener("blur",()=>held.clear());document.addEventListener("visibilitychange",()=>{if(document.hidden)held.clear()});
 document.getElementById("reset").addEventListener("click",reset);
 function loop(now){
  const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;
