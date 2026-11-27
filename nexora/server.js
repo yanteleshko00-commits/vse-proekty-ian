@@ -31,6 +31,7 @@ const clientSecret = process.env.OAUTH_CLIENT_SECRET || '';
 const sessionSecret = process.env.SESSION_SECRET || '';
 const production = process.env.NODE_ENV === 'production';
 const imageStudioUrl = (process.env.IMAGE_STUDIO_URL || 'https://nexora-image-studio.onrender.com').replace(/\/$/, '');
+const mathStudioUrl = (process.env.MATH_STUDIO_URL || 'https://nexora-math-studio-yan12312.msk1.amvera.tech').replace(/\/$/, '');
 
 function appUrl(req) {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
@@ -183,7 +184,7 @@ async function finishLogin(req, res, url) {
 
 const ARGOSHA_TOOLS = [
   { id: 'project', name: 'Сделать проект', status: 'available', description: 'Школьные проекты, презентации, доклады и документы.', url: 'https://vse-proekty-ian.onrender.com/' },
-  { id: 'solve', name: 'Решить задачу', status: 'available', description: 'Математика и геометрия с оформлением Дано — Найти — Решение — Ответ.', url: 'https://nexora-math-studio.onrender.com/' },
+  { id: 'solve', name: 'Решить задачу', status: 'available', description: 'Математика и геометрия с оформлением Дано — Найти — Решение — Ответ.', url: mathStudioUrl + '/' },
   { id: 'chat', name: 'NEXORA Chat', status: 'available', description: 'Удобный чат с ИИ, история диалогов и режим GPT.', url: '/chat' },
   { id: 'image', name: 'Создать картинку', status: 'available', description: 'Генерация и редактирование изображений.', url: imageStudioUrl + '/' },
   { id: 'text', name: 'Создать текст', status: 'available', description: 'Писать, переписывать и редактировать тексты.', url: 'https://nexora-text-studio.onrender.com/' },
@@ -823,6 +824,9 @@ const server = http.createServer(async (req, res) => {
     }), { 'Content-Type': 'application/json; charset=utf-8' });
   }
 
+  if (['/math', '/math/', '/math.html'].includes(url.pathname)) {
+    return redirect(res, mathStudioUrl + '/');
+  }
   if (['/image', '/image/', '/image.html'].includes(url.pathname)) {
     return redirect(res, imageStudioUrl + '/');
   }
@@ -927,7 +931,7 @@ const server = http.createServer(async (req, res) => {
       const html=await readFile(join(publicDir,'argosha-embed.html'));
       const parents=[
         'https://nexora-lobby.onrender.com','https://nexora-image-studio.onrender.com', new URL(imageStudioUrl).origin,
-        'https://nexora-math-studio.onrender.com','https://nexora-text-studio.onrender.com',
+        'https://nexora-math-studio.onrender.com',new URL(mathStudioUrl).origin,'https://nexora-text-studio.onrender.com',
         'https://vse-proekty-ian.onrender.com','https://vse-proekty-ian-1.onrender.com'
       ].join(' ');
       return send(res,200,html,{
