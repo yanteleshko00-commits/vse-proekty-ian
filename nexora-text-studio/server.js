@@ -10,7 +10,7 @@ import {decodeAttachments} from './attachments.js';
 
 const here=fileURLToPath(new URL('.',import.meta.url));
 const port=Number(process.env.PORT||10000);
-const lobby=(process.env.NEXORA_LOBBY_URL||'https://nexora-lobby.onrender.com').replace(/\/+$/,'');
+const lobby=(process.env.NEXORA_LOBBY_URL||'http://run-nexora-lobby').replace(/\/+$/,'');
 const key=(process.env.TEXT_BRIDGE_TOKEN||'').trim();
 const usage=new Map();
 let active=0;
@@ -52,7 +52,7 @@ const server=http.createServer(async(req,res)=>{
       res.writeHead(200,{
         'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=90',
         'X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin',
-        'Content-Security-Policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; frame-src https://nexora-lobby.onrender.com; frame-ancestors 'none'; form-action 'self'"
+        'Content-Security-Policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; frame-src https://nexora-lobby-yan12312.msk1.amvera.tech; frame-ancestors 'none'; form-action 'self'"
       });
       return res.end(html);
     }catch(error){console.error('Text Studio page unavailable:',error.message);return respond(res,500,{message:'Страница временно недоступна.'});}
