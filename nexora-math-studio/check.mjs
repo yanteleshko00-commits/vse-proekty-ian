@@ -156,6 +156,9 @@ try {
   const health = await response.json();
   assert.equal(health.service, 'nexora-math-studio');
   assert.equal(health.bridgeConfigured, false);
+  const diagnostic=await fetch('http://127.0.0.1:'+port+'/health?bridge=1');
+  assert.equal(diagnostic.status,200);
+  assert.deepEqual((await diagnostic.json()).bridge,{ok:false,reason:'token_missing'});
   const homepage = await fetch('http://127.0.0.1:' + port + '/');
   assert.equal(homepage.status, 200);
   assert.match(await homepage.text(), /NEXORA Math Studio/);
