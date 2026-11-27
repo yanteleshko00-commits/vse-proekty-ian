@@ -9,8 +9,31 @@ import { decodeAttachments } from './attachments.js';
 
 const port = Number(process.env.PORT || 10000);
 const here = fileURLToPath(new URL('.', import.meta.url));
-const lobby = (process.env.NEXORA_LOBBY_URL || 'https://nexora-lobby.onrender.com').replace(/\/+$/, '');
+const lobby = (process.env.NEXORA_LOBBY_URL || 'https://nexora-lobby-yan12312.msk1.amvera.tech').replace(/\/+$/, '');
 const bridgeToken = (process.env.MATH_BRIDGE_TOKEN || '').trim();
+let bridgeCheck=null, bridgeCheckAt=0, bridgeCheckPending=null;
+async function checkBridge(){
+  if(bridgeToken.length<32)return {ok:false,reason:'token_missing'};
+  if(bridgeCheck&&Date.now()-bridgeCheckAt<30000)return bridgeCheck;
+  if(bridgeCheckPending)return bridgeCheckPending;
+  bridgeCheckPending=(async()=>{
+    let result;
+    try{
+      const response=await fetch(lobby+'/api/math/internal/health',{
+        headers:{'x-nexora-math-key':bridgeToken},redirect:'error',signal:AbortSignal.timeout(8000)
+      });
+      if(response.status===403)result={ok:false,reason:'token_mismatch',status:403};
+      else if(!response.ok)result={ok:false,reason:'lobby_http_error',status:response.status};
+      else{
+        const data=await response.json();
+        const providers=Array.isArray(data.providers)?data.providers.filter(p=>['DeepSeek','OpenRouter','Groq'].includes(p)):[];
+        result=data.ok===true?{ok:providers.length>0,reason:providers.length?'ready':'providers_missing',providers}:{ok:false,reason:'unexpected_response'};
+      }
+    }catch{result={ok:false,reason:'lobby_unreachable'};}
+    bridgeCheck=result;bridgeCheckAt=Date.now();return result;
+  })();
+  try{return await bridgeCheckPending;}finally{bridgeCheckPending=null;}
+}
 const rates = new Map();
 let active = 0;
 function respond(res, code, data, headers = {}) {
@@ -51,6 +74,9 @@ const server = http.createServer(async (req, res) => {
   catch { return respond(res, 400, { message: 'Некорректный адрес.' }); }
   if(['/api/visitors/ping','/nexora-visitors.js','/internal/visitors/ingest'].includes(url.pathname)&&await handleAnalytics(req,res,url.pathname,{site:'nexora-math-studio'}))return;
   if(serveBrand(req,res,url.pathname,"NEXORA Math Studio"))return;
+  if (req.method === 'GET' && url.pathname === '/health' && url.searchParams.get('bridge')==='1') {
+    return respond(res,200,{ok:true,service:'nexora-math-studio',bridge:await checkBridge()});
+  }
   if (req.method === 'GET' && url.pathname === '/health') return respond(res, 200, {
     ok: true, service: 'nexora-math-studio', bridgeConfigured: bridgeToken.length >= 32
   });
@@ -102,13 +128,15 @@ async function solveMath(req,res){
         'Content-Type': 'application/json', 'x-nexora-math-key': bridgeToken
       },
       body: JSON.stringify({ problem: combinedProblem, kind, grade, level, textbook, images: attachments.images }),
-      signal: AbortSignal.timeout(attachments.images.length ? 165000 : 102000)
+      redirect: 'error', signal: AbortSignal.timeout(attachments.images.length ? 250000 : 160000)
     });
+    console.info('Math gateway response:',upstream.status);
+    if(upstream.status===403)return respond(res,503,{error:'bridge_auth_failed',message:'Ошибка настройки связи Math Studio и NEXORA Lobby: проверьте одинаковый MATH_BRIDGE_TOKEN.'});
     const json = await upstream.json().catch(() => null);
     if(!json||typeof json!=='object'||Array.isArray(json))return respond(res,502,{message:'ИИ вернул некорректный ответ. Попробуйте ещё раз.'});
     return respond(res, upstream.status, json);
   } catch (error) {
-    console.error('Math Studio gateway failed:', error.message);
+    console.error('Math Studio gateway failed:', error.name, error.cause?.code || '');
     return respond(res, 502, { message: 'Не удалось связаться с ИИ. Попробуйте ещё раз.' });
   }
   } finally { active--; }
