@@ -18,7 +18,10 @@ assert.match(html,/greeting\.hidden=false/);
 assert.match(html,/argosha\/embed\?studio=math/);
 assert.match(html,/class="nx-argosha-frame"/);
 const mathServerText=await readFile(join(dir,'server.js'),'utf8');
-assert.match(mathServerText,/frame-src https:\/\/nexora-lobby\.onrender\.com/);
+const lobbyOrigin='https://nexora-lobby-yan12312.msk1.amvera.tech';
+assert.ok(mathServerText.includes('frame-src '+lobbyOrigin+';'),'CSP must allow the Amvera lobby');
+assert.ok(html.includes('href="'+lobbyOrigin+'/"'),'Return link must open the Amvera lobby');
+assert.ok(html.includes('src="'+lobbyOrigin+'/argosha/embed?'),'Embedded assistant must use the Amvera lobby');
 for(const id of ["nxquiz","nxq-next","nxq-back","nxq-skip","nxq-question","nxq-preview","nxq-options","nxq-book"])
  assert.ok(html.includes('id="'+id+'"'),'Missing quiz item '+id);
 assert.match(html,/role="dialog" aria-modal="true"/);
