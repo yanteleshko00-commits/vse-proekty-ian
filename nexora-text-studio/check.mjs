@@ -24,7 +24,7 @@ assert.match(html,/sessionStorage\.setItem\(key,"seen"\)/);
 assert.match(html,/greeting\.hidden=false/);
 assert.match(html,/argosha\/embed\?studio=text/);
 const textServerSource=await readFile(join(here,'server.js'),'utf8');
-assert.match(textServerSource,/frame-src https:\/\/nexora-lobby\.onrender\.com/);
+assert.match(textServerSource,/frame-src https:\/\/nexora-lobby-yan12312\.msk1\.amvera\.tech/);
 const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(js,'Client script is missing');
 new vm.Script(js);
