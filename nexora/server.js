@@ -185,7 +185,7 @@ const ARGOSHA_TOOLS = [
   { id: 'project', name: 'Сделать проект', status: 'available', description: 'Школьные проекты, презентации, доклады и документы.', url: 'https://vse-proekty-ian.onrender.com/' },
   { id: 'solve', name: 'Решить задачу', status: 'available', description: 'Математика и геометрия с оформлением Дано — Найти — Решение — Ответ.', url: 'https://nexora-math-studio.onrender.com/' },
   { id: 'chat', name: 'NEXORA Chat', status: 'available', description: 'Удобный чат с ИИ, история диалогов и режим GPT.', url: '/chat' },
-  { id: 'image', name: 'Создать картинку', status: 'available', description: 'Генерация и редактирование изображений.', url: 'https://nexora-image-studio.onrender.com/' },
+  { id: 'image', name: 'Создать картинку', status: 'available', description: 'Генерация и редактирование изображений.', url: imageStudioUrl + '/' },
   { id: 'text', name: 'Создать текст', status: 'available', description: 'Писать, переписывать и редактировать тексты.', url: 'https://nexora-text-studio.onrender.com/' },
   { id: 'game', name: 'Сделать игру', status: 'available', description: 'Создавать и запускать мини-игры с ИИ.', url: '/game' }
 ];
@@ -926,7 +926,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const html=await readFile(join(publicDir,'argosha-embed.html'));
       const parents=[
-        'https://nexora-lobby.onrender.com','https://nexora-image-studio.onrender.com',
+        'https://nexora-lobby.onrender.com','https://nexora-image-studio.onrender.com', new URL(imageStudioUrl).origin,
         'https://nexora-math-studio.onrender.com','https://nexora-text-studio.onrender.com',
         'https://vse-proekty-ian.onrender.com','https://vse-proekty-ian-1.onrender.com'
       ].join(' ');
