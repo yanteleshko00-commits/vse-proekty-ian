@@ -453,6 +453,25 @@ body :is(.formula,.math-equation,.formula-part span,.stacked-fraction,.paper-equ
 @media(max-width:600px){.nx-redesign .intro,.nx-redesign .hero{border-radius:21px}.nx-redesign .intro h1,.nx-redesign .hero h1{font-size:clamp(32px,9vw,46px)}.nx-redesign .card,.nx-redesign .workspace>.panel{border-radius:18px}.nx-redesign :where(.site-footer,.footer,main>footer){margin-top:28px;flex-wrap:wrap;padding-bottom:calc(25px + env(safe-area-inset-bottom))}}
 .nx-redesign .math-paper{box-shadow:0 14px 34px rgba(46,32,78,.10)}.nx-redesign .modes{gap:7px}.nx-redesign .mode{min-height:40px}.nx-redesign .examples{gap:7px}.nx-redesign .stage{border-radius:17px}
 </style>
+<style id="nx-desktop-layout-v1">
+
+/* NEXORA desktop layout: keep mobile rules and application behavior intact. */
+@media screen and (min-width: 1000px) {
+  .nx-redesign { -webkit-font-smoothing: antialiased; }
+  .nx-redesign :where(button,a,input,select,textarea):focus-visible { outline: 2px solid var(--nx-accent,#6867dc); outline-offset: 3px; }
+  .nx-redesign :where(pre) { max-width:100%; overflow-x:auto; }
+  .nx-redesign :where(.workspace,.layout,.ai-workspace,.grid) > * { min-width:0; }
+  .nx-redesign :where(.result,.message-body) { overflow-wrap:anywhere; }
+}
+@media screen and (min-width:1000px){
+.nx-redesign .wrap{width:min(1480px,calc(100% - 64px));max-width:100%}
+.nx-redesign .workspace{grid-template-columns:minmax(330px,.84fr) minmax(0,1.16fr);gap:clamp(18px,2vw,30px)}
+.nx-redesign .intro{min-height:0;gap:clamp(24px,3vw,42px)}
+.nx-redesign .stage{min-height:clamp(360px,54vh,620px)}
+.nx-redesign .result{min-width:0}
+}
+@media screen and (min-width:1000px) and (max-height:850px){.nx-redesign .top-inner{height:64px}.nx-redesign .intro{padding-block:22px}.nx-redesign .stage{min-height:360px}}
+</style>
 </head>
 <body class="nx-redesign">
 <header class="topbar"><div class="wrap top-inner">

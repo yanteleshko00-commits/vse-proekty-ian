@@ -41,7 +41,26 @@
 
 <link rel="stylesheet" href="/assets/project-style-8.css" id="lobby-home-style">
 <link rel="stylesheet" href="/assets/project-style-9.css" id="nx-result-viewer-style">
-<link rel="stylesheet" href="/assets/project-style-10.css"><link rel="icon" type="image/svg+xml" href="/nexora-mark.svg?v=2"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2"><link rel="manifest" href="/nexora.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="stylesheet" href="/assets/project-style-11.css"><link rel="stylesheet" href="/assets/nexora-design.css?v=4"><script src="/nexora-visitors.js" defer></script></head>
+<link rel="stylesheet" href="/assets/project-style-10.css"><link rel="icon" type="image/svg+xml" href="/nexora-mark.svg?v=2"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2"><link rel="manifest" href="/nexora.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="stylesheet" href="/assets/project-style-11.css"><link rel="stylesheet" href="/assets/nexora-design.css?v=4"><script src="/nexora-visitors.js" defer></script><style id="nx-desktop-layout-v1">
+
+/* NEXORA desktop layout: keep mobile rules and application behavior intact. */
+@media screen and (min-width: 1000px) {
+  .nx-redesign { -webkit-font-smoothing: antialiased; }
+  .nx-redesign :where(button,a,input,select,textarea):focus-visible { outline: 2px solid var(--nx-accent,#6867dc); outline-offset: 3px; }
+  .nx-redesign :where(pre) { max-width:100%; overflow-x:auto; }
+  .nx-redesign :where(.workspace,.layout,.ai-workspace,.grid) > * { min-width:0; }
+  .nx-redesign :where(.result,.message-body) { overflow-wrap:anywhere; }
+}
+@media screen and (min-width:1000px){
+.nx-redesign .container{width:min(1380px,calc(100% - 64px));max-width:100%}
+.nx-redesign .nx-project-hero{gap:clamp(24px,3vw,44px)}
+.nx-redesign .generator .grid{gap:18px}
+.nx-redesign .generator .field{min-width:0}
+.nx-redesign .project-result{min-width:0;overflow-wrap:anywhere}
+}
+@media screen and (min-width:1000px) and (max-height:850px){.nx-redesign .nx-project-hero{padding:24px}.nx-redesign .hero{padding-block:30px}}
+</style>
+</head>
 <body class="nx-redesign">
 
 <header><div class="container hi">
