@@ -8,10 +8,10 @@ const digest=value=>createHash('sha256').update(value).digest('hex');
 export function createStudioTicketStore({directory=process.env.NEXORA_SSO_TICKET_DIR||'',clock=Date.now,capacity=1000,ttl=60000}={}){
  const memory=new Map();
  const filename=id=>join(directory,digest(id)+'.json');
- async function issue({state,userId,sessionId}){
+ async function issue({state,userId,sessionId,studio='image'}){
   if(!valid(state)||!userId||!sessionId)throw Error('Invalid ticket data');
   const now=clock(),ticket=randomBytes(32).toString('base64url');
-  const data={state,userId,sessionId,expiresAt:now+ttl};
+  const data={state,userId,sessionId,studio,expiresAt:now+ttl};
   if(!directory){
    for(const [id,t] of memory)if(t.expiresAt<=now)memory.delete(id);
    if(memory.size>=capacity)return null;
@@ -27,9 +27,9 @@ export function createStudioTicketStore({directory=process.env.NEXORA_SSO_TICKET
   if(count>=capacity)return null;
   await writeFile(filename(ticket),JSON.stringify(data),{mode:0o600,flag:'wx'});return ticket;
  }
- async function consume(ticket,state){
+ async function consume(ticket,state,studio='image'){
   if(!valid(ticket)||!valid(state))return null;
-  const now=clock(),matches=t=>t&&t.expiresAt>now&&t.state===state&&t.userId&&t.sessionId;
+  const now=clock(),matches=t=>t&&t.expiresAt>now&&t.state===state&&(t.studio||'image')===studio&&t.userId&&t.sessionId;
   if(!directory){const key=digest(ticket),data=memory.get(key);if(!matches(data))return null;memory.delete(key);return data;}
   const file=filename(ticket);
   let data;try{data=JSON.parse(await readFile(file,'utf8'));}catch(error){if(error.code==='ENOENT')return null;throw error;}

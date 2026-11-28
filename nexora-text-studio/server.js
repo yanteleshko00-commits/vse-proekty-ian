@@ -1,3 +1,4 @@
+import {studioAccount} from './studio-account.js';
 import {serviceConfig,publicHtml,boundedInt,allowStartupSmoke,createRateLimiter,clientIP} from './runtime-config.js';
 const serviceUrls=serviceConfig();
 import {readPublicFile,sendPublicAsset} from './public-performance.js';
@@ -15,6 +16,7 @@ const here=fileURLToPath(new URL('.',import.meta.url));
 const port=Number(process.env.PORT||10000);
 const lobby=serviceUrls.lobby;
 const key=(process.env.TEXT_BRIDGE_TOKEN||'').trim();
+const account=studioAccount({name:'text',lobby,key:key});
 const concurrency=boundedInt(process.env.TEXT_CONCURRENCY,4,1,8);
 const rate=createRateLimiter({minute:boundedInt(process.env.TEXT_RATE_MINUTE,4,1,60),hour:boundedInt(process.env.TEXT_RATE_HOUR,24,1,600)});
 let active=0;
@@ -34,12 +36,13 @@ async function getJSON(req){
   }
   return JSON.parse(Buffer.concat(items).toString('utf8')||'{}');
 }
-const backgroundText=backgroundJSON('text',generateText,{maxActive:concurrency,maxBody:10500000});
+const backgroundText=backgroundJSON('text',(req,res)=>account.run(req,res,generateText),{maxActive:concurrency,maxBody:10500000});
 const server=http.createServer(async(req,res)=>{
   let url;
   try{url=new URL(req.url||'/','http://localhost');}
   catch{return respond(res,400,{message:'Некорректный адрес.'});}
   if(['/api/visitors/ping','/nexora-visitors.js','/internal/visitors/ingest'].includes(url.pathname)&&await handleAnalytics(req,res,url.pathname,{site:'nexora-text-studio'}))return;
+  if(await account.route(req,res,url))return;
   if(serveBrand(req,res,url.pathname,"NEXORA Text Studio"))return;
   if(req.method==='GET'&&url.pathname==='/health')return respond(res,200,{ok:true,service:'nexora-text-studio',bridgeConfigured:key.length>=32,concurrency:{active,max:concurrency}});
   if(req.method==='GET'&&(url.pathname==='/'||url.pathname==='/index.html')){

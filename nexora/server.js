@@ -132,7 +132,8 @@ async function startLogin(req, res) {
   const requestedMode = new URL(req.url, appUrl(req)).searchParams.get('mode');
   if (requestedMode === 'register') params.set('mode', 'register');
   const imageState=new URL(req.url,appUrl(req)).searchParams.get('image_state')||'';
-  const oauthCookie = Buffer.from(JSON.stringify({ state, verifier, redirectUri, imageState:/^[A-Za-z0-9_-]{43}$/.test(imageState)?imageState:null })).toString('base64url');
+  const requestedStudio=new URL(req.url,appUrl(req)).searchParams.get('studio');
+  const oauthCookie = Buffer.from(JSON.stringify({ state, verifier, redirectUri, studio:['image','math','text'].includes(requestedStudio)?requestedStudio:'image', imageState:/^[A-Za-z0-9_-]{43}$/.test(imageState)?imageState:null })).toString('base64url');
   const cookieHeaders = [cookie('nexora_oauth', oauthCookie, 300)];
   if (!cookies.ecosystem_device) cookieHeaders.push(cookie('ecosystem_device', deviceToken, 315360000));
   const headers = { 'Set-Cookie': cookieHeaders };
@@ -177,7 +178,7 @@ async function finishLogin(req, res, url) {
         cookie('nexora_oauth', '', 0)
       ]
     };
-    redirect(res, /^[A-Za-z0-9_-]{43}$/.test(oauth.imageState||'')?'/auth/image?state='+encodeURIComponent(oauth.imageState):'/', headers);
+    redirect(res, /^[A-Za-z0-9_-]{43}$/.test(oauth.imageState||'')?'/auth/'+(['image','math','text'].includes(oauth.studio)?oauth.studio:'image')+'?state='+encodeURIComponent(oauth.imageState):'/', headers);
   } catch (error) {
     console.error('NEXORA OAuth request failed:', error.message);
     redirect(res, '/?login=failed', { 'Set-Cookie': cookie('nexora_oauth', '', 0) });
@@ -224,8 +225,8 @@ async function finalizeArgoshaUsage(reservationId, outcome) {
 const studioTickets=createStudioTicketStore();
 const studioAuthSecret=()=>String(process.env.NEXORA_STUDIO_AUTH_TOKEN||process.env.NEXORA_IMAGE_RELAY_TOKEN||'').trim();
 const studioHeaders={'Content-Type':'application/json; charset=utf-8','Referrer-Policy':'no-referrer'};
-function studioTokenValid(value){
-  const secret=studioAuthSecret();
+function studioTokenValid(value,studio='image'){
+  const secret=studio==='text'?String(process.env.TEXT_BRIDGE_TOKEN||'').trim():studio==='math'?String(process.env.MATH_BRIDGE_TOKEN||'').trim():studioAuthSecret();
   if(typeof value!=='string'||secret.length<32)return false;
   const a=Buffer.from(value),b=Buffer.from(secret);
   return a.length===b.length&&crypto.timingSafeEqual(a,b);
@@ -237,32 +238,34 @@ async function authSessionCall(path,body){
   if(!response.ok)throw Object.assign(Error(data.error==='no_credits'?'Бесплатные генерации закончились. Выберите пакет.':'Не удалось подтвердить сессию NEXORA ID.'),{status:response.status===401||response.status===404?401:response.status===402?402:503});
   return data;
 }
-async function studioLogin(req,res,url){
+async function studioLogin(req,res,url,studio='image'){
   const state=url.searchParams.get('state')||'';
   if(!/^[A-Za-z0-9_-]{43}$/.test(state))return send(res,400,'Некорректный запрос.');
-  if(studioAuthSecret().length<32)return send(res,503,'Авторизация студии ещё не настроена.');
+  const token=studio==='text'?process.env.TEXT_BRIDGE_TOKEN:studio==='math'?process.env.MATH_BRIDGE_TOKEN:studioAuthSecret();
+  if(String(token||'').trim().length<32)return send(res,503,'Авторизация студии ещё не настроена.');
   const account=readSession(req);
-  if(!account?.sessionId)return redirect(res,'/auth/start?image_state='+encodeURIComponent(state));
+  if(!account?.sessionId)return redirect(res,'/auth/start?image_state='+encodeURIComponent(state)+'&studio='+studio);
   try{await authSessionCall('/v1/internal/session/validate',{userId:account.id,sessionId:account.sessionId});}
-  catch(error){if(error.status===401)return redirect(res,'/auth/start?image_state='+encodeURIComponent(state));return send(res,503,'NEXORA ID временно недоступен.');}
+  catch(error){if(error.status===401)return redirect(res,'/auth/start?image_state='+encodeURIComponent(state)+'&studio='+studio);return send(res,503,'NEXORA ID временно недоступен.');}
   let ticket;
-  try{ticket=await studioTickets.issue({state,userId:account.id,sessionId:account.sessionId});}
+  try{ticket=await studioTickets.issue({state,userId:account.id,sessionId:account.sessionId,studio});}
   catch(error){console.warn('Studio ticket storage unavailable:',error.name);return send(res,503,'Авторизация студии временно недоступна.');}
   if(!ticket)return send(res,429,'Повторите попытку позже.');
-  return redirect(res,imageStudioUrl+'/auth/callback?ticket='+encodeURIComponent(ticket)+'&state='+encodeURIComponent(state),{'Referrer-Policy':'no-referrer'});
+  return redirect(res,serviceUrls[studio]+'/auth/callback?ticket='+encodeURIComponent(ticket)+'&state='+encodeURIComponent(state),{'Referrer-Policy':'no-referrer'});
 }
 async function studioInternal(req,res){
-  if(!studioTokenValid(req.headers['x-nexora-studio-token']))return send(res,403,JSON.stringify({error:'forbidden'}),studioHeaders);
+  const studio=String(req.headers['x-nexora-studio']||'image');
+  if(!['image','text','math'].includes(studio)||!studioTokenValid(req.headers['x-nexora-studio-token'],studio))return send(res,403,JSON.stringify({error:'forbidden'}),studioHeaders);
   try{
     const body=await readJson(req,4096);
     if(body.action==='exchange'){
-      const t=await studioTickets.consume(body.ticket,body.state);
+      const t=await studioTickets.consume(body.ticket,body.state,studio);
       if(!t||t.expiresAt<=Date.now()||t.state!==body.state)return send(res,401,JSON.stringify({error:'invalid_ticket'}),studioHeaders);
       return send(res,200,JSON.stringify({userId:t.userId,sessionId:t.sessionId}),studioHeaders);
     }
     if(body.action==='reserve'){
       await authSessionCall('/v1/internal/session/validate',{userId:body.userId,sessionId:body.sessionId});
-      const reservationId=await reserveArgoshaUsage(body.userId,crypto.randomUUID(),body.sessionId,'image');
+      const reservationId=await reserveArgoshaUsage(body.userId,crypto.randomUUID(),body.sessionId,studio);
       return send(res,200,JSON.stringify({reservationId}),studioHeaders);
     }
     if(body.action==='finalize'&&/^[0-9a-f-]{36}$/i.test(body.reservationId||'')&&['success','failure'].includes(body.outcome)){
@@ -886,7 +889,7 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (url.pathname === '/auth/image' && req.method === 'GET') return studioLogin(req,res,url);
+  if (['/auth/image','/auth/math','/auth/text'].includes(url.pathname) && req.method === 'GET') return studioLogin(req,res,url,url.pathname.split('/').at(-1));
   if (url.pathname === '/internal/studio-auth' && req.method === 'POST') return studioInternal(req,res);
   if (url.pathname === '/auth/start' && req.method === 'GET') return startLogin(req, res);
   if (url.pathname === '/auth/callback' && req.method === 'GET') return finishLogin(req, res, url);
