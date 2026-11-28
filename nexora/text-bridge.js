@@ -154,6 +154,11 @@ export async function textBridge(req,res){
           continue;
         }
         const text=readTextResponse(answer);
+        if(params.language==='en'){
+          const latin=(text.match(/\p{Script=Latin}/gu)||[]).length;
+          const cyrillic=(text.match(/\p{Script=Cyrillic}/gu)||[]).length;
+          if(cyrillic>20&&cyrillic>latin){lastFailure='wrong_output_language';console.warn('Text provider returned wrong language:',p.name);continue;}
+        }
         if(p.name==='DeepSeek')await verifyDeepSeek('text',buildTextUserMessage(params),text,{finish:answer.choices?.[0]?.finish_reason});
         return respond(res,200,{ok:true,text,provider:p.name,stats:summarizeTextStats(text)});
       }catch(error){
