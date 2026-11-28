@@ -11,4 +11,7 @@ jobs:
       - run: |
           node --check server.js
           for dir in nexora nexora-image-studio nexora-text-studio nexora-math-studio; do node --check "$dir/server.js"; node --check "$dir/runtime-config.js"; done
+          node --check nexora/start.js
+          node --check nexora-image-studio/start.js
           node --test test/runtime-config.test.mjs
+          node scripts/build-project-css.mjs --check

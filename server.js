@@ -2426,7 +2426,7 @@ app.use((req,res,next)=>{if(!serveBrand(req,res,req.path,"Все проекты 
 // Limit compression to public version-independent UI files.
 app.use(async(req,res,next)=>{
  if(!['GET','HEAD'].includes(req.method))return next();
- const name=req.path==='/'||req.path==='/index.html'?'index.html':/^\/assets\/(?:project-(?:style|script)-\d+\.(?:css|js)|project-actions\.js|nexora-design\.css|argosha-mobile\.(?:css|js))$/.test(req.path)?req.path.slice(1):null;
+ const name=req.path==='/'||req.path==='/index.html'?'index.html':/^\/assets\/(?:project-(?:style|script)-\d+\.(?:css|js)|project-core\.css|project-actions\.js|nexora-design\.css|argosha-mobile\.(?:css|js))$/.test(req.path)?req.path.slice(1):null;
  if(!name)return next();
  try{
   const raw=await readPublicFile(path.join(publicDir,name));
