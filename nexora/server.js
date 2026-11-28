@@ -1,3 +1,4 @@
+import {createStudioTicketStore} from './studio-ticket-store.js';
 import {serviceConfig,publicHtml,boundedInt,allowStartupSmoke,createRateLimiter,clientIP} from './runtime-config.js';
 const serviceUrls=serviceConfig();
 import {readPublicFile,sendPublicAsset} from './public-performance.js';
@@ -220,7 +221,7 @@ async function finalizeArgoshaUsage(reservationId, outcome) {
   if (!response.ok) throw new Error('Не удалось завершить учёт генерации: HTTP ' + response.status);
 }
 // Studio SSO tickets are one-time, state-bound and exchanged only by the studio backend.
-const studioTickets=new Map();
+const studioTickets=createStudioTicketStore();
 const studioAuthSecret=()=>String(process.env.NEXORA_STUDIO_AUTH_TOKEN||process.env.NEXORA_IMAGE_RELAY_TOKEN||'').trim();
 const studioHeaders={'Content-Type':'application/json; charset=utf-8','Referrer-Policy':'no-referrer'};
 function studioTokenValid(value){
@@ -244,10 +245,10 @@ async function studioLogin(req,res,url){
   if(!account?.sessionId)return redirect(res,'/auth/start?image_state='+encodeURIComponent(state));
   try{await authSessionCall('/v1/internal/session/validate',{userId:account.id,sessionId:account.sessionId});}
   catch(error){if(error.status===401)return redirect(res,'/auth/start?image_state='+encodeURIComponent(state));return send(res,503,'NEXORA ID временно недоступен.');}
-  for(const [key,t] of studioTickets)if(t.expiresAt<=Date.now())studioTickets.delete(key);
-  if(studioTickets.size>=1000)return send(res,429,'Повторите попытку позже.');
-  const ticket=secureRandom(32);
-  studioTickets.set(ticket,{state,userId:account.id,sessionId:account.sessionId,expiresAt:Date.now()+60000});
+  let ticket;
+  try{ticket=await studioTickets.issue({state,userId:account.id,sessionId:account.sessionId});}
+  catch(error){console.warn('Studio ticket storage unavailable:',error.name);return send(res,503,'Авторизация студии временно недоступна.');}
+  if(!ticket)return send(res,429,'Повторите попытку позже.');
   return redirect(res,imageStudioUrl+'/auth/callback?ticket='+encodeURIComponent(ticket)+'&state='+encodeURIComponent(state),{'Referrer-Policy':'no-referrer'});
 }
 async function studioInternal(req,res){
@@ -255,9 +256,8 @@ async function studioInternal(req,res){
   try{
     const body=await readJson(req,4096);
     if(body.action==='exchange'){
-      const t=studioTickets.get(body.ticket);
+      const t=await studioTickets.consume(body.ticket,body.state);
       if(!t||t.expiresAt<=Date.now()||t.state!==body.state)return send(res,401,JSON.stringify({error:'invalid_ticket'}),studioHeaders);
-      studioTickets.delete(body.ticket);
       return send(res,200,JSON.stringify({userId:t.userId,sessionId:t.sessionId}),studioHeaders);
     }
     if(body.action==='reserve'){
