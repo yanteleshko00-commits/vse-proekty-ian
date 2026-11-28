@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { Script } from 'node:vm';
 import { createProjectSecurity } from '../project-security.js';
+import { handleAnalytics } from '../nexora/visitor-analytics.js';
 
 test('project page has external scripts and no inline JavaScript handlers',async()=>{
  const html=await fs.readFile(new URL('../public/index.html',import.meta.url),'utf8');
@@ -10,7 +11,16 @@ test('project page has external scripts and no inline JavaScript handlers',async
  for(const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){
   assert.equal(match[2].trim(),'');
   const src=match[1].match(/src="([^"]+)"/)?.[1];assert.ok(src);
-  new Script(await fs.readFile(new URL('../public'+src,import.meta.url),'utf8'));
+  const pathname=new URL(src,'http://localhost').pathname;
+  if(pathname==='/nexora-visitors.js'){
+   let body,status,headers;
+   const response={writeHead(code,value){status=code;headers=value;},end(value){body=value;}};
+   assert.equal(await handleAnalytics({method:'GET'},response,pathname,{site:'project-test'}),true);
+   assert.equal(status,200);assert.match(headers['Content-Type'],/javascript/);new Script(String(body));
+  }else{
+   assert.ok(src.startsWith('/assets/'),'Unexpected external script: '+src);
+   new Script(await fs.readFile(new URL('../public'+pathname,import.meta.url),'utf8'));
+  }
  }
 });
 test('project session is signed, requires an ID and excludes stale account balances',()=>{
