@@ -9,3 +9,5 @@ Image concurrency defaults to 2 (configurable 1–4); text/math to 4 (1–8). Co
 For persistent jobs, configure mounted storage with GENERATION_JOBS_DIR=/var/data/generation-jobs (projects) and NEXORA_JOB_DIR=/var/data/nexora-jobs (studios). Free ephemeral storage cannot guarantee recovery across deployments. One-time studio tickets remain process-local; a shared transactional store requires infrastructure and migration. Never disable TLS validation. Provision a trusted PEM bundle using NODE_EXTRA_CA_CERTS for stable GigaChat CA handling.
 
 Project CSS sections 1–11 are served as one bundle in original order. Edit the source sections and regenerate with node scripts/build-project-css.mjs. Sections 12–13 have different document positions and remain separate to preserve cascade.
+
+The project job store lives in generation-job-store.js. Its tests recreate the store using the same directory, verify owner isolation, artifacts, expiration and interruption handling; this does not simulate a hosting provider deleting the volume. To distribute edits to shared standalone modules, run node scripts/sync-studio-modules.mjs.

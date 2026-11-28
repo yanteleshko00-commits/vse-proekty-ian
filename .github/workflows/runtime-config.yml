@@ -13,7 +13,8 @@ jobs:
           for dir in nexora nexora-image-studio nexora-text-studio nexora-math-studio; do node --check "$dir/server.js"; node --check "$dir/runtime-config.js"; done
           node --check nexora/start.js
           node --check nexora-image-studio/start.js
-          node --test test/runtime-config.test.mjs
+          node --check generation-job-store.js
+          node --test test/runtime-config.test.mjs test/generation-job-store.test.mjs
           node scripts/build-project-css.mjs --check
   studio-checks:
     runs-on: ubuntu-latest
