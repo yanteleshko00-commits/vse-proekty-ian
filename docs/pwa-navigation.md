@@ -1,0 +1,2 @@
+# Installed NEXORA navigation
+The glass dock is visible only when the top-level page reports display-mode: standalone or iOS navigator.standalone. Browser pages retain their normal layout. Seven links, Lobby centered. No admin routes are modified. Cross-origin links may open a browser or an external window. Lobby Chat and Game remain same-origin. Studio installations have their own dock. A single-origin gateway would be required for seamless cross-origin app navigation without relaxing frame protections.

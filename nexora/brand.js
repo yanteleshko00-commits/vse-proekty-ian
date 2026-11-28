@@ -1,3 +1,5 @@
+import {readFileSync} from 'node:fs';
+const appDockScript=readFileSync(new URL('./app-dock.js',import.meta.url));
 import {deflateSync} from 'node:zlib';
 // NEXORA: single ribbon mark, flat indigo and lavender, no external assets.
 export const brandSVG='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="NEXORA"><rect width="128" height="128" rx="28" fill="#17132d"/><path d="M39 88V40M89 40V88" fill="none" stroke="#7656cf" stroke-width="17" stroke-linecap="round"/><path d="M39 40L89 88" fill="none" stroke="#c4a7ff" stroke-width="17" stroke-linecap="round"/></svg>';
@@ -36,7 +38,8 @@ export function brandPNG(size,admin=false){
 export function serveBrand(req,res,pathname,name='NEXORA'){
  if(!['GET','HEAD'].includes(req.method))return false;
  let body,type;
- if(pathname==='/nexora-mark.svg'||pathname==='/favicon.ico'){body=brandSVG;type='image/svg+xml';}
+ if(pathname==='/nexora-app-dock.js'){body=appDockScript;type='text/javascript; charset=utf-8';}
+ else if(pathname==='/nexora-mark.svg'||pathname==='/favicon.ico'){body=brandSVG;type='image/svg+xml';}
  else if(pathname==='/nexora-admin-mark.svg'){body=adminBrandSVG;type='image/svg+xml';}
  else if(['/admin-icon-180.png','/admin-icon-192.png','/admin-icon-512.png'].includes(pathname)){body=brandPNG(pathname.includes('192')?192:pathname.includes('512')?512:180,true);type='image/png';}
  else if(['/apple-touch-icon.png','/icon-192.png','/icon-512.png'].includes(pathname)){body=brandPNG(pathname.includes('192')?192:pathname.includes('512')?512:180);type='image/png';}

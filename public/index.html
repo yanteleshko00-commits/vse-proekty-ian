@@ -111,7 +111,46 @@ html{scroll-behavior:auto!important}
  body.nx-redesign .nx-project-hero { padding-block:28px; }
 }
 </style>
-</head>
+<style id="nx-pwa-dock-v1">
+.nx-pwa-dock{display:none!important}
+html[data-nx-installed]{--nx-dock-height:70px;--nx-dock-space:calc(var(--nx-dock-height) + 22px + env(safe-area-inset-bottom,0px))}
+html[data-nx-installed] body:has(>.nx-pwa-dock){padding-bottom:var(--nx-dock-space)!important}
+html[data-nx-installed] body:has(>.nx-pwa-dock[data-screen="chat"]){padding-bottom:0!important}
+html[data-nx-installed] body:has(>.nx-pwa-dock[data-screen="chat"]) .app{height:calc(100vh - var(--nx-dock-space))!important;height:calc(100dvh - var(--nx-dock-space))!important;min-height:0!important}
+html[data-nx-installed] .nx-pwa-dock{
+ display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr));align-items:stretch;gap:2px;position:fixed;z-index:70;left:50%;right:auto;bottom:calc(8px + env(safe-area-inset-bottom,0px));
+ transform:translateX(-50%);width:min(720px,calc(100% - 20px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)));max-width:100%;height:var(--nx-dock-height);padding:5px;box-sizing:border-box;border-radius:36px;
+ background:linear-gradient(118deg,rgba(253,253,255,.43),rgba(223,225,249,.19) 40%,rgba(235,240,255,.34)),rgba(40,38,62,.76);
+ border:1px solid rgba(255,255,255,.52);box-shadow:inset 0 1px 1px #ffffff70,inset 0 -1px 2px #ffffff24,0 9px 32px #15112846;
+ -webkit-backdrop-filter:blur(28px) saturate(180%);backdrop-filter:blur(28px) saturate(180%);isolation:isolate;
+ font:600 11px/1.15 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.02em
+}
+html[data-nx-installed] .nx-pwa-dock>a{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;min-width:0;margin:0;padding:3px 0;border:0;border-radius:26px;text-decoration:none;color:#fff;font:inherit;text-align:center;white-space:nowrap;overflow:hidden;box-sizing:border-box;-webkit-tap-highlight-color:transparent;transition:background .18s,transform .18s,color .18s}
+.nx-pwa-dock svg{width:25px;height:25px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:block;pointer-events:none}
+.nx-pwa-dock span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+html[data-nx-installed] .nx-pwa-dock>a[data-tool="lobby"]{background:#ffffff20}
+html[data-nx-installed] .nx-pwa-dock>a[data-tool="lobby"] svg{width:28px;height:28px}
+html[data-nx-installed] .nx-pwa-dock>a[aria-current="page"]{background:linear-gradient(135deg,#c4a5ff44,#8b90e236),#16172b8a;color:#e7d5ff;box-shadow:inset 0 1px 1px #ffffff20}
+html[data-nx-installed] .nx-pwa-dock>a:focus-visible{outline:2px solid #fff;outline-offset:-3px}
+@media(hover:hover){html[data-nx-installed] .nx-pwa-dock>a:hover{background-color:#ffffff30}}
+html[data-nx-installed] .nx-pwa-dock>a:active{transform:scale(.95)}
+html[data-nx-installed] .nx-argosha-host,html[data-nx-installed] .argosha-launcher{bottom:calc(var(--nx-dock-space) + 12px)!important}
+html[data-nx-installed] .nx-argosha-greeting,html[data-nx-installed] .argosha-greeting{bottom:calc(var(--nx-dock-space) + 100px)!important}
+html[data-nx-installed] .nx-argosha-frame,html[data-nx-installed] .argosha-panel{bottom:calc(var(--nx-dock-space) + 76px)!important;max-height:calc(100dvh - var(--nx-dock-space) - 100px)!important}
+html[data-nx-installed] .toast,html[data-nx-installed] #toast{bottom:calc(var(--nx-dock-space) + 8px)!important}
+html[data-nx-installed]:has(.nx-game-playing) .nx-pwa-dock,html[data-nx-installed]:has(.nx-view-expanded) .nx-pwa-dock,html[data-nx-installed]:has(.nx-gallery[open]) .nx-pwa-dock,html[data-nx-installed]:has(.nx-argosha-host[open]) .nx-pwa-dock,html[data-nx-installed]:has(.argosha-panel.open) .nx-pwa-dock{visibility:hidden;pointer-events:none}
+@media(max-width:600px){
+ html[data-nx-installed]{--nx-dock-height:64px}
+ html[data-nx-installed] .nx-pwa-dock{font-size:9px;gap:0;padding:4px;border-radius:32px;width:calc(100% - 12px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px))}
+ html[data-nx-installed] .nx-pwa-dock>a{border-radius:24px;gap:4px}
+ .nx-pwa-dock svg{width:22px;height:22px}
+ html[data-nx-installed] .nx-pwa-dock>a[data-tool="lobby"] svg{width:25px;height:25px}
+ html[data-nx-installed]:has(input:not([type=checkbox]):not([type=radio]):not([type=range]):focus,textarea:focus,[contenteditable=true]:focus) .nx-pwa-dock{visibility:hidden;pointer-events:none}
+ html[data-nx-installed] .nx-argosha-host[open] .nx-argosha-frame{bottom:auto!important;max-height:none!important}
+}
+@media(prefers-reduced-motion:reduce){.nx-pwa-dock>a{transition:none!important}}
+@media(prefers-reduced-transparency:reduce){html[data-nx-installed] .nx-pwa-dock{background:#333147;-webkit-backdrop-filter:none;backdrop-filter:none}}
+</style><script src="/nexora-app-dock.js?v=1" defer></script></head>
 <body class="nx-redesign">
 
 <header><div class="container hi">
@@ -365,6 +404,6 @@ html{scroll-behavior:auto!important}
 <script src="/assets/project-script-8.js"></script>
 <script src="/assets/project-actions.js"></script>
 <footer class="nx-project-footer"><strong>NEXORA · PROJECT STUDIO</strong><nav class="nx-footer-links" aria-label="Другие сервисы"><a href="https://nexora-lobby-yan12312.msk1.amvera.tech/">Все инструменты</a><a href="https://nexora-lobby-yan12312.msk1.amvera.tech/docs/faq.pdf" target="_blank" rel="noopener">Помощь ↗</a><a href="https://nexora-lobby-yan12312.msk1.amvera.tech/docs/privacy-policy.pdf" target="_blank" rel="noopener">Конфиденциальность ↗</a><a href="https://t.me/Ian2011t" target="_blank" rel="noopener noreferrer">Поддержка в Telegram · @Ian2011t ↗</a></nav></footer>
-<link rel="stylesheet" href="/assets/argosha-mobile.css"><script src="/assets/argosha-mobile.js?v=20261128-performance"></script></body>
+<link rel="stylesheet" href="/assets/argosha-mobile.css"><script src="/assets/argosha-mobile.js?v=20261128-performance"></script><nav class="nx-pwa-dock" data-screen="project" aria-label="Навигация приложения NEXORA"><a data-tool="image" href="https://nexora-image-studio.onrender.com/" aria-label="Картинки" title="Картинки"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x='3' y='3' width='18' height='18' rx='4'/><circle cx='8.5' cy='8.5' r='1.7'/><path d='m4 17 5-5 4 4 3-3 5 5'/></svg><span>Фото</span></a><a data-tool="math" href="https://nexora-math-studio.onrender.com/" aria-label="Математика" title="Математика"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x='4' y='2.5' width='16' height='19' rx='3'/><path d='M7 7h10M8 12h2m-1-1v2m5-1h2m-8 5h2m4 0h2'/></svg><span>Матем.</span></a><a data-tool="project" href="/" aria-label="Проекты" title="Проекты" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x='3' y='3' width='18' height='14' rx='2'/><path d='M12 17v4m-5 0h10M7 8h10M7 12h6'/></svg><span>Проекты</span></a><a data-tool="lobby" href="https://nexora-lobby-yan12312.msk1.amvera.tech/" aria-label="Лобби" title="Лобби"><svg viewBox="0 0 24 24" aria-hidden="true"><path d='m3 10 9-7 9 7v9a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z'/></svg><span>Лобби</span></a><a data-tool="chat" href="https://nexora-lobby-yan12312.msk1.amvera.tech/chat" aria-label="AI Chat" title="AI Chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d='M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l2-4a8.5 8.5 0 1 1 15-4.5Z'/><path d='M9 12h6'/></svg><span>Чат</span></a><a data-tool="text" href="https://nexora-text-studio.onrender.com/" aria-label="Text Studio" title="Text Studio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d='M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6'/></svg><span>Текст</span></a><a data-tool="game" href="https://nexora-lobby-yan12312.msk1.amvera.tech/game" aria-label="Game Studio" title="Game Studio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d='M7 7h10c3 0 5 5 4.5 9-.2 2-2 3-3.6 1.6L15 15H9l-2.9 2.6C4.5 19 2.7 18 2.5 16 2 12 4 7 7 7Z'/><path d='M7 10v4m-2-2h4M15 11h.01M18 13h.01'/></svg><span>Игры</span></a></nav></body>
 </html>
 
