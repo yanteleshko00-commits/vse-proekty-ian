@@ -1,3 +1,5 @@
+import {createHttpGuard} from './http-guard.js';
+const httpGuard=createHttpGuard();
 import {studioAccount} from './studio-account.js';
 import {serviceConfig,publicHtml,boundedInt,allowStartupSmoke,createRateLimiter,clientIP} from './runtime-config.js';
 const serviceUrls=serviceConfig();
@@ -37,14 +39,14 @@ async function getJSON(req){
   return JSON.parse(Buffer.concat(items).toString('utf8')||'{}');
 }
 const backgroundText=backgroundJSON('text',(req,res)=>account.run(req,res,generateText),{maxActive:concurrency,maxBody:10500000});
-const server=http.createServer(async(req,res)=>{
+const server=http.createServer(httpGuard.wrap(async(req,res)=>{
   let url;
   try{url=new URL(req.url||'/','http://localhost');}
   catch{return respond(res,400,{message:'Некорректный адрес.'});}
   if(['/api/visitors/ping','/nexora-visitors.js','/internal/visitors/ingest'].includes(url.pathname)&&await handleAnalytics(req,res,url.pathname,{site:'nexora-text-studio'}))return;
   if(await account.route(req,res,url))return;
   if(serveBrand(req,res,url.pathname,"NEXORA Text Studio"))return;
-  if(req.method==='GET'&&url.pathname==='/health')return respond(res,200,{ok:true,service:'nexora-text-studio',bridgeConfigured:key.length>=32,concurrency:{active,max:concurrency}});
+  if(req.method==='GET'&&url.pathname==='/health')return respond(res,200,{ok:true,service:'nexora-text-studio',bridgeConfigured:key.length>=32,concurrency:{active,max:concurrency},protection:httpGuard.snapshot()});
   if(req.method==='GET'&&(url.pathname==='/'||url.pathname==='/index.html')){
     try{
       const html=Buffer.from(injectAnalytics(publicHtml(await readPublicFile(join(here, 'index.html')))));
@@ -57,7 +59,7 @@ const server=http.createServer(async(req,res)=>{
   }
   if(req.method!=='POST'||url.pathname!=='/api/generate')return respond(res,404,{message:'Не найдено.'});
   return backgroundText(req,res);
-});
+}));
 async function generateText(req,res){
   if(key.length<32)return respond(res,503,{message:'Текстовый ИИ пока не подключён.'});
   if(!allow(req))return respond(res,429,{message:'Слишком много запросов. Попробуйте позднее.'});
@@ -92,6 +94,9 @@ async function generateText(req,res){
   }finally{active--;}
 }
 server.requestTimeout=228000;
+server.headersTimeout=15000;
+server.keepAliveTimeout=5000;
+server.maxHeadersCount=80;
 server.listen(port,'0.0.0.0',()=>{
   console.log('NEXORA Text Studio listening on port '+port);
   console.log('Text bridge configured:',key.length>=32);

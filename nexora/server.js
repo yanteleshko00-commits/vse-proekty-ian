@@ -1,3 +1,5 @@
+import {createHttpGuard} from './http-guard.js';
+const httpGuard=createHttpGuard();
 import {createStudioTicketStore} from './studio-ticket-store.js';
 import {serviceConfig,publicHtml,boundedInt,allowStartupSmoke,createRateLimiter,clientIP} from './runtime-config.js';
 const serviceUrls=serviceConfig();
@@ -717,7 +719,7 @@ async function accountGeneration(req,res,handler,product){
  finally{for(let i=0;i<3;i++)try{await finalizeArgoshaUsage(reservation,outcome);break;}catch(error){if(i===2)console.warn('Usage finalization failed',error.name);}}
 }
 const backgroundChat=backgroundJSON('chat',(req,res)=>accountGeneration(req,res,nexoraChatReply,'chat'),{maxActive:8,maxBody:20000});
-const server = http.createServer(async (req, res) => {
+const server = http.createServer(httpGuard.wrap(async (req, res) => {
   const base = appUrl(req);
   let url;
   try { url = new URL(req.url, base); } catch { return send(res, 400, 'Bad Request'); }
@@ -1029,8 +1031,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   return send(res, 404, 'Not Found');
-});
+}));
 
+server.headersTimeout=15000;
+server.keepAliveTimeout=5000;
+server.maxHeadersCount=80;
 server.listen(port, () => {
   console.log('NEXORA lobby listening on port ' + port);
   if(allowStartupSmoke('ARGOSHA_SMOKE_TEST')){

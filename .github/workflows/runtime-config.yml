@@ -14,7 +14,7 @@ jobs:
           node --check nexora/start.js
           node --check nexora-image-studio/start.js
           node --check generation-job-store.js
-          node --test test/runtime-config.test.mjs test/generation-job-store.test.mjs test/studio-ticket-store.test.mjs
+          node --test test/runtime-config.test.mjs test/generation-job-store.test.mjs test/studio-ticket-store.test.mjs test/http-guard.test.mjs
           node scripts/build-project-css.mjs --check
   studio-checks:
     runs-on: ubuntu-latest

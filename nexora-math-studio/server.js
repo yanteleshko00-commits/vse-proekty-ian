@@ -1,3 +1,5 @@
+import {createHttpGuard} from './http-guard.js';
+const httpGuard=createHttpGuard();
 import {studioAccount} from './studio-account.js';
 import {serviceConfig,publicHtml,boundedInt,allowStartupSmoke,createRateLimiter,clientIP} from './runtime-config.js';
 const serviceUrls=serviceConfig();
@@ -40,7 +42,7 @@ async function readJson(req, limit = 12000) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
 }
 const backgroundMath=backgroundJSON('math',(req,res)=>account.run(req,res,solveMath),{maxActive:concurrency,maxBody:10500000});
-const server = http.createServer(async (req, res) => {
+const server = http.createServer(httpGuard.wrap(async (req, res) => {
   let url;
   try { url = new URL(req.url || '/', 'http://localhost'); }
   catch { return respond(res, 400, { message: 'Некорректный адрес.' }); }
@@ -48,7 +50,7 @@ const server = http.createServer(async (req, res) => {
   if(await account.route(req,res,url))return;
   if(serveBrand(req,res,url.pathname,"NEXORA Math Studio"))return;
   if (req.method === 'GET' && url.pathname === '/health') return respond(res, 200, {
-    ok: true, service: 'nexora-math-studio', bridgeConfigured: bridgeToken.length >= 32, concurrency:{active,max:concurrency}
+    ok: true, service: 'nexora-math-studio', bridgeConfigured: bridgeToken.length >= 32, concurrency:{active,max:concurrency},protection:httpGuard.snapshot()
   });
   if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
     try {
@@ -65,7 +67,7 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method !== 'POST' || url.pathname !== '/api/solve') return respond(res, 404, { message: 'Не найдено.' });
   return backgroundMath(req,res);
-});
+}));
 async function solveMath(req,res){
   if (!bridgeToken || bridgeToken.length < 32) return respond(res, 503, { message: 'ИИ-сервис ещё подключается. Повторите попытку позже.' });
   if (!allowRequest(req)) return respond(res, 429, { message: 'Слишком много запросов. Попробуйте через некоторое время.' });
@@ -109,6 +111,9 @@ async function solveMath(req,res){
   } finally { active--; }
 }
 server.requestTimeout = 190000;
+server.headersTimeout=15000;
+server.keepAliveTimeout=5000;
+server.maxHeadersCount=80;
 server.listen(port, '0.0.0.0', () => {
   console.log('NEXORA Math Studio listening on port ' + port);
   console.log('Math gateway configured:', bridgeToken.length >= 32);

@@ -1,3 +1,4 @@
+import {createHttpGuard} from './nexora/http-guard.js';
 import {serviceConfig,publicHtml,boundedInt} from './nexora/runtime-config.js';
 import {readPublicFile,sendPublicAsset} from './nexora/public-performance.js';
 import {handleAnalytics,projectSite} from './nexora/visitor-analytics.js';
@@ -62,6 +63,8 @@ const {projectCookieOptions,readRequestCookie,createProjectSession,readProjectSe
   sessionCookieName:PROJECT_SESSION_COOKIE,sessionTTL:PROJECT_SESSION_TTL,projectServiceKey,asyncRoute
 });
 app.disable('x-powered-by');
+const httpGuard=createHttpGuard();
+app.use((req,res,next)=>{if(httpGuard.admit(req,res))next();});
 if (process.env.RENDER === 'true' || process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1);
 app.use((_req,res,next)=>{
   res.set({'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'strict-origin-when-cross-origin',

@@ -16,11 +16,12 @@ const sessions=new Map();let lastStep=-1;
 const services=[
  ['NEXORA Lobby',runtimeUrls.lobby,'/health'],
  ['NEXORA ID',runtimeUrls.auth,'/health'],
- ['Image Studio','https://nexora-image-studio.onrender.com','/health'],
- ['Math Studio','https://nexora-math-studio.onrender.com','/'],
- ['Text Studio','https://nexora-text-studio.onrender.com','/'],
- ['Все проекты #Ian','https://vse-proekty-ian.onrender.com','/'],
- ['Все проекты #Ian 2','https://vse-proekty-ian-1.onrender.com','/']
+ ['Image Studio',runtimeUrls.image,'/health'],
+ ['Math Studio',runtimeUrls.math,'/health'],
+ ['Text Studio',runtimeUrls.text,'/health'],
+ ['Все проекты #Ian','https://vse-proekty-ian.onrender.com','/api/health'],
+ ['Все проекты #Ian 2',runtimeUrls.project,'/api/health'],
+ ['Amvera Lobby',runtimeUrls.publicLobby,'/health']
 ];
 let snapshot=null,pending=null;
 const maintenancePaths=new Map([['chat',new Set(['/api/nexora-chat'])],['game',new Set(['/api/game/generate','/api/game/code'])]]);
@@ -31,7 +32,7 @@ function remember(list,item){list.unshift(item);if(list.length>100)list.pop();}
 async function monitor(){
  if(pending)return pending;
  pending=(async()=>{const result=await Promise.all(services.map(async ([name,url,path])=>{
- const start=Date.now();try{const response=await fetch(url+path,{signal:AbortSignal.timeout(65000),redirect:'manual'});await response.body?.cancel();const row={name,url,path,http:response.status,ms:Date.now()-start,status:response.ok?'ok':'http_error'};if(!response.ok)remember(errors,{name,time:new Date().toISOString(),detail:'HTTP '+response.status});return row;}catch(e){remember(errors,{name,time:new Date().toISOString(),detail:e.name});return {name,url,path,status:'unconfirmed',ms:Date.now()-start};}}));snapshot={checkedAt:new Date().toISOString(),services:result};return snapshot;})().finally(()=>{pending=null;});return pending;
+ const start=Date.now();try{const response=await fetch(url+path,{signal:AbortSignal.timeout(65000),redirect:'manual'});const health=await response.json().catch(()=>null);const configured=health?.bridgeConfigured!==false&&health?.imageGeneratorConfigured!==false;const row={name,url,path,http:response.status,ms:Date.now()-start,status:response.ok&&health?.ok!==false&&configured?'ok':response.ok?'degraded':'http_error',configured,protection:health?.protection||null};if(!response.ok)remember(errors,{name,time:new Date().toISOString(),detail:'HTTP '+response.status});return row;}catch(e){remember(errors,{name,time:new Date().toISOString(),detail:e.name});return {name,url,path,status:'unconfirmed',ms:Date.now()-start};}}));snapshot={checkedAt:new Date().toISOString(),services:result};return snapshot;})().finally(()=>{pending=null;});return pending;
 }
 let started=false;function startMonitor(){if(started)return;started=true;void monitor();const timer=setInterval(()=>void monitor(),600000);timer.unref();}
 const cookieName='__Host-nexora_console';

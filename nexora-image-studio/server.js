@@ -1,3 +1,5 @@
+import {createHttpGuard} from './http-guard.js';
+const httpGuard=createHttpGuard();
 import {serviceConfig,publicHtml,boundedInt,allowStartupSmoke,createRateLimiter,clientIP} from './runtime-config.js';
 const serviceUrls=serviceConfig();
 import {readPublicFile,sendPublicAsset} from './public-performance.js';
@@ -612,7 +614,7 @@ async function handleInternalAliceText(req, res) {
 }
 
 const backgroundImage=backgroundJSON('image',protectedImage,{maxActive:imageConcurrency});
-const server = http.createServer(async (req, res) => {
+const server = http.createServer(httpGuard.wrap(async (req, res) => {
   let url;
   try {
     url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
@@ -635,6 +637,7 @@ const server = http.createServer(async (req, res) => {
       ok: providers.length > 0,
       service: 'nexora-image-studio',
       imageGeneratorConfigured: providers.length > 0,
+      protection:httpGuard.snapshot(),
       concurrency:{active:imageInFlight,max:imageConcurrency},
       authenticationConfigured:studioAuthSecret().length>=32,
       imageProviders: providers,
@@ -685,10 +688,13 @@ const server = http.createServer(async (req, res) => {
     console.error('NEXORA Image Studio page read failed:', error.message);
     return send(res, 500, 'Не удалось открыть NEXORA Image Studio.');
   }
-});
+}));
 
 server.requestTimeout=240000;
 server.headersTimeout=30000;
+server.headersTimeout=15000;
+server.keepAliveTimeout=5000;
+server.maxHeadersCount=80;
 server.listen(port, '0.0.0.0', () => {
   console.info('NEXORA Image Studio API and website listening on port ' + port);
   console.info(yandexMissing.length ? 'Yandex Image: missing ' + yandexMissing.join(', ') : 'Yandex Image: API key and folder configured');
