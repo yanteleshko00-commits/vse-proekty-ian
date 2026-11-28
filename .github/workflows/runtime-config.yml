@@ -31,3 +31,5 @@ jobs:
         working-directory: ${{ matrix.studio }}
       - run: npm test
         working-directory: ${{ matrix.studio }}
+        env:
+          NODE_ENV: production

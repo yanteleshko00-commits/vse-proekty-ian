@@ -137,7 +137,7 @@ await assert.rejects(decodeAttachments([{
 
 const port = 15000 + (process.pid % 20000);
 const child = spawn(process.execPath, [join(dir, 'server.js')], {
-  env: { ...process.env, PORT: String(port), MATH_BRIDGE_TOKEN: '' },
+  env: { ...process.env, NODE_ENV:'test', PORT: String(port), MATH_BRIDGE_TOKEN: '', MATH_SMOKE_TEST:'0',MATH_IMAGE_SMOKE_TEST:'0',MATH_TOPIC_SMOKE_TEST:'0' },
   stdio: 'ignore'
 });
 try {

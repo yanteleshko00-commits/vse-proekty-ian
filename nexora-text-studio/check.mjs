@@ -112,7 +112,7 @@ const upstream=createServer(async(req,res)=>{
 await new Promise((resolve,reject)=>{upstream.once('error',reject);upstream.listen(0,'127.0.0.1',resolve)});
 const upstreamPort=upstream.address().port,port=24000+(process.pid%18000);
 const child=spawn(process.execPath,[join(here,'server.js')],{
-  env:{...process.env,PORT:String(port),TEXT_BRIDGE_TOKEN:mockKey,NEXORA_LOBBY_URL:'http://127.0.0.1:'+upstreamPort,TEXT_SMOKE_TEST:'0'},
+  env:{...process.env,NODE_ENV:'test',PORT:String(port),TEXT_BRIDGE_TOKEN:mockKey,NEXORA_LOBBY_URL:'http://127.0.0.1:'+upstreamPort,TEXT_SMOKE_TEST:'0',TEXT_PHOTO_SMOKE_TEST:'0'},
   stdio:'ignore'
 });
 try{
