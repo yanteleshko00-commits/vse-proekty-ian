@@ -65,3 +65,23 @@ test('3D QA detects a scene that disappears during gameplay',{timeout:60000},asy
   assert.equal(await page.locator('#ai-open-game').isVisible(),false);
  }finally{await browser?.close();child.kill();}
 });
+
+// Desktop regression: the sandbox probe must render enough frames, then the
+// fullscreen player must remain inside a laptop viewport and close with Escape.
+test('desktop laptop game launch, rendering and Escape',{timeout:60000},async()=>{
+ const p=26976,origin='http://127.0.0.1:'+p;
+ const child=spawn(process.execPath,['nexora/server.js'],{env:{...process.env,PORT:String(p),NODE_ENV:'test'},stdio:'ignore'});
+ let browser;
+ try{
+  let ready=false;for(let i=0;i<60;i++){try{if((await fetch(origin+'/health')).ok){ready=true;break}}catch{}await new Promise(r=>setTimeout(r,100));}assert.ok(ready);
+  browser=await chromium.launch();
+  const page=await browser.newPage({viewport:{width:1280,height:800}});
+  await page.route('**/*',route=>route.request().url().startsWith(origin)?route.continue():route.abort());
+  await page.route('**/api/game/code',route=>route.fulfill({json:{ok:true,source:'ai',html:valid,title:'Desktop test',provider:'test',dimension:'2d',review:{status:'passed',issues:[]}}}));
+  await page.goto(origin+'/game');await page.locator('#ai-idea').fill('Desktop test');await page.locator('#ai-build').click();
+  await page.locator('#ai-open-game').waitFor({state:'visible',timeout:25000});
+  await page.locator('#ai-open-game').click();await page.locator('#ai-close-game').waitFor({state:'visible'});
+  const b=await page.locator('#ai-game-view').boundingBox();assert.ok(Math.abs(b.width-1280)<=2&&Math.abs(b.height-800)<=2,JSON.stringify(b));
+  await page.locator('#ai-close-game').focus();await page.keyboard.press('Escape');await page.locator('#ai-open-game').waitFor({state:'visible'});
+ }finally{await browser?.close();child.kill();}
+});

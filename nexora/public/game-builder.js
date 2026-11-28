@@ -107,7 +107,8 @@
   if(!/^\/game\/preview\/[0-9a-f-]{36}$/.test(data.url))throw Error("Некорректный адрес предпросмотра.");
   testing=true;ready=false;previewUrl=data.url;previewCreatedAt=Date.now();runtimeQA=null;
   // Give the test document a real viewport even while the result is hidden.
-  // It is off-screen, sandboxed, and destroyed before the public play button.
+  // Keep it inside the viewport behind the page so browsers do not throttle animation frames.
+   // It is non-interactive, sandboxed, and destroyed before the public play button.
   const probe=document.createElement("iframe");
   probe.setAttribute("sandbox","allow-scripts");probe.setAttribute("aria-hidden","true");probe.setAttribute("referrerpolicy","no-referrer");probe.tabIndex=-1;
   probe.className="nx-game-probe";probe.style.width=Math.min(window.innerWidth,960)+"px";probe.style.height=Math.max(200,Math.min(window.innerHeight-150,700))+"px";

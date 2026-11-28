@@ -85,6 +85,8 @@ function qaVisualVerdict(){
  if(qa3d&&qaGraphicsErrors.length&&!results.some(r=>r.type!=='2d'&&!r.blank&&!r.lost))return {error:'Ошибка компиляции WebGL: '+qaGraphicsErrors[0]};
  if(primary&&(primary.blank||primary.lost))return {error:'Игровая сцена исчезает или остаётся пустой после начала игры. Проверь рендер, камеру, матрицы, viewport и очистку кадров.'};
  if(qa3d&&!results.some(r=>r.type!=='2d'))return {error:'Не удалось подтвердить отрисовку WebGL после старта'};
+ const measurable2d=[...qaContexts].some(([canvas,e])=>{const r=canvas.getBoundingClientRect(),s=getComputedStyle(canvas);return e.type==='2d'&&canvas.isConnected&&r.width>=60&&r.height>=60&&s.visibility!=='hidden'&&s.display!=='none';});
+ if(measurable2d&&!results.some(r=>r.type==='2d'))return {error:'Не удалось подтвердить отрисовку игрового поля после старта'};
  return {frames:qaFrameCount,canvasSamples:primary?.samples||0,visual:primary?'sampled':'not_measured',changes:primary?.changes||0};
 }
 `;
