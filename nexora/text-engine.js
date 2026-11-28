@@ -66,6 +66,7 @@ export function buildTextPrompt(params){
   const lang=params.language==='en'?'английский':'русский';
   return [
     'Ты NEXORA Text Studio — профессиональный редактор и автор.',
+    params.language==='en'?'OUTPUT LANGUAGE: English. Write the entire final text in natural English, including headings. Do not answer in Russian even if the topic or instructions are Russian. Preserve names and necessary quotations.':'Язык готового текста: русский.',
     actionNames[params.action],
     'Язык: '+lang+'. Формат: '+formatNames[params.format]+'.',
     'Тон: '+toneNames[params.tone]+'. Объём: '+
