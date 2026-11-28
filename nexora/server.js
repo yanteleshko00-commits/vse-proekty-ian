@@ -709,6 +709,16 @@ const server = http.createServer(async (req, res) => {
 
   if(['/api/visitors/ping','/nexora-visitors.js','/internal/visitors/ingest'].includes(url.pathname)&&await handleAnalytics(req,res,url.pathname,{site:'nexora-lobby',collector:true,registered:req=>Boolean(readSession(req)?.sessionId)}))return;
   if(serveBrand(req,res,url.pathname,"NEXORA"))return;
+  // Studio artwork is served locally. A bundled SVG is always available, even
+  // when the original photograph could not be cached during asset preparation.
+  const artMatch=/^\/studio-art\/(project|math|chat|image|lesson|text|game)$/.exec(url.pathname);
+  if(artMatch&&['GET','HEAD'].includes(req.method)){
+    const name=artMatch[1];let bytes,type;
+    try{bytes=await readFile(join(publicDir,'studio-art',name+'.jpg'));if(bytes.length<4||bytes[0]!==255||bytes[1]!==216)throw Error('invalid JPEG');type='image/jpeg';}
+    catch{try{bytes=await readFile(join(publicDir,'studio-art',name+'.svg'));type='image/svg+xml; charset=utf-8';}catch{return send(res,404,'Not found');}}
+    return send(res,200,req.method==='HEAD'?undefined:bytes,{'Content-Type':type,'Content-Length':bytes.length,'Cache-Control':'public, max-age=3600','Cross-Origin-Resource-Policy':'same-origin'});
+  }
+
   try { if (await developerRoute(req,res,url,base,send)) return; } catch (error) { console.error('Developer console error:',error.name); if(!res.headersSent) return send(res,500,'Консоль временно недоступна.'); res.end(); return; }
 
   if(req.method==='POST'&&activeMaintenance(url.pathname)) return send(res,503,JSON.stringify({error:'maintenance',message:'Сервис временно на техническом обслуживании.'}),{'Content-Type':'application/json; charset=utf-8','Retry-After':'60'});
@@ -994,7 +1004,7 @@ const server = http.createServer(async (req, res) => {
       const html=Buffer.from(injectAnalytics(await readFile(join(publicDir, 'index.html'))));
       return send(res, 200, html, {
         'Content-Type': 'text/html; charset=utf-8',
-        'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https://images.unsplash.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'",
+        'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'",
         'Referrer-Policy': 'strict-origin-when-cross-origin'
       });
     } catch (error) {

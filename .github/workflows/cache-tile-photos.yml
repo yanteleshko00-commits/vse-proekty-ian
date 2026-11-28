@@ -1,0 +1,32 @@
+name: Cache original NEXORA tile photographs
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/cache-tile-photos.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cache:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache existing tile photographs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd nexora/public/studio-art
+          if curl --fail --silent --show-error --location --retry 1 --max-time 20 'https://images.unsplash.com/photo-1517842645767-c639042777db?fit=crop&w=900&q=78&fm=jpg' -o 'project.tmp' && file --mime-type -b 'project.tmp' | grep -qx image/jpeg && [ "$(wc -c < 'project.tmp')" -lt 600000 ]; then mv 'project.tmp' 'project.jpg'; else rm -f 'project.tmp'; echo 'Using bundled SVG for project'; fi
+          if curl --fail --silent --show-error --location --retry 1 --max-time 20 'https://images.unsplash.com/photo-1509228468518-180dd4864904?fit=crop&w=900&q=78&fm=jpg' -o 'math.tmp' && file --mime-type -b 'math.tmp' | grep -qx image/jpeg && [ "$(wc -c < 'math.tmp')" -lt 600000 ]; then mv 'math.tmp' 'math.jpg'; else rm -f 'math.tmp'; echo 'Using bundled SVG for math'; fi
+          if curl --fail --silent --show-error --location --retry 1 --max-time 20 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?fit=crop&w=900&q=78&fm=jpg' -o 'chat.tmp' && file --mime-type -b 'chat.tmp' | grep -qx image/jpeg && [ "$(wc -c < 'chat.tmp')" -lt 600000 ]; then mv 'chat.tmp' 'chat.jpg'; else rm -f 'chat.tmp'; echo 'Using bundled SVG for chat'; fi
+          if curl --fail --silent --show-error --location --retry 1 --max-time 20 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?fit=crop&w=900&q=78&fm=jpg' -o 'image.tmp' && file --mime-type -b 'image.tmp' | grep -qx image/jpeg && [ "$(wc -c < 'image.tmp')" -lt 600000 ]; then mv 'image.tmp' 'image.jpg'; else rm -f 'image.tmp'; echo 'Using bundled SVG for image'; fi
+          if curl --fail --silent --show-error --location --retry 1 --max-time 20 'https://images.unsplash.com/photo-1509062522246-3755977927d7?fit=crop&w=900&q=78&fm=jpg' -o 'lesson.tmp' && file --mime-type -b 'lesson.tmp' | grep -qx image/jpeg && [ "$(wc -c < 'lesson.tmp')" -lt 600000 ]; then mv 'lesson.tmp' 'lesson.jpg'; else rm -f 'lesson.tmp'; echo 'Using bundled SVG for lesson'; fi
+          if curl --fail --silent --show-error --location --retry 1 --max-time 20 'https://images.unsplash.com/photo-1731963094554-c5c981ccdefd?fit=crop&w=900&q=78&fm=jpg' -o 'text.tmp' && file --mime-type -b 'text.tmp' | grep -qx image/jpeg && [ "$(wc -c < 'text.tmp')" -lt 600000 ]; then mv 'text.tmp' 'text.jpg'; else rm -f 'text.tmp'; echo 'Using bundled SVG for text'; fi
+          git add -- '*.jpg' 2>/dev/null || true
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Cache original studio tile photographs locally'
+          git pull --rebase origin main
+          git push origin HEAD:main

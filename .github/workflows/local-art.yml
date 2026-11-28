@@ -1,0 +1,22 @@
+name: NEXORA local image checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nexora/public/index.html'
+      - 'nexora/public/studio-art/**'
+      - 'nexora/server.js'
+      - 'test/lobby-local-art.test.mjs'
+      - '.github/workflows/local-art.yml'
+  workflow_dispatch:
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: cd nexora && npm ci --ignore-scripts --no-audit --no-fund
+      - run: node --test test/lobby-local-art.test.mjs

@@ -71,12 +71,12 @@ h1 span{color:var(--blue)}
 .tile.reveal-ready.is-visible:hover{transform:translateY(-5px)}
 @media(prefers-reduced-motion:reduce){.tile.reveal-ready{opacity:1;transform:none;transition:none;will-change:auto}}
 .tile-top{position:absolute;inset:0;z-index:0;width:auto;height:auto;display:block;margin:0;border-radius:inherit;background-color:#233957;background-size:cover;background-position:center;color:transparent;font-size:0;box-shadow:none;overflow:hidden}.tile-top:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,22,44,.04) 0%,rgba(9,22,44,.08) 34%,rgba(7,17,36,.92) 100%)}
-.tile:nth-child(1) .tile-top{background-image:url("https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=1400&q=90")}
-.tile:nth-child(2) .tile-top{background-image:url("https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=1400&q=90")}
-.tile:nth-child(3) .tile-top{background-image:url("https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1400&q=90")}
-.tile:nth-child(4) .tile-top{background-image:url("https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1400&q=90")}
-.tile:nth-child(5) .tile-top{background-image:url("https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1400&q=90")}
-.tile:nth-child(6) .tile-top{background-image:url("https://images.unsplash.com/photo-1731963094554-c5c981ccdefd?auto=format&fit=crop&fm=jpg&q=85&w=1600")}.tile h3{position:relative;z-index:2;margin:0 0 7px;color:#fff;font-size:19px;letter-spacing:-.02em;text-shadow:0 2px 12px rgba(0,0,0,.3)}
+
+
+
+
+
+.tile h3{position:relative;z-index:2;margin:0 0 7px;color:#fff;font-size:19px;letter-spacing:-.02em;text-shadow:0 2px 12px rgba(0,0,0,.3)}
 .tile p{position:relative;z-index:2;margin:0;max-width:290px;color:rgba(255,255,255,.88);font-size:13px;line-height:1.55;text-shadow:0 1px 8px rgba(0,0,0,.3)}
 
 .status{position:absolute;z-index:3;right:16px;top:16px;padding:6px 9px;border:1px solid rgba(255,255,255,.24);border-radius:20px;background:rgba(12,25,48,.42);color:#fff;font-size:10px;font-weight:800;backdrop-filter:blur(12px)}
@@ -768,6 +768,16 @@ html{scroll-behavior:auto!important}
  body.nx-redesign .hero { padding:24px; }
 }
 </style>
+<style id="nx-local-art-v1">
+.tile[data-tool="project"] .tile-top{background-image:url("/studio-art/project?v=1");background-size:cover;background-position:center}
+.tile[data-tool="math"] .tile-top{background-image:url("/studio-art/math?v=1");background-size:cover;background-position:center}
+.tile[data-tool="chat"] .tile-top{background-image:url("/studio-art/chat?v=1");background-size:cover;background-position:center}
+.tile[data-tool="image"] .tile-top{background-image:url("/studio-art/image?v=1");background-size:cover;background-position:center}
+.tile[data-tool="lesson"] .tile-top{background-image:url("/studio-art/lesson?v=1");background-size:cover;background-position:center}
+.tile[data-tool="text"] .tile-top{background-image:url("/studio-art/text?v=1");background-size:cover;background-position:center}
+.tile[data-tool="game"] .tile-top{background-image:url("/studio-art/game?v=1");background-size:cover;background-position:center}
+.tile[data-tool="game"] .tile-top:before{display:none}
+</style>
 </head>
 <body class="nx-redesign">
 <header class="topbar">
@@ -996,7 +1006,7 @@ html{scroll-behavior:auto!important}
   var recentKey='nexora-recent-tools';
   function readRecent(){try{return JSON.parse(localStorage.getItem(recentKey)||'[]').filter(function(x){return x&&typeof x.title==='string'&&['project','math','chat','image','text','game'].includes(x.id)}).slice(0,50)}catch(e){return[]}}
   function recentDate(item){if(!item.usedAt)return 'Недавно открывали';var d=new Date(item.usedAt);return isNaN(d.getTime())?'Недавно открывали':d.toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
-  var recentImages={project:'https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=1400&q=90',math:'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=1400&q=90',chat:'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1400&q=90',image:'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1400&q=90',lesson:'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1400&q=90',text:'https://images.unsplash.com/photo-1731963094554-c5c981ccdefd?auto=format&fit=crop&fm=jpg&q=85&w=1600'};
+  var recentImages={game:'/studio-art/game?v=1',project:'/studio-art/project?v=1',math:'/studio-art/math?v=1',chat:'/studio-art/chat?v=1',image:'/studio-art/image?v=1',lesson:'/studio-art/lesson?v=1',text:'/studio-art/text?v=1'};
   function makeRecentIcon(item){var icon=document.createElement('span');icon.className='recent-icon';var src=recentImages[item.id];if(src){var img=document.createElement('img');img.src=src;img.alt='';img.loading='lazy';img.decoding='async';img.onerror=function(){icon.textContent=item.icon||'✦'};icon.appendChild(img)}else icon.textContent=item.icon||'✦';return icon}
   function makeRecentLink(item){var link=document.createElement('a');link.className='recent-item';link.href=item.href||'#';if(item.external){link.target='_blank';link.rel='noopener'}
     var icon=makeRecentIcon(item);
