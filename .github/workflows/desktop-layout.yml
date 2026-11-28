@@ -1,0 +1,25 @@
+name: Desktop layout browser QA
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nexora/**'
+      - 'nexora-image-studio/**'
+      - 'nexora-math-studio/**'
+      - 'nexora-text-studio/**'
+      - 'public/**'
+      - 'test/desktop-layout.test.mjs'
+      - '.github/workflows/desktop-layout.yml'
+  workflow_dispatch:
+jobs:
+  layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium webkit
+      - run: node --test test/desktop-layout.test.mjs
