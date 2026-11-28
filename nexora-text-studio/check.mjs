@@ -24,7 +24,7 @@ assert.match(html,/sessionStorage\.setItem\(key,"seen"\)/);
 assert.match(html,/greeting\.hidden=false/);
 assert.match(html,/argosha\/embed\?studio=text/);
 const textServerSource=await readFile(join(here,'server.js'),'utf8');
-assert.match(textServerSource,/frame-src https:\/\/nexora-lobby\.onrender\.com/);
+assert.ok(textServerSource.includes('frame-src "+serviceUrls.lobby+" "+serviceUrls.publicLobby+";'));
 const js=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(js,'Client script is missing');
 new vm.Script(js);
@@ -129,6 +129,7 @@ try{
   assert.equal(page.status,200);
   assert.match(await page.text(),/NEXORA Text Studio/);
   assert.match(page.headers.get('content-security-policy')||'',/frame-ancestors 'none'/);
+  assert.ok(page.headers.get('content-security-policy').includes('frame-src http://127.0.0.1:'+upstreamPort));
   const invalid=await fetch('http://127.0.0.1:'+port+'/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create',topic:'к'})});
   assert.equal(invalid.status,400);
   const generation=await fetch('http://127.0.0.1:'+port+'/api/generate',{

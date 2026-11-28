@@ -126,7 +126,7 @@ test('Argosha embed and local fallback respond over HTTP without provider secret
   assert.equal(projectReply.status,200);
   const action=(await projectReply.json()).action;
   assert.equal(action.toolId,'project');
-  assert.ok(action.url.startsWith('https://vse-proekty-ian.onrender.com'));
+  assert.equal(new URL(action.url).origin,'https://vse-proekty-ian-1.onrender.com');
  }finally{child.kill()}
 });
 

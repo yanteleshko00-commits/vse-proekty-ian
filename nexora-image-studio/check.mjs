@@ -16,7 +16,7 @@ assert.match(html,/sessionStorage\.setItem\(key,"seen"\)/);
 assert.match(html,/greeting\.hidden=false/);
 assert.match(html,/argosha\/embed\?studio=image/);
 const imageServer=await readFile(join(here,'server.js'),'utf8');
-assert.match(imageServer,/frame-src https:\/\/nexora-lobby\.onrender\.com/);
+assert.ok(imageServer.includes('frame-src "+serviceUrls.lobby+" "+serviceUrls.publicLobby+";'));
 assert.match(html,/Шаг 1 из 3/);
 assert.match(html,/nxqOpenImage\(\)/);
 assert.match(html,/generate\.addEventListener\('click',nxqOpenImage\)/);

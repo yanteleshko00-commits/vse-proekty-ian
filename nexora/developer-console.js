@@ -1,3 +1,5 @@
+import {serviceConfig} from './runtime-config.js';
+const runtimeUrls=serviceConfig();
 import {visitorSnapshot} from './visitor-analytics.js';
 import crypto from 'node:crypto';
 import { persistentAdminAttempt } from './admin-throttle.js';
@@ -12,8 +14,8 @@ export function decodeSecret(value){
 export function totp(key,step){const b=Buffer.alloc(8);b.writeBigUInt64BE(BigInt(step));const h=crypto.createHmac('sha1',key).update(b).digest(),o=h[19]&15;return String((h.readUInt32BE(o)&0x7fffffff)%1000000).padStart(6,'0');}
 const sessions=new Map();let lastStep=-1;
 const services=[
- ['NEXORA Lobby','https://nexora-lobby.onrender.com','/health'],
- ['NEXORA ID','https://ecosystem-auth-service.onrender.com','/health'],
+ ['NEXORA Lobby',runtimeUrls.lobby,'/health'],
+ ['NEXORA ID',runtimeUrls.auth,'/health'],
  ['Image Studio','https://nexora-image-studio.onrender.com','/health'],
  ['Math Studio','https://nexora-math-studio.onrender.com','/'],
  ['Text Studio','https://nexora-text-studio.onrender.com','/'],
@@ -83,7 +85,7 @@ export async function developerRoute(req,res,url,base,send){
  if(path==='/developer/api/history'&&method==='GET'){
  const secret=String(process.env.NEXORA_CONSOLE_SECRET||'');
  if(secret.length<32){json(503,{error:'API NEXORA ID не настроен'});return true;}
- try{const response=await fetch('https://ecosystem-auth-service.onrender.com/v1/console/usage-history',{headers:{Authorization:'Bearer '+secret},signal:AbortSignal.timeout(20000),redirect:'error'});if(!response.ok){json(response.status,{error:'История NEXORA ID недоступна: HTTP '+response.status});return true;}json(200,await response.json());}catch{json(502,{error:'NEXORA ID не ответил'});}return true;
+ try{const response=await fetch(runtimeUrls.auth+'/v1/console/usage-history',{headers:{Authorization:'Bearer '+secret},signal:AbortSignal.timeout(20000),redirect:'error'});if(!response.ok){json(response.status,{error:'История NEXORA ID недоступна: HTTP '+response.status});return true;}json(200,await response.json());}catch{json(502,{error:'NEXORA ID не ответил'});}return true;
  }
  if(path==='/developer/api/maintenance'&&method==='GET'){json(200,{items:maintenanceState(),scope:'current_lobby_process'});return true;}
  if(path==='/developer/api/maintenance'&&method==='POST'){
@@ -105,7 +107,7 @@ export async function developerRoute(req,res,url,base,send){
  if(/^\/developer\/api\/workspace\/[0-9a-f-]{36}$/i.test(path)&&['GET','POST'].includes(method)){
  const id=path.split('/').at(-1),secret=String(process.env.NEXORA_CONSOLE_SECRET||'');
  if(secret.length<32){json(503,{error:'API поддержки не настроен'});return true;}
- const endpoint='https://ecosystem-auth-service.onrender.com/v1/console/workspace/'+id;
+ const endpoint=runtimeUrls.auth+'/v1/console/workspace/'+id;
  const call=(method,data)=>fetch(endpoint,{method,headers:{Authorization:'Bearer '+secret,'Content-Type':'application/json'},body:data?JSON.stringify(data):undefined,signal:AbortSignal.timeout(20000),redirect:'error'});
  try{
  if(method==='GET'){const r=await call('GET');json(r.status,await r.json());return true;}
@@ -117,7 +119,7 @@ export async function developerRoute(req,res,url,base,send){
  if(topic.length<3||topic.length>180||!Number.isInteger(slides)||slides<7||slides>30){json(400,{error:'Укажите тему и 7–30 слайдов'});return true;}
  const account=await call('GET');if(!account.ok){json(account.status,{error:'Аккаунт недоступен'});return true;}
  const key=String(process.env.NEXORA_CHAT_INTERNAL_TOKEN||'');if(key.length<32){json(503,{error:'Генератор не подключён'});return true;}
- const origin=(process.env.PROJECT_GENERATOR_URL||'https://vse-proekty-ian.onrender.com').replace(/\/$/,'');if(!['https://vse-proekty-ian.onrender.com','https://vse-proekty-ian-1.onrender.com'].includes(origin)){json(503,{error:'Адрес генератора не поддерживается'});return true;}
+ const origin=runtimeUrls.project;if(!['https://vse-proekty-ian.onrender.com','https://vse-proekty-ian-1.onrender.com'].includes(origin)){json(503,{error:'Адрес генератора не поддерживается'});return true;}
  const owner=crypto.randomBytes(32).toString('hex');
  const started=await fetch(origin+'/api/generate-project/start',{method:'POST',headers:{'Content-Type':'application/json','x-nexora-chat-token':key,'x-nexora-guest-id':owner},body:JSON.stringify({topic,slidesCount:slides}),signal:AbortSignal.timeout(25000),redirect:'error'});
  const result=await started.json();if(!started.ok||!/^[-a-f0-9]{36}$/i.test(result.jobId||'')){json(started.ok?502:started.status,{error:'Генератор не запустил проект: '+String(result.error||started.status).slice(0,180)});return true;}
@@ -135,7 +137,7 @@ export async function developerRoute(req,res,url,base,send){
  const secret=String(process.env.NEXORA_CONSOLE_SECRET||'');if(secret.length<32){json(503,{error:'API NEXORA ID не настроен'});return true;}
  try{const options={method,headers:{Authorization:'Bearer '+secret,'Content-Type':'application/json'},signal:AbortSignal.timeout(20000),redirect:'error'};
  if(method==='POST'){const data=JSON.parse(await body(req));if(!/^[0-9a-f-]{36}$/i.test(data.id||'')||!['ban','unban','subscribe','revoke'].includes(data.action)){json(400,{error:'invalid_request'});return true;}options.body=JSON.stringify({id:data.id,action:data.action,until:data.until});}
- const response=await fetch('https://ecosystem-auth-service.onrender.com/v1/console/users',options);const data=await response.json();if(method==='POST'&&response.ok)remember(audit,{name:'Управление аккаунтом',time:new Date().toISOString(),detail:'Действие подтверждено NEXORA ID'});json(response.status,data);
+ const response=await fetch(runtimeUrls.auth+'/v1/console/users',options);const data=await response.json();if(method==='POST'&&response.ok)remember(audit,{name:'Управление аккаунтом',time:new Date().toISOString(),detail:'Действие подтверждено NEXORA ID'});json(response.status,data);
  }catch{json(502,{error:'NEXORA ID не ответил'});}return true;}
  json(404,{error:'not_found'});return true;
 }

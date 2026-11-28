@@ -15,3 +15,18 @@ jobs:
           node --check nexora-image-studio/start.js
           node --test test/runtime-config.test.mjs
           node scripts/build-project-css.mjs --check
+  studio-checks:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        studio: [nexora-text-studio, nexora-math-studio]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: ${{ matrix.studio }}
+      - run: npm test
+        working-directory: ${{ matrix.studio }}

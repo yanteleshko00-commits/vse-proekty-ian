@@ -941,7 +941,7 @@ const server = http.createServer(async (req, res) => {
       const parents=[
         'https://nexora-lobby.onrender.com','https://nexora-image-studio.onrender.com',
         'https://nexora-math-studio.onrender.com','https://nexora-text-studio.onrender.com',
-        'https://vse-proekty-ian.onrender.com','https://vse-proekty-ian-1.onrender.com'
+        'https://vse-proekty-ian.onrender.com','https://vse-proekty-ian-1.onrender.com',serviceUrls.project,serviceUrls.image,serviceUrls.math,serviceUrls.text,serviceUrls.publicLobby,serviceUrls.lobby
       ].join(' ');
       return send(res,200,html,{
         'Content-Type':'text/html; charset=utf-8',
