@@ -1,3 +1,5 @@
+import {serviceConfig,publicHtml,boundedInt,allowStartupSmoke,createRateLimiter,clientIP} from './runtime-config.js';
+const serviceUrls=serviceConfig();
 import {readPublicFile,sendPublicAsset} from './public-performance.js';
 import {backgroundJSON} from './background-jobs.js';
 import {handleAnalytics,injectAnalytics} from './visitor-analytics.js';
@@ -26,12 +28,12 @@ import { inferMathKind, mathStudyGuide, datasetHint, MATH_KINDS, MATH_LEVELS } f
 const here = fileURLToPath(new URL('.', import.meta.url));
 const publicDir = join(here, 'public');
 const port = Number(process.env.PORT || 10000);
-const authBase = (process.env.AUTH_PUBLIC_URL || 'https://ecosystem-auth-service.onrender.com').replace(/\/$/, '');
+const authBase = serviceUrls.auth;
 const clientId = process.env.OAUTH_CLIENT_ID || 'nexora';
 const clientSecret = process.env.OAUTH_CLIENT_SECRET || '';
 const sessionSecret = process.env.SESSION_SECRET || '';
 const production = process.env.NODE_ENV === 'production';
-const imageStudioUrl = (process.env.IMAGE_STUDIO_URL || 'https://nexora-image-studio.onrender.com').replace(/\/$/, '');
+const imageStudioUrl = serviceUrls.image;
 
 function appUrl(req) {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
@@ -77,7 +79,7 @@ function makeSessionCookie(user, usage = null, packages = null, sessionId = null
 function readSession(req) {
   if (!sessionSecret || sessionSecret.length < 32) return null;
   const token = parseCookies(req).nexora_session;
-  if (!token || !token.includes('.')) return null;
+  if (!token || token.length>8192 || !token.includes('.')) return null;
   const parts = token.split('.');
   if (parts.length !== 2) return null;
   const expected = Buffer.from(signature(parts[0]));
@@ -85,7 +87,7 @@ function readSession(req) {
   if (expected.length !== actual.length || !crypto.timingSafeEqual(expected, actual)) return null;
   try {
     const user = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
-    if (!user.id || !user.name || Date.now() - user.issuedAt > 7 * 86400000) return null;
+    if (!user.id || !user.name || !Number.isFinite(user.issuedAt) || user.issuedAt>Date.now()+60000 || Date.now() - user.issuedAt > 7 * 86400000) return null;
     return user;
   } catch {
     return null;
@@ -183,15 +185,15 @@ async function finishLogin(req, res, url) {
 
 
 const ARGOSHA_TOOLS = [
-  { id: 'project', name: 'Сделать проект', status: 'available', description: 'Школьные проекты, презентации, доклады и документы.', url: 'https://vse-proekty-ian.onrender.com/' },
-  { id: 'solve', name: 'Решить задачу', status: 'available', description: 'Математика и геометрия с оформлением Дано — Найти — Решение — Ответ.', url: 'https://nexora-math-studio.onrender.com/' },
+  { id: 'project', name: 'Сделать проект', status: 'available', description: 'Школьные проекты, презентации, доклады и документы.', url: serviceUrls.project+'/' },
+  { id: 'solve', name: 'Решить задачу', status: 'available', description: 'Математика и геометрия с оформлением Дано — Найти — Решение — Ответ.', url: serviceUrls.math+'/' },
   { id: 'chat', name: 'NEXORA Chat', status: 'available', description: 'Удобный чат с ИИ, история диалогов и режим GPT.', url: '/chat' },
-  { id: 'image', name: 'Создать картинку', status: 'available', description: 'Генерация и редактирование изображений.', url: 'https://nexora-image-studio.onrender.com/' },
-  { id: 'text', name: 'Создать текст', status: 'available', description: 'Писать, переписывать и редактировать тексты.', url: 'https://nexora-text-studio.onrender.com/' },
+  { id: 'image', name: 'Создать картинку', status: 'available', description: 'Генерация и редактирование изображений.', url: serviceUrls.image+'/' },
+  { id: 'text', name: 'Создать текст', status: 'available', description: 'Писать, переписывать и редактировать тексты.', url: serviceUrls.text+'/' },
   { id: 'game', name: 'Сделать игру', status: 'available', description: 'Создавать и запускать мини-игры с ИИ.', url: '/game' }
 ];
-const ARGOSHA_PROJECT_URL = 'https://vse-proekty-ian.onrender.com/';
-const PROJECT_GENERATOR_BASE = (process.env.PROJECT_GENERATOR_URL || 'https://vse-proekty-ian.onrender.com').replace(/\/$/, '');
+const ARGOSHA_PROJECT_URL = serviceUrls.project+'/';
+const PROJECT_GENERATOR_BASE = serviceUrls.project;
 const authServiceApiKey = process.env.AUTH_SERVICE_API_KEY || '';
 const authServiceClientId = process.env.AUTH_SERVICE_CLIENT_ID || 'nexora';
 
@@ -781,7 +783,7 @@ const server = http.createServer(async (req, res) => {
 
   if(req.method === 'GET' && ['/chat','/chat/','/chat.html'].includes(url.pathname)){
     try{
-      const html=Buffer.from(injectAnalytics(await readPublicFile(join(publicDir, 'chat.html'))));
+      const html=Buffer.from(injectAnalytics(publicHtml(await readPublicFile(join(publicDir, 'chat.html')))));
       const scriptHashes=[...html.toString('utf8').matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>"'sha256-"+crypto.createHash('sha256').update(m[1]).digest('base64')+"'").join(' ');
       return sendPublicAsset(req,res,'chat.html',html,{
         'Content-Type':'text/html; charset=utf-8',
@@ -795,7 +797,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && ['/game','/game/','/game.html'].includes(url.pathname)) {
     try {
-      const html=Buffer.from(injectAnalytics(await readPublicFile(join(publicDir, 'game.html'))));
+      const html=Buffer.from(injectAnalytics(publicHtml(await readPublicFile(join(publicDir, 'game.html')))));
       return sendPublicAsset(req,res,'game.html',html,{
         'Content-Type':'text/html; charset=utf-8',
         'Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'",
@@ -1002,7 +1004,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/' || url.pathname === '/index.html') {
     try {
-      const html=Buffer.from(injectAnalytics(await readPublicFile(join(publicDir, 'index.html'))));
+      const html=Buffer.from(injectAnalytics(publicHtml(await readPublicFile(join(publicDir, 'index.html')))));
       return sendPublicAsset(req,res,'index.html',html,{
         'Content-Type': 'text/html; charset=utf-8',
         'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'",
@@ -1019,7 +1021,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, () => {
   console.log('NEXORA lobby listening on port ' + port);
-  if(process.env.ARGOSHA_SMOKE_TEST==='1'&&process.env.NODE_ENV==='production'){
+  if(allowStartupSmoke('ARGOSHA_SMOKE_TEST')){
     setTimeout(async()=>{
       try{
         const r=await fetch('http://127.0.0.1:'+port+'/api/argosha',{

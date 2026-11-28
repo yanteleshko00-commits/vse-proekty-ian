@@ -24,7 +24,7 @@ services:
       - key: IMAGE_STUDIO_URL
         value: https://nexora-image-studio.onrender.com
       - key: PROJECT_GENERATOR_URL
-        value: https://vse-proekty-ian.onrender.com
+        value: https://vse-proekty-ian-1.onrender.com
       - key: OPENROUTER_API_KEY
         sync: false
       - key: GROQ_API_KEY

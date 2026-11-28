@@ -1,3 +1,5 @@
+import {serviceConfig,publicHtml,boundedInt,allowStartupSmoke,createRateLimiter,clientIP} from './runtime-config.js';
+const serviceUrls=serviceConfig();
 import {readPublicFile,sendPublicAsset} from './public-performance.js';
 import {backgroundJSON} from './background-jobs.js';
 import {handleAnalytics,injectAnalytics} from './visitor-analytics.js';
@@ -10,9 +12,10 @@ import { decodeAttachments } from './attachments.js';
 
 const port = Number(process.env.PORT || 10000);
 const here = fileURLToPath(new URL('.', import.meta.url));
-const lobby = (process.env.NEXORA_LOBBY_URL || 'https://nexora-lobby.onrender.com').replace(/\/+$/, '');
+const lobby=serviceUrls.lobby;
 const bridgeToken = (process.env.MATH_BRIDGE_TOKEN || '').trim();
-const rates = new Map();
+const concurrency=boundedInt(process.env.MATH_CONCURRENCY,4,1,8);
+const rate=createRateLimiter({minute:boundedInt(process.env.MATH_RATE_MINUTE,4,1,60),hour:boundedInt(process.env.MATH_RATE_HOUR,25,1,600)});
 let active = 0;
 function respond(res, code, data, headers = {}) {
   res.writeHead(code, {
@@ -21,19 +24,8 @@ function respond(res, code, data, headers = {}) {
   });
   res.end(JSON.stringify(data));
 }
-function allowRequest(req) {
-  const ip = String((process.env.RENDER === 'true' || process.env.TRUST_PROXY === 'true') ? (String(req.headers['x-forwarded-for'] || '').split(',').at(-1).trim() || req.socket.remoteAddress || 'unknown') : (req.socket.remoteAddress || 'unknown')).slice(0, 80);
-  const now = Date.now();
-  const record = rates.get(ip) || [];
-  const recent = record.filter(t => now - t < 3600000);
-  if (recent.filter(t => now - t < 60000).length >= 4 || recent.length >= 25) return false;
-  recent.push(now);
-  rates.set(ip, recent);
-  if (rates.size > 2000) for (const [key, times] of rates) {
-    if (times.every(t => now - t > 3600000)) rates.delete(key);
-  }
-  return true;
-}
+function allowRequest(req){return rate(clientIP(req));}
+
 async function readJson(req, limit = 12000) {
   if (!String(req.headers['content-type'] || '').includes('application/json')) throw new Error('JSON required');
   let len = 0;
@@ -45,7 +37,7 @@ async function readJson(req, limit = 12000) {
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
 }
-const backgroundMath=backgroundJSON('math',solveMath,{maxActive:4,maxBody:10500000});
+const backgroundMath=backgroundJSON('math',solveMath,{maxActive:concurrency,maxBody:10500000});
 const server = http.createServer(async (req, res) => {
   let url;
   try { url = new URL(req.url || '/', 'http://localhost'); }
@@ -53,15 +45,15 @@ const server = http.createServer(async (req, res) => {
   if(['/api/visitors/ping','/nexora-visitors.js','/internal/visitors/ingest'].includes(url.pathname)&&await handleAnalytics(req,res,url.pathname,{site:'nexora-math-studio'}))return;
   if(serveBrand(req,res,url.pathname,"NEXORA Math Studio"))return;
   if (req.method === 'GET' && url.pathname === '/health') return respond(res, 200, {
-    ok: true, service: 'nexora-math-studio', bridgeConfigured: bridgeToken.length >= 32
+    ok: true, service: 'nexora-math-studio', bridgeConfigured: bridgeToken.length >= 32, concurrency:{active,max:concurrency}
   });
   if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
     try {
-      const html=Buffer.from(injectAnalytics(await readPublicFile(join(here, 'index.html'))));
+      const html=Buffer.from(injectAnalytics(publicHtml(await readPublicFile(join(here, 'index.html')))));
       return sendPublicAsset(req,res,'index.html',html,{
         'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=120',
         'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin',
-        'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; frame-src https://nexora-lobby.onrender.com; frame-ancestors 'none'; form-action 'self'"
+        'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; frame-src "+serviceUrls.lobby+" "+serviceUrls.publicLobby+"; frame-ancestors 'none'; form-action 'self'"
       });
     } catch (error) {
       console.error('Math Studio page failed:', error.message);
@@ -74,7 +66,7 @@ const server = http.createServer(async (req, res) => {
 async function solveMath(req,res){
   if (!bridgeToken || bridgeToken.length < 32) return respond(res, 503, { message: 'ИИ-сервис ещё подключается. Повторите попытку позже.' });
   if (!allowRequest(req)) return respond(res, 429, { message: 'Слишком много запросов. Попробуйте через некоторое время.' });
-  if (active >= 4) return respond(res, 503, { message: 'Сервис занят. Попробуйте чуть позже.' });
+  if (active >= concurrency) return respond(res, 503, { message: 'Сервис занят. Попробуйте чуть позже.' });
   active++;
   try {
   let input;
@@ -118,7 +110,7 @@ server.listen(port, '0.0.0.0', () => {
   console.log('NEXORA Math Studio listening on port ' + port);
   console.log('Math gateway configured:', bridgeToken.length >= 32);
   // Explicitly opt-in to one diagnostic generation after startup; never run by default.
-  if (process.env.MATH_SMOKE_TEST === '1') {
+  if (allowStartupSmoke('MATH_SMOKE_TEST')) {
     setTimeout(async () => {
       try {
         const response = await fetch('http://127.0.0.1:' + port + '/api/solve', {
@@ -139,7 +131,7 @@ server.listen(port, '0.0.0.0', () => {
       }
     }, 2500);
   }
-  if (process.env.MATH_IMAGE_SMOKE_TEST === '1') {
+  if (allowStartupSmoke('MATH_IMAGE_SMOKE_TEST')) {
     setTimeout(async () => {
       try {
         const { mathTestImage } = await import('./test-image.mjs');
@@ -163,7 +155,7 @@ server.listen(port, '0.0.0.0', () => {
       }
     }, 2800);
   }
-  if (process.env.MATH_TOPIC_SMOKE_TEST === '1') {
+  if (allowStartupSmoke('MATH_TOPIC_SMOKE_TEST')) {
     setTimeout(async () => {
       const cases = [
         {name:'probability',kind:'probability',grade:8,problem:'В коробке 5 красных и 3 синих шара. Выбирают один шар. Какова вероятность выбрать красный?'},

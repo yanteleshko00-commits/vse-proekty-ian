@@ -1,3 +1,5 @@
+import {serviceConfig,publicHtml,boundedInt,allowStartupSmoke,createRateLimiter,clientIP} from './runtime-config.js';
+const serviceUrls=serviceConfig();
 import {readPublicFile,sendPublicAsset} from './public-performance.js';
 import {backgroundJSON} from './background-jobs.js';
 import {handleAnalytics,injectAnalytics} from './visitor-analytics.js';
@@ -43,7 +45,7 @@ async function readJson(req, limit = 14 * 1024 * 1024) {
 }
 
 const studioAuthSecret=()=>String(process.env.NEXORA_STUDIO_AUTH_TOKEN||process.env.NEXORA_IMAGE_RELAY_TOKEN||'').trim();
-const studioLobby=(process.env.NEXORA_LOBBY_URL||'https://nexora-lobby.onrender.com').replace(/\/$/,'');
+const studioLobby=serviceUrls.lobby;
 function studioCookie(name,value,maxAge){return name+'='+encodeURIComponent(value)+'; Path=/; HttpOnly; SameSite=Lax; Max-Age='+maxAge+(production?'; Secure':'');}
 function studioReadCookie(req,name){for(const item of String(req.headers.cookie||'').split(';')){const i=item.indexOf('=');if(i>0&&item.slice(0,i).trim()===name){try{return decodeURIComponent(item.slice(i+1).trim());}catch{return '';}}}return '';}
 function studioSign(value){return crypto.createHmac('sha256',studioAuthSecret()).update('image-studio-session-v1:'+value).digest('base64url');}
@@ -82,12 +84,13 @@ async function studioCallback(req,res,url){
     return send(res,302,'',{Location:'/','Set-Cookie':[clear,studioCookie('nexora_image_session',makeStudioSession({userId:data.userId,sessionId:data.sessionId}),604800)],'Referrer-Policy':'no-referrer'});
   }catch{return send(res,503,'Не удалось завершить вход. Повторите попытку.',{'Set-Cookie':clear,'Referrer-Policy':'no-referrer'});}
 }
-let imageInFlight=false;
+const imageConcurrency=boundedInt(process.env.IMAGE_CONCURRENCY,2,1,4);
+let imageInFlight=0;
 async function protectedImage(req,res){
   const account=readStudioSession(req);
   // Guests use the existing IP limiter and global concurrency limit.
-  if(imageInFlight)return send(res,429,JSON.stringify({error:'busy',message:'Генератор занят. Повторите запрос позже.'}),studioJson);
-  imageInFlight=true;
+  if(imageInFlight>=imageConcurrency)return send(res,503,JSON.stringify({error:'busy',message:'Генератор занят. Повторите запрос позже.'}),{...studioJson,'Retry-After':'5'});
+  imageInFlight++;
   let reservationId=null,outcome='failure';
   try{
     if(account){
@@ -101,24 +104,11 @@ async function protectedImage(req,res){
     if(!res.headersSent){const status=Number(error.status);return send(res,status>=400&&status<600?status:503,JSON.stringify({error:'image_request_failed',message:String(error.message||'Сервис временно недоступен.').slice(0,160)}),studioJson);}
   }finally{
     if(reservationId)for(let i=0;i<3;i++){try{await studioCall({action:'finalize',reservationId,outcome});break;}catch(error){if(i===2)console.error('Image usage finalization failed:',reservationId,error.name);}}
-    imageInFlight=false;
+    imageInFlight--;
   }
 }
-const imageRate = new Map();
-function allowArgosha(req) {
-  const ip = String((process.env.RENDER === 'true' || process.env.TRUST_PROXY === 'true') ? (String(req.headers['x-forwarded-for'] || '').split(',').at(-1).trim() || req.socket.remoteAddress || 'unknown') : (req.socket.remoteAddress || 'unknown'));
-  const now = Date.now();
-  const recent = (imageRate.get(ip) || []).filter(time => now - time < 60000);
-  if (recent.length >= 12) return false;
-  recent.push(now);
-  imageRate.set(ip, recent);
-  if (imageRate.size > 1000) {
-    for (const [key, times] of imageRate) {
-      if (!times.some(time => now - time < 60000)) imageRate.delete(key);
-    }
-  }
-  return true;
-}
+const imageRate=createRateLimiter({minute:boundedInt(process.env.IMAGE_RATE_MINUTE,12,1,60),hour:boundedInt(process.env.IMAGE_RATE_HOUR,60,1,600),maxKeys:1000});
+function allowArgosha(req){return imageRate(clientIP(req));}
 
 const imageSizes = {
   square: '1024x1024',
@@ -621,7 +611,7 @@ async function handleInternalAliceText(req, res) {
   }
 }
 
-const backgroundImage=backgroundJSON('image',protectedImage,{maxActive:2});
+const backgroundImage=backgroundJSON('image',protectedImage,{maxActive:imageConcurrency});
 const server = http.createServer(async (req, res) => {
   let url;
   try {
@@ -645,6 +635,7 @@ const server = http.createServer(async (req, res) => {
       ok: providers.length > 0,
       service: 'nexora-image-studio',
       imageGeneratorConfigured: providers.length > 0,
+      concurrency:{active:imageInFlight,max:imageConcurrency},
       authenticationConfigured:studioAuthSecret().length>=32,
       imageProviders: providers,
       yandexImage: { configured: yandexMissing.length === 0, missing: yandexMissing, model: 'aliceai-image-art-3.0' },
@@ -684,10 +675,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
-    const html=Buffer.from(injectAnalytics(await readPublicFile(join(publicDir, 'index.html'))));
+    const html=Buffer.from(injectAnalytics(publicHtml(await readPublicFile(join(publicDir, 'index.html')))));
     return sendPublicAsset(req,res,'index.html',html,{
       'Content-Type': 'text/html; charset=utf-8',
-      'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-src https://nexora-lobby.onrender.com; frame-ancestors 'none'",
+      'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-src "+serviceUrls.lobby+" "+serviceUrls.publicLobby+"; frame-ancestors 'none'",
       'Referrer-Policy': 'strict-origin-when-cross-origin'
     });
   } catch (error) {

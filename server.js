@@ -1,3 +1,4 @@
+import {serviceConfig,publicHtml,boundedInt} from './nexora/runtime-config.js';
 import {readPublicFile,sendPublicAsset} from './nexora/public-performance.js';
 import {handleAnalytics,projectSite} from './nexora/visitor-analytics.js';
 import {serveBrand} from './nexora/brand.js';
@@ -21,7 +22,7 @@ import { contentSlideCount, appendProductSlide, imageFrameRatio, imageSearchQuer
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
-const AUTH_PUBLIC_URL = (process.env.AUTH_PUBLIC_URL || 'https://ecosystem-auth-service.onrender.com').replace(/\/$/, '');
+const AUTH_PUBLIC_URL = serviceConfig().auth;
 const OAUTH_CLIENT_ID = process.env.OAUTH_CLIENT_ID || 'projects-ian';
 const OAUTH_CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET || '';
 const PROJECT_SESSION_SECRET = process.env.PROJECT_SESSION_SECRET || '';
@@ -39,9 +40,9 @@ function secureRandomToken(bytes = 32) {
 
 // Free-tier deployments use temporary local storage; no paid disk is required for normal generation.
 const MODEL = process.env.OPENAI_MODEL || 'gpt-6-luna';
-const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
+const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2.5-flare';
 // Keep requests below common hosting/proxy limits; slow image lookups are bounded separately.
-const REQUEST_TIMEOUT_MS = Number(process.env.GENERATION_TIMEOUT_MS || 95000);
+const REQUEST_TIMEOUT_MS = boundedInt(process.env.GENERATION_TIMEOUT_MS,95000,5000,180000);
 const MAX_SLIDES = 100;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const PDF_FONT_PATH = path.resolve(process.cwd(), 'DejaVuSans.ttf');
@@ -65,7 +66,7 @@ if (process.env.RENDER === 'true' || process.env.TRUST_PROXY === 'true') app.set
 app.use((_req,res,next)=>{
   res.set({'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'strict-origin-when-cross-origin',
     'Permissions-Policy':'camera=(), microphone=(), geolocation=()',
-    'Content-Security-Policy':"default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'; font-src 'self' data:; frame-src https://nexora-lobby.onrender.com"});
+    'Content-Security-Policy':"default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'; font-src 'self' data:; frame-src "+serviceConfig().lobby+" "+serviceConfig().publicLobby});
   if(process.env.NODE_ENV==='production')res.set('Strict-Transport-Security','max-age=15552000');
   next();
 });
@@ -2428,7 +2429,8 @@ app.use(async(req,res,next)=>{
  const name=req.path==='/'||req.path==='/index.html'?'index.html':/^\/assets\/(?:project-(?:style|script)-\d+\.(?:css|js)|project-actions\.js|nexora-design\.css|argosha-mobile\.(?:css|js))$/.test(req.path)?req.path.slice(1):null;
  if(!name)return next();
  try{
-  const body=await readPublicFile(path.join(publicDir,name));
+  const raw=await readPublicFile(path.join(publicDir,name));
+  const body=name.endsWith('.html')?Buffer.from(publicHtml(raw)):raw;
   const type=name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8';
   return sendPublicAsset(req,res,name,body,{'Content-Type':type,'Cache-Control':name.endsWith('.html')?'public, max-age=0, must-revalidate':'public, max-age=300'});
  }catch(error){if(error.code==='ENOENT')return next();return next(error);}

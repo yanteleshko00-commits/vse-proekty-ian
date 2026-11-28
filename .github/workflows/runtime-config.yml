@@ -1,0 +1,14 @@
+name: NEXORA runtime configuration and consistency
+on: [push, workflow_dispatch]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --check server.js
+          for dir in nexora nexora-image-studio nexora-text-studio nexora-math-studio; do node --check "$dir/server.js"; node --check "$dir/runtime-config.js"; done
+          node --test test/runtime-config.test.mjs
