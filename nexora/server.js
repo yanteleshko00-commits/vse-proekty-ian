@@ -1,3 +1,4 @@
+import {readPublicFile,sendPublicAsset} from './public-performance.js';
 import {backgroundJSON} from './background-jobs.js';
 import {handleAnalytics,injectAnalytics} from './visitor-analytics.js';
 import {serveBrand} from './brand.js';
@@ -780,9 +781,9 @@ const server = http.createServer(async (req, res) => {
 
   if(req.method === 'GET' && ['/chat','/chat/','/chat.html'].includes(url.pathname)){
     try{
-      const html=Buffer.from(injectAnalytics(await readFile(join(publicDir,'chat.html'))));
+      const html=Buffer.from(injectAnalytics(await readPublicFile(join(publicDir, 'chat.html'))));
       const scriptHashes=[...html.toString('utf8').matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>"'sha256-"+crypto.createHash('sha256').update(m[1]).digest('base64')+"'").join(' ');
-      return send(res,200,html,{
+      return sendPublicAsset(req,res,'chat.html',html,{
         'Content-Type':'text/html; charset=utf-8',
         'Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' " + scriptHashes + "; connect-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'",
         'Referrer-Policy':'same-origin'
@@ -794,8 +795,8 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && ['/game','/game/','/game.html'].includes(url.pathname)) {
     try {
-      const html=Buffer.from(injectAnalytics(await readFile(join(publicDir,'game.html'))));
-      return send(res,200,html,{
+      const html=Buffer.from(injectAnalytics(await readPublicFile(join(publicDir, 'game.html'))));
+      return sendPublicAsset(req,res,'game.html',html,{
         'Content-Type':'text/html; charset=utf-8',
         'Content-Security-Policy':"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'",
         'Cache-Control':'public, max-age=120',
@@ -805,14 +806,14 @@ const server = http.createServer(async (req, res) => {
   }
   if(req.method === 'GET' && url.pathname === '/game-builder.js'){
     try{
-      const js=await readFile(join(publicDir,'game-builder.js'));
-      return send(res,200,js,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'public, max-age=120','X-Content-Type-Options':'nosniff'});
+      const js=await readPublicFile(join(publicDir,'game-builder.js'));
+      return sendPublicAsset(req,res,'game-builder.js',js,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'public, max-age=120','X-Content-Type-Options':'nosniff'});
     }catch(error){console.error('Game builder unavailable:',error.name);return send(res,503,'Конструктор игр временно недоступен.');}
   }
   if(req.method === 'GET' && url.pathname === '/game.js'){
     try {
-      const js=await readFile(join(publicDir,'game.js'));
-      return send(res,200,js,{
+      const js=await readPublicFile(join(publicDir,'game.js'));
+      return sendPublicAsset(req,res,'game.js',js,{
         'Content-Type':'text/javascript; charset=utf-8',
         'Cache-Control':'public, max-age=120',
         'X-Content-Type-Options':'nosniff'
@@ -1001,8 +1002,8 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/' || url.pathname === '/index.html') {
     try {
-      const html=Buffer.from(injectAnalytics(await readFile(join(publicDir, 'index.html'))));
-      return send(res, 200, html, {
+      const html=Buffer.from(injectAnalytics(await readPublicFile(join(publicDir, 'index.html'))));
+      return sendPublicAsset(req,res,'index.html',html,{
         'Content-Type': 'text/html; charset=utf-8',
         'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'",
         'Referrer-Policy': 'strict-origin-when-cross-origin'

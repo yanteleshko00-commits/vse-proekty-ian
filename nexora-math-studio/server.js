@@ -1,3 +1,4 @@
+import {readPublicFile,sendPublicAsset} from './public-performance.js';
 import {backgroundJSON} from './background-jobs.js';
 import {handleAnalytics,injectAnalytics} from './visitor-analytics.js';
 import {serveBrand} from './brand.js';
@@ -56,13 +57,12 @@ const server = http.createServer(async (req, res) => {
   });
   if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
     try {
-      const html=Buffer.from(injectAnalytics(await readFile(join(here, 'index.html'))));
-      res.writeHead(200, {
+      const html=Buffer.from(injectAnalytics(await readPublicFile(join(here, 'index.html'))));
+      return sendPublicAsset(req,res,'index.html',html,{
         'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=120',
         'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin',
         'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; frame-src https://nexora-lobby.onrender.com; frame-ancestors 'none'; form-action 'self'"
       });
-      return res.end(html);
     } catch (error) {
       console.error('Math Studio page failed:', error.message);
       return respond(res, 500, { message: 'Страница временно недоступна.' });

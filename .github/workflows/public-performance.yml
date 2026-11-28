@@ -1,0 +1,20 @@
+name: NEXORA public performance
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/public-performance.js'
+      - 'test/public-performance.test.mjs'
+      - '.github/workflows/public-performance.yml'
+  workflow_dispatch:
+jobs:
+  performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test test/public-performance.test.mjs
+      - run: node --check server.js && node --check nexora/server.js && node --check nexora-image-studio/server.js && node --check nexora-math-studio/server.js && node --check nexora-text-studio/server.js

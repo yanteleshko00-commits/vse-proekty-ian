@@ -1,3 +1,4 @@
+import {readPublicFile,sendPublicAsset} from './nexora/public-performance.js';
 import {handleAnalytics,projectSite} from './nexora/visitor-analytics.js';
 import {serveBrand} from './nexora/brand.js';
 import { createProjectSecurity } from './project-security.js';
@@ -2421,6 +2422,17 @@ app.get('/api/me', asyncRoute(async (req, res) => {
 // Static site support for the existing Render deployment.
 const publicDir = path.resolve(process.cwd(), 'public');
 app.use((req,res,next)=>{if(!serveBrand(req,res,req.path,"Все проекты #Ian"))next();});
+// Limit compression to public version-independent UI files.
+app.use(async(req,res,next)=>{
+ if(!['GET','HEAD'].includes(req.method))return next();
+ const name=req.path==='/'||req.path==='/index.html'?'index.html':/^\/assets\/(?:project-(?:style|script)-\d+\.(?:css|js)|project-actions\.js|nexora-design\.css|argosha-mobile\.(?:css|js))$/.test(req.path)?req.path.slice(1):null;
+ if(!name)return next();
+ try{
+  const body=await readPublicFile(path.join(publicDir,name));
+  const type=name.endsWith('.html')?'text/html; charset=utf-8':name.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8';
+  return sendPublicAsset(req,res,name,body,{'Content-Type':type,'Cache-Control':name.endsWith('.html')?'public, max-age=0, must-revalidate':'public, max-age=300'});
+ }catch(error){if(error.code==='ENOENT')return next();return next(error);}
+});
 if (fs.existsSync(publicDir)) app.use(express.static(publicDir));
 app.get('/', (_req, res, next) => {
   const indexPath = path.join(publicDir, 'index.html');
