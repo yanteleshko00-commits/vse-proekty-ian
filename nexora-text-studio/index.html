@@ -360,7 +360,7 @@ html{scroll-behavior:auto!important}
  body.nx-redesign:not(.standalone) .result-actions { flex-wrap:wrap; }
 }
 </style>
-<style id="nx-pwa-dock-v1">
+<style id="nx-pwa-dock-v2">
 .nx-pwa-dock{display:none!important}
 html[data-nx-installed]{--nx-dock-height:70px;--nx-dock-space:calc(var(--nx-dock-height) + 22px + env(safe-area-inset-bottom,0px))}
 html[data-nx-installed] body:has(>.nx-pwa-dock){padding-bottom:var(--nx-dock-space)!important}
@@ -399,7 +399,49 @@ html[data-nx-installed]:has(.nx-game-playing) .nx-pwa-dock,html[data-nx-installe
 }
 @media(prefers-reduced-motion:reduce){.nx-pwa-dock>a{transition:none!important}}
 @media(prefers-reduced-transparency:reduce){html[data-nx-installed] .nx-pwa-dock{background:#333147;-webkit-backdrop-filter:none;backdrop-filter:none}}
-</style><script src="/nexora-app-dock.js?v=1" defer></script></head>
+
+/* Liquid dock v2: a single moving glass capsule, not separate coloured tiles. */
+html[data-nx-installed]{--nx-dock-height:76px;--nx-dock-space:calc(var(--nx-dock-height) + 24px + env(safe-area-inset-bottom,0px))}
+html[data-nx-installed] .nx-pwa-dock{
+ border-radius:999px;padding:5px;gap:0;overflow:hidden;
+ background:linear-gradient(175deg,rgba(255,255,255,.22),rgba(255,255,255,.025) 47%,rgba(255,255,255,.12)),rgba(25,24,38,.34);
+ border:1px solid rgba(255,255,255,.30);
+ box-shadow:inset 0 1px 1px rgba(255,255,255,.65),inset 0 -1px 1px rgba(255,255,255,.28),inset 1px 0 2px rgba(255,255,255,.20),inset -1px 0 2px rgba(255,255,255,.20),0 9px 28px rgba(16,13,31,.22);
+ -webkit-backdrop-filter:blur(18px) saturate(190%) brightness(1.07);backdrop-filter:blur(18px) saturate(190%) brightness(1.07);
+ touch-action:pan-y;user-select:none;-webkit-user-select:none;
+ --nx-accent:#dfc5ff;--nx-pill-x:0px;--nx-pill-y:0px;--nx-pill-w:0px;--nx-pill-h:0px;--nx-pill-scale:1;--nx-pill-stretch:1;
+}
+html[data-nx-installed] .nx-pwa-dock::before{content:"";position:absolute;z-index:-1;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(112deg,rgba(255,255,255,.15),transparent 25%,transparent 75%,rgba(255,255,255,.13));}
+html[data-nx-installed] .nx-pwa-dock::after{
+ content:"";position:absolute;z-index:0;left:0;top:0;width:var(--nx-pill-w);height:var(--nx-pill-h);border-radius:999px;pointer-events:none;
+ opacity:0;transform:translate3d(var(--nx-pill-x),var(--nx-pill-y),0) scale(var(--nx-pill-stretch),var(--nx-pill-scale));
+ background:linear-gradient(165deg,rgba(255,255,255,.22),rgba(255,255,255,.025) 55%,rgba(255,255,255,.09)),rgba(27,23,45,.27);
+ box-shadow:inset 0 1px 1px rgba(255,255,255,.35),inset 0 -1px 1px rgba(255,255,255,.10),0 3px 12px rgba(16,13,31,.12);
+ transition:transform 420ms cubic-bezier(.20,1.35,.38,1),width 300ms cubic-bezier(.20,.85,.25,1),height 300ms,opacity 160ms;
+}
+html[data-nx-installed] .nx-pwa-dock[data-ready]::after{opacity:1}
+html[data-nx-installed] .nx-pwa-dock[data-dragging]::after{transition:transform 75ms linear,width 100ms,height 100ms,opacity 160ms;background:linear-gradient(145deg,rgba(255,255,255,.34),rgba(255,255,255,.06)),rgba(27,23,45,.18)}
+html[data-nx-installed] .nx-pwa-dock>a{position:relative;z-index:1;border-radius:999px;gap:5px;min-height:44px;padding:3px 0;background:transparent!important;box-shadow:none!important;color:rgba(255,255,255,.96);transition:color 180ms ease,transform 330ms cubic-bezier(.2,1.45,.4,1);text-shadow:0 1px 4px rgba(0,0,0,.30)}
+html[data-nx-installed] .nx-pwa-dock>a[aria-current="page"]{color:var(--nx-accent)}
+html[data-nx-installed] .nx-pwa-dock[data-ready]>a[aria-current="page"]{color:rgba(255,255,255,.96)}
+html[data-nx-installed] .nx-pwa-dock[data-ready]>a[data-preview]{color:var(--nx-accent)}
+html[data-nx-installed] .nx-pwa-dock>a[data-pressed]{transform:scale(.91)}
+html[data-nx-installed] .nx-pwa-dock>a svg{transition:transform 350ms cubic-bezier(.20,1.5,.35,1)}
+html[data-nx-installed] .nx-pwa-dock>a[data-preview] svg{transform:scale(1.08)}
+html[data-nx-installed] .nx-pwa-dock>a[data-tool="lobby"] svg{width:28px;height:28px}
+html[data-nx-installed] .nx-pwa-dock>a[data-tool="lobby"][data-preview] svg{fill:currentColor;stroke-width:1.3}
+html[data-nx-installed] .nx-pwa-dock:not([data-ready])>a[aria-current="page"]{background:rgba(255,255,255,.16)!important}
+html[data-nx-installed] body:has(>.nx-pwa-dock[data-screen="project"]){max-width:100%;overflow-x:clip}
+@media(max-width:600px){
+ html[data-nx-installed]{--nx-dock-height:70px}
+ html[data-nx-installed] .nx-pwa-dock{padding:4px;width:calc(100% - 16px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));font-size:9.5px}
+ html[data-nx-installed] .nx-pwa-dock>a{gap:4px}
+ html[data-nx-installed] .nx-pwa-dock>a svg{width:23px;height:23px}
+ html[data-nx-installed] .nx-pwa-dock>a[data-tool="lobby"] svg{width:26px;height:26px}
+}
+@media(prefers-reduced-motion:reduce){html[data-nx-installed] .nx-pwa-dock::after,html[data-nx-installed] .nx-pwa-dock>a,html[data-nx-installed] .nx-pwa-dock>a svg{transition:none!important}}
+@media(prefers-reduced-transparency:reduce){html[data-nx-installed] .nx-pwa-dock{background:#353247;-webkit-backdrop-filter:none;backdrop-filter:none}}
+</style><script src="/nexora-app-dock.js?v=2" defer></script></head>
 <body class="nx-redesign">
 <header class="topbar">
   <div class="topbar-inner">
