@@ -198,12 +198,12 @@ const PROJECT_GENERATOR_BASE = serviceUrls.project;
 const authServiceApiKey = process.env.AUTH_SERVICE_API_KEY || '';
 const authServiceClientId = process.env.AUTH_SERVICE_CLIENT_ID || 'nexora';
 
-async function reserveArgoshaUsage(userId, idempotencyKey, sessionId) {
+async function reserveArgoshaUsage(userId, idempotencyKey, sessionId, product='argosha') {
   if (!authServiceApiKey) throw Object.assign(new Error('Для запуска Аргоши нужно добавить AUTH_SERVICE_API_KEY в переменные Render NEXORA.'), { status: 503 });
   const response = await fetch(authBase + '/v1/internal/usage/reserve', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-service-id': authServiceClientId, 'x-service-api-key': authServiceApiKey },
-    body: JSON.stringify({ userId, idempotencyKey, sessionId }),
+    body: JSON.stringify({ userId, idempotencyKey, sessionId, product }),
     signal: AbortSignal.timeout(12000)
   });
   const data = await response.json().catch(() => ({}));
@@ -262,7 +262,7 @@ async function studioInternal(req,res){
     }
     if(body.action==='reserve'){
       await authSessionCall('/v1/internal/session/validate',{userId:body.userId,sessionId:body.sessionId});
-      const reservationId=await reserveArgoshaUsage(body.userId,crypto.randomUUID(),body.sessionId);
+      const reservationId=await reserveArgoshaUsage(body.userId,crypto.randomUUID(),body.sessionId,'image');
       return send(res,200,JSON.stringify({reservationId}),studioHeaders);
     }
     if(body.action==='finalize'&&/^[0-9a-f-]{36}$/i.test(body.reservationId||'')&&['success','failure'].includes(body.outcome)){
@@ -704,7 +704,16 @@ async function nexoraChatReply(req, res) {
   }finally{chatInFlight.delete(key);}
 }
 
-const backgroundChat=backgroundJSON('chat',nexoraChatReply,{maxActive:8,maxBody:20000});
+async function accountGeneration(req,res,handler,product){
+ const a=readSession(req);if(!a?.sessionId)return handler(req,res);
+ let reservation;
+ try{reservation=await reserveArgoshaUsage(a.id,crypto.randomUUID(),a.sessionId,product);if(!reservation)throw Error('missing reservation');}
+ catch(error){const status=[401,402,429].includes(error.status)?error.status:503;return send(res,status,JSON.stringify({error:status===402?'no_credits':'account_unavailable',message:status===402?'Лимит исчерпан. Откройте подписку NEXORA ID.':status===429?'Достигнут лимит аккаунта. Повторите позже.':'Не удалось подтвердить аккаунт.'}),{'Content-Type':'application/json; charset=utf-8'});}
+ let outcome='failure';
+ try{await handler(req,res);if(res.statusCode>=200&&res.statusCode<300)outcome='success';}
+ finally{for(let i=0;i<3;i++)try{await finalizeArgoshaUsage(reservation,outcome);break;}catch(error){if(i===2)console.warn('Usage finalization failed',error.name);}}
+}
+const backgroundChat=backgroundJSON('chat',(req,res)=>accountGeneration(req,res,nexoraChatReply,'chat'),{maxActive:8,maxBody:20000});
 const server = http.createServer(async (req, res) => {
   const base = appUrl(req);
   let url;
@@ -822,10 +831,10 @@ const server = http.createServer(async (req, res) => {
       });
     }catch(e){console.error('Game Studio engine error:',e.message);return send(res,500,'Движок игры недоступен.')}
   }
-  if(req.method === 'POST' && url.pathname === '/api/game/generate')return makeGame(req,res);
-  if(req.method === 'POST' && url.pathname === '/api/game/code')return makeCodeGame(req,res);
+  if(req.method === 'POST' && url.pathname === '/api/game/generate')return accountGeneration(req,res,makeGame,'game');
+  if(req.method === 'POST' && url.pathname === '/api/game/code')return accountGeneration(req,res,makeCodeGame,'game');
   if(req.method === 'POST' && url.pathname === '/api/game/preview')return prepareGamePreview(req,res);
-  if(req.method === 'POST' && url.pathname === '/api/game/repair')return repairGameRuntime(req,res);
+  if(req.method === 'POST' && url.pathname === '/api/game/repair')return accountGeneration(req,res,repairGameRuntime,'game');
   if(req.method === 'GET' && url.pathname.startsWith('/game/preview/'))return serveGamePreview(res,url.pathname.slice('/game/preview/'.length));
 
   if (url.pathname === '/api/images/generate') {

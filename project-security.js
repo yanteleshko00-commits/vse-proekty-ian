@@ -70,7 +70,7 @@ async function projectAuthCall(endpoint, body) {
     body:JSON.stringify(body),signal:AbortSignal.timeout(12000)
   });
   const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw Object.assign(Error(data.error==='no_credits'?'Бесплатные генерации закончились. Выберите пакет.':'Не удалось подтвердить сессию или учесть генерацию.'),{status:response.status===401?401:response.status===402?402:response.status===404?401:503});
+  if(!response.ok)throw Object.assign(Error(data.error==='no_credits'?'Бесплатные генерации закончились. Выберите пакет.':'Не удалось подтвердить сессию или учесть генерацию.'),{status:response.status===401?401:response.status===402?402:response.status===404?401:response.status===429?429:503});
   return data;
 }
 async function liveProjectAccount(req) {
@@ -110,7 +110,7 @@ async function beginProjectWork(req){
   activeProjectWork++;activeProjectUsers.add(id);
   try{
     if(live.guest)return {id,guest:true};
-    const reserved=await projectAuthCall('/v1/internal/usage/reserve',{userId:id,sessionId:live.sessionId,idempotencyKey:crypto.randomUUID()});
+    const reserved=await projectAuthCall('/v1/internal/usage/reserve',{userId:id,sessionId:live.sessionId,idempotencyKey:crypto.randomUUID(),product:'project'});
     if(!reserved.reservationId)throw Error('Не получен резерв кредитов.');
     return {id,reservationId:reserved.reservationId};
   }catch(error){activeProjectWork--;activeProjectUsers.delete(id);throw error;}
