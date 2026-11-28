@@ -25,3 +25,5 @@ test('mounted directory ticket can be consumed exactly once across store instanc
   assert.equal(await b.consume(id,state),null);
  }finally{await rm(directory,{recursive:true,force:true});}
 });
+
+test('ticket cannot be exchanged by a different studio',async()=>{const s=createStudioTicketStore();const id=await s.issue({state,userId:'user',sessionId:'session',studio:'text'});assert.equal(await s.consume(id,state,'math'),null);assert.equal((await s.consume(id,state,'text')).studio,'text');});

@@ -237,7 +237,7 @@ async function authSessionCall(path,body){
   if(authServiceApiKey.length<32)throw Object.assign(Error('NEXORA ID не настроен.'),{status:503});
   const response=await fetch(authBase+path,{method:'POST',headers:{'Content-Type':'application/json','x-service-id':authServiceClientId,'x-service-api-key':authServiceApiKey},body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
   const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw Object.assign(Error(data.error==='no_credits'?'Бесплатные генерации закончились. Выберите пакет.':'Не удалось подтвердить сессию NEXORA ID.'),{status:response.status===401||response.status===404?401:response.status===402?402:503});
+  if(!response.ok)throw Object.assign(Error(data.error==='no_credits'?'Бесплатные генерации закончились. Выберите пакет.':'Не удалось подтвердить сессию NEXORA ID.'),{status:response.status===401||response.status===404?401:response.status===402?402:response.status===429?429:503});
   return data;
 }
 async function studioLogin(req,res,url,studio='image'){
@@ -673,6 +673,7 @@ async function nexoraChatReply(req, res) {
   try {
     const studio=chatRequestStudio(input.messages);
     if(studio)return send(res,200,JSON.stringify({ok:true,answer:chatStudioReply(studio),provider:'NEXORA',model:input.model}),jsonHeaders);
+    return await accountGeneration(req,res,async(req,res)=>{
     if(input.model==='deepseek'||input.model==='auto'){
       const provider=deepSeekProvider(process.env,process.env.CHAT_DEEPSEEK_MODEL);
       if(provider){
@@ -701,6 +702,7 @@ async function nexoraChatReply(req, res) {
       provider:String(payload.provider||'NEXORA AI').slice(0,50),
       model:input.model
     }),jsonHeaders);
+    },'chat');
   }catch(error){
     console.warn('[nexora-chat] upstream unavailable:',error.name||'error');
     return send(res,502,JSON.stringify({
@@ -718,7 +720,7 @@ async function accountGeneration(req,res,handler,product){
  try{await handler(req,res);if(res.statusCode>=200&&res.statusCode<300)outcome='success';}
  finally{for(let i=0;i<3;i++)try{await finalizeArgoshaUsage(reservation,outcome);break;}catch(error){if(i===2)console.warn('Usage finalization failed',error.name);}}
 }
-const backgroundChat=backgroundJSON('chat',(req,res)=>accountGeneration(req,res,nexoraChatReply,'chat'),{maxActive:8,maxBody:20000});
+const backgroundChat=backgroundJSON('chat',nexoraChatReply,{maxActive:8,maxBody:20000});
 const server = http.createServer(httpGuard.wrap(async (req, res) => {
   const base = appUrl(req);
   let url;
@@ -786,6 +788,7 @@ const server = http.createServer(httpGuard.wrap(async (req, res) => {
     return send(res, 200, JSON.stringify({
       ok: true,
       service: 'nexora-lobby',
+      protection:httpGuard.snapshot(),
       oauthConfigured: ready,
       argoshaConfigured: Boolean(process.env.DEEPSEEK_API_KEY || process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY),
       deepSeekConfigured: Boolean(process.env.DEEPSEEK_API_KEY?.trim()),

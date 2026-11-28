@@ -113,7 +113,7 @@ test('signed-in chat forwards only validated messages to the internal AI server'
   const {join}=await import('node:path');
   const {createHmac}=await import('node:crypto');
   const here=fileURLToPath(new URL('..',import.meta.url));
-  const upstreamCalls=[],authCalls=[];
+  const upstreamCalls=[],authCalls=[],usageCalls=[];
   let revoked=false;
   const secret='test-internal-token-'.repeat(4);
   const mock=createServer(async(req,res)=>{
@@ -123,6 +123,10 @@ test('signed-in chat forwards only validated messages to the internal AI server'
       authCalls.push(JSON.parse(Buffer.concat(chunks).toString('utf8')));
       res.writeHead(revoked?401:200,{'Content-Type':'application/json'});
       return res.end(JSON.stringify(revoked?{error:'invalid_session'}:{user:{id:'learner'},usage:{},packages:{}}));
+    }
+    if(req.url.startsWith('/v1/internal/usage/')){
+      const body=JSON.parse(Buffer.concat(chunks).toString('utf8'));usageCalls.push({path:req.url,body});
+      res.writeHead(200,{'Content-Type':'application/json'});return res.end(JSON.stringify(req.url.endsWith('/reserve')?{reservationId:'test-reservation'}:{status:'succeeded'}));
     }
     upstreamCalls.push({
       url:req.url,token:req.headers['x-nexora-chat-token'],
@@ -174,6 +178,8 @@ test('signed-in chat forwards only validated messages to the internal AI server'
     assert.deepEqual(upstreamCalls[0].body.messages[0],{role:'user',content:'Что такое планеты?'});
     assert.equal(authCalls.length,1);
     assert.equal(authCalls[0].sessionId,'learner-session');
+    for(let i=0;i<20&&usageCalls.length<2;i++)await new Promise(r=>setTimeout(r,25));
+    assert.equal(usageCalls.length,2);assert.equal(usageCalls[0].body.product,'chat');assert.equal(usageCalls[1].body.outcome,'success');
     revoked=true;
     const blocked=await fetch(url+'/api/nexora-chat',{method:'POST',headers:{Cookie:'nexora_session='+payload+'.'+sign,Origin:url,'Content-Type':'application/json'},body:JSON.stringify(sample)});
     assert.equal(blocked.status,401);assert.equal(upstreamCalls.length,1);

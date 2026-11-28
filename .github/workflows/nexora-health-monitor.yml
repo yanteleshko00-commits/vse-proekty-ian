@@ -1,0 +1,23 @@
+name: NEXORA scheduled health monitoring
+on:
+  schedule:
+    - cron: '3,13,23,33,43,53 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/monitor-health.mjs', '.github/workflows/nexora-health-monitor.yml']
+permissions:
+  contents: read
+concurrency:
+  group: nexora-health
+  cancel-in-progress: false
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/monitor-health.mjs

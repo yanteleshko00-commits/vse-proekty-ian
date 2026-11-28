@@ -1993,6 +1993,7 @@ app.get('/api/health', asyncRoute(async (_req, res) => {
       openAIEnabledForText: Boolean(openai)
     },
     imageGenerationEnabled: process.env.ENABLE_AI_IMAGE_GENERATION === 'true',
+    protection:httpGuard.snapshot(),
     generationJobStorage: generationJobStorage.status,
     generationJobStorageWritable: generationJobStorage.writable,
     generationJobRecovery: 'best-effort-checkpoints',
